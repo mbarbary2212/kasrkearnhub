@@ -307,7 +307,7 @@ function BookLecturesView({
             <div
               key={chapter.id}
               className={cn(
-                "flex items-center gap-3 py-3 px-2 md:px-4 transition-colors group",
+                "flex items-center gap-3 py-3.5 md:py-3 px-2 md:px-4 transition-colors group min-h-[44px]",
                 isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
               )}
             >
@@ -326,7 +326,7 @@ function BookLecturesView({
                     className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" 
                   />
                 )}
-                <span className="flex-1 text-xs md:text-sm font-medium line-clamp-2 md:truncate min-w-0">
+                <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate min-w-0">
                   <span className="md:hidden">{shortenTitle(chapter.title)}</span>
                   <span className="hidden md:inline">{chapter.title}</span>
                 </span>
@@ -343,7 +343,7 @@ function BookLecturesView({
                     className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" 
                   />
                 )}
-                <span className="flex-1 text-xs md:text-sm font-medium line-clamp-2 md:truncate text-muted-foreground min-w-0">
+                <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate text-muted-foreground min-w-0">
                   <span className="md:hidden">{shortenTitle(chapter.title)}</span>
                   <span className="hidden md:inline">{chapter.title}</span>
                 </span>
@@ -527,7 +527,7 @@ function StudentBookPillView({
                     {chapter.icon_url && (
                       <img src={chapter.icon_url} alt="" className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" />
                     )}
-                    <span className="flex-1 text-xs md:text-sm font-medium truncate min-w-0">
+                    <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate min-w-0">
                       <span className="md:hidden">{shortenTitle(chapter.title)}</span>
                       <span className="hidden md:inline">{chapter.title}</span>
                     </span>
@@ -540,7 +540,7 @@ function StudentBookPillView({
                     {chapter.icon_url && (
                       <img src={chapter.icon_url} alt="" className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" />
                     )}
-                    <span className="flex-1 text-xs md:text-sm font-medium truncate text-muted-foreground min-w-0">
+                    <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate text-muted-foreground min-w-0">
                       <span className="md:hidden">{shortenTitle(chapter.title)}</span>
                       <span className="hidden md:inline">{chapter.title}</span>
                     </span>
