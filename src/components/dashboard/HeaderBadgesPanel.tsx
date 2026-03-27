@@ -58,7 +58,7 @@ export function HeaderBadgesPanel({ open, onOpenChange }: HeaderBadgesPanelProps
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-6">
           {/* Progress Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
