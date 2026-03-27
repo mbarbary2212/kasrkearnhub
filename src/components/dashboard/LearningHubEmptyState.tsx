@@ -1,30 +1,50 @@
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { BookOpen, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LearningHubEmptyStateProps {
   onSelectModule: () => void;
+  highlight?: boolean;
 }
 
-export function LearningHubEmptyState({ onSelectModule }: LearningHubEmptyStateProps) {
+export function LearningHubEmptyState({ onSelectModule, highlight }: LearningHubEmptyStateProps) {
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlight && bannerRef.current) {
+      bannerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlight]);
+
   return (
-    <Card className="border-dashed">
-      <CardContent className="py-12 text-center">
-        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-          <BookOpen className="w-8 h-8 text-muted-foreground" />
+    <div
+      ref={bannerRef}
+      className={cn(
+        'relative rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 overflow-hidden transition-all duration-500',
+        highlight && 'ring-2 ring-primary/40 animate-pulse'
+      )}
+    >
+      {/* Decorative background circle */}
+      <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-primary/5 blur-2xl" />
+      
+      <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+          <BookOpen className="w-6 h-6 text-primary" />
         </div>
         
-        <h3 className="text-xl font-semibold mb-2">Select a module to begin</h3>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-foreground mb-1">Start Learning</h3>
+          <p className="text-sm text-muted-foreground">
+            Select a module from the dropdown above to access your study materials, progress tracking, and assessments.
+          </p>
+        </div>
         
-        <p className="text-muted-foreground max-w-md mx-auto mb-6">
-          Choose the module you are currently studying. Your progress, study plan, and assessments will appear here.
-        </p>
-        
-        <Button onClick={onSelectModule} className="gap-2">
+        <Button onClick={onSelectModule} className="gap-2 flex-shrink-0">
           Select Module
           <ArrowRight className="w-4 h-4" />
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

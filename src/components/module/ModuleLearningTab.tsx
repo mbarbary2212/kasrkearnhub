@@ -1075,6 +1075,21 @@ export function ModuleLearningTab({
   
   return (
     <div className="space-y-4">
+      {/* Inline guidance card for students */}
+      {!auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin && (
+        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-foreground mb-0.5">Start Learning</h3>
+              <p className="text-sm text-muted-foreground">Choose a chapter below to access resources, practice questions, and more.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-muted-foreground" />
@@ -1082,7 +1097,9 @@ export function ModuleLearningTab({
         </h2>
         <SortDropdown sortMode={sortMode} onSortChange={setSortMode} />
       </div>
-      {renderChapterList(sortedChapters, singleBookLabel)}
+      <div className={cn(!auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin && "ring-2 ring-primary/15 rounded-lg")}>
+        {renderChapterList(sortedChapters, singleBookLabel)}
+      </div>
 
       <ChapterFormModal
         open={chapterModalOpen}

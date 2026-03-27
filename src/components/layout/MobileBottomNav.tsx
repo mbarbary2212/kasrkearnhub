@@ -107,7 +107,7 @@ export function MobileBottomNav() {
       if (lastPosition) {
         navigate(buildResumeUrl(lastPosition));
       } else {
-        navigate('/');
+        navigate('/', { state: { fromLearning: true } });
       }
       return;
     }

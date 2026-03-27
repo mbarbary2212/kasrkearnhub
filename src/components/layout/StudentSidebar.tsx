@@ -139,7 +139,7 @@ export function StudentSidebar() {
       if (lastPosition) {
         navigate(buildResumeUrl(lastPosition));
       } else {
-        navigate('/');
+        navigate('/', { state: { fromLearning: true } });
       }
       return;
     }
@@ -164,7 +164,7 @@ export function StudentSidebar() {
         if (lastPosition) {
           navigate(buildResumeUrl(lastPosition));
         } else {
-          navigate('/');
+          navigate('/', { state: { fromLearning: true } });
         }
         setActiveSubmenu(null);
         return;
