@@ -44,10 +44,7 @@ const connectSubItems: SubItem[] = [
   { label: 'Study Groups', icon: Users, id: 'study-groups', description: 'Group learning' },
 ];
 
-const formativeSubItems: SubItem[] = [
-  { label: 'Written', icon: FileText, id: 'written', description: 'Mock written exams' },
-  { label: 'Practical', icon: Stethoscope, id: 'practical', description: 'OSCE & practicals' },
-];
+const formativeSubItems: SubItem[] = [];
 
 const coachSubItems: SubItem[] = [
   { label: 'Overview', icon: Eye, id: 'overview', description: 'Dashboard summary' },
@@ -68,7 +65,7 @@ const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'learning', label: 'Learning', icon: BookOpen, children: learningSubItems },
   { id: 'connect', label: 'Connect', icon: MessageCircle, children: connectSubItems },
-  { id: 'formative', label: 'Formative', icon: ClipboardCheck, children: formativeSubItems },
+  { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, children: coachSubItems },
 ];
 
