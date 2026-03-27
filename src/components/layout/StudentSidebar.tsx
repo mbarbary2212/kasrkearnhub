@@ -217,7 +217,7 @@ export function StudentSidebar() {
         className="absolute left-full ml-2 z-50 w-56 animate-in fade-in slide-in-from-left-2 duration-200"
         style={{ top: `${submenuTop}px` }}
       >
-        <div className="bg-card dark:bg-[hsl(var(--card)/0.95)] backdrop-blur-xl border border-border rounded-xl shadow-2xl py-2 px-1.5">
+        <div className="bg-card dark:bg-[rgba(10,15,20,0.92)] backdrop-blur-md border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] py-2 px-1.5">
           {/* Panel header */}
           <div className="px-3 py-2 mb-0.5">
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
