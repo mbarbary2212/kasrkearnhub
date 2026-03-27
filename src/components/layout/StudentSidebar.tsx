@@ -108,7 +108,7 @@ export function StudentSidebar() {
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
     }
-    if (item.id === 'connect') return false;
+    if (item.id === 'connect') return location.pathname.startsWith('/connect/');
     if (item.id === 'formative') return location.pathname === '/formative';
     if (item.id === 'coach') return location.pathname === '/progress';
     if (item.id === 'customize') return location.pathname === '/customize-content';
@@ -165,7 +165,13 @@ export function StudentSidebar() {
       newParams.set('section', sub.id);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
     } else if (parentId === 'connect') {
-      openConnect(sub.id as any);
+      if (sub.id === 'discussions') {
+        navigate('/connect/discussions');
+      } else if (sub.id === 'study-groups') {
+        navigate('/connect/groups');
+      } else {
+        openConnect(sub.id as any);
+      }
     }
     setActiveSubmenu(null);
   }, [navigate, isChapterOrTopicPage, lastPosition, searchParams, location.pathname, openConnect]);
@@ -304,9 +310,7 @@ export function StudentSidebar() {
         {navItems.map((item) => renderNavButton(item))}
       </nav>
 
-      <div className="mx-4 my-0.5 border-t border-border dark:border-white/10" />
-
-      <div className="flex flex-col gap-0.5 px-2 pb-2">
+      <div className="flex flex-col gap-0.5 px-2 pb-1">
         {bottomItems.map((item) => renderNavButton(item))}
       </div>
 

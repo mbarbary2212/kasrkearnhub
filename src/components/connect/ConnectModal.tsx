@@ -6,20 +6,15 @@ import { cn } from '@/lib/utils';
 import { MessagesPanel } from '@/components/connect/MessagesPanel';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
-import { DiscussionSection } from '@/components/discussion';
-import { StudyGroupList, GroupDetailView } from '@/components/study-groups';
 
 const viewTitles: Record<string, string> = {
   messages: 'Messages',
   inquiry: 'Ask a Question',
   feedback: 'Give Feedback',
-  discussions: 'Open Discussions',
-  'study-groups': 'Study Groups',
 };
 
 export function ConnectModal() {
   const { isOpen, activeView, moduleId, moduleName, moduleCode, yearId, closeConnect } = useConnect();
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -49,13 +44,6 @@ export function ConnectModal() {
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen, closeConnect]);
-
-  // Reset group selection when closing
-  useEffect(() => {
-    if (!isOpen || activeView !== 'study-groups') {
-      setSelectedGroupId(null);
-    }
-  }, [isOpen, activeView]);
 
   // Open inquiry/feedback as their own dialogs
   useEffect(() => {
@@ -115,7 +103,7 @@ export function ConnectModal() {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
                 <h2 className="text-lg font-semibold text-foreground">
-                  {selectedGroupId ? 'Study Group' : viewTitle}
+                  {viewTitle}
                 </h2>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={closeConnect}>
                   <X className="w-4 h-4" />
@@ -126,21 +114,6 @@ export function ConnectModal() {
               <div className="flex-1 overflow-y-auto p-5">
                 {activeView === 'messages' && (
                   <MessagesPanel moduleId={moduleId} yearId={yearId} />
-                )}
-
-                {activeView === 'discussions' && (
-                  <DiscussionSection moduleId={moduleId} />
-                )}
-
-                {activeView === 'study-groups' && (
-                  selectedGroupId ? (
-                    <GroupDetailView groupId={selectedGroupId} onBack={() => setSelectedGroupId(null)} />
-                  ) : (
-                    <StudyGroupList
-                      moduleId={moduleId}
-                      onSelectGroup={(groupId) => setSelectedGroupId(groupId)}
-                    />
-                  )
                 )}
               </div>
             </div>
