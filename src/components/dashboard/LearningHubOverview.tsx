@@ -12,9 +12,12 @@ import { ChapterHealthHeatmap } from './ChapterHealthHeatmap';
 import { StudyStreakCalendar } from './StudyStreakCalendar';
 import { LearningPatternSummary } from './LearningPatternSummary';
 import { WeeklyProgressReport } from './WeeklyProgressReport';
+import { ClassificationDashboard } from './ClassificationDashboard';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
+import { useChapterClassification } from '@/hooks/useChapterClassification';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 
 interface LearningHubOverviewProps {
