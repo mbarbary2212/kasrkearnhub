@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
@@ -26,8 +26,27 @@ import { GraduationCap, BookOpen, ArrowLeft } from 'lucide-react';
 export function StudentDashboard() {
   const { profile } = useAuthContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const moduleSelectRef = useRef<HTMLButtonElement>(null);
   const { activeYear } = useActiveYear();
+  
+  // Detect if user arrived from Learning tab click
+  const [highlightModuleSelect, setHighlightModuleSelect] = useState(false);
+  
+  useEffect(() => {
+    if ((location.state as any)?.fromLearning) {
+      setHighlightModuleSelect(true);
+      // Clear the state to prevent re-triggering on back navigation
+      window.history.replaceState({}, document.title);
+      // Auto-scroll to module selector
+      setTimeout(() => {
+        moduleSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+      // Remove highlight after animation
+      const timer = setTimeout(() => setHighlightModuleSelect(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
   
   // Filter state
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
@@ -133,7 +152,7 @@ export function StudentDashboard() {
                     onValueChange={setSelectedModuleId}
                     disabled={!selectedYearId}
                   >
-                    <SelectTrigger ref={moduleSelectRef} className="h-8 w-[220px] bg-background text-sm">
+                    <SelectTrigger ref={moduleSelectRef} className={cn("h-8 w-[220px] bg-background text-sm transition-all duration-500", highlightModuleSelect && "ring-2 ring-primary ring-offset-2 ring-offset-background")}>
                       <SelectValue placeholder="Select module" />
                     </SelectTrigger>
                     <SelectContent>
@@ -197,7 +216,7 @@ export function StudentDashboard() {
 
       {/* Content based on module selection */}
       {!moduleSelected ? (
-        <LearningHubEmptyState onSelectModule={handleSelectModuleClick} />
+        <LearningHubEmptyState onSelectModule={handleSelectModuleClick} highlight={highlightModuleSelect} />
       ) : (dashboardLoading || testProgressLoading) ? (
         <DashboardContentSkeleton />
       ) : dashboard ? (
