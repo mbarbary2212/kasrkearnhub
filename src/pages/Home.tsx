@@ -29,6 +29,8 @@ import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
+import { useYearClassification } from '@/hooks/useYearClassification';
+import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
