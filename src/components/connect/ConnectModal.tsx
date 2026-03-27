@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { useConnect } from '@/contexts/ConnectContext';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { MessagesCard } from '@/components/connect/MessagesCard';
+import { MessagesPanel } from '@/components/connect/MessagesPanel';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
 import { DiscussionSection } from '@/components/discussion';
@@ -125,7 +125,7 @@ export function ConnectModal() {
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-5">
                 {activeView === 'messages' && (
-                  <MessagesCard moduleId={moduleId || ''} yearId={yearId} />
+                  <MessagesPanel moduleId={moduleId} yearId={yearId} />
                 )}
 
                 {activeView === 'discussions' && (
