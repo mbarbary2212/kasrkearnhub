@@ -28,6 +28,7 @@ interface LearningHubOverviewProps {
 }
 
 export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNavigate }: LearningHubOverviewProps) {
+  const { user } = useAuthContext();
   const { 
     mcqNeedsPractice, 
     osceNeedsPractice,
@@ -40,12 +41,16 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
   } = useNeedsPractice(moduleId);
 
   const { mutate: checkBadges } = useCheckBadges();
+  const { data: classifications } = useChapterClassification(user?.id, moduleId);
   
   useEffect(() => {
     if (moduleSelected && dashboard.coveragePercent > 0) {
       checkBadges({ moduleProgress: dashboard.coveragePercent });
     }
   }, [moduleSelected, dashboard.coveragePercent, checkBadges]);
+
+  // Find classification for current module
+  const currentClassification = classifications?.find(c => c.module_id === moduleId);
 
   if (!moduleSelected) {
     return (
@@ -71,6 +76,15 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         readinessResult={dashboard.readinessResult}
         readinessTrend={dashboard.readinessTrend}
       />
+
+      {/* Algorithm v1 Classification Dashboard */}
+      {currentClassification && (
+        <ClassificationDashboard
+          classification={currentClassification}
+          chapterTitleMap={dashboard.chapterTitleMap}
+          onNavigate={onNavigate}
+        />
+      )}
 
       {/* Today's Adaptive Study Plan */}
       <DashboardTodayPlan 
