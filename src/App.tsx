@@ -162,6 +162,8 @@ const App = () => {
                 <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
                 
                 <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/connect/discussions" element={<ProtectedRoute><RouteErrorBoundary><DiscussionsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/connect/groups" element={<ProtectedRoute><RouteErrorBoundary><StudyGroupsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 
                 <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/customize-content" element={<ProtectedRoute><RouteErrorBoundary><CustomizeContentPage /></RouteErrorBoundary></ProtectedRoute>} />
