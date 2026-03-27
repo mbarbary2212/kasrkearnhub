@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useConnect } from '@/contexts/ConnectContext';
+
 import { useYearById } from '@/hooks/useYears';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
@@ -18,7 +18,7 @@ import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLa
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
-import { ModuleConnectTab } from '@/components/module/ModuleConnectTab';
+
 import { useModuleBooks } from '@/hooks/useModuleBooks';
 import {
   ArrowLeft, 
