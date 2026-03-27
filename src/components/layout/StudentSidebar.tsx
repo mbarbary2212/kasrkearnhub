@@ -133,6 +133,16 @@ export function StudentSidebar() {
       setActiveSubmenu(null);
       return;
     }
+    // Learning: if not on a chapter/topic page, navigate to last position or dashboard
+    if (item.id === 'learning' && !isChapterOrTopicPage) {
+      setActiveSubmenu(null);
+      if (lastPosition) {
+        navigate(buildResumeUrl(lastPosition));
+      } else {
+        navigate('/');
+      }
+      return;
+    }
     if (item.children) {
       if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
@@ -145,7 +155,7 @@ export function StudentSidebar() {
         }
       }
     }
-  }, [navigate, activeSubmenu]);
+  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition]);
 
   // ── Handle submenu item click ────────────────────────
   const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
