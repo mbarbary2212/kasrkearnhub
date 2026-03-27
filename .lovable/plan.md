@@ -1,55 +1,53 @@
 
 
-## Universal Scroll Chaining
+## Restructure Mobile Bottom Nav
 
-### Current State
+### Changes
 
-The codebase is already mostly clean:
-- **`overscroll-contain`** only exists on flashcard components (4 files) — these are intentionally exempt to prevent swipe gesture conflicts
-- **No custom scroll `preventDefault`** handlers that trap scroll
-- **Radix Dialog/Sheet** containers use `overflow-hidden` on the outer shell, with inner content scrolling via `overflow-y-auto` or `ScrollArea`
+**1. Update bottom bar tabs (`MobileBottomNav.tsx`)**
 
-The main scroll-trapping sources are:
-1. **Radix's `ScrollArea` component** — the Viewport doesn't set `overscroll-behavior: auto`, so browsers may default to trapping
-2. **Radix Dialog's body scroll lock** — applies `data-scroll-locked` and `overflow: hidden` on `<body>`, which is expected for modals but means scroll can't chain to the page behind (this is correct modal behavior)
-3. **ConnectModal's manual body scroll lock** — `position: fixed` on body (lines 25-34)
+Replace Practice with Connect. New 5-item bar:
+- Dashboard (LayoutDashboard, `/`)
+- Learning (BookOpen, submenu action)
+- Connect (MessageCircle, submenu action)
+- Coach (coach-img, `/progress`)
+- More (MoreHorizontal, submenu action)
 
-### Plan
+**2. Learning submenu sheet**
 
-**File 1: `src/components/ui/scroll-area.tsx`**
-- Add `overscroll-behavior: auto` to the `ScrollAreaPrimitive.Viewport` element via a style prop or className
-- This ensures all `ScrollArea` instances (coach panel, tutor chat, command menus, selects) chain scroll to parent when boundaries are reached
+Tapping "Learning" toggles a glassmorphic bottom sheet (same style as current "More" sheet) with 4 sub-items:
+- Resources, Interactive, Practice, Test Yourself
 
-**File 2: `src/index.css` (or global CSS)**
-- Add a global rule targeting common scrollable containers to default to `overscroll-behavior: auto`:
-  ```css
-  [data-radix-scroll-area-viewport],
-  [role="dialog"] [style*="overflow"],
-  .overflow-y-auto,
-  .overflow-auto {
-    overscroll-behavior: auto;
-  }
-  ```
-- Add an override to preserve `overscroll-contain` on flashcard elements:
-  ```css
-  .overscroll-contain {
-    overscroll-behavior: contain !important;
-  }
-  ```
+Behavior:
+- On a chapter page → navigate to `?section=resources|interactive|practice|test`
+- On a module page (no chapter) → navigate to module page
+- Not on any module/chapter → resume last position or fall back to dashboard
+- Closes on outside tap, route change, or re-tap
 
-**File 3: `src/components/connect/ConnectModal.tsx`**
-- On the scrollable content div (line 114), add `overscroll-behavior-y: auto` to ensure scroll chains to backdrop/page when inner content is exhausted
+**3. Connect submenu sheet**
 
-**File 4: `src/components/tutor/TutorChatPanel.tsx`**
-- The `ScrollArea` fix from File 1 covers this automatically — no additional changes needed
+Tapping "Connect" toggles a similar sheet with the existing 5 connect items (Messages, Ask a Question, Feedback, Discussions, Study Groups). Each calls `openConnect(id)` as today.
 
-**No changes to:**
-- Flashcard components (keep `overscroll-contain` for swipe gesture isolation)
-- Dialog/Sheet body scroll locks (standard modal behavior — scroll chaining within the modal's own nested containers is what matters)
+**4. Remove Connect from "More" sheet**
 
-### Result
-- 2-3 files changed (scroll-area.tsx, index.css, ConnectModal.tsx)
-- All scrollable containers chain naturally to their parent when boundaries are hit
-- Flashcards remain isolated for gesture support
-- No custom scroll physics or event handlers needed
+"More" sheet keeps only: Formative, Customize, Settings.
+
+**5. Sheet mutual exclusivity**
+
+Opening any sheet (Learning, Connect, More) closes the others.
+
+### Single file changed
+
+`src/components/layout/MobileBottomNav.tsx`
+
+### Technical details
+
+- Remove `practice` tab; change tab array to 5 items with `action` property for `learning`, `connect`, `more`
+- Three boolean states: `showLearning`, `showConnect`, `showMore` — only one true at a time
+- Three refs for outside-click handling
+- Learning sub-items defined locally with icons from lucide (BookOpen, Gamepad2, PenLine, ClipboardCheck)
+- Connect items reuse existing `connectItems` array
+- Active highlighting for learning sub-items based on `searchParams.get('section')`
+- Connect active state based on whether any connect overlay is open
+- All sheets share the same glassmorphic styling, positioned above the 56px bottom bar
 
