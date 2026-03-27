@@ -67,8 +67,8 @@ const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'learning', label: 'Learning', icon: BookOpen, children: learningSubItems },
   { id: 'connect', label: 'Connect', icon: MessageCircle, children: connectSubItems },
-  { id: 'formative', label: 'Formative', shortLabel: 'Formative', icon: ClipboardCheck, children: formativeSubItems },
-  { id: 'coach', label: 'Study Coach', shortLabel: 'Coach', icon: GraduationCap, children: coachSubItems },
+  { id: 'formative', label: 'Formative', icon: ClipboardCheck, children: formativeSubItems },
+  { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, children: coachSubItems },
 ];
 
 const bottomItems: NavItem[] = [
@@ -134,7 +134,6 @@ export function StudentSidebar() {
       return;
     }
     if (item.children) {
-      // Toggle submenu
       if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
       } else {
@@ -152,7 +151,6 @@ export function StudentSidebar() {
   const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
     if (parentId === 'learning') {
       if (!isChapterOrTopicPage) {
-        // Disabled — try resume or go to dashboard
         if (lastPosition) {
           navigate(buildResumeUrl(lastPosition));
         } else {
@@ -161,7 +159,6 @@ export function StudentSidebar() {
         setActiveSubmenu(null);
         return;
       }
-      // Navigate to section on current chapter/topic page
       const newParams = new URLSearchParams(searchParams);
       newParams.set('section', sub.id);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
@@ -179,9 +176,8 @@ export function StudentSidebar() {
   const isLearningDisabled = !isChapterOrTopicPage;
 
   // ── Render a single nav button ───────────────────────
-  const renderNavButton = (item: NavItem, isBottom = false) => {
+  const renderNavButton = (item: NavItem) => {
     const active = isItemActive(item);
-    const hasSubmenu = !!item.children;
     const isSubmenuOpen = activeSubmenu === item.id;
     const Icon = item.icon;
 
@@ -191,7 +187,7 @@ export function StudentSidebar() {
         ref={(el) => { itemRefs.current[item.id] = el; }}
         onClick={(e) => handleNavClick(item, e.currentTarget)}
         className={cn(
-          'relative flex flex-col items-center justify-center gap-1 w-full py-2.5 px-1 rounded-xl transition-all duration-200 group',
+          'relative flex flex-col items-center justify-center gap-1.5 w-full py-3 px-1 rounded-xl transition-all duration-200 group',
           'hover:bg-white/[0.06]',
           active && !isSubmenuOpen && 'bg-white/[0.08] text-foreground',
           isSubmenuOpen && 'bg-white/[0.1] text-foreground',
@@ -200,9 +196,9 @@ export function StudentSidebar() {
       >
         {/* Left accent bar */}
         {active && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary transition-all duration-200" />
         )}
-        <Icon className="h-5 w-5 shrink-0" />
+        <Icon className="h-[18px] w-[18px] shrink-0" />
         <span className="text-[10px] font-medium leading-tight text-center line-clamp-2">
           {item.shortLabel || item.label}
         </span>
@@ -226,8 +222,8 @@ export function StudentSidebar() {
       >
         <div className="bg-card/90 dark:bg-white/[0.06] backdrop-blur-xl border border-border dark:border-white/10 rounded-xl shadow-2xl py-2 px-1.5">
           {/* Panel header */}
-          <div className="px-3 py-1.5 mb-1">
-            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+          <div className="px-3 py-2 mb-0.5">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
               {parentItem.label}
             </span>
           </div>
@@ -246,9 +242,7 @@ export function StudentSidebar() {
                   <TooltipProvider key={sub.id} delayDuration={100}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed"
-                        >
+                        <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-40 cursor-not-allowed">
                           <SubIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
@@ -256,7 +250,7 @@ export function StudentSidebar() {
                               <Lock className="h-3 w-3 text-muted-foreground" />
                             </div>
                             {sub.description && (
-                              <span className="text-[11px] text-muted-foreground/60 line-clamp-1">{sub.description}</span>
+                              <span className="text-[11px] text-muted-foreground/50 line-clamp-1">{sub.description}</span>
                             )}
                           </div>
                         </div>
@@ -274,7 +268,7 @@ export function StudentSidebar() {
                   key={sub.id}
                   onClick={() => handleSubClick(activeSubmenu, sub)}
                   className={cn(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 w-full text-left',
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-left',
                     'hover:bg-white/[0.06]',
                     isSubActive
                       ? cn(colors?.active || 'bg-primary/10 text-primary', 'font-semibold')
@@ -282,13 +276,13 @@ export function StudentSidebar() {
                   )}
                 >
                   <SubIcon className={cn(
-                    'h-4 w-4 shrink-0',
+                    'h-4 w-4 shrink-0 transition-colors duration-200',
                     isSubActive ? (colors?.icon || 'text-primary') : ''
                   )} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium block">{sub.label}</span>
                     {sub.description && (
-                      <span className="text-[11px] text-muted-foreground/70 line-clamp-1">{sub.description}</span>
+                      <span className="text-[11px] text-muted-foreground/60 line-clamp-1">{sub.description}</span>
                     )}
                   </div>
                 </button>
@@ -310,16 +304,16 @@ export function StudentSidebar() {
       )}
     >
       {/* Main nav items */}
-      <nav className="flex-1 flex flex-col gap-1 px-2 pt-3 overflow-y-auto">
+      <nav className="flex-1 flex flex-col gap-0.5 px-2 pt-3 overflow-y-auto">
         {navItems.map((item) => renderNavButton(item))}
       </nav>
 
       {/* Separator */}
-      <div className="mx-4 border-t border-border dark:border-white/10" />
+      <div className="mx-4 my-1 border-t border-border dark:border-white/10" />
 
       {/* Bottom items */}
-      <div className="flex flex-col gap-1 px-2 py-3">
-        {bottomItems.map((item) => renderNavButton(item, true))}
+      <div className="flex flex-col gap-0.5 px-2 pb-3">
+        {bottomItems.map((item) => renderNavButton(item))}
       </div>
 
       {/* Floating submenu panel */}
