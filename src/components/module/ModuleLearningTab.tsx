@@ -1076,7 +1076,7 @@ export function ModuleLearningTab({
   return (
     <div className="space-y-4">
       {/* Inline guidance card for students */}
-      {isStudent && (
+      {!auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin && (
         <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
@@ -1097,7 +1097,7 @@ export function ModuleLearningTab({
         </h2>
         <SortDropdown sortMode={sortMode} onSortChange={setSortMode} />
       </div>
-      <div className={cn(isStudent && "ring-2 ring-primary/15 rounded-lg")}>
+      <div className={cn(!auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin && "ring-2 ring-primary/15 rounded-lg")}>
         {renderChapterList(sortedChapters, singleBookLabel)}
       </div>
 
