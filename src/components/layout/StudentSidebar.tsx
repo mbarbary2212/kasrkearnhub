@@ -46,11 +46,7 @@ const connectSubItems: SubItem[] = [
 
 const formativeSubItems: SubItem[] = [];
 
-const coachSubItems: SubItem[] = [
-  { label: 'Overview', icon: Eye, id: 'overview', description: 'Dashboard summary' },
-  { label: 'Study Plan', icon: CalendarCheck, id: 'study-plan', description: 'Your schedule' },
-  { label: 'Unlocks', icon: Unlock, id: 'unlocks', description: 'Achievement unlocks' },
-];
+const coachSubItems: SubItem[] = [];
 
 // ── Color coding for Learning sub-items ────────────────
 const learningSubColors: Record<string, { active: string; icon: string }> = {
@@ -66,7 +62,7 @@ const navItems: NavItem[] = [
   { id: 'learning', label: 'Learning', icon: BookOpen, children: learningSubItems },
   { id: 'connect', label: 'Connect', icon: MessageCircle, children: connectSubItems },
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
-  { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, children: coachSubItems },
+  { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, path: '/progress' },
 ];
 
 const bottomItems: NavItem[] = [
