@@ -1,410 +1,329 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
-  Settings, ChevronLeft, ChevronRight, FolderOpen, Sparkles, SlidersHorizontal
+  Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
+  HelpCircle, MessageSquare, MessagesSquare, Users, FileText, Stethoscope,
+  Eye, CalendarCheck, Unlock,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
 
-const STORAGE_KEY = 'kalmhub:sidebar-collapsed';
-
-/** Returns true when viewport is in the small-tablet range (640-767px) */
-function useIsSmallTablet() {
-  const [match, setMatch] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 640px) and (max-width: 767px)');
-    const handler = () => setMatch(mq.matches);
-    handler();
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-  return match;
+// ── Types ──────────────────────────────────────────────
+interface SubItem {
+  label: string;
+  icon: React.ElementType;
+  id: string;
+  description?: string;
 }
 
 interface NavItem {
+  id: string;
   label: string;
+  shortLabel?: string;
   icon: React.ElementType;
-  sectionId: string;
-  globalPath: string;
-  skipAutoLogin?: boolean;
-  children?: SubNavItem[];
+  path?: string;
+  children?: SubItem[];
 }
 
-interface SubNavItem {
-  label: string;
-  icon: React.ElementType;
-  sectionId: string;
-}
+// ── Submenu definitions ────────────────────────────────
+const learningSubItems: SubItem[] = [
+  { label: 'Resources', icon: FolderOpen, id: 'resources', description: 'Videos, notes & materials' },
+  { label: 'Interactive', icon: Sparkles, id: 'interactive', description: 'Socratic learning' },
+  { label: 'Practice', icon: GraduationCap, id: 'practice', description: 'Questions & drills' },
+  { label: 'Test Yourself', icon: ClipboardCheck, id: 'test', description: 'Self-assessment' },
+];
 
+const connectSubItems: SubItem[] = [
+  { label: 'Messages', icon: MessageCircle, id: 'messages', description: 'Admin messages' },
+  { label: 'Ask a Question', icon: HelpCircle, id: 'inquiry', description: 'Submit questions' },
+  { label: 'Feedback', icon: MessageSquare, id: 'feedback', description: 'Share your thoughts' },
+  { label: 'Open Discussions', icon: MessagesSquare, id: 'discussions', description: 'Public forum' },
+  { label: 'Study Groups', icon: Users, id: 'study-groups', description: 'Group learning' },
+];
+
+const formativeSubItems: SubItem[] = [
+  { label: 'Written', icon: FileText, id: 'written', description: 'Mock written exams' },
+  { label: 'Practical', icon: Stethoscope, id: 'practical', description: 'OSCE & practicals' },
+];
+
+const coachSubItems: SubItem[] = [
+  { label: 'Overview', icon: Eye, id: 'overview', description: 'Dashboard summary' },
+  { label: 'Study Plan', icon: CalendarCheck, id: 'study-plan', description: 'Your schedule' },
+  { label: 'Unlocks', icon: Unlock, id: 'unlocks', description: 'Achievement unlocks' },
+];
+
+// ── Color coding for Learning sub-items ────────────────
+const learningSubColors: Record<string, { active: string; icon: string }> = {
+  resources:   { active: 'bg-blue-500/15 text-blue-300', icon: 'text-blue-400' },
+  interactive: { active: 'bg-teal-500/15 text-teal-300', icon: 'text-teal-400' },
+  practice:    { active: 'bg-emerald-500/15 text-emerald-300', icon: 'text-emerald-400' },
+  test:        { active: 'bg-violet-500/15 text-violet-300', icon: 'text-violet-400' },
+};
+
+// ── Main nav items ─────────────────────────────────────
+const navItems: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
+  { id: 'learning', label: 'Learning', icon: BookOpen, children: learningSubItems },
+  { id: 'connect', label: 'Connect', icon: MessageCircle, children: connectSubItems },
+  { id: 'formative', label: 'Formative', shortLabel: 'Formative', icon: ClipboardCheck, children: formativeSubItems },
+  { id: 'coach', label: 'Study Coach', shortLabel: 'Coach', icon: GraduationCap, children: coachSubItems },
+];
+
+const bottomItems: NavItem[] = [
+  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+];
+
+// ── Component ──────────────────────────────────────────
 export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const isSmallTablet = useIsSmallTablet();
-  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
+  const [submenuTop, setSubmenuTop] = useState(0);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const [collapsed, setCollapsed] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  // Auto-collapse on smaller screens (below md / 768px)
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (e.matches) setCollapsed(true);
-    };
-    handler(mq);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
-
-  // Close overlay on route change
-  useEffect(() => {
-    setOverlayOpen(false);
-  }, [location.pathname, searchParams.toString()]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, String(collapsed));
-    } catch {}
-  }, [collapsed]);
-
-  // Last position for smart Learning navigation
   const { data: lastPosition } = useLastPosition();
 
-  // Detect route context
-  const moduleMatch = location.pathname.match(/^\/module\/([^/]+)/);
-  const isModulePage = !!moduleMatch;
-  const moduleId = moduleMatch?.[1];
-
+  // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
-  const isChapterPage = !!chapterMatch;
-
   const topicMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)\/topic\/([^/]+)/);
-  const isTopicPage = !!topicMatch;
-
-  const isChapterOrTopicPage = isChapterPage || isTopicPage;
-
-  // Learning sub-tabs — color-coded like in the chapter page
-  const learningSubColors: Record<string, { active: string; icon: string }> = {
-    resources:   { active: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300', icon: 'text-blue-500 dark:text-blue-400' },
-    interactive: { active: 'bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300', icon: 'text-teal-600 dark:text-teal-400' },
-    practice:    { active: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400' },
-    test:        { active: 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300', icon: 'text-violet-500 dark:text-violet-400' },
-  };
-
-  // Learning sub-tabs only visible when on chapter/topic page
-  const learningSubItems: SubNavItem[] = [
-    { label: 'Resources', icon: FolderOpen, sectionId: 'resources' },
-    { label: 'Interactive', icon: Sparkles, sectionId: 'interactive' },
-    { label: 'Practice', icon: GraduationCap, sectionId: 'practice' },
-    { label: 'Test Yourself', icon: ClipboardCheck, sectionId: 'test' },
-  ];
-
-  const navItems: NavItem[] = [
-    { label: 'Dashboard', icon: LayoutDashboard, sectionId: 'dashboard', globalPath: '/' },
-    {
-      label: 'Learning', icon: BookOpen, sectionId: 'learning', globalPath: '__learning__',
-      children: isChapterOrTopicPage ? learningSubItems : undefined,
-    },
-    { label: 'Connect', icon: MessageCircle, sectionId: 'connect', globalPath: '/connect' },
-    { label: 'Formative Assessment', icon: ClipboardCheck, sectionId: 'formative', globalPath: '/formative' },
-    { label: 'Study Coach', icon: GraduationCap, sectionId: 'coach', globalPath: '/progress' },
-  ];
-
+  const isChapterOrTopicPage = !!chapterMatch || !!topicMatch;
   const currentSection = searchParams.get('section') || '';
 
-  const isActive = (item: NavItem) => {
-    if (isChapterOrTopicPage) {
-      // On chapter/topic pages, Learning is active if section is a learning sub-tab or 'learning'
-      if (item.sectionId === 'learning') {
-        return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
+  // Close submenu on route change
+  useEffect(() => {
+    setActiveSubmenu(null);
+  }, [location.pathname, searchParams.toString()]);
+
+  // Click outside to close submenu
+  useEffect(() => {
+    if (!activeSubmenu) return;
+    const handler = (e: MouseEvent) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
+        setActiveSubmenu(null);
       }
-      return currentSection === item.sectionId;
-    }
-    if (isModulePage) {
-      const sec = currentSection || 'dashboard';
-      return sec === item.sectionId;
-    }
-    // Global
-    if (item.label === 'Dashboard') return location.pathname === '/' && !item.skipAutoLogin;
-    if (item.label === 'Learning') return location.pathname.startsWith('/year/');
-    return location.pathname === item.globalPath;
-  };
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [activeSubmenu]);
 
-  const isSubActive = (sub: SubNavItem) => {
-    const sec = currentSection || 'resources';
-    return sec === sub.sectionId;
-  };
+  // ── Active state detection ───────────────────────────
+  const isItemActive = useCallback((item: NavItem) => {
+    if (item.id === 'dashboard') return location.pathname === '/';
+    if (item.id === 'learning') {
+      if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
+      return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
+    }
+    if (item.id === 'connect') return location.pathname === '/connect';
+    if (item.id === 'formative') return location.pathname === '/formative';
+    if (item.id === 'coach') return location.pathname === '/progress';
+    if (item.id === 'customize') return location.pathname === '/customize-content';
+    if (item.id === 'settings') return location.pathname === '/student-settings';
+    return false;
+  }, [location.pathname, isChapterOrTopicPage, currentSection]);
 
-  const handleNav = (item: NavItem) => {
-    if (item.sectionId === 'dashboard') {
-      navigate('/');
+  // ── Handle primary nav click ─────────────────────────
+  const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
+    if (item.path) {
+      navigate(item.path);
+      setActiveSubmenu(null);
       return;
     }
-    if (isModulePage && moduleId) {
-      if (isChapterOrTopicPage && item.sectionId === 'learning') {
-        navigate(`/module/${moduleId}?section=learning`);
+    if (item.children) {
+      // Toggle submenu
+      if (activeSubmenu === item.id) {
+        setActiveSubmenu(null);
+      } else {
+        setActiveSubmenu(item.id);
+        if (el) {
+          const sidebarRect = sidebarRef.current?.getBoundingClientRect();
+          const itemRect = el.getBoundingClientRect();
+          setSubmenuTop(itemRect.top - (sidebarRect?.top || 0));
+        }
+      }
+    }
+  }, [navigate, activeSubmenu]);
+
+  // ── Handle submenu item click ────────────────────────
+  const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
+    if (parentId === 'learning') {
+      if (!isChapterOrTopicPage) {
+        // Disabled — try resume or go to dashboard
+        if (lastPosition) {
+          navigate(buildResumeUrl(lastPosition));
+        } else {
+          navigate('/');
+        }
+        setActiveSubmenu(null);
         return;
       }
-      navigate(`/module/${moduleId}?section=${item.sectionId}`);
-      return;
+      // Navigate to section on current chapter/topic page
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('section', sub.id);
+      navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
+    } else if (parentId === 'connect') {
+      navigate(`/connect?view=${sub.id}`);
+    } else if (parentId === 'formative') {
+      navigate(`/formative?type=${sub.id}`);
+    } else if (parentId === 'coach') {
+      navigate(`/progress?tab=${sub.id}`);
     }
-    // Global context: resume last position or go to dashboard
-    if (item.globalPath === '__learning__') {
-      if (lastPosition) {
-        navigate(buildResumeUrl(lastPosition));
-      } else {
-        navigate('/');
-      }
-      return;
-    }
-    navigate(item.globalPath);
-  };
+    setActiveSubmenu(null);
+  }, [navigate, isChapterOrTopicPage, lastPosition, searchParams, location.pathname]);
 
-  const handleSubNav = (sub: SubNavItem) => {
-    // Update the section param on the current chapter/topic URL
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('section', sub.sectionId);
-    navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
-  };
+  // ── Check if Learning sub-items are disabled ─────────
+  const isLearningDisabled = !isChapterOrTopicPage;
 
-  // Shared sidebar content renderer
-  const renderSidebarContent = (isOverlay = false) => (
-    <>
-      {/* Toggle button — only on desktop sidebar */}
-      {!isOverlay && (
-        <div className="flex items-center justify-end p-2">
-          <button
-            onClick={() => setCollapsed(c => !c)}
-            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-        </div>
-      )}
+  // ── Render a single nav button ───────────────────────
+  const renderNavButton = (item: NavItem, isBottom = false) => {
+    const active = isItemActive(item);
+    const hasSubmenu = !!item.children;
+    const isSubmenuOpen = activeSubmenu === item.id;
+    const Icon = item.icon;
 
-      {/* Close button for overlay */}
-      {isOverlay && (
-        <div className="flex items-center justify-between p-3 border-b border-border">
-          <span className="text-sm font-semibold text-foreground">Menu</span>
-          <button
-            onClick={() => setOverlayOpen(false)}
-            className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Close menu"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Nav items */}
-      <nav className="flex-1 flex flex-col gap-1 px-2 overflow-y-auto pt-1">
-        <TooltipProvider delayDuration={0}>
-          {navItems.map((item) => {
-            const active = isActive(item);
-            const hasChildren = !!item.children?.length;
-            const showCollapsed = !isOverlay && collapsed;
-
-            const btn = (
-              <button
-                key={item.label}
-                onClick={() => { handleNav(item); if (isOverlay) setOverlayOpen(false); }}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors relative w-full',
-                  'hover:bg-muted hover:text-foreground',
-                  active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  showCollapsed && 'justify-center px-0'
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {!showCollapsed && <span className="truncate">{item.label}</span>}
-              </button>
-            );
-
-            const wrappedBtn = showCollapsed ? (
-              <Tooltip key={item.label}>
-                <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                <TooltipContent side="right">{item.label}</TooltipContent>
-              </Tooltip>
-            ) : btn;
-
-            if (hasChildren && active) {
-              if (showCollapsed) {
-                return (
-                  <div key={item.label} className="flex flex-col gap-0.5">
-                    {wrappedBtn}
-                    {item.children!.map((sub) => {
-                      const subActive = isSubActive(sub);
-                      const colors = learningSubColors[sub.sectionId];
-                      return (
-                        <Tooltip key={sub.sectionId}>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={() => { handleSubNav(sub); if (isOverlay) setOverlayOpen(false); }}
-                              className={cn(
-                                'flex items-center justify-center rounded-md p-1.5 transition-colors',
-                                'hover:bg-muted hover:text-foreground',
-                                subActive ? cn(colors?.active, 'font-semibold') : 'text-muted-foreground'
-                              )}
-                            >
-                              <sub.icon className={cn("h-3.5 w-3.5 shrink-0", subActive ? colors?.icon : '')} />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right">{sub.label}</TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </div>
-                );
-              }
-              return (
-                <div key={item.label} className="flex flex-col">
-                  {wrappedBtn}
-                  <div className="ml-5 pl-2 border-l border-border flex flex-col gap-0.5 mt-0.5 mb-1">
-                    {item.children!.map((sub) => {
-                      const subActive = isSubActive(sub);
-                      const colors = learningSubColors[sub.sectionId];
-                      return (
-                        <button
-                          key={sub.sectionId}
-                          onClick={() => { handleSubNav(sub); if (isOverlay) setOverlayOpen(false); }}
-                          className={cn(
-                            'flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
-                            'hover:bg-muted hover:text-foreground',
-                            subActive ? cn(colors?.active, 'font-semibold') : 'text-muted-foreground'
-                          )}
-                        >
-                          <sub.icon className={cn("h-3.5 w-3.5 shrink-0", subActive ? colors?.icon : '')} />
-                          <span className="truncate">{sub.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }
-
-            return wrappedBtn;
-          })}
-        </TooltipProvider>
-      </nav>
-
-      {/* Customize Content + Settings pinned to bottom */}
-      <div className="px-2 pb-3 mt-auto flex flex-col gap-1">
-        <TooltipProvider delayDuration={0}>
-          {(() => {
-            const active = location.pathname === '/customize-content';
-            const showCollapsed = !isOverlay && collapsed;
-            const custBtn = (
-              <button
-                onClick={() => { navigate('/customize-content'); if (isOverlay) setOverlayOpen(false); }}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
-                  'hover:bg-muted hover:text-foreground',
-                  active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  showCollapsed && 'justify-center px-0'
-                )}
-              >
-                <SlidersHorizontal className="h-4 w-4 shrink-0" />
-                {!showCollapsed && <span className="truncate">Customize Content</span>}
-              </button>
-            );
-            if (showCollapsed) {
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>{custBtn}</TooltipTrigger>
-                  <TooltipContent side="right">Customize Content</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return custBtn;
-          })()}
-
-          {(() => {
-            const active = location.pathname === '/student-settings';
-            const showCollapsed = !isOverlay && collapsed;
-            const btn = (
-              <button
-                onClick={() => { navigate('/student-settings'); if (isOverlay) setOverlayOpen(false); }}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors w-full',
-                  'hover:bg-muted hover:text-foreground',
-                  active ? 'bg-muted text-foreground' : 'text-muted-foreground',
-                  showCollapsed && 'justify-center px-0'
-                )}
-              >
-                <Settings className="h-4 w-4 shrink-0" />
-                {!showCollapsed && <span className="truncate">Settings</span>}
-              </button>
-            );
-            if (showCollapsed) {
-              return (
-                <Tooltip>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right">Settings</TooltipContent>
-                </Tooltip>
-              );
-            }
-            return btn;
-          })()}
-        </TooltipProvider>
-      </div>
-    </>
-  );
-
-  return (
-    <>
-      {/* Small tablet mode (640-767px): floating chevron + slide-over overlay */}
-      {isSmallTablet && (
-        <>
-          {/* Floating chevron trigger */}
-          {!overlayOpen && (
-            <button
-              onClick={() => setOverlayOpen(true)}
-              className="fixed left-0 top-1/2 -translate-y-1/2 z-40 h-10 w-6 flex items-center justify-center rounded-r-lg bg-card/90 backdrop-blur-sm border border-l-0 border-border shadow-md text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-              aria-label="Open navigation menu"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
-
-          {/* Backdrop */}
-          {overlayOpen && (
-            <div
-              className="fixed inset-0 z-40 bg-background/50 backdrop-blur-sm animate-in fade-in duration-200"
-              onClick={() => setOverlayOpen(false)}
-            />
-          )}
-
-          {/* Slide-over sidebar */}
-          {overlayOpen && (
-            <aside
-              className="fixed inset-y-0 left-0 z-50 w-56 flex flex-col bg-card border-r border-border shadow-xl animate-in slide-in-from-left duration-200"
-              style={{ top: '4rem' }}
-            >
-              {renderSidebarContent(true)}
-            </aside>
-          )}
-        </>
-      )}
-
-      {/* Desktop mode (>= 768px): normal sticky sidebar */}
-      <aside
+    return (
+      <button
+        key={item.id}
+        ref={(el) => { itemRefs.current[item.id] = el; }}
+        onClick={(e) => handleNavClick(item, e.currentTarget)}
         className={cn(
-          'hidden md:flex flex-col h-[calc(100vh-4rem)] sticky top-16 border-r border-border bg-card/50 transition-[width] duration-200 ease-in-out shrink-0 z-30',
-          collapsed ? 'w-14' : 'w-52'
+          'relative flex flex-col items-center justify-center gap-1 w-full py-2.5 px-1 rounded-xl transition-all duration-200 group',
+          'hover:bg-white/[0.06]',
+          active && !isSubmenuOpen && 'bg-white/[0.08] text-foreground',
+          isSubmenuOpen && 'bg-white/[0.1] text-foreground',
+          !active && !isSubmenuOpen && 'text-muted-foreground',
         )}
       >
-        {renderSidebarContent(false)}
-      </aside>
-    </>
+        {/* Left accent bar */}
+        {active && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary" />
+        )}
+        <Icon className="h-5 w-5 shrink-0" />
+        <span className="text-[10px] font-medium leading-tight text-center line-clamp-2">
+          {item.shortLabel || item.label}
+        </span>
+      </button>
+    );
+  };
+
+  // ── Render floating submenu panel ────────────────────
+  const renderSubmenu = () => {
+    if (!activeSubmenu) return null;
+    const parentItem = [...navItems, ...bottomItems].find(i => i.id === activeSubmenu);
+    if (!parentItem?.children) return null;
+
+    const isLearning = activeSubmenu === 'learning';
+    const disabled = isLearning && isLearningDisabled;
+
+    return (
+      <div
+        className="absolute left-full ml-2 z-50 w-56 animate-in fade-in slide-in-from-left-2 duration-200"
+        style={{ top: `${submenuTop}px` }}
+      >
+        <div className="bg-card/90 dark:bg-white/[0.06] backdrop-blur-xl border border-border dark:border-white/10 rounded-xl shadow-2xl py-2 px-1.5">
+          {/* Panel header */}
+          <div className="px-3 py-1.5 mb-1">
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
+              {parentItem.label}
+            </span>
+          </div>
+
+          {/* Sub-items */}
+          <div className="flex flex-col gap-0.5">
+            {parentItem.children.map((sub) => {
+              const SubIcon = sub.icon;
+              const colors = isLearning ? learningSubColors[sub.id] : null;
+              const isSubActive = isLearning && isChapterOrTopicPage
+                ? (currentSection || 'resources') === sub.id
+                : false;
+
+              if (disabled) {
+                return (
+                  <TooltipProvider key={sub.id} delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg opacity-50 cursor-not-allowed"
+                        >
+                          <SubIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium text-muted-foreground">{sub.label}</span>
+                              <Lock className="h-3 w-3 text-muted-foreground" />
+                            </div>
+                            {sub.description && (
+                              <span className="text-[11px] text-muted-foreground/60 line-clamp-1">{sub.description}</span>
+                            )}
+                          </div>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs">
+                        Choose a chapter first
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              }
+
+              return (
+                <button
+                  key={sub.id}
+                  onClick={() => handleSubClick(activeSubmenu, sub)}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 w-full text-left',
+                    'hover:bg-white/[0.06]',
+                    isSubActive
+                      ? cn(colors?.active || 'bg-primary/10 text-primary', 'font-semibold')
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <SubIcon className={cn(
+                    'h-4 w-4 shrink-0',
+                    isSubActive ? (colors?.icon || 'text-primary') : ''
+                  )} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium block">{sub.label}</span>
+                    {sub.description && (
+                      <span className="text-[11px] text-muted-foreground/70 line-clamp-1">{sub.description}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <aside
+      ref={sidebarRef}
+      className={cn(
+        'hidden sm:flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] sticky top-14 md:top-16 z-30 shrink-0 relative',
+        'w-20 sm:w-[88px] md:w-20',
+        'bg-card/50 dark:bg-white/[0.02] backdrop-blur-sm border-r border-border dark:border-white/10'
+      )}
+    >
+      {/* Main nav items */}
+      <nav className="flex-1 flex flex-col gap-1 px-2 pt-3 overflow-y-auto">
+        {navItems.map((item) => renderNavButton(item))}
+      </nav>
+
+      {/* Separator */}
+      <div className="mx-4 border-t border-border dark:border-white/10" />
+
+      {/* Bottom items */}
+      <div className="flex flex-col gap-1 px-2 py-3">
+        {bottomItems.map((item) => renderNavButton(item, true))}
+      </div>
+
+      {/* Floating submenu panel */}
+      {renderSubmenu()}
+    </aside>
   );
 }

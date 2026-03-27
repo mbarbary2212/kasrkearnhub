@@ -330,7 +330,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {isStudent && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 pb-20 md:pb-8 overflow-x-hidden", isStudent ? 'md:max-w-[calc(100%-0px)]' : 'container mx-auto')}>
+        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 pb-20 md:pb-8 overflow-x-hidden", isStudent ? '' : 'container mx-auto')}>
           <div className={isStudent ? 'container mx-auto' : ''}>
             {children}
           </div>
