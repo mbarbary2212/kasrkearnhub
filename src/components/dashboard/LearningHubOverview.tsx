@@ -12,11 +12,9 @@ import { ChapterHealthHeatmap } from './ChapterHealthHeatmap';
 import { StudyStreakCalendar } from './StudyStreakCalendar';
 import { LearningPatternSummary } from './LearningPatternSummary';
 import { WeeklyProgressReport } from './WeeklyProgressReport';
-import { ClassificationDashboard } from './ClassificationDashboard';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
-import { useChapterClassification } from '@/hooks/useChapterClassification';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
 
@@ -41,16 +39,12 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
   } = useNeedsPractice(moduleId);
 
   const { mutate: checkBadges } = useCheckBadges();
-  const { data: classifications } = useChapterClassification(user?.id, moduleId);
   
   useEffect(() => {
     if (moduleSelected && dashboard.coveragePercent > 0) {
       checkBadges({ moduleProgress: dashboard.coveragePercent });
     }
   }, [moduleSelected, dashboard.coveragePercent, checkBadges]);
-
-  // Find classification for current module
-  const currentClassification = classifications?.find(c => c.module_id === moduleId);
 
   if (!moduleSelected) {
     return (
@@ -77,14 +71,8 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         readinessTrend={dashboard.readinessTrend}
       />
 
-      {/* Algorithm v1 Classification Dashboard */}
-      {currentClassification && (
-        <ClassificationDashboard
-          classification={currentClassification}
-          chapterTitleMap={dashboard.chapterTitleMap}
-          onNavigate={onNavigate}
-        />
-      )}
+
+
 
       {/* Today's Adaptive Study Plan */}
       <DashboardTodayPlan 

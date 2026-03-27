@@ -29,6 +29,8 @@ import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
+import { useYearClassification } from '@/hooks/useYearClassification';
+import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
@@ -129,7 +131,7 @@ const resumeIcon: Record<string, React.ElementType> = {
 
 function LoggedInHome() {
   const navigate = useNavigate();
-  const { profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
+  const { user, profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
   const { data: years, isLoading: yearsLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
@@ -167,6 +169,9 @@ function LoggedInHome() {
   const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
   const moduleIds = useMemo(() => modules?.map(m => m.id) || [], [modules]);
   const { data: readinessMap = {} } = useModuleReadinessBatch(moduleIds);
+
+  // Year-level classification dashboard
+  const { data: yearClassification } = useYearClassification(user?.id, moduleIds);
 
   // Dashboard data (suggestions, streak, readiness)
   const { data: dashboard } = useStudentDashboard(
@@ -307,6 +312,21 @@ function LoggedInHome() {
                   <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
                 </div>
               </div>
+            </section>
+          )}
+
+          {/* Classification Dashboard — Year-level insights */}
+          {isStudent && yearClassification && (
+            <section>
+              <ClassificationDashboard
+                classification={yearClassification.classification}
+                chapterTitleMap={yearClassification.chapterTitleMap}
+                moduleNameMap={yearClassification.moduleNameMap}
+                onNavigate={(moduleId, chapterId, tab) => {
+                  const tabParam = tab ? `?tab=${tab}` : '';
+                  navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
+                }}
+              />
             </section>
           )}
 
