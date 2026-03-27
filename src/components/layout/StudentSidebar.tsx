@@ -120,7 +120,7 @@ export function StudentSidebar() {
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
     }
-    if (item.id === 'connect') return location.pathname === '/connect';
+    if (item.id === 'connect') return false; // Connect is now a modal, never "active" in nav
     if (item.id === 'formative') return location.pathname === '/formative';
     if (item.id === 'coach') return location.pathname === '/progress';
     if (item.id === 'customize') return location.pathname === '/customize-content';
@@ -157,7 +157,7 @@ export function StudentSidebar() {
         }
       }
     }
-  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition]);
+  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition, openConnect]);
 
   // ── Handle submenu item click ────────────────────────
   const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
@@ -175,7 +175,10 @@ export function StudentSidebar() {
       newParams.set('section', sub.id);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
     } else if (parentId === 'connect') {
-      navigate(`/connect?view=${sub.id}`);
+      const viewMap: Record<string, any> = { messages: 'messages', inquiry: 'inquiry', feedback: 'feedback', discussions: 'discussions', 'study-groups': 'study-groups' };
+      openConnect(viewMap[sub.id] || 'menu');
+      setActiveSubmenu(null);
+      return;
     } else if (parentId === 'formative') {
       navigate(`/formative?type=${sub.id}`);
     } else if (parentId === 'coach') {
