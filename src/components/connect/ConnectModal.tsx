@@ -25,7 +25,7 @@ export function ConnectModal() {
 
   // Lock body scroll when overlay is open
   useEffect(() => {
-    const showOverlay = isOpen && activeView !== 'menu' && activeView !== 'inquiry' && activeView !== 'feedback';
+    const showOverlay = isOpen && activeView !== 'inquiry' && activeView !== 'feedback';
     if (showOverlay) {
       const scrollY = window.scrollY;
       document.body.style.position = 'fixed';
@@ -74,7 +74,7 @@ export function ConnectModal() {
   };
 
   // Only show the overlay panel for messages, discussions, study-groups
-  const showOverlay = isOpen && activeView !== 'menu' && activeView !== 'inquiry' && activeView !== 'feedback';
+  const showOverlay = isOpen && activeView !== 'inquiry' && activeView !== 'feedback';
   const viewTitle = viewTitles[activeView] || 'Connect';
 
   return (
