@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useConnect } from '@/contexts/ConnectContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
   Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
@@ -87,6 +88,7 @@ export function StudentSidebar() {
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const { data: lastPosition } = useLastPosition();
+  const { openConnect } = useConnect();
 
   // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
@@ -118,7 +120,7 @@ export function StudentSidebar() {
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
     }
-    if (item.id === 'connect') return location.pathname === '/connect';
+    if (item.id === 'connect') return false; // Connect is now a modal, never "active" in nav
     if (item.id === 'formative') return location.pathname === '/formative';
     if (item.id === 'coach') return location.pathname === '/progress';
     if (item.id === 'customize') return location.pathname === '/customize-content';
@@ -143,6 +145,12 @@ export function StudentSidebar() {
       }
       return;
     }
+    // Connect: open modal directly instead of submenu
+    if (item.id === 'connect') {
+      openConnect('menu');
+      setActiveSubmenu(null);
+      return;
+    }
     if (item.children) {
       if (activeSubmenu === item.id) {
         setActiveSubmenu(null);
@@ -155,7 +163,7 @@ export function StudentSidebar() {
         }
       }
     }
-  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition]);
+  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition, openConnect]);
 
   // ── Handle submenu item click ────────────────────────
   const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
@@ -173,7 +181,10 @@ export function StudentSidebar() {
       newParams.set('section', sub.id);
       navigate(`${location.pathname}?${newParams.toString()}`, { replace: true });
     } else if (parentId === 'connect') {
-      navigate(`/connect?view=${sub.id}`);
+      const viewMap: Record<string, any> = { messages: 'messages', inquiry: 'inquiry', feedback: 'feedback', discussions: 'discussions', 'study-groups': 'study-groups' };
+      openConnect(viewMap[sub.id] || 'menu');
+      setActiveSubmenu(null);
+      return;
     } else if (parentId === 'formative') {
       navigate(`/formative?type=${sub.id}`);
     } else if (parentId === 'coach') {

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useModule } from '@/hooks/useModules';
 import { useModuleChapters } from '@/hooks/useChapters';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useConnect } from '@/contexts/ConnectContext';
 import { useYearById } from '@/hooks/useYears';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
@@ -38,7 +39,7 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 
-type ModuleSection = 'dashboard' | 'learning' | 'formative' | 'connect' | 'coach';
+type ModuleSection = 'dashboard' | 'learning' | 'formative' | 'coach';
 
 export default function ModulePage() {
   const { moduleId } = useParams();
@@ -48,7 +49,7 @@ export default function ModulePage() {
   const isStudentEarly = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
   const getSection = (): ModuleSection => {
     const param = searchParams.get('section');
-    if (param === 'learning' || param === 'formative' || param === 'connect' || param === 'coach') return param;
+    if (param === 'learning' || param === 'formative' || param === 'coach') return param;
     return 'learning';
   };
   const [activeSection, setActiveSection] = useState<ModuleSection>(getSection);
@@ -161,7 +162,6 @@ export default function ModulePage() {
   // Section navigation items
   const sectionNav = [
     { id: 'learning' as ModuleSection, label: 'Learning', mobileLabel: 'Learning', icon: BookOpen },
-    { id: 'connect' as ModuleSection, label: 'Connect', mobileLabel: 'Connect', icon: MessageCircle },
     { id: 'formative' as ModuleSection, label: 'Formative Assessment', mobileLabel: 'Formative', icon: ClipboardCheck },
     ...(isStudent ? [{ id: 'coach' as ModuleSection, label: 'Study Coach', mobileLabel: 'Coach', icon: CalendarDays }] : []),
   ];
@@ -279,15 +279,6 @@ export default function ModulePage() {
               />
             )}
 
-            {/* Connect Section */}
-            {activeSection === 'connect' && actualModuleId && (
-              <ModuleConnectTab
-                moduleId={actualModuleId}
-                moduleName={module?.name || ''}
-                moduleCode={module?.slug || ''}
-                yearId={module?.year_id}
-              />
-            )}
 
             {/* Study Coach Section - Students only */}
             {activeSection === 'coach' && actualModuleId && coachDashboard && (

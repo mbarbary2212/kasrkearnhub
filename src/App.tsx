@@ -16,6 +16,8 @@ import { ActiveYearProvider } from "@/contexts/ActiveYearContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { AskCoachPanel } from "@/components/coach";
+import { ConnectProvider } from "@/contexts/ConnectContext";
+import { ConnectModal } from "@/components/connect/ConnectModal";
 import { AudioMiniPlayer } from "@/components/audio";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -122,12 +124,14 @@ const App = () => {
       <PresenceProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
+          <ConnectProvider>
           <AudioPlayerProvider>
             <TooltipProvider>
               <Toaster />
               <Sonner />
                <BadgeCelebration />
                <AskCoachPanel />
+               <ConnectModal />
                <AudioMiniPlayer />
                <PWAInstallBanner />
                
@@ -167,6 +171,7 @@ const App = () => {
               </BrowserRouter>
             </TooltipProvider>
           </AudioPlayerProvider>
+          </ConnectProvider>
         </CoachProvider>
       </BadgeCelebrationProvider>
       </PresenceProvider>

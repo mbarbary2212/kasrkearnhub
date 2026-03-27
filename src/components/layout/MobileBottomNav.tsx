@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useConnect } from '@/contexts/ConnectContext';
 import {
   LayoutDashboard, BookOpen, GraduationCap, MoreHorizontal,
   MessageCircle, ClipboardCheck, SlidersHorizontal, Settings, PenLine,
@@ -46,6 +47,7 @@ export function MobileBottomNav() {
   const { data: lastPosition } = useLastPosition();
   const [showMore, setShowMore] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const { openConnect } = useConnect();
 
   // Close sheet on outside click
   useEffect(() => {
@@ -84,6 +86,7 @@ export function MobileBottomNav() {
   }, [location.pathname, showMore]);
 
   const isMoreItemActive = useCallback((item: MoreItem) => {
+    if (item.id === 'connect') return false; // Connect is now a modal
     return location.pathname === item.path;
   }, [location.pathname]);
 
@@ -140,6 +143,11 @@ export function MobileBottomNav() {
                 <button
                   key={item.id}
                   onClick={() => {
+                    if (item.id === 'connect') {
+                      openConnect('menu');
+                      setShowMore(false);
+                      return;
+                    }
                     navigate(item.path);
                     setShowMore(false);
                   }}
