@@ -50,9 +50,9 @@ const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
 const CustomizeContentPage = lazy(() => import("./pages/CustomizeContentPage"));
-
 const FormativePage = lazy(() => import("./pages/FormativePage"));
-
+const DiscussionsPage = lazy(() => import("./pages/DiscussionsPage"));
+const StudyGroupsPage = lazy(() => import("./pages/StudyGroupsPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
