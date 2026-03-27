@@ -16,7 +16,7 @@ export interface ChapterMetricRow {
   overconfident_error_rate: number | null;
 }
 
-export type ChapterCategory = 'strength' | 'weakness' | 'needs_improvement' | 'unclassified';
+export type ChapterCategory = 'strength' | 'emerging_strength' | 'weakness' | 'needs_improvement' | 'unclassified';
 
 export interface ClassifiedChapter {
   chapter_id: string;
@@ -33,6 +33,7 @@ export interface ClassifiedChapter {
 export interface ModuleClassification {
   module_id: string;
   strengths: ClassifiedChapter[];
+  emerging_strengths: ClassifiedChapter[];
   weaknesses: ClassifiedChapter[];
   improve: ClassifiedChapter[];
   review_due: ClassifiedChapter[];
@@ -51,6 +52,11 @@ const WEAKNESS = {
 const STRENGTH = {
   readiness_min: 75,
   accuracy_min: 70,
+} as const;
+
+const EMERGING_STRENGTH = {
+  readiness_min: 60,
+  accuracy_min: 75,
 } as const;
 
 const NEEDS_IMPROVEMENT = {
@@ -79,6 +85,12 @@ function isStrength(row: ChapterMetricRow): boolean {
   const readiness = row.readiness_score ?? 0;
   const accuracy = row.recent_mcq_accuracy ?? 0;
   return readiness >= STRENGTH.readiness_min && accuracy >= STRENGTH.accuracy_min;
+}
+
+function isEmergingStrength(row: ChapterMetricRow): boolean {
+  const readiness = row.readiness_score ?? 0;
+  const accuracy = row.recent_mcq_accuracy ?? 0;
+  return readiness >= EMERGING_STRENGTH.readiness_min && accuracy >= EMERGING_STRENGTH.accuracy_min;
 }
 
 function isNeedsImprovement(row: ChapterMetricRow): boolean {
@@ -124,13 +136,15 @@ export function classifyChapter(row: ChapterMetricRow): ClassifiedChapter {
     return { ...base, category: 'unclassified', review_due: reviewDue };
   }
 
-  // Priority: Weakness > Strength > Needs Improvement > Unclassified
+  // Priority: Weakness > Strength > Emerging Strength > Needs Improvement > Unclassified
   let category: ChapterCategory = 'unclassified';
 
   if (isWeakness(row)) {
     category = 'weakness';
   } else if (isStrength(row)) {
     category = 'strength';
+  } else if (isEmergingStrength(row)) {
+    category = 'emerging_strength';
   } else if (isNeedsImprovement(row)) {
     category = 'needs_improvement';
   }
@@ -159,6 +173,11 @@ export function classifyByModule(rows: ChapterMetricRow[]): ModuleClassification
       .sort((a, b) => b.readiness_score - a.readiness_score)
       .slice(0, 3);
 
+    const emerging_strengths = chapters
+      .filter(c => c.category === 'emerging_strength')
+      .sort((a, b) => b.readiness_score - a.readiness_score)
+      .slice(0, 3);
+
     const weaknesses = chapters
       .filter(c => c.category === 'weakness')
       .sort((a, b) => a.recent_mcq_accuracy - b.recent_mcq_accuracy)
@@ -179,7 +198,7 @@ export function classifyByModule(rows: ChapterMetricRow[]): ModuleClassification
 
     const unclassified = chapters.filter(c => c.category === 'unclassified');
 
-    results.push({ module_id, strengths, weaknesses, improve, review_due, unclassified });
+    results.push({ module_id, strengths, emerging_strengths, weaknesses, improve, review_due, unclassified });
   }
 
   return results;
