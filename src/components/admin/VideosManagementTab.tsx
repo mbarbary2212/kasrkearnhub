@@ -1236,6 +1236,9 @@ export function VideosManagementTab({ allowedModuleIds }: { allowedModuleIds?: s
             noSource={noSource}
           />
 
+          {/* Upload Card */}
+          <YouTubeUploadCard hierarchy={hierarchy || []} />
+
           {/* Curriculum Browser */}
           <div>
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -1251,9 +1254,6 @@ export function VideosManagementTab({ allowedModuleIds }: { allowedModuleIds?: s
               </Card>
             )}
           </div>
-
-          {/* Upload Card */}
-          <YouTubeUploadCard hierarchy={hierarchy || []} />
         </>
       )}
     </div>
