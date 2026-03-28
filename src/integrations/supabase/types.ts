@@ -921,6 +921,7 @@ export type Database = {
           notes: string | null
           total_marks: number
           updated_at: string
+          weight_mode: string
           year_id: string
         }
         Insert: {
@@ -935,6 +936,7 @@ export type Database = {
           notes?: string | null
           total_marks?: number
           updated_at?: string
+          weight_mode?: string
           year_id: string
         }
         Update: {
@@ -949,6 +951,7 @@ export type Database = {
           notes?: string | null
           total_marks?: number
           updated_at?: string
+          weight_mode?: string
           year_id?: string
         }
         Relationships: [
