@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Play, GitBranch, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTrackContentView } from '@/hooks/useTrackContentView';
 import { InteractiveAlgorithm, NODE_TYPE_CONFIG } from '@/types/algorithm';
 import { AlgorithmPlayer } from './AlgorithmPlayer';
 import {
@@ -19,14 +20,16 @@ import {
 
 interface AlgorithmListProps {
   algorithms: InteractiveAlgorithm[];
+  chapterId?: string;
   canManage?: boolean;
   onEdit?: (alg: InteractiveAlgorithm) => void;
   onDelete?: (alg: InteractiveAlgorithm) => void;
 }
 
-export function AlgorithmList({ algorithms, canManage, onEdit, onDelete }: AlgorithmListProps) {
+export function AlgorithmList({ algorithms, chapterId, canManage, onEdit, onDelete }: AlgorithmListProps) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InteractiveAlgorithm | null>(null);
+  const trackContentView = useTrackContentView();
 
   if (algorithms.length === 0) {
     return (
