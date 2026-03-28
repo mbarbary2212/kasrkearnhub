@@ -110,6 +110,7 @@ function NewAssessmentButton({ yearId, moduleId, onSave, isSaving }: {
     total_marks: 100,
     duration_minutes: 120,
     notes: '',
+    weight_mode: 'percent' as 'percent' | 'marks',
   });
 
   const handleSave = () => {

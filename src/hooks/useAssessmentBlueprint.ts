@@ -33,6 +33,7 @@ export interface AssessmentStructure {
   duration_minutes: number | null;
   notes: string | null;
   is_active: boolean;
+  weight_mode: 'percent' | 'marks';
   created_by: string | null;
   created_at: string;
   updated_at: string;
