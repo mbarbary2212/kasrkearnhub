@@ -17,34 +17,53 @@ export interface YearClassificationData {
 }
 
 function mergeClassifications(modules: ModuleClassification[]): AggregatedClassification {
-  const all = {
-    strengths: [] as ClassifiedChapter[],
-    emerging_strengths: [] as ClassifiedChapter[],
-    weaknesses: [] as ClassifiedChapter[],
-    improve: [] as ClassifiedChapter[],
-    review_due: [] as ClassifiedChapter[],
-  };
+  // Collect all candidates per category
+  const allWeaknesses: ClassifiedChapter[] = [];
+  const allReviewDue: ClassifiedChapter[] = [];
+  const allImprove: ClassifiedChapter[] = [];
+  const allEmerging: ClassifiedChapter[] = [];
+  const allStrengths: ClassifiedChapter[] = [];
 
   for (const m of modules) {
-    all.strengths.push(...m.strengths);
-    all.emerging_strengths.push(...m.emerging_strengths);
-    all.weaknesses.push(...m.weaknesses);
-    all.improve.push(...m.improve);
-    all.review_due.push(...m.review_due);
+    allWeaknesses.push(...m.weaknesses);
+    allReviewDue.push(...m.review_due);
+    allImprove.push(...m.improve);
+    allEmerging.push(...m.emerging_strengths);
+    allStrengths.push(...m.strengths);
   }
 
-  // Sort and limit
-  all.weaknesses.sort((a, b) => a.recent_mcq_accuracy - b.recent_mcq_accuracy).splice(3);
-  all.improve.sort((a, b) => a.readiness_score - b.readiness_score).splice(3);
-  all.emerging_strengths.sort((a, b) => b.readiness_score - a.readiness_score).splice(3);
-  all.review_due.sort((a, b) => {
+  // Sort each pool
+  allWeaknesses.sort((a, b) => a.recent_mcq_accuracy - b.recent_mcq_accuracy);
+  allReviewDue.sort((a, b) => {
     const da = a.next_review_at ? new Date(a.next_review_at).getTime() : Infinity;
     const db = b.next_review_at ? new Date(b.next_review_at).getTime() : Infinity;
     return da - db;
-  }).splice(3);
-  all.strengths.sort((a, b) => b.readiness_score - a.readiness_score).splice(3);
+  });
+  allImprove.sort((a, b) => a.readiness_score - b.readiness_score);
+  allEmerging.sort((a, b) => b.readiness_score - a.readiness_score);
+  allStrengths.sort((a, b) => b.readiness_score - a.readiness_score);
 
-  return all;
+  // Deduplicate by priority: Needs Attention > Today's Plan (review_due) > Improve > Good Progress > Strengths
+  const seen = new Set<string>();
+
+  const pick = (pool: ClassifiedChapter[], limit: number): ClassifiedChapter[] => {
+    const result: ClassifiedChapter[] = [];
+    for (const ch of pool) {
+      if (seen.has(ch.chapter_id)) continue;
+      seen.add(ch.chapter_id);
+      result.push(ch);
+      if (result.length >= limit) break;
+    }
+    return result;
+  };
+
+  const weaknesses = pick(allWeaknesses, 3);
+  const review_due = pick(allReviewDue, 3);
+  const improve = pick(allImprove, 3);
+  const emerging_strengths = pick(allEmerging, 3);
+  const strengths = pick(allStrengths, 3);
+
+  return { strengths, emerging_strengths, weaknesses, improve, review_due };
 }
 
 /**
