@@ -122,8 +122,43 @@ export function useYearClassification(userId: string | undefined, moduleIds: str
 
       if (rows.length === 0) return null;
 
+      // Fetch exam weights for priority boosting
+      const { data: activeAssessments } = await supabase
+        .from('assessment_structures')
+        .select('id, module_id')
+        .in('module_id', moduleIds)
+        .eq('is_active', true);
+
+      let weightMap: Map<string, ChapterExamWeight> | undefined;
+      if (activeAssessments && activeAssessments.length > 0) {
+        const { data: weights } = await supabase
+          .from('topic_exam_weights')
+          .select('chapter_id, module_id, weight_percent, weight_marks')
+          .in('assessment_id', activeAssessments.map(a => a.id))
+          .not('chapter_id', 'is', null);
+
+        if (weights && weights.length > 0) {
+          weightMap = new Map();
+          for (const w of weights) {
+            if (!w.chapter_id) continue;
+            const existing = weightMap.get(w.chapter_id);
+            if (existing) {
+              existing.total_weight_percent += Number(w.weight_percent) || 0;
+              existing.total_weight_marks += Number(w.weight_marks) || 0;
+            } else {
+              weightMap.set(w.chapter_id, {
+                chapter_id: w.chapter_id,
+                module_id: w.module_id,
+                total_weight_percent: Number(w.weight_percent) || 0,
+                total_weight_marks: Number(w.weight_marks) || 0,
+              });
+            }
+          }
+        }
+      }
+
       const moduleClassifications = classifyByModule(rows);
-      const classification = mergeClassifications(moduleClassifications);
+      const classification = mergeClassifications(moduleClassifications, weightMap);
 
       // Fetch chapter titles for all relevant chapter IDs
       const allChapterIds = new Set<string>();
