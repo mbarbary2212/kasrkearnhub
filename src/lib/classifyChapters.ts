@@ -28,6 +28,11 @@ export interface ClassifiedChapter {
   mcq_attempts: number;
   next_review_at: string | null;
   overconfident_error_rate: number;
+  /** Populated post-classification from exam weight data */
+  total_exam_weight?: number;
+  dominant_component?: string | null;
+  secondary_component?: string | null;
+  prescribed_study_mode?: import('@/lib/studyModes').StudyMode;
 }
 
 export interface ModuleClassification {
