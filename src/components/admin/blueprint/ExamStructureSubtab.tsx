@@ -121,7 +121,7 @@ function NewAssessmentButton({ yearId, moduleId, onSave, isSaving }: {
       is_active: true,
     });
     setOpen(false);
-    setForm({ name: '', assessment_type: 'final_written', total_marks: 100, duration_minutes: 120, notes: '' });
+    setForm({ name: '', assessment_type: 'final_written', total_marks: 100, duration_minutes: 120, notes: '', weight_mode: 'percent' });
   };
 
   if (!open) {
