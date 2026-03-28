@@ -1,6 +1,53 @@
 /**
  * Video utility functions for YouTube and Google Drive
  */
+import * as tus from "tus-js-client";
+
+/**
+ * Upload a video file to Supabase Storage using the TUS resumable upload protocol.
+ * This bypasses the standard endpoint's request body size limit and supports large files.
+ */
+export function uploadVideoToStorage({
+  file,
+  storagePath,
+  supabaseUrl,
+  accessToken,
+  onProgress,
+}: {
+  file: File;
+  storagePath: string;
+  supabaseUrl: string;
+  accessToken: string;
+  onProgress?: (percent: number) => void;
+}): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const upload = new tus.Upload(file, {
+      endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      headers: {
+        authorization: `Bearer ${accessToken}`,
+        "x-upsert": "true",
+      },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        bucketName: "video-uploads",
+        objectName: storagePath,
+        contentType: file.type || "video/mp4",
+        cacheControl: "3600",
+      },
+      chunkSize: 6 * 1024 * 1024, // 6 MB chunks
+      onError: (err) => reject(err),
+      onProgress: (bytesUploaded, bytesTotal) => {
+        if (onProgress && bytesTotal > 0) {
+          onProgress(Math.round((bytesUploaded / bytesTotal) * 100));
+        }
+      },
+      onSuccess: () => resolve(),
+    });
+    upload.start();
+  });
+}
 
 export type VideoSource = "youtube" | "googledrive" | "unknown";
 
