@@ -1,4 +1,4 @@
-import { Shield, BookOpen, MessageSquare, Users, UserPlus, Activity, Settings, Layers, FileText, Sparkles, HelpCircle, BarChart3, Megaphone, Radio, Video } from 'lucide-react';
+import { Shield, BookOpen, MessageSquare, Users, UserPlus, Activity, Settings, Layers, FileText, Sparkles, HelpCircle, BarChart3, Megaphone, Radio, Video, ClipboardList } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -55,6 +55,7 @@ export function AdminTabsNavigation({
         { value: 'analytics', label: 'Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
         { value: 'videos', label: 'Videos', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'ai-settings', label: 'Content Factory', icon: Sparkles, visible: isSuperAdmin },
+        { value: 'blueprint', label: 'Assessment Blueprint', icon: ClipboardList, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
       ],
     },
     {
