@@ -63,14 +63,23 @@ export function ValidationSummarySubtab({ years, modules }: Props) {
       )}
 
       {selectedModuleId && !isLoading && structures.map(s => (
-        <AssessmentValidationCard key={s.id} assessmentId={s.id} name={s.name} type={s.assessment_type} declaredTotal={s.total_marks} chapters={chapters} />
+        <AssessmentValidationCard
+          key={s.id}
+          assessmentId={s.id}
+          name={s.name}
+          type={s.assessment_type}
+          declaredTotal={s.total_marks}
+          weightMode={(s as any).weight_mode ?? 'percent'}
+          chapters={chapters}
+        />
       ))}
     </div>
   );
 }
 
-function AssessmentValidationCard({ assessmentId, name, type, declaredTotal, chapters }: {
+function AssessmentValidationCard({ assessmentId, name, type, declaredTotal, weightMode, chapters }: {
   assessmentId: string; name: string; type: string; declaredTotal: number;
+  weightMode: 'percent' | 'marks';
   chapters: { id: string; title: string }[];
 }) {
   const { data: components = [] } = useAssessmentComponents(assessmentId);
@@ -79,37 +88,39 @@ function AssessmentValidationCard({ assessmentId, name, type, declaredTotal, cha
   const warnings = useMemo(() => {
     const w: string[] = [];
 
-    // Component marks sum
+    // Component marks sum vs declared total
     const componentSum = components.reduce((s, c) => s + Number(c.total_marks), 0);
     if (componentSum !== declaredTotal && components.length > 0) {
       w.push(`Component marks sum to ${componentSum}, but declared total is ${declaredTotal}.`);
     }
 
-    // Weight percentages
-    const totalWeightPercent = weights.reduce((s, wt) => s + Number(wt.weight_percent), 0);
-    if (weights.length > 0 && Math.abs(totalWeightPercent - 100) > 0.5) {
-      w.push(`Total weight percent is ${totalWeightPercent.toFixed(1)}%, expected 100%.`);
+    if (weightMode === 'percent') {
+      // Per-component: each component's chapter weights should sum to ~100%
+      for (const comp of components) {
+        const compWeights = weights.filter(wt => wt.component_id === comp.id);
+        if (compWeights.length === 0) continue;
+        const total = compWeights.reduce((s, wt) => s + Number(wt.weight_percent), 0);
+        if (Math.abs(total - 100) > 0.5) {
+          w.push(`${COMPONENT_TYPE_LABELS[comp.component_type as ExamComponentType]}: weights sum to ${total.toFixed(1)}%, expected 100%.`);
+        }
+      }
+    } else {
+      // Marks mode: per-component chapter weight_marks should sum to component total_marks
+      for (const comp of components) {
+        const compWeights = weights.filter(wt => wt.component_id === comp.id);
+        if (compWeights.length === 0) continue;
+        const total = compWeights.reduce((s, wt) => s + Number(wt.weight_marks ?? 0), 0);
+        if (Math.abs(total - Number(comp.total_marks)) > 0.5) {
+          w.push(`${COMPONENT_TYPE_LABELS[comp.component_type as ExamComponentType]}: marks sum to ${total}, expected ${comp.total_marks}.`);
+        }
+      }
     }
-
-    // Per-component weight check
-    const componentGroups = new Map<string, number>();
-    weights.forEach(wt => {
-      if (wt.component_id) {
-        componentGroups.set(wt.component_id, (componentGroups.get(wt.component_id) || 0) + Number(wt.weight_percent));
-      }
-    });
-    componentGroups.forEach((total, compId) => {
-      const comp = components.find(c => c.id === compId);
-      if (comp && Math.abs(total - 100) > 0.5) {
-        w.push(`${COMPONENT_TYPE_LABELS[comp.component_type as ExamComponentType]} weights sum to ${total.toFixed(1)}%, expected 100%.`);
-      }
-    });
 
     // Missing chapters
     const weightedChapterIds = new Set(weights.map(wt => wt.chapter_id).filter(Boolean));
     const missing = chapters.filter(ch => !weightedChapterIds.has(ch.id));
     if (missing.length > 0 && weights.length > 0) {
-      w.push(`${missing.length} chapter(s) have no weight assigned: ${missing.map(m => m.title).join(', ')}.`);
+      w.push(`${missing.length} chapter(s) have no weight: ${missing.map(m => m.title).join(', ')}.`);
     }
 
     if (components.length === 0) {
@@ -117,7 +128,7 @@ function AssessmentValidationCard({ assessmentId, name, type, declaredTotal, cha
     }
 
     return w;
-  }, [components, weights, declaredTotal, chapters]);
+  }, [components, weights, declaredTotal, chapters, weightMode]);
 
   const isValid = warnings.length === 0 && components.length > 0;
 
@@ -132,10 +143,10 @@ function AssessmentValidationCard({ assessmentId, name, type, declaredTotal, cha
           )}
           <CardTitle className="text-sm">{name}</CardTitle>
           <Badge variant="secondary" className="text-[10px]">{ASSESSMENT_TYPE_LABELS[type as keyof typeof ASSESSMENT_TYPE_LABELS]}</Badge>
+          <Badge variant="outline" className="text-[10px]">{weightMode === 'percent' ? '%' : 'Marks'}</Badge>
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-2">
-        {/* Marks summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
           <div className="bg-muted/50 rounded p-2">
             <span className="text-muted-foreground block">Declared Total</span>
@@ -155,7 +166,29 @@ function AssessmentValidationCard({ assessmentId, name, type, declaredTotal, cha
           </div>
         </div>
 
-        {/* Warnings */}
+        {/* Per-component breakdown */}
+        {components.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 text-xs">
+            {components.map(comp => {
+              const compWeights = weights.filter(wt => wt.component_id === comp.id);
+              const total = weightMode === 'percent'
+                ? compWeights.reduce((s, wt) => s + Number(wt.weight_percent), 0)
+                : compWeights.reduce((s, wt) => s + Number(wt.weight_marks ?? 0), 0);
+              const expected = weightMode === 'percent' ? 100 : Number(comp.total_marks);
+              const isOff = compWeights.length > 0 && Math.abs(total - expected) > 0.5;
+
+              return (
+                <div key={comp.id} className={`rounded p-1.5 border ${isOff ? 'border-amber-300 dark:border-amber-700' : 'border-border'}`}>
+                  <span className="text-muted-foreground block truncate">{COMPONENT_TYPE_LABELS[comp.component_type as ExamComponentType]}</span>
+                  <span className={`font-semibold ${isOff ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                    {weightMode === 'percent' ? `${total.toFixed(1)}%` : `${total}/${comp.total_marks}m`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {warnings.length > 0 && (
           <div className="space-y-1">
             {warnings.map((w, i) => (
