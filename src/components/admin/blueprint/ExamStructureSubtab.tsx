@@ -155,6 +155,16 @@ function NewAssessmentButton({ yearId, moduleId, onSave, isSaving }: {
             <Label className="text-xs">Duration (min)</Label>
             <Input type="number" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: parseInt(e.target.value) || 0 }))} />
           </div>
+          <div>
+            <Label className="text-xs">Weight Mode</Label>
+            <Select value={form.weight_mode} onValueChange={v => setForm(f => ({ ...f, weight_mode: v as 'percent' | 'marks' }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="percent">Percentage (%)</SelectItem>
+                <SelectItem value="marks">Marks</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div>
           <Label className="text-xs">Notes</Label>
