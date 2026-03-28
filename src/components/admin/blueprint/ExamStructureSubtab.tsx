@@ -110,6 +110,7 @@ function NewAssessmentButton({ yearId, moduleId, onSave, isSaving }: {
     total_marks: 100,
     duration_minutes: 120,
     notes: '',
+    weight_mode: 'percent' as 'percent' | 'marks',
   });
 
   const handleSave = () => {
@@ -120,7 +121,7 @@ function NewAssessmentButton({ yearId, moduleId, onSave, isSaving }: {
       is_active: true,
     });
     setOpen(false);
-    setForm({ name: '', assessment_type: 'final_written', total_marks: 100, duration_minutes: 120, notes: '' });
+    setForm({ name: '', assessment_type: 'final_written', total_marks: 100, duration_minutes: 120, notes: '', weight_mode: 'percent' });
   };
 
   if (!open) {
@@ -153,6 +154,16 @@ function NewAssessmentButton({ yearId, moduleId, onSave, isSaving }: {
           <div>
             <Label className="text-xs">Duration (min)</Label>
             <Input type="number" value={form.duration_minutes} onChange={e => setForm(f => ({ ...f, duration_minutes: parseInt(e.target.value) || 0 }))} />
+          </div>
+          <div>
+            <Label className="text-xs">Weight Mode</Label>
+            <Select value={form.weight_mode} onValueChange={v => setForm(f => ({ ...f, weight_mode: v as 'percent' | 'marks' }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="percent">Percentage (%)</SelectItem>
+                <SelectItem value="marks">Marks</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div>
