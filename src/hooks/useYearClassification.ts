@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { classifyByModule, type ChapterMetricRow, type ModuleClassification, type ClassifiedChapter } from '@/lib/classifyChapters';
+import { type ChapterExamWeight, getExamWeightBoost } from './useChapterExamWeights';
 
 export interface AggregatedClassification {
   strengths: ClassifiedChapter[];
@@ -16,7 +17,10 @@ export interface YearClassificationData {
   moduleNameMap: Map<string, string>;
 }
 
-function mergeClassifications(modules: ModuleClassification[]): AggregatedClassification {
+function mergeClassifications(
+  modules: ModuleClassification[],
+  weightMap?: Map<string, ChapterExamWeight>
+): AggregatedClassification {
   // Collect all candidates per category
   const allWeaknesses: ClassifiedChapter[] = [];
   const allReviewDue: ClassifiedChapter[] = [];
@@ -32,14 +36,34 @@ function mergeClassifications(modules: ModuleClassification[]): AggregatedClassi
     allStrengths.push(...m.strengths);
   }
 
-  // Sort each pool
-  allWeaknesses.sort((a, b) => a.recent_mcq_accuracy - b.recent_mcq_accuracy);
+  // Sort each pool - apply exam weight boost to sorting
+  const boost = (ch: ClassifiedChapter) => getExamWeightBoost(ch.chapter_id, weightMap);
+
+  // Weaknesses: lowest accuracy first, boosted by exam weight (high weight = more urgent)
+  allWeaknesses.sort((a, b) => {
+    const scoreA = a.recent_mcq_accuracy / boost(a);
+    const scoreB = b.recent_mcq_accuracy / boost(b);
+    return scoreA - scoreB;
+  });
+
   allReviewDue.sort((a, b) => {
     const da = a.next_review_at ? new Date(a.next_review_at).getTime() : Infinity;
     const db = b.next_review_at ? new Date(b.next_review_at).getTime() : Infinity;
-    return da - db;
+    // Weight-boosted chapters get priority when review dates are close
+    const timeDiff = da - db;
+    if (Math.abs(timeDiff) < 86400000) { // within 1 day
+      return boost(b) - boost(a);
+    }
+    return timeDiff;
   });
-  allImprove.sort((a, b) => a.readiness_score - b.readiness_score);
+
+  // Improve: lower readiness first, exam weight boosts priority
+  allImprove.sort((a, b) => {
+    const scoreA = a.readiness_score / boost(a);
+    const scoreB = b.readiness_score / boost(b);
+    return scoreA - scoreB;
+  });
+
   allEmerging.sort((a, b) => b.readiness_score - a.readiness_score);
   allStrengths.sort((a, b) => b.readiness_score - a.readiness_score);
 
