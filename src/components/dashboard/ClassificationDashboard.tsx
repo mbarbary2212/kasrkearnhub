@@ -2,9 +2,9 @@ import { ClassifiedChapter } from '@/lib/classifyChapters';
 import { AggregatedClassification } from '@/hooks/useYearClassification';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, TrendingUp, RotateCcw, Target, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { isPast, formatDistanceToNow } from 'date-fns';
+
 
 interface ClassificationDashboardProps {
   classification: AggregatedClassification;
@@ -115,89 +115,54 @@ function TodaysPlan({ classification, chapterTitleMap, moduleNameMap, onNavigate
 function NeedsAttention({ classification, chapterTitleMap, moduleNameMap, onNavigate }: ClassificationDashboardProps) {
   const { weaknesses } = classification;
 
+  if (weaknesses.length === 0) return null;
+
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5 mb-1">
         <AlertTriangle className="w-3.5 h-3.5 text-destructive" />
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Needs Attention</h3>
       </div>
-      {weaknesses.length === 0 ? (
-        <div className="flex items-center gap-1.5 py-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400 shrink-0" />
-          <p className="text-xs text-muted-foreground">You're doing well. Keep progressing.</p>
-        </div>
-      ) : (
-        weaknesses.slice(0, 3).map(ch => (
-          <CompactItem
-            key={ch.chapter_id}
-            ch={ch}
-            chapterTitleMap={chapterTitleMap}
-            moduleNameMap={moduleNameMap}
-            label="Low accuracy"
-            cta="Practice"
-            ctaClassName="border-destructive/30 text-destructive hover:bg-destructive/10"
-            onNavigate={onNavigate}
-            tab="practice"
-          />
-        ))
-      )}
+      {weaknesses.slice(0, 3).map(ch => (
+        <CompactItem
+          key={ch.chapter_id}
+          ch={ch}
+          chapterTitleMap={chapterTitleMap}
+          moduleNameMap={moduleNameMap}
+          label="Low accuracy"
+          cta="Practice"
+          ctaClassName="border-destructive/30 text-destructive hover:bg-destructive/10"
+          onNavigate={onNavigate}
+          tab="practice"
+        />
+      ))}
     </div>
   );
 }
 
 // ─── Improve / Review ──────────────────────────────────────────
 
-function ImproveReview({ classification, chapterTitleMap, moduleNameMap, onNavigate }: ClassificationDashboardProps) {
-  const { improve, review_due } = classification;
-  
-  // Merge improve + review_due, deduplicated, max 3
-  const seen = new Set<string>();
-  const items: { ch: ClassifiedChapter; label: string; cta: string; tab: string; ctaClassName?: string }[] = [];
+function Improve({ classification, chapterTitleMap, moduleNameMap, onNavigate }: ClassificationDashboardProps) {
+  const { improve } = classification;
 
-  for (const ch of review_due) {
-    if (items.length >= 3) break;
-    if (seen.has(ch.chapter_id)) continue;
-    seen.add(ch.chapter_id);
-    const reviewDate = ch.next_review_at ? new Date(ch.next_review_at) : null;
-    const isOverdue = reviewDate ? isPast(reviewDate) : false;
-    const timeLabel = reviewDate
-      ? isOverdue ? `Overdue · ${formatDistanceToNow(reviewDate, { addSuffix: false })} ago` : 'Due today'
-      : 'Due today';
-    items.push({
-      ch,
-      label: timeLabel,
-      cta: 'Review',
-      tab: 'resources',
-      ctaClassName: 'border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400',
-    });
-  }
-
-  for (const ch of improve) {
-    if (items.length >= 3) break;
-    if (seen.has(ch.chapter_id)) continue;
-    seen.add(ch.chapter_id);
-    items.push({ ch, label: 'Strengthen', cta: 'Revise', tab: 'resources' });
-  }
-
-  if (items.length === 0) return null;
+  if (improve.length === 0) return null;
 
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-1.5 mb-1">
-        <RotateCcw className="w-3.5 h-3.5 text-orange-500" />
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Improve & Review</h3>
+        <TrendingUp className="w-3.5 h-3.5 text-blue-500" />
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Improve</h3>
       </div>
-      {items.map(({ ch, label, cta, tab, ctaClassName }) => (
+      {improve.slice(0, 3).map(ch => (
         <CompactItem
           key={ch.chapter_id}
           ch={ch}
           chapterTitleMap={chapterTitleMap}
           moduleNameMap={moduleNameMap}
-          label={label}
-          cta={cta}
-          ctaClassName={ctaClassName}
+          label="Strengthen"
+          cta="Revise"
           onNavigate={onNavigate}
-          tab={tab}
+          tab="resources"
         />
       ))}
     </div>
@@ -218,7 +183,7 @@ export function ClassificationDashboard({
     <div className="space-y-4 divide-y divide-border/50">
       <TodaysPlan {...props} />
       <div className="pt-3"><NeedsAttention {...props} /></div>
-      <div className="pt-3"><ImproveReview {...props} /></div>
+      <div className="pt-3"><Improve {...props} /></div>
     </div>
   );
 }
