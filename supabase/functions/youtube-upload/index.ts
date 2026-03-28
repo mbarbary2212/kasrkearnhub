@@ -96,20 +96,26 @@ async function handleUpload(
 
   const accessToken = await getAccessToken();
 
-  // Step 1: Download file from Supabase Storage
-  const { data: fileData, error: downloadError } = await supabase.storage
+  // Step 1: Get a signed URL and stream file metadata from Supabase Storage
+  // (avoids loading the entire file into memory, which hits the 150MB edge function limit)
+  const { data: signedUrlData, error: signedUrlError } = await supabase.storage
     .from("video-uploads")
-    .download(storage_path);
+    .createSignedUrl(storage_path, 600);
 
-  if (downloadError || !fileData) {
-    throw new Error(`Failed to download from storage: ${downloadError?.message}`);
+  if (signedUrlError || !signedUrlData?.signedUrl) {
+    throw new Error(`Failed to get signed URL: ${signedUrlError?.message}`);
   }
 
-  const fileBuffer = await fileData.arrayBuffer();
-  const fileSize = fileBuffer.byteLength;
-  const contentType = fileData.type || "video/mp4";
+  // Fetch just the headers first to get file size without downloading
+  const headRes = await fetch(signedUrlData.signedUrl, { method: "HEAD" });
+  if (!headRes.ok) throw new Error(`Failed to stat file in storage: ${headRes.status}`);
 
-  console.log(`youtube-upload: downloaded ${fileSize} bytes from storage`);
+  const fileSize = parseInt(headRes.headers.get("content-length") ?? "0", 10);
+  const contentType = headRes.headers.get("content-type") || "video/mp4";
+
+  if (!fileSize) throw new Error("Could not determine file size from storage");
+
+  console.log(`youtube-upload: file is ${fileSize} bytes, type ${contentType}`);
 
   // Step 2: Initiate YouTube resumable upload
   const initiateRes = await fetch(
@@ -141,14 +147,17 @@ async function handleUpload(
   const uploadUrl = initiateRes.headers.get("Location");
   if (!uploadUrl) throw new Error("No Location header returned from YouTube");
 
-  // Step 3: Upload file to YouTube
+  // Step 3: Stream file directly from Supabase Storage to YouTube (no in-memory buffering)
+  const storageStream = await fetch(signedUrlData.signedUrl);
+  if (!storageStream.ok) throw new Error(`Failed to fetch file from storage: ${storageStream.status}`);
+
   const uploadRes = await fetch(uploadUrl, {
     method: "PUT",
     headers: {
       "Content-Type": contentType,
       "Content-Length": String(fileSize),
     },
-    body: fileBuffer,
+    body: storageStream.body,
   });
 
   if (!uploadRes.ok) {
