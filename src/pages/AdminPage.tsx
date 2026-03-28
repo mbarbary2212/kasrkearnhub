@@ -21,6 +21,7 @@ import { AnnouncementsTab } from '@/components/admin/AnnouncementsTab';
 import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
 import { RealtimeAnalyticsTab } from '@/components/admin/RealtimeAnalyticsTab';
 import { VideosManagementTab } from '@/components/admin/VideosManagementTab';
+import { AssessmentBlueprintTab } from '@/components/admin/blueprint/AssessmentBlueprintTab';
 
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, isLoading: authLoading } = useAuthContext();
@@ -34,7 +35,7 @@ export default function AdminPage() {
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
     if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
-    if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases', 'videos'].includes(tab)) return 'content';
+    if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases', 'videos', 'blueprint'].includes(tab)) return 'content';
     if (['announcements', 'inbox'].includes(tab)) return 'messaging';
     return 'system';
   };
@@ -58,6 +59,7 @@ export default function AdminPage() {
         { value: 'analytics', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
         { value: 'videos', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'ai-settings', visible: isSuperAdmin },
+        { value: 'blueprint', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
       ],
       messaging: [
         { value: 'announcements', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
