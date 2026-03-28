@@ -223,6 +223,15 @@ export default function AdminPage() {
           </TabsContent>
 
           {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
+            <TabsContent value="blueprint">
+              <AssessmentBlueprintTab
+                years={years.map(y => ({ id: y.id, name: y.name }))}
+                modules={modules.map(m => ({ id: m.id, name: m.name, year_id: m.year_id }))}
+              />
+            </TabsContent>
+          )}
+
+          {(isSuperAdmin || isPlatformAdmin || isModuleAdmin) && (
             <TabsContent value="inbox">
               <AdminInboxTab />
             </TabsContent>
