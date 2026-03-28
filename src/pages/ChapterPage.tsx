@@ -1033,6 +1033,7 @@ export default function ChapterPage() {
                     )}
                     <AlgorithmList
                       algorithms={interactiveAlgorithms || []}
+                      chapterId={chapterId}
                       canManage={canManageContent}
                       onEdit={(alg) => { setEditingAlgorithm(alg); setAlgorithmBuilderOpen(true); }}
                       onDelete={async (alg) => {
