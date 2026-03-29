@@ -31,6 +31,7 @@ export function AdminTabsNavigation({
   activeGroup,
   setActiveGroup,
 }: AdminTabsNavigationProps) {
+  const navigate = useNavigate();
   const groups: GroupDef[] = [
     {
       key: 'system',
