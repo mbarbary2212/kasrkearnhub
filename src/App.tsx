@@ -44,7 +44,7 @@ const ActivityLogPage = lazy(() => import("./pages/ActivityLogPage"));
 const ExamResultsPage = lazy(() => import("./pages/ExamResultsPage"));
 const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage"));
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
-const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
+const AssessmentBlueprintPage = lazy(() => import("./pages/AssessmentBlueprintPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -143,6 +143,7 @@ const App = () => {
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/inbox" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/integrity-report" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/blueprint" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AssessmentBlueprintPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/activity-log" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/feedback" element={<ProtectedRoute><RouteErrorBoundary><FeedbackPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/virtual-patient/:caseId" element={<ProtectedRoute><RouteErrorBoundary><VirtualPatientPage /></RouteErrorBoundary></ProtectedRoute>} />
