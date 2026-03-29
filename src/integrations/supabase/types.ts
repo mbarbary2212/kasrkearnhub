@@ -959,6 +959,44 @@ export type Database = {
           },
         ]
       }
+      assessment_rules: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          description: string | null
+          id: string
+          rule_key: string
+          rule_value: Json
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          rule_key: string
+          rule_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          rule_key?: string
+          rule_value?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_rules_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_structures: {
         Row: {
           assessment_type: Database["public"]["Enums"]["assessment_type"]

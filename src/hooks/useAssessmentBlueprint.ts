@@ -293,3 +293,84 @@ export function useUpsertChapterEligibility() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+// ── Assessment Rules ──
+
+export const ASSESSMENT_RULE_DEFINITIONS = [
+  {
+    key: 'no_chapter_recall_and_case',
+    label: 'No chapter in both Recall & Case',
+    description: 'A chapter cannot appear in both Short Answer (Recall) and Short Answer (Case) within the same exam instance.',
+    defaultValue: true,
+  },
+  {
+    key: 'no_mcq_topic_repeat',
+    label: 'No MCQ topic/subtopic repeat',
+    description: 'MCQ questions should not repeat the same topic or subtopic within a single exam.',
+    defaultValue: true,
+  },
+  {
+    key: 'only_eligible_chapters',
+    label: 'Only eligible chapters',
+    description: 'Questions must only be selected from chapters and components marked as eligible.',
+    defaultValue: true,
+  },
+  {
+    key: 'partial_pool_allowed',
+    label: 'Partial pool selection',
+    description: 'Not all eligible chapters must appear in a given exam instance. The generator may select a subset.',
+    defaultValue: true,
+  },
+] as const;
+
+export type AssessmentRuleKey = typeof ASSESSMENT_RULE_DEFINITIONS[number]['key'];
+
+export interface AssessmentRule {
+  id: string;
+  assessment_id: string;
+  rule_key: string;
+  rule_value: boolean;
+  description: string | null;
+}
+
+export function useAssessmentRules(assessmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['assessment-rules', assessmentId],
+    queryFn: async () => {
+      if (!assessmentId) return [];
+      const { data, error } = await supabase
+        .from('assessment_rules')
+        .select('*')
+        .eq('assessment_id', assessmentId);
+      if (error) throw error;
+      return data as AssessmentRule[];
+    },
+    enabled: !!assessmentId,
+  });
+}
+
+export function useUpsertAssessmentRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: {
+      assessment_id: string;
+      rule_key: string;
+      rule_value: boolean;
+      description: string;
+    }) => {
+      const { error } = await supabase
+        .from('assessment_rules')
+        .upsert({
+          assessment_id: values.assessment_id,
+          rule_key: values.rule_key,
+          rule_value: values.rule_value as any,
+          description: values.description,
+        } as any, { onConflict: 'assessment_id,rule_key' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assessment-rules'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
