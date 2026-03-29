@@ -42,6 +42,8 @@ interface ChapterProgressData {
   resourcesTotal: number;
   completedItems: number;
   totalItems: number;
+  pathwayViewed: number;
+  pathwayTotal: number;
   // Per-type breakdowns
   mcqCompleted: number;
   mcqTotal: number;
@@ -76,6 +78,8 @@ interface RpcProgressResult {
   case_completed: number;
   matching_completed: number;
   tf_completed: number;
+  pathway_total: number;
+  pathway_viewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -99,6 +103,8 @@ export function useChapterProgress(chapterId?: string) {
         resourcesTotal: 0,
         completedItems: 0,
         totalItems: 0,
+        pathwayViewed: 0,
+        pathwayTotal: 0,
         mcqCompleted: 0, mcqTotal: 0,
         essayCompleted: 0, essayTotal: 0,
         osceCompleted: 0, osceTotal: 0,
@@ -109,7 +115,6 @@ export function useChapterProgress(chapterId?: string) {
 
       if (!user?.id || !chapterId) return emptyResult;
 
-      // Single RPC call replaces ~17 separate REST calls
       const { data, error } = await supabase.rpc('get_content_progress', {
         p_chapter_id: chapterId,
         p_topic_id: null,
@@ -120,11 +125,22 @@ export function useChapterProgress(chapterId?: string) {
 
       const rpc = data as unknown as RpcProgressResult;
 
-      // Practice totals
-      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total + rpc.tf_total;
-      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed + rpc.tf_completed;
+      const practiceTotal =
+        rpc.mcq_total +
+        rpc.essay_total +
+        rpc.osce_total +
+        rpc.case_total +
+        rpc.matching_total +
+        rpc.tf_total;
 
-      // Video progress (client-side matching since video_id is extracted via regex)
+      const practiceCompleted =
+        rpc.mcq_completed +
+        rpc.essay_completed +
+        rpc.osce_completed +
+        rpc.case_completed +
+        rpc.matching_completed +
+        rpc.tf_completed;
+
       const videoProgressMap = new Map(
         (rpc.video_progress || []).map(vp => [vp.video_id, vp.percent_watched])
       );
@@ -145,16 +161,14 @@ export function useChapterProgress(chapterId?: string) {
         }
       }
 
-      // Calculate percentages
-      const practiceProgress = practiceTotal > 0 
-        ? Math.round((practiceCompleted / practiceTotal) * 100) 
-        : 0;
-      
-      const videoProgress = videosTotal > 0 
-        ? Math.round(totalVideoProgress / videosTotal) 
+      const practiceProgress = practiceTotal > 0
+        ? Math.round((practiceCompleted / practiceTotal) * 100)
         : 0;
 
-      // Weighted total
+      const videoProgress = videosTotal > 0
+        ? Math.round(totalVideoProgress / videosTotal)
+        : 0;
+
       let totalProgress: number;
       if (practiceTotal === 0 && videosTotal === 0) {
         totalProgress = 0;
@@ -181,6 +195,8 @@ export function useChapterProgress(chapterId?: string) {
         resourcesTotal: videosTotal,
         completedItems: practiceCompleted + videosCompleted,
         totalItems: practiceTotal + videosTotal,
+        pathwayViewed: rpc.pathway_viewed,
+        pathwayTotal: rpc.pathway_total,
         mcqCompleted: rpc.mcq_completed,
         mcqTotal: rpc.mcq_total,
         essayCompleted: rpc.essay_completed,
@@ -237,8 +253,6 @@ export function useMarkItemComplete() {
       isCorrect?: boolean;
       selectedAnswer?: unknown;
     }) => {
-      // Attempt saving is now handled by useSaveQuestionAttempt via RPC.
-      // This hook is retained for backward compatibility but no longer writes to the DB.
       return { questionId, chapterId: chapterId || '' };
     },
     onSuccess: ({ chapterId }) => {
