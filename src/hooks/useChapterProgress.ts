@@ -80,6 +80,8 @@ interface RpcProgressResult {
   tf_completed: number;
   pathway_total: number;
   pathway_viewed: number;
+  flashcard_total: number;
+  flashcard_reviewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
