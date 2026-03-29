@@ -36,6 +36,16 @@ export interface ChapterComponentWeight {
   weight: number;
 }
 
+export interface ChapterEligibility {
+  id: string;
+  assessment_id: string;
+  chapter_id: string;
+  included_in_exam: boolean;
+  allow_mcq: boolean;
+  allow_recall: boolean;
+  allow_case: boolean;
+}
+
 // ── Fetch hooks ──
 
 export function useAssessments(moduleId: string, yearId: string) {
@@ -240,5 +250,46 @@ export function useModuleChapters(moduleId: string) {
       return data;
     },
     enabled: !!moduleId,
+  });
+}
+
+// ── Eligibility hooks ──
+
+export function useChapterEligibility(assessmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['chapter-eligibility', assessmentId],
+    queryFn: async () => {
+      if (!assessmentId) return [];
+      const { data, error } = await supabase
+        .from('assessment_chapter_eligibility')
+        .select('*')
+        .eq('assessment_id', assessmentId);
+      if (error) throw error;
+      return data as ChapterEligibility[];
+    },
+    enabled: !!assessmentId,
+  });
+}
+
+export function useUpsertChapterEligibility() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: {
+      assessment_id: string;
+      chapter_id: string;
+      included_in_exam: boolean;
+      allow_mcq: boolean;
+      allow_recall: boolean;
+      allow_case: boolean;
+    }) => {
+      const { error } = await supabase
+        .from('assessment_chapter_eligibility')
+        .upsert(values as any, { onConflict: 'assessment_id,chapter_id' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chapter-eligibility'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 }

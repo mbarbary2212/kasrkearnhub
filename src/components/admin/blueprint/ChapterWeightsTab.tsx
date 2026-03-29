@@ -8,8 +8,9 @@ import {
   useAssessments,
   useAssessmentComponents,
   useModuleChapters,
-  useChapterWeights,
-  useUpsertChapterWeight,
+  useChapterEligibility,
+  useUpsertChapterEligibility,
+  type ChapterEligibility,
 } from '@/hooks/useAssessmentBlueprint';
 
 const COMPONENT_LABELS: Record<string, string> = {
@@ -22,8 +23,15 @@ const COMPONENT_LABELS: Record<string, string> = {
   paraclinical: 'Paraclinical',
 };
 
-// Cross-module source module IDs
 const CROSS_MODULE_SOURCE = '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10';
+
+type EligibilityField = 'allow_mcq' | 'allow_recall' | 'allow_case';
+
+const ELIGIBILITY_COLUMNS: { key: EligibilityField; label: string }[] = [
+  { key: 'allow_mcq', label: 'MCQ' },
+  { key: 'allow_recall', label: 'Recall' },
+  { key: 'allow_case', label: 'Case' },
+];
 
 interface Props {
   moduleId: string;
@@ -37,26 +45,41 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>('');
 
   const { data: components } = useAssessmentComponents(selectedAssessmentId || undefined);
-  const { data: weights } = useChapterWeights(selectedAssessmentId || undefined);
-  const upsertWeight = useUpsertChapterWeight();
+  const { data: eligibility } = useChapterEligibility(selectedAssessmentId || undefined);
+  const upsertEligibility = useUpsertChapterEligibility();
 
-  // Group chapters by source
   const ownChapters = chapters?.filter(c => c.module_id === moduleId) ?? [];
   const crossChapters = chapters?.filter(c => c.module_id === CROSS_MODULE_SOURCE) ?? [];
-  const allChapters = [...ownChapters, ...crossChapters];
+  const allChapters = [...crossChapters, ...ownChapters];
 
-  const isEligible = useCallback((componentId: string, chapterId: string) => {
-    const w = weights?.find(w => w.component_id === componentId && w.chapter_id === chapterId);
-    return (w?.weight ?? 0) > 0;
-  }, [weights]);
+  const getRow = useCallback((chapterId: string): ChapterEligibility | undefined => {
+    return eligibility?.find(e => e.chapter_id === chapterId);
+  }, [eligibility]);
 
-  const handleToggle = (componentId: string, chapterId: string, checked: boolean) => {
-    upsertWeight.mutate({
+  const handleToggle = (chapterId: string, field: 'included_in_exam' | EligibilityField, checked: boolean) => {
+    const existing = getRow(chapterId);
+    const base = {
       assessment_id: selectedAssessmentId,
-      component_id: componentId,
       chapter_id: chapterId,
-      weight: checked ? 1 : 0,
-    });
+      included_in_exam: existing?.included_in_exam ?? false,
+      allow_mcq: existing?.allow_mcq ?? false,
+      allow_recall: existing?.allow_recall ?? false,
+      allow_case: existing?.allow_case ?? false,
+    };
+    base[field] = checked;
+
+    // If turning off included_in_exam, clear all component flags
+    if (field === 'included_in_exam' && !checked) {
+      base.allow_mcq = false;
+      base.allow_recall = false;
+      base.allow_case = false;
+    }
+    // If turning on any component flag, auto-include
+    if (field !== 'included_in_exam' && checked) {
+      base.included_in_exam = true;
+    }
+
+    upsertEligibility.mutate(base);
   };
 
   if (chaptersLoading || assessmentsLoading) {
@@ -81,65 +104,65 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
-        <span>Selected chapters are eligible sources for questions. Not all must appear in the exam.</span>
+        <span>Selected chapters are eligible sources for questions. Not all must appear in the exam. Use the checkboxes to define the question pool per component.</span>
       </div>
 
-      {selectedAssessmentId && components && components.length > 0 && (
+      {selectedAssessmentId && (
         <div className="overflow-x-auto border rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[200px]">Chapter</TableHead>
-                {components.map(comp => (
-                  <TableHead key={comp.id} className="text-center min-w-[120px]">
-                    {COMPONENT_LABELS[comp.component_type] || comp.component_type}
-                  </TableHead>
+                <TableHead className="min-w-[220px]">Chapter</TableHead>
+                <TableHead className="text-center min-w-[100px]">Included</TableHead>
+                {ELIGIBILITY_COLUMNS.map(col => (
+                  <TableHead key={col.key} className="text-center min-w-[90px]">{col.label}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {crossChapters.length > 0 && (
                 <TableRow>
-                  <TableCell colSpan={components.length + 1} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
+                  <TableCell colSpan={2 + ELIGIBILITY_COLUMNS.length} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
                     From SUR-423 (General Surgery Book)
                   </TableCell>
                 </TableRow>
               )}
-              {crossChapters.map(chapter => (
+              {crossChapters.map(ch => (
                 <ChapterEligibilityRow
-                  key={chapter.id}
-                  chapter={chapter}
-                  components={components}
-                  isEligible={isEligible}
+                  key={ch.id}
+                  chapter={ch}
+                  row={getRow(ch.id)}
                   onToggle={handleToggle}
                   canManage={canManage}
                 />
               ))}
               {crossChapters.length > 0 && ownChapters.length > 0 && (
                 <TableRow>
-                  <TableCell colSpan={components.length + 1} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
+                  <TableCell colSpan={2 + ELIGIBILITY_COLUMNS.length} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
                     SUR-523 Chapters
                   </TableCell>
                 </TableRow>
               )}
-              {ownChapters.map(chapter => (
+              {ownChapters.map(ch => (
                 <ChapterEligibilityRow
-                  key={chapter.id}
-                  chapter={chapter}
-                  components={components}
-                  isEligible={isEligible}
+                  key={ch.id}
+                  chapter={ch}
+                  row={getRow(ch.id)}
                   onToggle={handleToggle}
                   canManage={canManage}
                 />
               ))}
               {/* Summary row */}
               <TableRow className="bg-muted/30 font-semibold">
-                <TableCell>Eligible Chapters</TableCell>
-                {components.map(comp => {
-                  const count = allChapters.filter(ch => isEligible(comp.id, ch.id)).length;
+                <TableCell>Eligible</TableCell>
+                <TableCell className="text-center">
+                  <Badge variant="secondary">{allChapters.filter(ch => getRow(ch.id)?.included_in_exam).length} / {allChapters.length}</Badge>
+                </TableCell>
+                {ELIGIBILITY_COLUMNS.map(col => {
+                  const count = allChapters.filter(ch => getRow(ch.id)?.[col.key]).length;
                   return (
-                    <TableCell key={comp.id} className="text-center">
-                      <Badge variant={count > 0 ? 'default' : 'secondary'}>{count} / {allChapters.length}</Badge>
+                    <TableCell key={col.key} className="text-center">
+                      <Badge variant={count > 0 ? 'default' : 'secondary'}>{count}</Badge>
                     </TableCell>
                   );
                 })}
@@ -149,10 +172,6 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
         </div>
       )}
 
-      {selectedAssessmentId && (!components || components.length === 0) && (
-        <p className="text-muted-foreground text-sm py-4">No components defined for this assessment. Add components in the Exam Structure tab first.</p>
-      )}
-
       {!selectedAssessmentId && (
         <p className="text-muted-foreground text-sm py-4">Select an assessment above to manage chapter eligibility.</p>
       )}
@@ -160,22 +179,30 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
   );
 }
 
-function ChapterEligibilityRow({ chapter, components, isEligible, onToggle, canManage }: {
-  chapter: { id: string; title: string; module_id: string; book_label: string };
-  components: any[];
-  isEligible: (componentId: string, chapterId: string) => boolean;
-  onToggle: (componentId: string, chapterId: string, checked: boolean) => void;
+function ChapterEligibilityRow({ chapter, row, onToggle, canManage }: {
+  chapter: { id: string; title: string };
+  row: ChapterEligibility | undefined;
+  onToggle: (chapterId: string, field: 'included_in_exam' | EligibilityField, checked: boolean) => void;
   canManage: boolean;
 }) {
+  const included = row?.included_in_exam ?? false;
+
   return (
-    <TableRow>
+    <TableRow className={!included ? 'opacity-60' : ''}>
       <TableCell className="font-medium">{chapter.title}</TableCell>
-      {components.map(comp => (
-        <TableCell key={comp.id} className="text-center">
+      <TableCell className="text-center">
+        <Checkbox
+          checked={included}
+          onCheckedChange={(v) => onToggle(chapter.id, 'included_in_exam', !!v)}
+          disabled={!canManage}
+        />
+      </TableCell>
+      {ELIGIBILITY_COLUMNS.map(col => (
+        <TableCell key={col.key} className="text-center">
           <Checkbox
-            checked={isEligible(comp.id, chapter.id)}
-            onCheckedChange={(checked) => onToggle(comp.id, chapter.id, !!checked)}
-            disabled={!canManage}
+            checked={row?.[col.key] ?? false}
+            onCheckedChange={(v) => onToggle(chapter.id, col.key, !!v)}
+            disabled={!canManage || !included}
           />
         </TableCell>
       ))}
