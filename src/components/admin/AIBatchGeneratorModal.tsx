@@ -31,6 +31,7 @@ const CONTENT_TYPES = [
   { value: 'osce', label: 'OSCE Questions', description: 'Clinical examination questions' },
   { value: 'essay', label: 'Essays', description: 'Short answer questions' },
   { value: 'matching', label: 'Matching Questions', description: 'Match items questions' },
+  { value: 'case_scenario', label: 'Case Scenarios', description: 'Clinical cases with 1–3 sub-questions for practice & exams' },
   { value: 'clinical_case', label: 'Clinical Cases', description: 'Patient case studies' },
   { value: 'mind_map', label: 'Mind Maps', description: 'Concept mind maps' },
   { value: 'guided_explanation', label: 'Guided Explanations', description: 'Step-by-step explanations' },
