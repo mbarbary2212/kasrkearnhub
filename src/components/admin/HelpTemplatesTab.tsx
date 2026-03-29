@@ -946,6 +946,7 @@ function generateTemplateDownload(templateId: string) {
     case 'essay':
     case 'true_false':
     case 'guided_explanation':
+    case 'case_scenario':
       // All CSV-based templates use the schema system
       if (schema) {
         const fileName = templateId === 'algorithm' ? 'pathways_template.csv' : `${templateId}_template.csv`;
