@@ -157,7 +157,7 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
               ))}
               {/* Summary row */}
               <TableRow className="bg-muted/30 font-semibold">
-                <TableCell>Eligible</TableCell>
+                <TableCell>Eligible Chapters</TableCell>
                 <TableCell className="text-center">
                   <Badge variant="secondary">{allChapters.filter(ch => getRow(ch.id)?.included_in_exam).length} / {allChapters.length}</Badge>
                 </TableCell>
