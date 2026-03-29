@@ -366,8 +366,38 @@ export async function assembleExam(assessmentId: string, label?: string): Promis
     return { success: false, questions: allQuestions, warnings, errors: ['No questions could be selected from the available pools.'] };
   }
 
-  // 4. Persist to DB
-  const totalMarks = allQuestions.reduce((sum, q) => sum + q.marks, 0);
+  // 4. Post-generation validation & repair
+  let finalQuestions = allQuestions;
+  const validation = validateGeneratedExam(finalQuestions, ctx);
+
+  if (!validation.valid) {
+    // Attempt auto-repair
+    const { questions: repairedQ, validation: repairedV } = repairExam(finalQuestions, ctx);
+    finalQuestions = repairedQ;
+
+    // Log repair actions
+    for (const v of validation.violations) {
+      warnings.push(`[REPAIR] ${v.rule}: ${v.message}`);
+    }
+    if (repairedV.repaired) {
+      warnings.push(`Auto-repair removed ${allQuestions.length - finalQuestions.length} question(s)`);
+    }
+
+    // If still invalid after repair, return errors
+    if (!repairedV.valid) {
+      const debugReport = buildDebugReport(assessmentId, finalQuestions, ctx, warnings);
+      const remainingErrors = repairedV.violations
+        .filter(v => v.severity === 'error')
+        .map(v => v.message);
+      return { success: false, questions: finalQuestions, warnings, errors: remainingErrors, debugReport, validation: repairedV };
+    }
+  }
+
+  // Build debug report
+  const debugReport = buildDebugReport(assessmentId, finalQuestions, ctx, warnings);
+
+  // 5. Persist to DB
+  const totalMarks = finalQuestions.reduce((sum, q) => sum + q.marks, 0);
 
   const { data: instance, error: instErr } = await supabase
     .from('exam_instances')
@@ -381,23 +411,24 @@ export async function assembleExam(assessmentId: string, label?: string): Promis
         component_summary: ctx.components.map(c => ({
           type: c.componentType,
           requested: c.questionCount,
-          selected: allQuestions.filter(q => q.componentType === c.componentType).length,
+          selected: finalQuestions.filter(q => q.componentType === c.componentType).length,
         })),
         eligible_chapter_count: ctx.eligibleChapters.length,
         warnings,
+        debug: debugReport,
       },
     } as any)
     .select('id')
     .single();
 
   if (instErr) {
-    return { success: false, questions: allQuestions, warnings, errors: [`Failed to create exam instance: ${instErr.message}`] };
+    return { success: false, questions: finalQuestions, warnings, errors: [`Failed to create exam instance: ${instErr.message}`], debugReport, validation };
   }
 
   const instanceId = instance.id;
 
   // Insert questions in batch
-  const questionRows = allQuestions.map(q => ({
+  const questionRows = finalQuestions.map(q => ({
     instance_id: instanceId,
     component_id: q.componentId,
     component_type: q.componentType,
@@ -414,12 +445,11 @@ export async function assembleExam(assessmentId: string, label?: string): Promis
     .insert(questionRows as any);
 
   if (qErr) {
-    // Rollback instance
     await supabase.from('exam_instances').delete().eq('id', instanceId);
-    return { success: false, questions: allQuestions, warnings, errors: [`Failed to save questions: ${qErr.message}`] };
+    return { success: false, questions: finalQuestions, warnings, errors: [`Failed to save questions: ${qErr.message}`], debugReport, validation };
   }
 
-  return { success: true, instanceId, questions: allQuestions, warnings, errors };
+  return { success: true, instanceId, questions: finalQuestions, warnings, errors, debugReport, validation };
 }
 
 // ── Convenience: validate-only (dry run without persisting) ──
