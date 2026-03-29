@@ -83,13 +83,15 @@ async function fetchRecallPool(chapterIds: string[]): Promise<PoolQuestion[]> {
   if (!chapterIds.length) return [];
   const { data, error } = await supabase
     .from('osce_questions')
-    .select('id, chapter_id, topic_id')
+    .select('id, chapter_id, topic_id, difficulty')
     .in('chapter_id', chapterIds)
     .eq('is_deleted', false)
     .eq('legacy_archived', false);
   if (error) throw error;
-  // OSCE questions have no difficulty column — leave null
-  return (data || []).map(q => ({ ...q, difficulty: null }));
+  return (data || []).map(q => ({
+    ...q,
+    difficulty: normaliseDifficulty(q.difficulty, 'short_answer_recall'),
+  }));
 }
 
 async function fetchCasePool(chapterIds: string[]): Promise<PoolQuestion[]> {
