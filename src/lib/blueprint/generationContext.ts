@@ -9,13 +9,18 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { ASSESSMENT_RULE_DEFINITIONS } from '@/hooks/useAssessmentBlueprint';
+import {
+  ASSESSMENT_RULE_DEFINITIONS,
+  DIFFICULTY_RULE_KEY,
+  DEFAULT_DIFFICULTY_DISTRIBUTION,
+} from '@/hooks/useAssessmentBlueprint';
 import type {
   AssessmentStructure,
   AssessmentComponent,
   ChapterEligibility,
   AssessmentRule,
   AssessmentRuleKey,
+  DifficultyDistribution,
 } from '@/hooks/useAssessmentBlueprint';
 
 // ── Output types ──
