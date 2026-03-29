@@ -126,6 +126,18 @@ export function AdminTabsNavigation({
       <TabsList className="h-auto gap-1 p-1.5 w-full justify-start flex-wrap">
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;
+          if (tab.value === '__blueprint__') {
+            return (
+              <button
+                key={tab.value}
+                onClick={() => navigate('/admin/blueprint')}
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-primary hover:text-primary-foreground"
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          }
           return (
             <TabsTrigger
               key={tab.value}
