@@ -82,10 +82,9 @@ const CONTENT_SCHEMAS: Record<ContentType, Record<string, string>> = {
     section_number: "string (optional) - section number from the provided list",
   },
   case_scenario: {
-    title: "string - case title",
-    case_history: "string - patient history and presentation",
-    case_questions: "string - questions about the case",
-    model_answer: "string - expected answers",
+    difficulty: "string - one of: easy, moderate, difficult",
+    stem: "string - the clinical scenario/vignette (at least 3-4 sentences describing patient presentation)",
+    questions: "array of 1-3 question objects, each with: { question_text: string, model_answer: string, explanation: string (optional), max_marks: number (1-5) }",
     section_number: "string (optional) - section number from the provided list",
   },
   essay: {
@@ -566,11 +565,26 @@ function validateClozeFlashcardItem(item: any, index: number): ValidationResult 
 
 function validateCaseScenarioItem(item: any, index: number): ValidationResult {
   const errors: string[] = [];
-  if (!item.title || item.title.length < 5) errors.push(`Case #${index + 1}: title must be at least 5 characters`);
-  if (!item.case_history || item.case_history.length < 20) errors.push(`Case #${index + 1}: case_history must be at least 20 characters`);
-  if (!item.case_questions || item.case_questions.length < 10) errors.push(`Case #${index + 1}: case_questions is required`);
-  if (!item.model_answer || item.model_answer.length < 10) errors.push(`Case #${index + 1}: model_answer is required`);
-  return { isValid: errors.length === 0, errors, warnings: [] };
+  const warnings: string[] = [];
+  if (!item.stem || item.stem.length < 30) errors.push(`Case #${index + 1}: stem must be at least 30 characters`);
+  if (!['easy', 'moderate', 'difficult'].includes(item.difficulty)) {
+    warnings.push(`Case #${index + 1}: difficulty should be easy, moderate, or difficult — got "${item.difficulty}"`);
+  }
+  if (!Array.isArray(item.questions) || item.questions.length < 1) {
+    errors.push(`Case #${index + 1}: questions must be an array with 1-3 items`);
+  } else {
+    if (item.questions.length > 3) warnings.push(`Case #${index + 1}: more than 3 questions — only first 3 will be used`);
+    for (let q = 0; q < Math.min(item.questions.length, 3); q++) {
+      const question = item.questions[q];
+      if (!question.question_text || question.question_text.length < 5) {
+        errors.push(`Case #${index + 1}, Q${q + 1}: question_text is required`);
+      }
+      if (!question.model_answer || question.model_answer.length < 5) {
+        errors.push(`Case #${index + 1}, Q${q + 1}: model_answer is required`);
+      }
+    }
+  }
+  return { isValid: errors.length === 0, errors, warnings };
 }
 
 function validateEssayItem(item: any, index: number): ValidationResult {
@@ -854,7 +868,10 @@ function buildItemFingerprint(item: any, contentType: ContentType): string {
       const inst = (item.instruction || '').substring(0, 80);
       return `key_concept="${extractKeyConcept(item.instruction || '')}" | instruction_prefix="${inst}"`;
     }
-    case 'case_scenario':
+    case 'case_scenario': {
+      const stemPrefix = (item.stem || '').substring(0, 60);
+      return `stem_prefix="${stemPrefix}" | difficulty="${item.difficulty || 'unknown'}"`;
+    }
     case 'clinical_case':
     case 'virtual_patient': {
       const title = (item.title || '').substring(0, 60);
