@@ -204,6 +204,7 @@ export default function ChapterPage() {
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
   const { data: essayCount = 0 } = useChapterEssayCount(chapterId);
   const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
+  const { data: caseScenarioCount = 0 } = useChapterCaseScenarioCount(chapterId);
   
   // Full practice data hooks - only fetch when Practice or Test section is active
   const isPracticeActive = activeSection === 'practice' || activeSection === 'test' || activeSection === 'interactive';
@@ -449,6 +450,7 @@ export default function ChapterPage() {
       sba: sbaCount,
       true_false: trueFalseCount,
       essays: essayCount,
+      case_scenarios: caseScenarioCount,
       osce: osceCount,
       practical: 0,
       matching: matchingCount,
@@ -459,6 +461,7 @@ export default function ChapterPage() {
     sbaCount,
     trueFalseCount,
     essayCount,
+    caseScenarioCount,
     osceCount,
     matchingCount,
   ]);
@@ -1200,6 +1203,11 @@ export default function ChapterPage() {
                       />
                     )}
                   </div>
+                )}
+
+                {/* Case Scenarios Content */}
+                {practiceTab === 'case_scenarios' && (
+                  <CaseScenarioPractice chapterId={chapterId} />
                 )}
 
                 {/* Practical Content (placeholder) */}
