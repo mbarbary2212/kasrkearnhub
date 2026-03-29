@@ -43,6 +43,14 @@ interface RpcProgressResult {
   case_completed: number;
   matching_completed: number;
   tf_completed: number;
+  mind_map_total: number;
+  mind_map_viewed: number;
+  guided_total: number;
+  guided_viewed: number;
+  reference_total: number;
+  reference_viewed: number;
+  clinical_tool_total: number;
+  clinical_tool_viewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }

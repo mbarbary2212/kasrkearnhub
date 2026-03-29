@@ -59,6 +59,14 @@ interface ChapterProgressData {
   tfTotal: number;
   flashcardReviewed: number;
   flashcardTotal: number;
+  mindMapViewed: number;
+  mindMapTotal: number;
+  guidedViewed: number;
+  guidedTotal: number;
+  referenceViewed: number;
+  referenceTotal: number;
+  clinicalToolViewed: number;
+  clinicalToolTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -84,6 +92,14 @@ interface RpcProgressResult {
   pathway_viewed: number;
   flashcard_total: number;
   flashcard_reviewed: number;
+  mind_map_total: number;
+  mind_map_viewed: number;
+  guided_total: number;
+  guided_viewed: number;
+  reference_total: number;
+  reference_viewed: number;
+  clinical_tool_total: number;
+  clinical_tool_viewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -116,6 +132,10 @@ export function useChapterProgress(chapterId?: string) {
         matchingCompleted: 0, matchingTotal: 0,
         tfCompleted: 0, tfTotal: 0,
         flashcardReviewed: 0, flashcardTotal: 0,
+        mindMapViewed: 0, mindMapTotal: 0,
+        guidedViewed: 0, guidedTotal: 0,
+        referenceViewed: 0, referenceTotal: 0,
+        clinicalToolViewed: 0, clinicalToolTotal: 0,
       };
 
       if (!user?.id || !chapterId) return emptyResult;
@@ -216,6 +236,14 @@ export function useChapterProgress(chapterId?: string) {
         tfTotal: rpc.tf_total,
         flashcardReviewed: rpc.flashcard_reviewed,
         flashcardTotal: rpc.flashcard_total,
+        mindMapViewed: rpc.mind_map_viewed,
+        mindMapTotal: rpc.mind_map_total,
+        guidedViewed: rpc.guided_viewed,
+        guidedTotal: rpc.guided_total,
+        referenceViewed: rpc.reference_viewed,
+        referenceTotal: rpc.reference_total,
+        clinicalToolViewed: rpc.clinical_tool_viewed,
+        clinicalToolTotal: rpc.clinical_tool_total,
       };
     },
     enabled: !!user?.id && !!chapterId,

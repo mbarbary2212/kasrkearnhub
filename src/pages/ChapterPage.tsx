@@ -679,10 +679,13 @@ export default function ChapterPage() {
                     total: chapterProgress.flashcardTotal || tabCount,
                   };
                 case "mind_maps":
+                  return { completed: chapterProgress.mindMapViewed, total: chapterProgress.mindMapTotal || tabCount };
                 case "guided_explanations":
+                  return { completed: chapterProgress.guidedViewed, total: chapterProgress.guidedTotal || tabCount };
                 case "reference_materials":
+                  return { completed: chapterProgress.referenceViewed, total: chapterProgress.referenceTotal || tabCount };
                 case "clinical_tools":
-                  return { completed: 0, total: tabCount };
+                  return { completed: chapterProgress.clinicalToolViewed, total: chapterProgress.clinicalToolTotal || tabCount };
                 case "pathways":
                   return {
                     completed: chapterProgress.pathwayViewed,
