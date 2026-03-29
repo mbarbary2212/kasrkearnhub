@@ -10,6 +10,7 @@ import { ExamStructureTab } from '@/components/admin/blueprint/ExamStructureTab'
 import { ChapterWeightsTab } from '@/components/admin/blueprint/ChapterWeightsTab';
 import { AssessmentRulesTab } from '@/components/admin/blueprint/AssessmentRulesTab';
 import { ValidationSummaryTab } from '@/components/admin/blueprint/ValidationSummaryTab';
+import { ExamPreviewTab } from '@/components/admin/blueprint/ExamPreviewTab';
 
 export default function AssessmentBlueprintPage() {
   const { isAdmin, isSuperAdmin, isPlatformAdmin, isModuleAdmin, moduleAdminModuleIds, isLoading: authLoading } = useAuthContext();
@@ -62,6 +63,7 @@ export default function AssessmentBlueprintPage() {
             <TabsTrigger value="weights">Chapter Eligibility</TabsTrigger>
             <TabsTrigger value="rules">Generation Rules</TabsTrigger>
             <TabsTrigger value="validation">Validation &amp; Summary</TabsTrigger>
+            <TabsTrigger value="preview">Exam Preview</TabsTrigger>
           </TabsList>
 
           <div className="flex gap-4 mt-4 flex-wrap">
@@ -110,6 +112,9 @@ export default function AssessmentBlueprintPage() {
           </TabsContent>
           <TabsContent value="validation">
             <ValidationSummaryTab moduleId={selectedModuleId} />
+          </TabsContent>
+          <TabsContent value="preview">
+            <ExamPreviewTab moduleId={selectedModuleId} yearId={selectedYearId} />
           </TabsContent>
         </Tabs>
       </div>
