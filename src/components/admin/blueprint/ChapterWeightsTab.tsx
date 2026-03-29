@@ -104,7 +104,10 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
-        <span>Selected chapters are eligible sources for questions. Not all must appear in the exam. Use the checkboxes to define the question pool per component.</span>
+        <div className="space-y-1">
+          <p>Chapters marked here are possible sources for questions — the exam will select from these chapters, not necessarily include all.</p>
+          <p className="text-xs italic">Eligibility ≠ guaranteed appearance. Use <strong>Included</strong> to add a chapter to the pool, then toggle <strong>MCQ</strong>, <strong>Recall</strong>, or <strong>Case</strong> to define allowed question types.</p>
+        </div>
       </div>
 
       {selectedAssessmentId && (
@@ -112,7 +115,7 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[220px]">Chapter</TableHead>
+                <TableHead className="min-w-[220px]">Chapter (Question Pool)</TableHead>
                 <TableHead className="text-center min-w-[100px]">Included</TableHead>
                 {ELIGIBILITY_COLUMNS.map(col => (
                   <TableHead key={col.key} className="text-center min-w-[90px]">{col.label}</TableHead>
