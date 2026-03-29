@@ -46,6 +46,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { BulkSectionAssignment } from '@/components/sections';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronDown } from 'lucide-react';
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
@@ -388,21 +390,37 @@ export function LectureList({
               {sectionsEnabled && chapterSections.length > 0 && (
                 <div className="space-y-1.5">
                   <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
-                  <div className="mt-1 max-h-40 overflow-y-auto rounded-md border p-3 space-y-2">
-                    {chapterSections.map((s) => (
-                      <label key={s.id} className="flex items-center gap-2 cursor-pointer">
-                        <Checkbox
-                          checked={editSectionIds.includes(s.id)}
-                          onCheckedChange={(checked) =>
-                            setEditSectionIds(prev =>
-                              checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
-                            )
-                          }
-                        />
-                        <span className="text-sm">{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="mt-1 w-full justify-between font-normal">
+                        <span className="truncate text-sm">
+                          {editSectionIds.length === 0
+                            ? 'No sections selected'
+                            : editSectionIds.length === 1
+                              ? (chapterSections.find(s => s.id === editSectionIds[0])?.name ?? '1 selected')
+                              : `${editSectionIds.length} sections selected`}
+                        </span>
+                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-2 z-[99999]" align="start">
+                      <div className="max-h-52 overflow-y-auto space-y-1">
+                        {chapterSections.map((s) => (
+                          <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-muted">
+                            <Checkbox
+                              checked={editSectionIds.includes(s.id)}
+                              onCheckedChange={(checked) =>
+                                setEditSectionIds(prev =>
+                                  checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                                )
+                              }
+                            />
+                            <span className="text-sm">{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
             </div>
