@@ -36,6 +36,16 @@ export interface ChapterComponentWeight {
   weight: number;
 }
 
+export interface ChapterEligibility {
+  id: string;
+  assessment_id: string;
+  chapter_id: string;
+  included_in_exam: boolean;
+  allow_mcq: boolean;
+  allow_recall: boolean;
+  allow_case: boolean;
+}
+
 // ── Fetch hooks ──
 
 export function useAssessments(moduleId: string, yearId: string) {
