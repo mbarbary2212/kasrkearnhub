@@ -543,6 +543,7 @@ export function IntegrityCheckTab() {
     { type: 'lectures', title: 'Chapters', description: 'Chapter videos pointing to deleted chapters', icon: <Video className="w-4 h-4" />, running: orphanLecturesRunning, result: orphanLecturesResult, error: orphanLecturesError, hasRun: orphanLecturesHasRun },
     { type: 'matching', title: 'Matching Questions', description: 'Matching questions pointing to deleted chapters', icon: <ArrowLeftRight className="w-4 h-4" />, running: orphanMatchingRunning, result: orphanMatchingResult, error: orphanMatchingError, hasRun: orphanMatchingHasRun },
     { type: 'study_resources', title: 'Study Resources', description: 'Study resources pointing to deleted chapters', icon: <BookOpen className="w-4 h-4" />, running: orphanStudyResourcesRunning, result: orphanStudyResourcesResult, error: orphanStudyResourcesError, hasRun: orphanStudyResourcesHasRun },
+    { type: 'case_scenarios', title: 'Case Scenarios', description: 'Case scenarios pointing to deleted chapters', icon: <FileText className="w-4 h-4" />, running: orphanCaseScenariosRunning, result: orphanCaseScenariosResult, error: orphanCaseScenariosError, hasRun: orphanCaseScenariosHasRun },
   ];
 
   const qualityChecks: { type: QualityCheckType; title: string; description: string; icon: React.ReactNode; running: boolean; result: IntegrityIssue | null; error: string | null; hasRun: boolean }[] = [
@@ -554,6 +555,7 @@ export function IntegrityCheckTab() {
     { type: 'matching', title: 'Matching Question Quality', description: 'Questions with empty columns or no match pairs', icon: <ArrowLeftRight className="w-4 h-4" />, running: qualityMatchingRunning, result: qualityMatchingResult, error: qualityMatchingError, hasRun: qualityMatchingHasRun },
     { type: 'guided_explanation', title: 'Guided Explanation Quality', description: 'Explanations with missing topics or fewer than 3 questions', icon: <Lightbulb className="w-4 h-4" />, running: qualityGuidedRunning, result: qualityGuidedResult, error: qualityGuidedError, hasRun: qualityGuidedHasRun },
     { type: 'mind_map', title: 'Mind Map Quality', description: 'Maps with no image and no structured content', icon: <Network className="w-4 h-4" />, running: qualityMindMapRunning, result: qualityMindMapResult, error: qualityMindMapError, hasRun: qualityMindMapHasRun },
+    { type: 'case_scenarios', title: 'Case Scenario Quality', description: 'Cases with empty stems, no questions, or missing chapter/difficulty', icon: <FileText className="w-4 h-4" />, running: qualityCaseScenariosRunning, result: qualityCaseScenariosResult, error: qualityCaseScenariosError, hasRun: qualityCaseScenariosHasRun },
   ];
 
   return (
