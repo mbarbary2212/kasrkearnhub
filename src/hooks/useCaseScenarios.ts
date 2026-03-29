@@ -44,7 +44,7 @@ export function useCaseScenarioPool(chapterIds: string[], difficulty?: string) {
         .eq('is_deleted', false);
 
       if (difficulty) {
-        query = query.eq('difficulty', difficulty);
+        query = query.eq('difficulty', difficulty as 'easy' | 'moderate' | 'difficult');
       }
 
       const { data, error } = await query.order('display_order');
