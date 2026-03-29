@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2 } from 'lucide-react';
 import { ExamStructureTab } from '@/components/admin/blueprint/ExamStructureTab';
 import { ChapterWeightsTab } from '@/components/admin/blueprint/ChapterWeightsTab';
+import { AssessmentRulesTab } from '@/components/admin/blueprint/AssessmentRulesTab';
 import { ValidationSummaryTab } from '@/components/admin/blueprint/ValidationSummaryTab';
 
 export default function AssessmentBlueprintPage() {
@@ -52,13 +53,14 @@ export default function AssessmentBlueprintPage() {
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-3xl font-heading font-bold">Assessment Blueprint</h1>
-          <p className="text-muted-foreground">Define exam structures, component weights, and chapter/topic allocations.</p>
+          <p className="text-muted-foreground">Define exam structures, eligibility rules, and chapter question pools.</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="structure">Exam Structure</TabsTrigger>
             <TabsTrigger value="weights">Chapter Eligibility</TabsTrigger>
+            <TabsTrigger value="rules">Generation Rules</TabsTrigger>
             <TabsTrigger value="validation">Validation &amp; Summary</TabsTrigger>
           </TabsList>
 
@@ -96,6 +98,12 @@ export default function AssessmentBlueprintPage() {
           </TabsContent>
           <TabsContent value="weights">
             <ChapterWeightsTab
+              moduleId={selectedModuleId}
+              canManage={!!canManage}
+            />
+          </TabsContent>
+          <TabsContent value="rules">
+            <AssessmentRulesTab
               moduleId={selectedModuleId}
               canManage={!!canManage}
             />
