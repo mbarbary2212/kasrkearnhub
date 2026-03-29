@@ -28,9 +28,9 @@ const CROSS_MODULE_SOURCE = '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10';
 type EligibilityField = 'allow_mcq' | 'allow_recall' | 'allow_case';
 
 const ELIGIBILITY_COLUMNS: { key: EligibilityField; label: string }[] = [
-  { key: 'allow_mcq', label: 'MCQ' },
-  { key: 'allow_recall', label: 'Recall' },
-  { key: 'allow_case', label: 'Case' },
+  { key: 'allow_mcq', label: 'Allowed in MCQ' },
+  { key: 'allow_recall', label: 'Allowed in Recall' },
+  { key: 'allow_case', label: 'Allowed in Case' },
 ];
 
 interface Props {
@@ -116,7 +116,7 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[220px]">Chapter (Question Pool)</TableHead>
-                <TableHead className="text-center min-w-[100px]">Included</TableHead>
+                <TableHead className="text-center min-w-[100px]">In Pool</TableHead>
                 {ELIGIBILITY_COLUMNS.map(col => (
                   <TableHead key={col.key} className="text-center min-w-[90px]">{col.label}</TableHead>
                 ))}
