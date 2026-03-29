@@ -480,7 +480,10 @@ export default function ChapterPage() {
       <div className="space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-4 -mt-4 px-4 pt-4 rounded-xl">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/module/${moduleId}?section=learning`)}>
+          <Button variant="ghost" size="icon" onClick={() => {
+            const bookParam = chapter?.book_label ? `&book=${encodeURIComponent(chapter.book_label)}` : '';
+            navigate(`/module/${moduleId}?section=learning${bookParam}`);
+          }}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div className="flex-1">
