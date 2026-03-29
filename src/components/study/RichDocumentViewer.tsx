@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Printer, ChevronDown, ChevronUp, BookOpen, FileText } from 'lucide-react';
 import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
 import { cn } from '@/lib/utils';
+import { useTrackContentView } from '@/hooks/useTrackContentView';
 
 interface RichDocumentViewerProps {
   title: string;
@@ -12,6 +13,9 @@ interface RichDocumentViewerProps {
   documentType: 'socratic_tutorial' | 'summary';
   sectionName?: string | null;
   className?: string;
+  resourceId?: string;
+  chapterId?: string;
+  topicId?: string;
 }
 
 export function RichDocumentViewer({
@@ -20,9 +24,25 @@ export function RichDocumentViewer({
   documentType,
   sectionName,
   className,
+  resourceId,
+  chapterId,
+  topicId,
 }: RichDocumentViewerProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const trackView = useTrackContentView();
+
+  const handleExpand = () => {
+    if (!isExpanded && resourceId) {
+      trackView.mutate({
+        contentType: 'reference_material',
+        contentId: resourceId,
+        chapterId,
+        topicId,
+      });
+    }
+    setIsExpanded(!isExpanded);
+  };
 
   const isTutorial = documentType === 'socratic_tutorial';
   const Icon = isTutorial ? BookOpen : FileText;
@@ -103,9 +123,10 @@ export function RichDocumentViewer({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={handleExpand}
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
             </Button>
           </div>
         </div>
@@ -114,7 +135,7 @@ export function RichDocumentViewer({
         {!isExpanded ? (
           <div
             className="text-sm text-muted-foreground cursor-pointer line-clamp-3"
-            onClick={() => setIsExpanded(true)}
+            onClick={handleExpand}
           >
             <SafeMarkdown>{previewContent}</SafeMarkdown>
           </div>

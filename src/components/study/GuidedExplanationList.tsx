@@ -16,6 +16,7 @@ import { GuidedExplanationAdminTable } from './GuidedExplanationAdminTable';
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { useChapterSections } from '@/hooks/useSections';
 import { cn } from '@/lib/utils';
+import { useTrackContentView } from '@/hooks/useTrackContentView';
 
 interface GuidedExplanationListProps {
   resources: StudyResource[];
@@ -38,10 +39,21 @@ export function GuidedExplanationList({
 }: GuidedExplanationListProps) {
   const [selectedResource, setSelectedResource] = useState<StudyResource | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const trackView = useTrackContentView();
   
   // Fetch sections for admin table - use prop or fall back to first resource
   const resolvedChapterId = chapterId || resources[0]?.chapter_id;
   const { data: sections = [] } = useChapterSections(resolvedChapterId);
+
+  const handleSelectResource = (resource: StudyResource) => {
+    setSelectedResource(resource);
+    trackView.mutate({
+      contentType: 'guided_explanation',
+      contentId: resource.id,
+      chapterId: chapterId || resource.chapter_id || undefined,
+      topicId: topicId || resource.topic_id || undefined,
+    });
+  };
 
   if (resources.length === 0) {
     return (
@@ -92,7 +104,7 @@ export function GuidedExplanationList({
                   "group cursor-pointer transition-all hover:shadow-md hover:border-primary/50",
                   "flex flex-col"
                 )}
-                onClick={() => setSelectedResource(resource)}
+                onClick={() => handleSelectResource(resource)}
               >
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">

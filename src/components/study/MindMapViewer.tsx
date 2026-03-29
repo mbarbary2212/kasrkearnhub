@@ -49,6 +49,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ReactSketchCanvas, ReactSketchCanvasRef } from 'react-sketch-canvas';
+import { useTrackContentView } from '@/hooks/useTrackContentView';
 
 // Component that fetches HTML and renders via srcdoc to handle wrong content-type from storage
 function HtmlIframe({ url, title }: { url: string; title: string }) {
@@ -442,11 +443,19 @@ export function MindMapViewer({ resources, canManage = false, onEdit, chapterId,
     }
   }, [fullscreenResource]);
 
+  const trackView = useTrackContentView();
+
   const openFullscreen = useCallback((resource: StudyResource) => {
     setFullscreenResource(resource);
     setZoom(1);
     setIsDrawingMode(false);
-  }, []);
+    trackView.mutate({
+      contentType: 'mind_map',
+      contentId: resource.id,
+      chapterId: chapterId || resource.chapter_id || undefined,
+      topicId: topicId || resource.topic_id || undefined,
+    });
+  }, [chapterId, topicId, trackView]);
 
   const handleDelete = useCallback((resource: StudyResource) => {
     requestResourceDelete('mind_map', resource.id, resource.title);
