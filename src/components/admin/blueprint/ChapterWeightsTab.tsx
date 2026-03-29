@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   useAssessments,
@@ -31,15 +31,8 @@ interface Props {
 }
 
 export function ChapterWeightsTab({ moduleId, canManage }: Props) {
-  // We need to get assessments without yearId filter — derive from first assessment
-  // Instead, get all for this module across all years
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(moduleId);
-
-  // Get assessments for this module (need yearId, but we work around by getting all)
   const { data: allAssessments, isLoading: assessmentsLoading } = useAssessments(moduleId, '');
-
-  // Provide a year-agnostic query — override the hook
-  // Actually the hook requires yearId. Let's use a local state for selected assessment.
 
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>('');
 
@@ -52,19 +45,17 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
   const crossChapters = chapters?.filter(c => c.module_id === CROSS_MODULE_SOURCE) ?? [];
   const allChapters = [...ownChapters, ...crossChapters];
 
-  const selectedAssessment = allAssessments?.find(a => a.id === selectedAssessmentId);
-
-  const getWeight = useCallback((componentId: string, chapterId: string) => {
-    return weights?.find(w => w.component_id === componentId && w.chapter_id === chapterId)?.weight ?? '';
+  const isEligible = useCallback((componentId: string, chapterId: string) => {
+    const w = weights?.find(w => w.component_id === componentId && w.chapter_id === chapterId);
+    return (w?.weight ?? 0) > 0;
   }, [weights]);
 
-  const handleWeightChange = (componentId: string, chapterId: string, value: string) => {
-    const numVal = parseFloat(value) || 0;
+  const handleToggle = (componentId: string, chapterId: string, checked: boolean) => {
     upsertWeight.mutate({
       assessment_id: selectedAssessmentId,
       component_id: componentId,
       chapter_id: chapterId,
-      weight: numVal,
+      weight: checked ? 1 : 0,
     });
   };
 
@@ -88,12 +79,10 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
         </div>
       </div>
 
-      {selectedAssessment && (
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">Mode: {selectedAssessment.weight_mode === 'marks' ? 'Marks' : 'Percent'}</Badge>
-          <span className="text-sm text-muted-foreground">Column totals should match component marks</span>
-        </div>
-      )}
+      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+        <Info className="w-4 h-4 mt-0.5 shrink-0" />
+        <span>Selected chapters are eligible sources for questions. Not all must appear in the exam.</span>
+      </div>
 
       {selectedAssessmentId && components && components.length > 0 && (
         <div className="overflow-x-auto border rounded-lg">
@@ -104,71 +93,56 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
                 {components.map(comp => (
                   <TableHead key={comp.id} className="text-center min-w-[120px]">
                     {COMPONENT_LABELS[comp.component_type] || comp.component_type}
-                    <div className="text-xs text-muted-foreground">({(comp.question_count * comp.marks_per_question).toFixed(0)}m)</div>
                   </TableHead>
                 ))}
-                <TableHead className="text-center font-bold">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {crossChapters.length > 0 && (
                 <TableRow>
-                  <TableCell colSpan={components.length + 2} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
+                  <TableCell colSpan={components.length + 1} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
                     From SUR-423 (General Surgery Book)
                   </TableCell>
                 </TableRow>
               )}
               {crossChapters.map(chapter => (
-                <ChapterWeightRow
+                <ChapterEligibilityRow
                   key={chapter.id}
                   chapter={chapter}
                   components={components}
-                  getWeight={getWeight}
-                  onWeightChange={handleWeightChange}
+                  isEligible={isEligible}
+                  onToggle={handleToggle}
                   canManage={canManage}
                 />
               ))}
               {crossChapters.length > 0 && ownChapters.length > 0 && (
                 <TableRow>
-                  <TableCell colSpan={components.length + 2} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
+                  <TableCell colSpan={components.length + 1} className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground py-2">
                     SUR-523 Chapters
                   </TableCell>
                 </TableRow>
               )}
               {ownChapters.map(chapter => (
-                <ChapterWeightRow
+                <ChapterEligibilityRow
                   key={chapter.id}
                   chapter={chapter}
                   components={components}
-                  getWeight={getWeight}
-                  onWeightChange={handleWeightChange}
+                  isEligible={isEligible}
+                  onToggle={handleToggle}
                   canManage={canManage}
                 />
               ))}
-              {/* Column totals row */}
+              {/* Summary row */}
               <TableRow className="bg-muted/30 font-semibold">
-                <TableCell>Total</TableCell>
+                <TableCell>Eligible Chapters</TableCell>
                 {components.map(comp => {
-                  const colTotal = allChapters.reduce((sum, ch) => {
-                    const w = weights?.find(wt => wt.component_id === comp.id && wt.chapter_id === ch.id);
-                    return sum + (w?.weight ?? 0);
-                  }, 0);
-                  const expected = comp.question_count * comp.marks_per_question;
-                  const isMatch = Math.abs(colTotal - expected) < 0.01;
+                  const count = allChapters.filter(ch => isEligible(comp.id, ch.id)).length;
                   return (
-                    <TableCell key={comp.id} className={`text-center ${isMatch ? 'text-green-500' : colTotal > 0 ? 'text-destructive' : ''}`}>
-                      {colTotal > 0 ? colTotal.toFixed(1) : '—'}
+                    <TableCell key={comp.id} className="text-center">
+                      <Badge variant={count > 0 ? 'default' : 'secondary'}>{count} / {allChapters.length}</Badge>
                     </TableCell>
                   );
                 })}
-                <TableCell className="text-center">
-                  {allChapters.reduce((total, ch) => {
-                    return total + components.reduce((sum, comp) => {
-                      const w = weights?.find(wt => wt.component_id === comp.id && wt.chapter_id === ch.id);
-                      return sum + (w?.weight ?? 0);
-                    }, 0);
-                  }, 0).toFixed(1)}
-                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -180,43 +154,31 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
       )}
 
       {!selectedAssessmentId && (
-        <p className="text-muted-foreground text-sm py-4">Select an assessment above to manage chapter weight allocations.</p>
+        <p className="text-muted-foreground text-sm py-4">Select an assessment above to manage chapter eligibility.</p>
       )}
     </div>
   );
 }
 
-function ChapterWeightRow({ chapter, components, getWeight, onWeightChange, canManage }: {
+function ChapterEligibilityRow({ chapter, components, isEligible, onToggle, canManage }: {
   chapter: { id: string; title: string; module_id: string; book_label: string };
   components: any[];
-  getWeight: (componentId: string, chapterId: string) => number | '';
-  onWeightChange: (componentId: string, chapterId: string, value: string) => void;
+  isEligible: (componentId: string, chapterId: string) => boolean;
+  onToggle: (componentId: string, chapterId: string, checked: boolean) => void;
   canManage: boolean;
 }) {
-  const rowTotal = components.reduce((sum, comp) => {
-    const w = getWeight(comp.id, chapter.id);
-    return sum + (typeof w === 'number' ? w : 0);
-  }, 0);
-
   return (
     <TableRow>
       <TableCell className="font-medium">{chapter.title}</TableCell>
       {components.map(comp => (
         <TableCell key={comp.id} className="text-center">
-          <Input
-            type="number"
-            className="w-[70px] mx-auto text-center"
-            value={getWeight(comp.id, chapter.id)}
-            onChange={e => onWeightChange(comp.id, chapter.id, e.target.value)}
+          <Checkbox
+            checked={isEligible(comp.id, chapter.id)}
+            onCheckedChange={(checked) => onToggle(comp.id, chapter.id, !!checked)}
             disabled={!canManage}
-            min={0}
-            step={0.5}
           />
         </TableCell>
       ))}
-      <TableCell className="text-center font-medium">
-        {rowTotal > 0 ? rowTotal.toFixed(1) : '—'}
-      </TableCell>
     </TableRow>
   );
 }

@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -37,6 +37,10 @@ export function ValidationSummaryTab({ moduleId }: Props) {
 
   return (
     <div className="space-y-6 mt-4">
+      <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+        <Info className="w-4 h-4 mt-0.5 shrink-0" />
+        <span>This summary shows which chapters are in the question pool for each assessment and component. Eligibility means a chapter <em>can</em> appear, not that it <em>must</em>.</span>
+      </div>
       {assessments.map(assessment => (
         <AssessmentValidationCard key={assessment.id} assessment={assessment} chapters={chapters ?? []} />
       ))}
@@ -50,85 +54,65 @@ function AssessmentValidationCard({ assessment, chapters }: { assessment: any; c
 
   if (!components) return null;
 
-  const totalComponentMarks = components.reduce((s: number, c: any) => s + c.question_count * c.marks_per_question, 0);
-
-  // Per-component validation
-  const componentValidation = components.map(comp => {
-    const expected = comp.question_count * comp.marks_per_question;
-    const allocated = chapters.reduce((sum, ch) => {
+  // Per-component: count eligible chapters
+  const componentSummary = components.map(comp => {
+    const eligibleChapters = chapters.filter(ch => {
       const w = weights?.find((wt: any) => wt.component_id === comp.id && wt.chapter_id === ch.id);
-      return sum + (w?.weight ?? 0);
-    }, 0);
-    return {
-      ...comp,
-      expected,
-      allocated,
-      valid: Math.abs(allocated - expected) < 0.01,
-    };
+      return (w?.weight ?? 0) > 0;
+    });
+    return { ...comp, eligibleCount: eligibleChapters.length, eligibleChapterNames: eligibleChapters.map(c => c.title) };
   });
 
-  // Chapters with no allocation
-  const chaptersWithWeights = new Set(weights?.map((w: any) => w.chapter_id) ?? []);
-  const unallocatedChapters = chapters.filter(ch => !chaptersWithWeights.has(ch.id));
+  // Chapters not eligible for ANY component
+  const chaptersInPool = new Set(
+    weights?.filter((w: any) => w.weight > 0).map((w: any) => w.chapter_id) ?? []
+  );
+  const chaptersNotInPool = chapters.filter(ch => !chaptersInPool.has(ch.id));
 
-  const allValid = componentValidation.every(c => c.valid) && unallocatedChapters.length === 0;
+  const hasIssues = chaptersNotInPool.length > 0 || componentSummary.some(c => c.eligibleCount === 0);
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-3 text-lg">
           {assessment.name}
-          <Badge variant={allValid ? 'default' : 'destructive'}>{allValid ? 'Valid' : 'Issues Found'}</Badge>
+          <Badge variant={hasIssues ? 'destructive' : 'default'}>{hasIssues ? 'Review Needed' : 'OK'}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <p className="text-sm font-medium mb-2">Component Mark Allocation</p>
+          <p className="text-sm font-medium mb-2">Component Question Pool</p>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Component</TableHead>
-                <TableHead className="text-center">Expected</TableHead>
-                <TableHead className="text-center">Allocated</TableHead>
+                <TableHead className="text-center">Eligible Chapters</TableHead>
                 <TableHead className="text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {componentValidation.map(cv => (
+              {componentSummary.map(cv => (
                 <TableRow key={cv.id}>
                   <TableCell>{COMPONENT_LABELS[cv.component_type] || cv.component_type}</TableCell>
-                  <TableCell className="text-center">{cv.expected}</TableCell>
-                  <TableCell className="text-center">{cv.allocated > 0 ? cv.allocated.toFixed(1) : '—'}</TableCell>
+                  <TableCell className="text-center">{cv.eligibleCount} / {chapters.length}</TableCell>
                   <TableCell className="text-center">
-                    {cv.allocated === 0 ? (
-                      <Badge variant="secondary">Not Set</Badge>
-                    ) : cv.valid ? (
-                      <Badge variant="default">✓ Match</Badge>
+                    {cv.eligibleCount === 0 ? (
+                      <Badge variant="destructive">No chapters selected</Badge>
                     ) : (
-                      <Badge variant="destructive">
-                        {cv.allocated > cv.expected ? `+${(cv.allocated - cv.expected).toFixed(1)} over` : `${(cv.expected - cv.allocated).toFixed(1)} short`}
-                      </Badge>
+                      <Badge variant="default">✓ Pool ready</Badge>
                     )}
                   </TableCell>
                 </TableRow>
               ))}
-              <TableRow className="font-semibold">
-                <TableCell>Total</TableCell>
-                <TableCell className="text-center">{totalComponentMarks}</TableCell>
-                <TableCell className="text-center">
-                  {componentValidation.reduce((s, c) => s + c.allocated, 0).toFixed(1)}
-                </TableCell>
-                <TableCell />
-              </TableRow>
             </TableBody>
           </Table>
         </div>
 
-        {unallocatedChapters.length > 0 && (
+        {chaptersNotInPool.length > 0 && (
           <div>
-            <p className="text-sm font-medium mb-2 text-destructive">Chapters with No Allocation ({unallocatedChapters.length})</p>
+            <p className="text-sm font-medium mb-2 text-destructive">Chapters Not in Any Question Pool ({chaptersNotInPool.length})</p>
             <div className="flex flex-wrap gap-1">
-              {unallocatedChapters.map(ch => (
+              {chaptersNotInPool.map(ch => (
                 <Badge key={ch.id} variant="outline" className="text-xs">{ch.title}</Badge>
               ))}
             </div>

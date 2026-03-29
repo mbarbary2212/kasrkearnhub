@@ -58,7 +58,7 @@ export default function AssessmentBlueprintPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="structure">Exam Structure</TabsTrigger>
-            <TabsTrigger value="weights">Topic / Chapter Weights</TabsTrigger>
+            <TabsTrigger value="weights">Chapter Eligibility</TabsTrigger>
             <TabsTrigger value="validation">Validation &amp; Summary</TabsTrigger>
           </TabsList>
 
