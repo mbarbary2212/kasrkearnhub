@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Plus, Layers, ChevronDown, Wand2, Loader2, FileCheck, FileX } from 'lucide-react';
+import { Plus, Layers, ChevronDown, Wand2, Loader2, FileCheck, FileX, Copy } from 'lucide-react';
 import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import { useExtractSections } from '@/hooks/useExtractSections';
 import { supabase } from '@/integrations/supabase/client';
@@ -245,8 +245,18 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
     }
   };
   
+  const handleCopyPrompt = () => {
+    if (!sections?.length) return;
+    const list = sections
+      .map((s, i) => `${s.section_number ?? i + 1}. ${s.name}`)
+      .join('\n');
+    const prompt = `Below is a list of sections from this chapter:\n\n${list}\n\nAfter watching this video, determine which of the above sections its content belongs to. It may belong to more than one section. For each applicable section, provide a thorough explanation — not just a brief mention — detailing the specific concepts, themes, or topics in the video that directly relate to that section. If the video spans multiple sections, explain the connection to each one separately.`;
+    navigator.clipboard.writeText(prompt);
+    toast.success('Prompt copied to clipboard');
+  };
+
   if (!canManage) return null;
-  
+
   const sectionCount = sections?.length || 0;
 
   return (
@@ -278,6 +288,17 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
                         <FileX className="h-3.5 w-3.5" />
                         No PDF
                       </span>
+                    )}
+                    {sectionsEnabled && !!sections?.length && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyPrompt}
+                        title="Copy a prompt you can paste into an AI to identify which sections this video belongs to"
+                      >
+                        <Copy className="h-4 w-4 mr-1" />
+                        Copy Prompt
+                      </Button>
                     )}
                     <Button
                       variant="outline"

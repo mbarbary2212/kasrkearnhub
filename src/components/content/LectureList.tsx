@@ -24,6 +24,7 @@ import {
 import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractYouTubeId } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
+import { useChapterSections, useChapterSectionsEnabled } from '@/hooks/useSections';
 import { useVideoBookmarks } from '@/hooks/useVideoBookmarks';
 import { useManualVideoComplete } from '@/hooks/useManualVideoComplete';
 import { useVideoRatings } from '@/hooks/useVideoRatings';
@@ -110,6 +111,7 @@ export function LectureList({
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDoctor, setEditDoctor] = useState('');
   const [editDoctorSelectVal, setEditDoctorSelectVal] = useState('');
+  const [editSectionId, setEditSectionId] = useState<string | null>(null);
 
   // Fetch existing doctors for this module
   const { data: existingDoctors = [] } = useQuery({
@@ -127,6 +129,9 @@ export function LectureList({
     },
     enabled: !!moduleId,
   });
+  const { data: chapterSections = [] } = useChapterSections(chapterId);
+  const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
+
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
@@ -264,6 +269,7 @@ export function LectureList({
     setEditTitle(lecture.title);
     setEditDescription(lecture.description || '');
     setEditVideoUrl(lecture.video_url || lecture.videoUrl || '');
+    setEditSectionId(lecture.section_id ?? null);
     // Doctor is stored in description field
     const doc = lecture.description || '';
     setEditDoctor(doc);
@@ -297,6 +303,7 @@ export function LectureList({
           title: editTitle.trim(),
           description: doctorValue,
           video_url: normalizedUrl || null,
+          section_id: editSectionId,
         },
       });
       toast.success('Lecture updated successfully');
@@ -372,6 +379,20 @@ export function LectureList({
                 )}
               </div>
               <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
+              {sectionsEnabled && chapterSections.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Section <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                  <Select value={editSectionId ?? '__none'} onValueChange={(v) => setEditSectionId(v === '__none' ? null : v)}>
+                    <SelectTrigger className="mt-1"><SelectValue placeholder="No section" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">No section</SelectItem>
+                      {chapterSections.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>Cancel</Button>
@@ -812,6 +833,20 @@ export function LectureList({
               )}
             </div>
             <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
+            {sectionsEnabled && chapterSections.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Section <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+                <Select value={editSectionId ?? '__none'} onValueChange={(v) => setEditSectionId(v === '__none' ? null : v)}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="No section" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">No section</SelectItem>
+                    {chapterSections.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>Cancel</Button>
