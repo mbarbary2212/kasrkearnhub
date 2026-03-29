@@ -41,6 +41,8 @@ import { useChapterOsceQuestions, useChapterOsceCount } from '@/hooks/useOsceQue
 import { useChapterProgress } from '@/hooks/useChapterProgress';
 import { useChapterMatchingQuestions, useChapterMatchingCount } from '@/hooks/useMatchingQuestions';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
+import { useChapterCaseScenarioCount } from '@/hooks/useCaseScenarios';
+import { CaseScenarioPractice } from '@/components/practice/CaseScenarioPractice';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
