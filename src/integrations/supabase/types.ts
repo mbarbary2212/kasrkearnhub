@@ -864,6 +864,57 @@ export type Database = {
           },
         ]
       }
+      assessment_chapter_eligibility: {
+        Row: {
+          allow_case: boolean
+          allow_mcq: boolean
+          allow_recall: boolean
+          assessment_id: string
+          chapter_id: string
+          created_at: string
+          id: string
+          included_in_exam: boolean
+          updated_at: string
+        }
+        Insert: {
+          allow_case?: boolean
+          allow_mcq?: boolean
+          allow_recall?: boolean
+          assessment_id: string
+          chapter_id: string
+          created_at?: string
+          id?: string
+          included_in_exam?: boolean
+          updated_at?: string
+        }
+        Update: {
+          allow_case?: boolean
+          allow_mcq?: boolean
+          allow_recall?: boolean
+          assessment_id?: string
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          included_in_exam?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_chapter_eligibility_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_chapter_eligibility_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_components: {
         Row: {
           assessment_id: string
