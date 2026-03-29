@@ -2,6 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
+/** Set of video IDs the user has manually unmarked this session */
+export const manuallyUnmarkedIds = new Set<string>();
+
 export function useManualVideoComplete() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -19,7 +22,7 @@ export function useManualVideoComplete() {
       const percentMap = new Map<string, number>();
       for (const row of data) {
         percentMap.set(row.video_id, Number(row.percent_watched));
-        if (Number(row.percent_watched) >= 95) {
+        if (Number(row.percent_watched) >= 95 && !manuallyUnmarkedIds.has(row.video_id)) {
           watchedIds.add(row.video_id);
         }
       }
@@ -34,6 +37,7 @@ export function useManualVideoComplete() {
   const markWatched = useMutation({
     mutationFn: async (videoId: string) => {
       if (!user) throw new Error('Not authenticated');
+      manuallyUnmarkedIds.delete(videoId);
       const { error } = await supabase.from('video_progress').upsert(
         {
           user_id: user.id,
@@ -71,11 +75,17 @@ export function useManualVideoComplete() {
   const unmarkWatched = useMutation({
     mutationFn: async (videoId: string) => {
       if (!user) throw new Error('Not authenticated');
-      const { error } = await supabase
-        .from('video_progress')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('video_id', videoId);
+      manuallyUnmarkedIds.add(videoId);
+      const { error } = await supabase.from('video_progress').upsert(
+        {
+          user_id: user.id,
+          video_id: videoId,
+          percent_watched: 0,
+          last_time_seconds: 0,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,video_id' }
+      );
       if (error) throw error;
     },
     onMutate: async (videoId: string) => {
@@ -86,7 +96,7 @@ export function useManualVideoComplete() {
         const newWatched = new Set(old.watchedIds);
         newWatched.delete(videoId);
         const newPercent = new Map(old.percentMap);
-        newPercent.delete(videoId);
+        newPercent.set(videoId, 0);
         return { watchedIds: newWatched, percentMap: newPercent };
       });
       return { prev };
