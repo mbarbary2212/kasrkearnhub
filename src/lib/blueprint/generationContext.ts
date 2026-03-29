@@ -56,6 +56,16 @@ export interface GenerationRules {
  */
 export type ExamContentSource = 'mcq' | 'osce_question' | 'case_scenario';
 
+/**
+ * Maps each component_type to its source content table.
+ * The future generator queries these tables for eligible questions.
+ */
+export const COMPONENT_CONTENT_SOURCE: Record<string, { table: string; contentType: ExamContentSource }> = {
+  mcq: { table: 'mcqs', contentType: 'mcq' },
+  short_answer_recall: { table: 'osce_questions', contentType: 'osce_question' },
+  short_answer_case: { table: 'case_scenarios', contentType: 'case_scenario' },
+};
+
 export interface GenerationContext {
   assessment: AssessmentStructure;
   components: ComponentSpec[];
