@@ -29,7 +29,7 @@ import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdow
 import { ClinicalCaseList, ClinicalCaseAdminList } from '@/components/clinical-cases';
 import { SectionFilter } from '@/components/sections';
 import { SectionsManager } from '@/components/sections';
-import { useChapterSectionsEnabled, useChapterSections } from '@/hooks/useSections';
+import { useChapterSectionsEnabled, useChapterSections, useChapterLectureSectionsMap } from '@/hooks/useSections';
 import { 
   useChapterLectures, 
   useChapterResources, 
@@ -224,6 +224,7 @@ export default function ChapterPage() {
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
+  const { data: lectureSectionsMap } = useChapterLectureSectionsMap(sectionsEnabled ? chapterId : undefined);
   const { data: interactiveAlgorithms } = useChapterAlgorithms(chapterId);
   
   // Build a map of section_id → display_order for sorting
@@ -261,10 +262,14 @@ export default function ChapterPage() {
   });
   
   // Helper function to filter and sort content by section hierarchy
-  const filterBySection = useCallback(<T,>(items: T[]): T[] => {
+  const filterBySection = useCallback(<T,>(items: T[], isLectures = false): T[] => {
     if (!sectionsEnabled) return items;
     if (selectedSectionId) {
       return items.filter(item => {
+        if (isLectures && lectureSectionsMap) {
+          const lectureId = (item as unknown as { id: string }).id;
+          return lectureSectionsMap.get(selectedSectionId)?.has(lectureId) ?? false;
+        }
         const sectionable = item as unknown as { section_id?: string | null };
         return sectionable.section_id === selectedSectionId;
       });
@@ -278,7 +283,7 @@ export default function ChapterPage() {
       const bOrder = bId ? (sectionOrderMap.get(bId) ?? Infinity) : Infinity;
       return aOrder - bOrder;
     });
-  }, [selectedSectionId, sectionsEnabled, sectionOrderMap]);
+  }, [selectedSectionId, sectionsEnabled, sectionOrderMap, lectureSectionsMap]);
 
   // Filter deleted MCQs only (exclude active ones)
   const deletedOnlyMcqs = (deletedMcqs || []).filter(m => m.is_deleted);
@@ -708,7 +713,7 @@ export default function ChapterPage() {
                     ) : (
                       <LectureList 
                         key={lecturesResetKey}
-                        lectures={filterBySection(lectures || [])} 
+                        lectures={filterBySection(lectures || [], true)}
                         moduleId={moduleId}
                         chapterId={chapterId}
                         canEdit={canManageContent}

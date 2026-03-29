@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle, X, CheckCircle, Bookmark, ThumbsUp, ThumbsDown, FileText, Sparkles } from 'lucide-react';
@@ -24,7 +24,7 @@ import {
 import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractYouTubeId } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
-import { useChapterSections, useChapterSectionsEnabled } from '@/hooks/useSections';
+import { useChapterSections, useChapterSectionsEnabled, useLectureSectionIds, useSetLectureSections } from '@/hooks/useSections';
 import { useVideoBookmarks } from '@/hooks/useVideoBookmarks';
 import { useManualVideoComplete } from '@/hooks/useManualVideoComplete';
 import { useVideoRatings } from '@/hooks/useVideoRatings';
@@ -111,7 +111,7 @@ export function LectureList({
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDoctor, setEditDoctor] = useState('');
   const [editDoctorSelectVal, setEditDoctorSelectVal] = useState('');
-  const [editSectionId, setEditSectionId] = useState<string | null>(null);
+  const [editSectionIds, setEditSectionIds] = useState<string[]>([]);
 
   // Fetch existing doctors for this module
   const { data: existingDoctors = [] } = useQuery({
@@ -131,6 +131,13 @@ export function LectureList({
   });
   const { data: chapterSections = [] } = useChapterSections(chapterId);
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
+  const { data: fetchedSectionIds = [] } = useLectureSectionIds(editLecture?.id);
+  const setLectureSections = useSetLectureSections();
+
+  // Sync fetched section IDs into edit state whenever the dialog opens or data loads
+  useEffect(() => {
+    if (editLecture) setEditSectionIds(fetchedSectionIds);
+  }, [editLecture?.id, fetchedSectionIds.join(',')]);
 
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
@@ -269,7 +276,6 @@ export function LectureList({
     setEditTitle(lecture.title);
     setEditDescription(lecture.description || '');
     setEditVideoUrl(lecture.video_url || lecture.videoUrl || '');
-    setEditSectionId(lecture.section_id ?? null);
     // Doctor is stored in description field
     const doc = lecture.description || '';
     setEditDoctor(doc);
@@ -303,9 +309,9 @@ export function LectureList({
           title: editTitle.trim(),
           description: doctorValue,
           video_url: normalizedUrl || null,
-          section_id: editSectionId,
         },
       });
+      await setLectureSections.mutateAsync({ lectureId: editLecture.id, sectionIds: editSectionIds });
       toast.success('Lecture updated successfully');
       setEditLecture(null);
     } catch (error) {
@@ -381,16 +387,22 @@ export function LectureList({
               <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
               {sectionsEnabled && chapterSections.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label>Section <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                  <Select value={editSectionId ?? '__none'} onValueChange={(v) => setEditSectionId(v === '__none' ? null : v)}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="No section" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">No section</SelectItem>
-                      {chapterSections.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
+                  <div className="mt-1 space-y-2 rounded-md border p-3">
+                    {chapterSections.map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={editSectionIds.includes(s.id)}
+                          onCheckedChange={(checked) =>
+                            setEditSectionIds(prev =>
+                              checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                            )
+                          }
+                        />
+                        <span className="text-sm">{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -835,16 +847,22 @@ export function LectureList({
             <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
             {sectionsEnabled && chapterSections.length > 0 && (
               <div className="space-y-1.5">
-                <Label>Section <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
-                <Select value={editSectionId ?? '__none'} onValueChange={(v) => setEditSectionId(v === '__none' ? null : v)}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="No section" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none">No section</SelectItem>
-                    {chapterSections.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
+                <div className="mt-1 space-y-2 rounded-md border p-3">
+                  {chapterSections.map((s) => (
+                    <label key={s.id} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={editSectionIds.includes(s.id)}
+                        onCheckedChange={(checked) =>
+                          setEditSectionIds(prev =>
+                            checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                          )
+                        }
+                      />
+                      <span className="text-sm">{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
           </div>

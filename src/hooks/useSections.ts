@@ -287,6 +287,85 @@ export function useReorderSections() {
   });
 }
 
+// Fetch section IDs for a single lecture (from junction table)
+export function useLectureSectionIds(lectureId?: string) {
+  return useQuery({
+    queryKey: ['lecture-sections', lectureId],
+    queryFn: async () => {
+      if (!lectureId) return [];
+      const { data, error } = await supabase
+        .from('lecture_sections')
+        .select('section_id')
+        .eq('lecture_id', lectureId);
+      if (error) throw error;
+      return (data || []).map((r: { section_id: string }) => r.section_id);
+    },
+    enabled: !!lectureId,
+  });
+}
+
+// Fetch all lecture_sections for a chapter (for filtering)
+// Returns Map<section_id, Set<lecture_id>>
+export function useChapterLectureSectionsMap(chapterId?: string) {
+  return useQuery({
+    queryKey: ['chapter-lecture-sections-map', chapterId],
+    queryFn: async () => {
+      if (!chapterId) return new Map<string, Set<string>>();
+      const { data, error } = await supabase
+        .from('lecture_sections')
+        .select('lecture_id, section_id, lectures!inner(chapter_id)')
+        .eq('lectures.chapter_id', chapterId);
+      if (error) throw error;
+      const map = new Map<string, Set<string>>();
+      for (const row of data || []) {
+        const r = row as { lecture_id: string; section_id: string };
+        if (!map.has(r.section_id)) map.set(r.section_id, new Set());
+        map.get(r.section_id)!.add(r.lecture_id);
+      }
+      return map;
+    },
+    enabled: !!chapterId,
+  });
+}
+
+// Replace all section assignments for a lecture
+export function useSetLectureSections() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ lectureId, sectionIds }: { lectureId: string; sectionIds: string[] }) => {
+      // Delete existing
+      const { error: delError } = await supabase
+        .from('lecture_sections')
+        .delete()
+        .eq('lecture_id', lectureId);
+      if (delError) throw delError;
+
+      // Insert new
+      if (sectionIds.length > 0) {
+        const { error: insError } = await supabase
+          .from('lecture_sections')
+          .insert(sectionIds.map((section_id) => ({ lecture_id: lectureId, section_id })));
+        if (insError) throw insError;
+      }
+
+      // Keep section_id in sync with first selected (for sorting)
+      const { error: updError } = await supabase
+        .from('lectures')
+        .update({ section_id: sectionIds[0] ?? null })
+        .eq('id', lectureId);
+      if (updError) throw updError;
+    },
+    onSuccess: (_, { lectureId }) => {
+      queryClient.invalidateQueries({ queryKey: ['lecture-sections', lectureId] });
+      queryClient.invalidateQueries({ predicate: (q) => Array.isArray(q.queryKey) && q.queryKey[0] === 'chapter-lecture-sections-map' });
+      queryClient.invalidateQueries({ queryKey: ['chapter-lectures'] });
+      queryClient.invalidateQueries({ queryKey: ['module-lectures'] });
+      queryClient.invalidateQueries({ queryKey: ['lectures'] });
+    },
+  });
+}
+
 // Bulk assign section to content items
 export function useBulkAssignSection() {
   const queryClient = useQueryClient();
