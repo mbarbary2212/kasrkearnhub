@@ -43,6 +43,7 @@ import { useChapterMatchingQuestions, useChapterMatchingCount } from '@/hooks/us
 import { useClinicalCases } from '@/hooks/useClinicalCases';
 import { useChapterCaseScenarioCount } from '@/hooks/useCaseScenarios';
 import { CaseScenarioPractice } from '@/components/practice/CaseScenarioPractice';
+import { CaseScenarioBulkUpload } from '@/components/admin/CaseScenarioBulkUpload';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -1207,7 +1208,23 @@ export default function ChapterPage() {
 
                 {/* Case Scenarios Content */}
                 {practiceTab === 'case_scenarios' && (
-                  <CaseScenarioPractice chapterId={chapterId} />
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex justify-end">
+                        <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
+                          <Upload className="w-4 h-4 mr-1" />
+                          Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    <CaseScenarioPractice chapterId={chapterId} />
+                    <CaseScenarioBulkUpload
+                      moduleId={moduleId || ''}
+                      chapterId={chapterId}
+                      open={caseBulkUploadOpen}
+                      onOpenChange={setCaseBulkUploadOpen}
+                    />
+                  </div>
                 )}
 
                 {/* Practical Content (placeholder) */}
