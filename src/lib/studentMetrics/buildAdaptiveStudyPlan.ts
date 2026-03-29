@@ -114,7 +114,7 @@ function getMaxTasks(availableMinutes: number | undefined): number {
 // ─── Main Builder ─────────────────────────────────────────────
 
 export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyPlan {
-  const { metrics, chapters, availableMinutes } = input;
+  const { metrics, chapters, availableMinutes, examWeightMap } = input;
   const maxTasks = getMaxTasks(availableMinutes);
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
 
