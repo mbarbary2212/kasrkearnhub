@@ -288,7 +288,7 @@ export async function assembleExam(assessmentId: string, label?: string): Promis
   // ── Process Recall FIRST (so we know which chapters to exclude from Case) ──
   if (recallComp && recallComp.questionCount > 0) {
     const pool = await fetchRecallPool(recallComp.eligibleChapterIds);
-    const { selected, usedChapterIds, warnings: w } = selectSimple(pool, recallComp.questionCount);
+    const { selected, usedChapterIds, warnings: w } = selectWithChapterTracking(pool, recallComp.questionCount, ctx.rules.difficultyDistribution);
     warnings.push(...w);
     recallUsedChapters = usedChapterIds;
 
@@ -311,7 +311,7 @@ export async function assembleExam(assessmentId: string, label?: string): Promis
   if (caseComp && caseComp.questionCount > 0) {
     const excludeChapters = ctx.rules.noChapterRecallAndCase ? recallUsedChapters : undefined;
     const pool = await fetchCasePool(caseComp.eligibleChapterIds);
-    const { selected, warnings: w } = selectSimple(pool, caseComp.questionCount, excludeChapters);
+    const { selected, warnings: w } = selectWithChapterTracking(pool, caseComp.questionCount, ctx.rules.difficultyDistribution, excludeChapters);
     warnings.push(...w);
 
     for (const q of selected) {
@@ -449,7 +449,7 @@ export async function dryRunAssembly(assessmentId: string): Promise<Omit<Generat
 
   if (recallComp && recallComp.questionCount > 0) {
     const pool = await fetchRecallPool(recallComp.eligibleChapterIds);
-    const { selected, usedChapterIds, warnings: w } = selectSimple(pool, recallComp.questionCount);
+    const { selected, usedChapterIds, warnings: w } = selectWithChapterTracking(pool, recallComp.questionCount, ctx.rules.difficultyDistribution);
     warnings.push(...w);
     recallUsedChapters = usedChapterIds;
     for (const q of selected) {
@@ -461,7 +461,7 @@ export async function dryRunAssembly(assessmentId: string): Promise<Omit<Generat
   if (caseComp && caseComp.questionCount > 0) {
     const excludeChapters = ctx.rules.noChapterRecallAndCase ? recallUsedChapters : undefined;
     const pool = await fetchCasePool(caseComp.eligibleChapterIds);
-    const { selected, warnings: w } = selectSimple(pool, caseComp.questionCount, excludeChapters);
+    const { selected, warnings: w } = selectWithChapterTracking(pool, caseComp.questionCount, ctx.rules.difficultyDistribution, excludeChapters);
     warnings.push(...w);
     for (const q of selected) {
       globalOrder++;
