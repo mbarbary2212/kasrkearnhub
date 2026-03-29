@@ -325,11 +325,27 @@ export const ASSESSMENT_RULE_DEFINITIONS = [
 
 export type AssessmentRuleKey = typeof ASSESSMENT_RULE_DEFINITIONS[number]['key'];
 
+// ── Difficulty Distribution ──
+
+export interface DifficultyDistribution {
+  easy: number;
+  moderate: number;
+  difficult: number;
+}
+
+export const DEFAULT_DIFFICULTY_DISTRIBUTION: DifficultyDistribution = {
+  easy: 40,
+  moderate: 40,
+  difficult: 20,
+};
+
+export const DIFFICULTY_RULE_KEY = 'difficulty_distribution';
+
 export interface AssessmentRule {
   id: string;
   assessment_id: string;
   rule_key: string;
-  rule_value: boolean;
+  rule_value: unknown;
   description: string | null;
 }
 

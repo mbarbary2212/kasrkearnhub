@@ -9,13 +9,18 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { ASSESSMENT_RULE_DEFINITIONS } from '@/hooks/useAssessmentBlueprint';
+import {
+  ASSESSMENT_RULE_DEFINITIONS,
+  DIFFICULTY_RULE_KEY,
+  DEFAULT_DIFFICULTY_DISTRIBUTION,
+} from '@/hooks/useAssessmentBlueprint';
 import type {
   AssessmentStructure,
   AssessmentComponent,
   ChapterEligibility,
   AssessmentRule,
   AssessmentRuleKey,
+  DifficultyDistribution,
 } from '@/hooks/useAssessmentBlueprint';
 
 // ── Output types ──
@@ -42,6 +47,7 @@ export interface GenerationRules {
   noMcqTopicRepeat: boolean;
   onlyEligibleChapters: boolean;
   partialPoolAllowed: boolean;
+  difficultyDistribution: DifficultyDistribution;
 }
 
 export interface GenerationContext {
@@ -125,11 +131,23 @@ export async function resolveGenerationContext(assessmentId: string): Promise<Ge
     return def?.defaultValue ?? true;
   };
 
+  // Resolve difficulty distribution
+  const difficultyRule = ruleMap.get(DIFFICULTY_RULE_KEY);
+  const difficultyDistribution: DifficultyDistribution =
+    difficultyRule && typeof difficultyRule === 'object' && difficultyRule !== null
+      ? {
+          easy: (difficultyRule as Record<string, number>).easy ?? DEFAULT_DIFFICULTY_DISTRIBUTION.easy,
+          moderate: (difficultyRule as Record<string, number>).moderate ?? DEFAULT_DIFFICULTY_DISTRIBUTION.moderate,
+          difficult: (difficultyRule as Record<string, number>).difficult ?? DEFAULT_DIFFICULTY_DISTRIBUTION.difficult,
+        }
+      : { ...DEFAULT_DIFFICULTY_DISTRIBUTION };
+
   const rules: GenerationRules = {
     noChapterRecallAndCase: getRule('no_chapter_recall_and_case'),
     noMcqTopicRepeat: getRule('no_mcq_topic_repeat'),
     onlyEligibleChapters: getRule('only_eligible_chapters'),
     partialPoolAllowed: getRule('partial_pool_allowed'),
+    difficultyDistribution,
   };
 
   return { assessment, components, eligibleChapters, rules };
@@ -191,6 +209,16 @@ export function validateGenerationContext(ctx: GenerationContext): ValidationIss
         });
       }
     }
+  }
+
+  // Check difficulty distribution totals 100
+  const { easy, moderate, difficult } = ctx.rules.difficultyDistribution;
+  const diffTotal = easy + moderate + difficult;
+  if (diffTotal !== 100) {
+    issues.push({
+      severity: 'error',
+      message: `Difficulty distribution totals ${diffTotal}% — it must equal 100%.`,
+    });
   }
 
   // Check total eligible chapters
