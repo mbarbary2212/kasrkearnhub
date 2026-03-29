@@ -65,13 +65,13 @@ export function AlgorithmList({ algorithms, chapterId, canManage, onEdit, onDele
           const decisionCount = alg.algorithm_json?.nodes?.filter(n => n.type === 'decision').length || 0;
           return (
             <Card key={alg.id} className="group hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
-  setPlayingId(alg.id);
-  trackContentView.mutate({
-    contentType: 'pathway',
-    contentId: alg.id,
-    chapterId,
-  });
-}}}
+              setPlayingId(alg.id);
+              trackContentView.mutate({
+                contentType: 'pathway',
+                contentId: alg.id,
+                chapterId,
+              });
+            }}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-sm font-semibold leading-tight">{alg.title}</CardTitle>
@@ -118,14 +118,14 @@ export function AlgorithmList({ algorithms, chapterId, canManage, onEdit, onDele
                   )}
                   <div className="flex-1" />
                   <Button size="sm" variant="default" className="h-7 text-xs" onClick={(e) => {
-  e.stopPropagation();
-  setPlayingId(alg.id);
-  trackContentView.mutate({
-    contentType: 'pathway',
-    contentId: alg.id,
-    chapterId,
-  });
-}}
+                    e.stopPropagation();
+                    setPlayingId(alg.id);
+                    trackContentView.mutate({
+                      contentType: 'pathway',
+                      contentId: alg.id,
+                      chapterId,
+                    });
+                  }}>
                     <Play className="w-3 h-3 mr-1" /> Start
                   </Button>
                 </div>
