@@ -864,6 +864,113 @@ export type Database = {
           },
         ]
       }
+      assessment_components: {
+        Row: {
+          assessment_id: string
+          component_type: Database["public"]["Enums"]["exam_component_type"]
+          created_at: string
+          display_order: number
+          duration_minutes: number | null
+          id: string
+          marks_per_question: number
+          question_count: number
+          total_marks: number | null
+        }
+        Insert: {
+          assessment_id: string
+          component_type: Database["public"]["Enums"]["exam_component_type"]
+          created_at?: string
+          display_order?: number
+          duration_minutes?: number | null
+          id?: string
+          marks_per_question?: number
+          question_count?: number
+          total_marks?: number | null
+        }
+        Update: {
+          assessment_id?: string
+          component_type?: Database["public"]["Enums"]["exam_component_type"]
+          created_at?: string
+          display_order?: number
+          duration_minutes?: number | null
+          id?: string
+          marks_per_question?: number
+          question_count?: number
+          total_marks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_components_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assessment_structures: {
+        Row: {
+          assessment_type: Database["public"]["Enums"]["assessment_type"]
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          id: string
+          is_active: boolean
+          module_id: string
+          name: string
+          notes: string | null
+          total_marks: number
+          updated_at: string
+          weight_mode: string
+          year_id: string
+        }
+        Insert: {
+          assessment_type: Database["public"]["Enums"]["assessment_type"]
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          module_id: string
+          name: string
+          notes?: string | null
+          total_marks?: number
+          updated_at?: string
+          weight_mode?: string
+          year_id: string
+        }
+        Update: {
+          assessment_type?: Database["public"]["Enums"]["assessment_type"]
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_active?: boolean
+          module_id?: string
+          name?: string
+          notes?: string | null
+          total_marks?: number
+          updated_at?: string
+          weight_mode?: string
+          year_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_structures_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_structures_year_id_fkey"
+            columns: ["year_id"]
+            isOneToOne: false
+            referencedRelation: "years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audio_progress: {
         Row: {
           completed: boolean
@@ -1178,6 +1285,98 @@ export type Database = {
           },
         ]
       }
+      chapter_question_upvotes: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_question_upvotes_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "chapter_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_questions: {
+        Row: {
+          answer_text: string | null
+          answered_at: string | null
+          answered_by: string | null
+          chapter_id: string
+          created_at: string
+          id: string
+          is_answered: boolean
+          is_hidden: boolean
+          is_pinned: boolean
+          module_id: string
+          question_text: string
+          upvote_count: number
+          user_id: string
+        }
+        Insert: {
+          answer_text?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          chapter_id: string
+          created_at?: string
+          id?: string
+          is_answered?: boolean
+          is_hidden?: boolean
+          is_pinned?: boolean
+          module_id: string
+          question_text: string
+          upvote_count?: number
+          user_id: string
+        }
+        Update: {
+          answer_text?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          is_answered?: boolean
+          is_hidden?: boolean
+          is_pinned?: boolean
+          module_id?: string
+          question_text?: string
+          upvote_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_usage: {
         Row: {
           created_at: string
@@ -1265,6 +1464,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      content_views: {
+        Row: {
+          chapter_id: string | null
+          content_id: string
+          content_type: string
+          first_viewed_at: string
+          id: string
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          content_id: string
+          content_type: string
+          first_viewed_at?: string
+          id?: string
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          content_id?: string
+          content_type?: string
+          first_viewed_at?: string
+          id?: string
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       department_admins: {
         Row: {
@@ -4064,6 +4293,7 @@ export type Database = {
         Row: {
           attempt_number: number
           chapter_id: string | null
+          confidence_level: number | null
           created_at: string
           id: string
           is_correct: boolean | null
@@ -4081,6 +4311,7 @@ export type Database = {
         Insert: {
           attempt_number?: number
           chapter_id?: string | null
+          confidence_level?: number | null
           created_at?: string
           id?: string
           is_correct?: boolean | null
@@ -4098,6 +4329,7 @@ export type Database = {
         Update: {
           attempt_number?: number
           chapter_id?: string | null
+          confidence_level?: number | null
           created_at?: string
           id?: string
           is_correct?: boolean | null
@@ -4294,6 +4526,114 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      student_chapter_metrics: {
+        Row: {
+          chapter_id: string
+          confidence_avg: number
+          confidence_mismatch_rate: number
+          coverage_percent: number
+          created_at: string
+          flashcards_due: number
+          flashcards_overdue: number
+          id: string
+          last_activity_at: string | null
+          last_flashcard_review_at: string | null
+          last_mcq_attempt_at: string | null
+          last_review_interval: number
+          last_video_at: string | null
+          mcq_accuracy: number
+          mcq_attempts: number
+          mcq_correct: number
+          mcq_wrong: number
+          minutes_practicing: number
+          minutes_reading: number
+          minutes_total: number
+          minutes_watching: number
+          module_id: string
+          next_review_at: string | null
+          overconfident_error_rate: number
+          readiness_score: number
+          recent_mcq_accuracy: number
+          resources_viewed: number
+          review_strength: number
+          student_id: string
+          underconfident_correct_rate: number
+          updated_at: string
+          videos_completed: number
+          videos_total: number
+        }
+        Insert: {
+          chapter_id: string
+          confidence_avg?: number
+          confidence_mismatch_rate?: number
+          coverage_percent?: number
+          created_at?: string
+          flashcards_due?: number
+          flashcards_overdue?: number
+          id?: string
+          last_activity_at?: string | null
+          last_flashcard_review_at?: string | null
+          last_mcq_attempt_at?: string | null
+          last_review_interval?: number
+          last_video_at?: string | null
+          mcq_accuracy?: number
+          mcq_attempts?: number
+          mcq_correct?: number
+          mcq_wrong?: number
+          minutes_practicing?: number
+          minutes_reading?: number
+          minutes_total?: number
+          minutes_watching?: number
+          module_id: string
+          next_review_at?: string | null
+          overconfident_error_rate?: number
+          readiness_score?: number
+          recent_mcq_accuracy?: number
+          resources_viewed?: number
+          review_strength?: number
+          student_id: string
+          underconfident_correct_rate?: number
+          updated_at?: string
+          videos_completed?: number
+          videos_total?: number
+        }
+        Update: {
+          chapter_id?: string
+          confidence_avg?: number
+          confidence_mismatch_rate?: number
+          coverage_percent?: number
+          created_at?: string
+          flashcards_due?: number
+          flashcards_overdue?: number
+          id?: string
+          last_activity_at?: string | null
+          last_flashcard_review_at?: string | null
+          last_mcq_attempt_at?: string | null
+          last_review_interval?: number
+          last_video_at?: string | null
+          mcq_accuracy?: number
+          mcq_attempts?: number
+          mcq_correct?: number
+          mcq_wrong?: number
+          minutes_practicing?: number
+          minutes_reading?: number
+          minutes_total?: number
+          minutes_watching?: number
+          module_id?: string
+          next_review_at?: string | null
+          overconfident_error_rate?: number
+          readiness_score?: number
+          recent_mcq_accuracy?: number
+          resources_viewed?: number
+          review_strength?: number
+          student_id?: string
+          underconfident_correct_rate?: number
+          updated_at?: string
+          videos_completed?: number
+          videos_total?: number
+        }
+        Relationships: []
       }
       student_feedback: {
         Row: {
@@ -5204,6 +5544,84 @@ export type Database = {
           },
           {
             foreignKeyName: "topic_admins_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topic_exam_weights: {
+        Row: {
+          assessment_id: string
+          chapter_id: string | null
+          component_id: string | null
+          created_at: string
+          id: string
+          module_id: string
+          notes: string | null
+          topic_id: string | null
+          updated_at: string
+          weight_marks: number | null
+          weight_percent: number
+        }
+        Insert: {
+          assessment_id: string
+          chapter_id?: string | null
+          component_id?: string | null
+          created_at?: string
+          id?: string
+          module_id: string
+          notes?: string | null
+          topic_id?: string | null
+          updated_at?: string
+          weight_marks?: number | null
+          weight_percent?: number
+        }
+        Update: {
+          assessment_id?: string
+          chapter_id?: string | null
+          component_id?: string | null
+          created_at?: string
+          id?: string
+          module_id?: string
+          notes?: string | null
+          topic_id?: string | null
+          updated_at?: string
+          weight_marks?: number | null
+          weight_percent?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_exam_weights_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_exam_weights_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_exam_weights_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_exam_weights_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_exam_weights_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
@@ -6353,18 +6771,61 @@ export type Database = {
         Args: { _feedback_id: string; _reason: string }
         Returns: string
       }
-      save_question_attempt: {
+      save_question_attempt:
+        | {
+            Args: {
+              p_chapter_id?: string
+              p_is_correct?: boolean
+              p_module_id?: string
+              p_question_id: string
+              p_question_type: Database["public"]["Enums"]["practice_question_type"]
+              p_score?: number
+              p_selected_answer?: Json
+              p_topic_id?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_chapter_id?: string
+              p_confidence_level?: number
+              p_is_correct?: boolean
+              p_module_id?: string
+              p_question_id: string
+              p_question_type: Database["public"]["Enums"]["practice_question_type"]
+              p_score?: number
+              p_selected_answer?: Json
+              p_topic_id?: string
+            }
+            Returns: Json
+          }
+      upsert_student_chapter_metrics: {
         Args: {
-          p_chapter_id?: string
-          p_is_correct?: boolean
-          p_module_id?: string
-          p_question_id: string
-          p_question_type: Database["public"]["Enums"]["practice_question_type"]
-          p_score?: number
-          p_selected_answer?: Json
-          p_topic_id?: string
+          p_chapter_id: string
+          p_coverage_percent?: number
+          p_flashcards_due?: number
+          p_flashcards_overdue?: number
+          p_last_activity_at?: string
+          p_last_flashcard_review_at?: string
+          p_last_mcq_attempt_at?: string
+          p_last_video_at?: string
+          p_mcq_accuracy?: number
+          p_mcq_attempts?: number
+          p_mcq_correct?: number
+          p_mcq_wrong?: number
+          p_minutes_practicing?: number
+          p_minutes_reading?: number
+          p_minutes_total?: number
+          p_minutes_watching?: number
+          p_module_id: string
+          p_readiness_score?: number
+          p_recent_mcq_accuracy?: number
+          p_resources_viewed?: number
+          p_student_id: string
+          p_videos_completed?: number
+          p_videos_total?: number
         }
-        Returns: Json
+        Returns: undefined
       }
     }
     Enums: {
@@ -6376,6 +6837,11 @@ export type Database = {
         | "platform_admin"
         | "super_admin"
         | "topic_admin"
+      assessment_type:
+        | "formative"
+        | "final_written"
+        | "final_practical"
+        | "module_exam"
       card_rating_type: "easy" | "hard" | "revise"
       content_type:
         | "lecture"
@@ -6387,6 +6853,14 @@ export type Database = {
         | "case_scenario"
         | "matching"
       department_category: "basic" | "clinical"
+      exam_component_type:
+        | "mcq"
+        | "short_answer_recall"
+        | "short_answer_case"
+        | "osce"
+        | "long_case"
+        | "short_case"
+        | "paraclinical"
       feedback_category:
         | "bug"
         | "content_error"
@@ -6548,6 +7022,12 @@ export const Constants = {
         "super_admin",
         "topic_admin",
       ],
+      assessment_type: [
+        "formative",
+        "final_written",
+        "final_practical",
+        "module_exam",
+      ],
       card_rating_type: ["easy", "hard", "revise"],
       content_type: [
         "lecture",
@@ -6560,6 +7040,15 @@ export const Constants = {
         "matching",
       ],
       department_category: ["basic", "clinical"],
+      exam_component_type: [
+        "mcq",
+        "short_answer_recall",
+        "short_answer_case",
+        "osce",
+        "long_case",
+        "short_case",
+        "paraclinical",
+      ],
       feedback_category: [
         "bug",
         "content_error",

@@ -7,7 +7,7 @@ export function useTrackContentView() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ contentType, contentId, chapterId }) => {
+    mutationFn: async ({ contentType, contentId, chapterId }: { contentType: string; contentId: string; chapterId?: string }) => {
       if (!user?.id) return;
 
       await supabase
