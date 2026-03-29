@@ -2257,6 +2257,114 @@ export type Database = {
           },
         ]
       }
+      exam_instance_questions: {
+        Row: {
+          chapter_id: string | null
+          component_id: string
+          component_type: string
+          created_at: string
+          difficulty: string | null
+          display_order: number
+          id: string
+          instance_id: string
+          marks: number
+          question_id: string
+          topic_id: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          component_id: string
+          component_type: string
+          created_at?: string
+          difficulty?: string | null
+          display_order?: number
+          id?: string
+          instance_id: string
+          marks?: number
+          question_id: string
+          topic_id?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          component_id?: string
+          component_type?: string
+          created_at?: string
+          difficulty?: string | null
+          display_order?: number
+          id?: string
+          instance_id?: string
+          marks?: number
+          question_id?: string
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_instance_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_instance_questions_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_instance_questions_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "exam_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_instances: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          created_by: string | null
+          generation_rules: Json | null
+          id: string
+          label: string | null
+          metadata: Json | null
+          status: string
+          total_marks: number
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          created_by?: string | null
+          generation_rules?: Json | null
+          id?: string
+          label?: string | null
+          metadata?: Json | null
+          status?: string
+          total_marks?: number
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          created_by?: string | null
+          generation_rules?: Json | null
+          id?: string
+          label?: string | null
+          metadata?: Json | null
+          status?: string
+          total_marks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_instances_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_recheck_requests: {
         Row: {
           admin_response: string | null
