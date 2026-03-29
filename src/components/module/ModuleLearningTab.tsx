@@ -76,6 +76,8 @@ interface ModuleLearningTabProps {
   selectedDepartmentId?: string | null;
   /** When provided (from ModulePage), student pill filtering is handled externally */
   externalActiveBookLabel?: string | null;
+  /** When navigating back from a chapter, auto-select this book/department */
+  initialBook?: string;
 }
 
 // Sortable book card component
