@@ -2780,6 +2780,39 @@ export type Database = {
           },
         ]
       }
+      lecture_sections: {
+        Row: {
+          id: string
+          lecture_id: string
+          section_id: string
+        }
+        Insert: {
+          id?: string
+          lecture_id: string
+          section_id: string
+        }
+        Update: {
+          id?: string
+          lecture_id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_sections_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecture_sections_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lectures: {
         Row: {
           chapter_id: string | null
