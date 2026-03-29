@@ -138,6 +138,7 @@ export default function TopicDetailPage() {
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
   const [mindMapBulkOpen, setMindMapBulkOpen] = useState(false);
+  const [caseBulkUploadOpen, setCaseBulkUploadOpen] = useState(false);
   const [visualBulkType, setVisualBulkType] = useState<'mind_map' | 'infographic'>('mind_map');
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
