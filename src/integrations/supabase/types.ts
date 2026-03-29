@@ -1254,6 +1254,120 @@ export type Database = {
           },
         ]
       }
+      case_scenario_questions: {
+        Row: {
+          case_id: string
+          created_at: string
+          display_order: number
+          explanation: string | null
+          id: string
+          max_marks: number
+          model_answer: string | null
+          question_text: string
+          question_type: Database["public"]["Enums"]["case_question_type"]
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          max_marks?: number
+          model_answer?: string | null
+          question_text: string
+          question_type?: Database["public"]["Enums"]["case_question_type"]
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          max_marks?: number
+          model_answer?: string | null
+          question_text?: string
+          question_type?: Database["public"]["Enums"]["case_question_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_scenario_questions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_scenarios: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          created_by: string | null
+          difficulty: Database["public"]["Enums"]["case_difficulty"]
+          display_order: number
+          id: string
+          is_deleted: boolean
+          module_id: string | null
+          stem: string
+          tags: string[] | null
+          topic_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: Database["public"]["Enums"]["case_difficulty"]
+          display_order?: number
+          id?: string
+          is_deleted?: boolean
+          module_id?: string | null
+          stem: string
+          tags?: string[] | null
+          topic_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: Database["public"]["Enums"]["case_difficulty"]
+          display_order?: number
+          id?: string
+          is_deleted?: boolean
+          module_id?: string | null
+          stem?: string
+          tags?: string[] | null
+          topic_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_scenarios_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_section_answers: {
         Row: {
           ai_feedback: string | null
@@ -7017,6 +7131,8 @@ export type Database = {
         | "final_practical"
         | "module_exam"
       card_rating_type: "easy" | "hard" | "revise"
+      case_difficulty: "easy" | "moderate" | "difficult"
+      case_question_type: "short_answer" | "single_best_answer"
       content_type:
         | "lecture"
         | "resource"
@@ -7203,6 +7319,8 @@ export const Constants = {
         "module_exam",
       ],
       card_rating_type: ["easy", "hard", "revise"],
+      case_difficulty: ["easy", "moderate", "difficult"],
+      case_question_type: ["short_answer", "single_best_answer"],
       content_type: [
         "lecture",
         "resource",
