@@ -471,8 +471,35 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         prescribedStudyMode: t.prescribedStudyMode,
       }));
 
-      // Get weak chapters from real metrics
+      // Build coach insights from real metrics + exam weights
       const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
+      const coachInsights = buildCoachInsights({
+        metrics: realMetrics,
+        chapterTitleMap,
+        examWeightMap,
+      });
+
+      // Convert CoachInsight[] to DashboardInsight[] for existing UI
+      insights = coachInsights.map(ci => {
+        const typeMap: Record<string, DashboardInsight['type']> = {
+          priority: 'attention',
+          misallocation: 'attention',
+          trend: 'attention',
+          strength: 'strong',
+          confidence: 'missed',
+        };
+        return {
+          type: typeMap[ci.type] || 'attention',
+          label: ci.type === 'priority' ? 'Priority'
+            : ci.type === 'misallocation' ? 'Study Allocation'
+            : ci.type === 'trend' ? 'Trend Alert'
+            : ci.type === 'strength' ? 'Strength'
+            : 'Confidence',
+          detail: ci.message,
+        };
+      });
+
+      // Get weak chapters from real metrics
       const weakChapters: WeakChapter[] = getWeakTopics(realMetrics, chapterTitleMap);
 
       // Use real aggregate readiness if available
