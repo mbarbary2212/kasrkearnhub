@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { shortenTitle } from '@/utils/shortenTitle';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { type SortMode } from '@/hooks/useChapterSort';
 import { useNavigate } from 'react-router-dom';
@@ -57,7 +56,6 @@ import { ModuleChapter } from '@/hooks/useChapters';
 import { useModuleBooks, useDeleteBook, useReorderBooks, ModuleBook } from '@/hooks/useModuleBooks';
 import { useDeleteChapter } from '@/hooks/useChapterManagement';
 import { useTopics } from '@/hooks/useTopics';
-import { CROSS_MODULE_BOOKS, resolveCrossModuleBook } from '@/lib/crossModuleBooks';
 import { BookFormModal } from './BookFormModal';
 import { ChapterFormModal } from './ChapterFormModal';
 import { PharmacologyTopicsView } from './PharmacologyTopicsView';
@@ -78,6 +76,8 @@ interface ModuleLearningTabProps {
   selectedDepartmentId?: string | null;
   /** When provided (from ModulePage), student pill filtering is handled externally */
   externalActiveBookLabel?: string | null;
+  /** When navigating back from a chapter, auto-select this book/department */
+  initialBook?: string;
 }
 
 // Sortable book card component
@@ -202,8 +202,13 @@ function BookLecturesView({
   
   const deleteChapter = useDeleteChapter();
   
-  // Cross-module book mapping
-  const { fetchModuleId, fetchBookLabel } = resolveCrossModuleBook(moduleId, bookLabel);
+  // Cross-module book mapping: SUR-523's "General" fetches from SUR-423's "General surgery Book 1"
+  const CROSS_MODULE_BOOKS: Record<string, Record<string, { moduleId: string; bookLabel: string }>> = {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General': { moduleId: '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', bookLabel: 'General surgery Book 1' } },
+  };
+  const crossRef = CROSS_MODULE_BOOKS[moduleId]?.[bookLabel];
+  const fetchModuleId = crossRef?.moduleId || moduleId;
+  const fetchBookLabel = crossRef?.bookLabel || bookLabel;
   
   // Module IDs for SUR-423 and SUR-523 that show sort filter for Book 2 and Book 3
   const SURGERY_MODULE_IDS = [
@@ -307,45 +312,43 @@ function BookLecturesView({
             <div
               key={chapter.id}
               className={cn(
-                "flex items-center gap-3 py-3.5 md:py-3 px-2 md:px-4 transition-colors group min-h-[44px]",
+                "flex items-center gap-3 py-3 px-4 transition-colors group",
                 isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
               )}
             >
               {isAssigned ? (
               <button
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
-                className="flex-1 flex items-center gap-3 text-left min-w-0"
+                className="flex-1 flex items-center gap-3 text-left"
               >
-                 <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
                   {index + 1}
                 </span>
                 {chapter.icon_url && (
                   <img 
                     src={chapter.icon_url} 
                     alt="" 
-                    className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" 
+                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
                   />
                 )}
-                <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate min-w-0">
-                  <span className="md:hidden">{shortenTitle(chapter.title)}</span>
-                  <span className="hidden md:inline">{chapter.title}</span>
+                <span className="flex-1 text-[15px] font-medium truncate">
+                  {chapter.title}
                 </span>
               </button>
               ) : (
-              <div className="flex-1 flex items-center gap-3 min-w-0">
-                <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
                   {index + 1}
                 </span>
                 {chapter.icon_url && (
                   <img 
                     src={chapter.icon_url} 
                     alt="" 
-                    className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" 
+                    className="w-9 h-9 rounded-lg object-cover flex-shrink-0" 
                   />
                 )}
-                <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate text-muted-foreground min-w-0">
-                  <span className="md:hidden">{shortenTitle(chapter.title)}</span>
-                  <span className="hidden md:inline">{chapter.title}</span>
+                <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                  {chapter.title}
                 </span>
               </div>
               )}
@@ -375,10 +378,10 @@ function BookLecturesView({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                <>
                   <ChapterReadinessDot chapterId={chapter.id} />
-                  <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
-                </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </>
               ) : null}
             </div>
           );
@@ -442,29 +445,30 @@ function BookLecturesView({
 function StudentBookPillView({
   moduleId,
   fetchModuleId,
-  fetchBookLabel,
   activeBookLabel,
+  fetchBookLabel,
   sortedBooks,
   onSelectPill,
 }: {
   moduleId: string;
   fetchModuleId: string;
-  fetchBookLabel: string;
   activeBookLabel: string;
+  fetchBookLabel?: string;
   sortedBooks: ModuleBook[];
   onSelectPill: (label: string) => void;
 }) {
   const navigate = useNavigate();
   const auth = useAuthContext();
+  const actualFetchLabel = fetchBookLabel || activeBookLabel;
 
   const { data: chapters, isLoading } = useQuery({
-    queryKey: ['module-chapters-for-book', fetchModuleId, fetchBookLabel],
+    queryKey: ['module-chapters-for-book', fetchModuleId, actualFetchLabel],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
         .select('*')
         .eq('module_id', fetchModuleId)
-        .eq('book_label', fetchBookLabel)
+        .eq('book_label', actualFetchLabel)
         .order('order_index', { ascending: true });
       if (error) throw error;
       return data as ModuleChapter[];
@@ -473,12 +477,7 @@ function StudentBookPillView({
 
   return (
     <div className="space-y-3">
-      {/* Hint banner */}
-      <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-        <BookOpen className="h-4 w-4 text-primary shrink-0" />
-        <p className="text-sm text-muted-foreground">Choose a chapter to start learning</p>
-      </div>
-
+      {/* Pill filter row - only render if books provided (not externally controlled) */}
       {sortedBooks.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {sortedBooks.map((book) => (
@@ -512,45 +511,43 @@ function StudentBookPillView({
               <div
                 key={chapter.id}
                 className={cn(
-                  "flex items-center gap-3 py-3.5 md:py-3 px-2 md:px-4 transition-colors group min-h-[44px]",
+                  "flex items-center gap-3 py-3 px-4 transition-colors",
                   isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
                 )}
               >
                 {isAssigned ? (
                   <button
                     onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
-                    className="flex-1 flex items-center gap-3 text-left min-w-0"
+                    className="flex-1 flex items-center gap-3 text-left"
                   >
-                    <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
                       {index + 1}
                     </span>
                     {chapter.icon_url && (
-                      <img src={chapter.icon_url} alt="" className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" />
+                      <img src={chapter.icon_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
                     )}
-                    <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate min-w-0">
-                      <span className="md:hidden">{shortenTitle(chapter.title)}</span>
-                      <span className="hidden md:inline">{chapter.title}</span>
+                    <span className="flex-1 text-[15px] font-medium truncate">
+                      {chapter.title}
                     </span>
                   </button>
                 ) : (
-                  <div className="flex-1 flex items-center gap-3 min-w-0">
-                    <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center flex-shrink-0">
+                  <div className="flex-1 flex items-center gap-3">
+                    <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[2.5rem] text-center">
                       {index + 1}
                     </span>
                     {chapter.icon_url && (
-                      <img src={chapter.icon_url} alt="" className="w-7 h-7 md:w-9 md:h-9 rounded-lg object-cover flex-shrink-0" />
+                      <img src={chapter.icon_url} alt="" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
                     )}
-                    <span className="flex-1 text-[15px] md:text-sm font-semibold md:font-medium truncate text-muted-foreground min-w-0">
-                      <span className="md:hidden">{shortenTitle(chapter.title)}</span>
-                      <span className="hidden md:inline">{chapter.title}</span>
+                    <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
+                      {chapter.title}
                     </span>
                   </div>
                 )}
                 {isAssigned && (
-                  <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                  <>
                     <ChapterReadinessDot chapterId={chapter.id} />
-                    <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
-                  </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </>
                 )}
               </div>
             );
@@ -576,11 +573,14 @@ export function ModuleLearningTab({
   canManageChapters = false,
   selectedDepartmentId,
   externalActiveBookLabel,
+  initialBook,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
   const auth = useAuthContext();
   const storageKey = `kasrlearn_book_${moduleId}`;
   const [selectedBook, setSelectedBook] = useState<string | null>(() => {
+    // If navigating back from a chapter, auto-select the book
+    if (initialBook) return initialBook;
     if (typeof window !== 'undefined') {
       return localStorage.getItem(storageKey);
     }
@@ -593,7 +593,10 @@ export function ModuleLearningTab({
   // Fetch topics count for Pharmacology (filtered by moduleId)
   const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
   
-  // Cross-module book mapping (uses shared constant)
+  // Cross-module book mapping
+  const CROSS_MODULE_BOOKS: Record<string, Record<string, { moduleId: string; bookLabel: string }>> = {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General': { moduleId: '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', bookLabel: 'General surgery Book 1' } },
+  };
   
   // Fetch chapter counts per book
   const { data: lectureCounts } = useQuery({
@@ -614,15 +617,15 @@ export function ModuleLearningTab({
       
       const crossBooks = CROSS_MODULE_BOOKS[moduleId];
       if (crossBooks) {
-        for (const [targetLabel, mapping] of Object.entries(crossBooks)) {
+        for (const [localLabel, crossRef] of Object.entries(crossBooks)) {
           const { data: crossData, error: crossError } = await supabase
             .from('module_chapters')
             .select('book_label')
-            .eq('module_id', mapping.sourceModuleId)
-            .eq('book_label', mapping.sourceBookLabel);
+            .eq('module_id', crossRef.moduleId)
+            .eq('book_label', crossRef.bookLabel);
           
           if (!crossError && crossData) {
-            counts[targetLabel] = (counts[targetLabel] || 0) + crossData.length;
+            counts[localLabel] = crossData.length;
           }
         }
       }
@@ -792,28 +795,28 @@ export function ModuleLearningTab({
             <div
               key={chapter.id}
               className={cn(
-                "flex items-center gap-3 py-3 px-2 md:px-4 transition-colors group",
+                "flex items-center gap-3 py-3 px-4 transition-colors group",
                 isAssigned ? "hover:bg-muted/50" : "opacity-50 cursor-default"
               )}
             >
               {isAssigned ? (
               <button
                 onClick={() => navigate(`/module/${moduleId}/chapter/${chapter.id}`)}
-                className="flex-1 flex items-center gap-3 text-left min-w-0"
+                className="flex-1 flex items-center gap-3 text-left"
               >
-                <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center flex-shrink-0">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
                   {prefix} {chapter.chapter_number}
                 </span>
-                <span className="flex-1 text-xs md:text-sm font-medium truncate min-w-0">
+                <span className="flex-1 text-[15px] font-medium truncate">
                   {chapter.title}
                 </span>
               </button>
               ) : (
-              <div className="flex-1 flex items-center gap-3 min-w-0">
-                <span className="hidden md:inline text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center flex-shrink-0">
+              <div className="flex-1 flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded min-w-[3rem] text-center">
                   {prefix} {chapter.chapter_number}
                 </span>
-                <span className="flex-1 text-xs md:text-sm font-medium truncate text-muted-foreground min-w-0">
+                <span className="flex-1 text-[15px] font-medium truncate text-muted-foreground">
                   {chapter.title}
                 </span>
               </div>
@@ -841,10 +844,10 @@ export function ModuleLearningTab({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                <>
                   <ChapterReadinessDot chapterId={chapter.id} />
-                  <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
-                </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </>
               ) : null}
             </div>
           );
@@ -886,9 +889,7 @@ export function ModuleLearningTab({
     );
   }
 
-  // Hint banner for students
-  const showStudentHint = hasChapters && !canManageBooks && !canManageChapters;
-
+  // ─── STUDENT VIEW: pill filters handled externally via ModulePage ───
   if (externalActiveBookLabel && !canManageBooks) {
     // Pharmacology special case
     if (externalActiveBookLabel.toLowerCase() === 'pharmacology') {
@@ -901,14 +902,16 @@ export function ModuleLearningTab({
       );
     }
 
-    const resolved = resolveCrossModuleBook(moduleId, externalActiveBookLabel);
+    const crossRef = CROSS_MODULE_BOOKS[moduleId]?.[externalActiveBookLabel];
+    const fetchModuleId = crossRef?.moduleId || moduleId;
+    const fetchBookLabel = crossRef?.bookLabel || externalActiveBookLabel;
     
     return (
       <StudentBookPillView
         moduleId={moduleId}
-        fetchModuleId={resolved.fetchModuleId}
-        fetchBookLabel={resolved.fetchBookLabel}
+        fetchModuleId={fetchModuleId}
         activeBookLabel={externalActiveBookLabel}
+        fetchBookLabel={fetchBookLabel}
         sortedBooks={[]} // pills rendered externally, pass empty
         onSelectPill={() => {}} // no-op, handled by parent
       />
@@ -945,14 +948,16 @@ export function ModuleLearningTab({
       );
     }
 
-    const resolved = resolveCrossModuleBook(moduleId, activeBookLabel);
+    const crossRefLegacy = CROSS_MODULE_BOOKS[moduleId]?.[activeBookLabel];
+    const fetchModuleId = crossRefLegacy?.moduleId || moduleId;
+    const fetchBookLabel = crossRefLegacy?.bookLabel || activeBookLabel;
     
     return (
       <StudentBookPillView
         moduleId={moduleId}
-        fetchModuleId={resolved.fetchModuleId}
-        fetchBookLabel={resolved.fetchBookLabel}
+        fetchModuleId={fetchModuleId}
         activeBookLabel={activeBookLabel}
+        fetchBookLabel={fetchBookLabel}
         sortedBooks={sortedBooks}
         onSelectPill={handleSelectBookPill}
       />
@@ -1075,21 +1080,6 @@ export function ModuleLearningTab({
   
   return (
     <div className="space-y-4">
-      {/* Inline guidance card for students */}
-      {!auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin && (
-        <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
-              <BookOpen className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-base font-semibold text-foreground mb-0.5">Start Learning</h3>
-              <p className="text-sm text-muted-foreground">Choose a chapter below to access resources, practice questions, and more.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-muted-foreground" />
@@ -1097,9 +1087,7 @@ export function ModuleLearningTab({
         </h2>
         <SortDropdown sortMode={sortMode} onSortChange={setSortMode} />
       </div>
-      <div className={cn(!auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin && "ring-2 ring-primary/15 rounded-lg")}>
-        {renderChapterList(sortedChapters, singleBookLabel)}
-      </div>
+      {renderChapterList(sortedChapters, singleBookLabel)}
 
       <ChapterFormModal
         open={chapterModalOpen}

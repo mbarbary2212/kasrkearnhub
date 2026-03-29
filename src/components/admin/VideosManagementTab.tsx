@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
+import { isValidVideoUrl, normalizeVideoInput, uploadVideoToStorage } from '@/lib/video';
 import {
   Play,
   Eye,
@@ -753,7 +753,6 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
   // Upload mode
   const [file, setFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
-  const [privacy, setPrivacy] = useState<'public' | 'unlisted' | 'private'>('unlisted');
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -812,21 +811,12 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
       const { data: { session } } = await supabase.auth.getSession();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const uploadEndpoint = `${supabaseUrl}/storage/v1/object/video-uploads/${storagePath}`;
-        const accessToken = session?.access_token ?? '';
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage upload failed: ${xhr.responseText}`));
-        xhr.onerror = () => reject(new Error('Network error uploading to storage.'));
-        xhr.open('POST', uploadEndpoint);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
-        xhr.setRequestHeader('x-upsert', 'true');
-        xhr.send(file);
+      await uploadVideoToStorage({
+        file,
+        storagePath,
+        supabaseUrl,
+        accessToken: session?.access_token ?? '',
+        onProgress: setUploadProgress,
       });
 
       // Step 2: Call edge function to upload from storage → YouTube → create lecture
@@ -840,7 +830,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
             storage_path: storagePath,
             title,
             description,
-            privacy,
+            privacy: 'unlisted',
             chapter_id: selectedChapterId,
             module_id: selectedModuleId || undefined,
             doctor: doctor.trim() || null,
@@ -867,7 +857,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
     setDoctor('');
     setLinkUrl('');
     setDescription('');
-    setPrivacy('unlisted');
+
     setSelectedChapterId('');
     setUploadStatus('idle');
     setUploadProgress(0);
@@ -951,15 +941,16 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
 
         {/* Form — hidden after upload done/error */}
         {(mode === 'link' || (uploadStatus !== 'done' && uploadStatus !== 'error')) && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {/* Video file — upload mode only */}
             {mode === 'upload' && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video File</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Video File</label>
                 <Input
                   type="file"
                   accept="video/*"
                   disabled={isUploading}
+                  className="h-8 text-xs"
                   onChange={(e) => {
                     const f = e.target.files?.[0] ?? null;
                     setFile(f);
@@ -969,40 +960,39 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
               </div>
             )}
 
-            {/* Year selector */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Year</label>
-              <Select
-                value={selectedYearId}
-                onValueChange={(v) => {
-                  setSelectedYearId(v);
-                  setSelectedModuleId('');
-                  setSelectedChapterId('');
-                }}
-                disabled={isUploading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a year…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {yearOptions.map((y) => (
-                    <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Module selector */}
-            {selectedYearId && (
+            {/* Year + Module in 2 columns */}
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Module</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Year</label>
+                <Select
+                  value={selectedYearId}
+                  onValueChange={(v) => {
+                    setSelectedYearId(v);
+                    setSelectedModuleId('');
+                    setSelectedChapterId('');
+                  }}
+                  disabled={isUploading}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select a year…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((y) => (
+                      <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Module</label>
                 <Select
                   value={selectedModuleId}
                   onValueChange={(v) => { setSelectedModuleId(v); setSelectedChapterId(''); }}
-                  disabled={isUploading}
+                  disabled={isUploading || !selectedYearId}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a module…" />
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder={selectedYearId ? 'Select a module…' : 'Select year first…'} />
                   </SelectTrigger>
                   <SelectContent>
                     {moduleOptions.map((m) => (
@@ -1011,19 +1001,19 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
                   </SelectContent>
                 </Select>
               </div>
-            )}
+            </div>
 
-            {/* Chapter selector */}
-            {selectedModuleId && (
+            {/* Chapter + Title in 2 columns */}
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Chapter</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Chapter</label>
                 <Select
                   value={selectedChapterId}
                   onValueChange={setSelectedChapterId}
-                  disabled={isUploading}
+                  disabled={isUploading || !selectedModuleId}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a chapter…" />
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder={selectedModuleId ? 'Select a chapter…' : 'Select module first…'} />
                   </SelectTrigger>
                   <SelectContent>
                     {chapterOptions.length === 0 ? (
@@ -1036,22 +1026,22 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {/* Title */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Title</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Video title…"
-                disabled={isUploading}
-              />
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Video title…"
+                  disabled={isUploading}
+                  className="h-8 text-xs"
+                />
+              </div>
             </div>
 
             {/* Doctor (optional) */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
                 Doctor <span className="text-muted-foreground/60 font-normal">(optional)</span>
               </label>
               <Input
@@ -1059,17 +1049,19 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
                 onChange={(e) => setDoctor(e.target.value)}
                 placeholder="e.g. Dr. Ahmed…"
                 disabled={isUploading}
+                className="h-8 text-xs"
               />
             </div>
 
             {/* Link mode: Video URL */}
             {mode === 'link' && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Video URL</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Video URL</label>
                 <Input
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="YouTube or Google Drive link"
+                  className="h-8 text-xs"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Supports YouTube and Google Drive. Drive videos must be shared as "Anyone with the link can view".
@@ -1077,35 +1069,18 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
               </div>
             )}
 
-            {/* Upload mode: Description + Privacy + Progress */}
+            {/* Upload mode: Description + Progress */}
             {mode === 'upload' && (
               <>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Description <span className="text-muted-foreground/60 font-normal">(optional)</span></label>
                   <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Video description (optional)…"
+                    placeholder="Video description…"
                     disabled={isUploading}
+                    className="h-8 text-xs"
                   />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Privacy</label>
-                  <Select
-                    value={privacy}
-                    onValueChange={(v) => setPrivacy(v as typeof privacy)}
-                    disabled={isUploading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unlisted">Unlisted</SelectItem>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {isUploading && (
@@ -1261,6 +1236,9 @@ export function VideosManagementTab({ allowedModuleIds }: { allowedModuleIds?: s
             noSource={noSource}
           />
 
+          {/* Upload Card */}
+          <YouTubeUploadCard hierarchy={hierarchy || []} />
+
           {/* Curriculum Browser */}
           <div>
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -1276,9 +1254,6 @@ export function VideosManagementTab({ allowedModuleIds }: { allowedModuleIds?: s
               </Card>
             )}
           </div>
-
-          {/* Upload Card */}
-          <YouTubeUploadCard hierarchy={hierarchy || []} />
         </>
       )}
     </div>

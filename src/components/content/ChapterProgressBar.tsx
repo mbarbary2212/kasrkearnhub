@@ -78,7 +78,7 @@ export function ChapterProgressBar({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className="space-y-2 min-w-0 overflow-hidden">
+      <div className="space-y-2">
         {/* Main Progress Bar - Overall */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-sm text-muted-foreground">

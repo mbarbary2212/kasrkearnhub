@@ -70,15 +70,15 @@ export function ModuleConnectTab({ moduleId, moduleName, moduleCode, yearId }: M
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 pb-20 md:pb-4">
-      <div className="text-center mb-4 md:mb-6">
-        <h2 className="text-lg md:text-xl font-semibold mb-1 md:mb-2">Connect</h2>
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-xl font-semibold mb-2">Connect</h2>
         <p className="text-muted-foreground text-sm">
           Get help and share feedback for {moduleName}
         </p>
       </div>
 
-      <div className="grid gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
         {/* Messages Card - Announcements + Replies */}
         <MessagesCard moduleId={moduleId} yearId={yearId} />
 

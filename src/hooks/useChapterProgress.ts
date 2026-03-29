@@ -43,30 +43,7 @@ interface ChapterProgressData {
   completedItems: number;
   totalItems: number;
   pathwayViewed: number;
-  pathwayTotal: number;
-  // Per-type breakdowns
-  mcqCompleted: number;
-  mcqTotal: number;
-  essayCompleted: number;
-  essayTotal: number;
-  osceCompleted: number;
-  osceTotal: number;
-  caseCompleted: number;
-  caseTotal: number;
-  matchingCompleted: number;
-  matchingTotal: number;
-  tfCompleted: number;
-  tfTotal: number;
-  flashcardReviewed: number;
-  flashcardTotal: number;
-  mindMapViewed: number;
-  mindMapTotal: number;
-  guidedViewed: number;
-  guidedTotal: number;
-  referenceViewed: number;
-  referenceTotal: number;
-  clinicalToolViewed: number;
-  clinicalToolTotal: number;
+pathwayTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -81,25 +58,13 @@ interface RpcProgressResult {
   osce_total: number;
   case_total: number;
   matching_total: number;
-  tf_total: number;
   mcq_completed: number;
   essay_completed: number;
   osce_completed: number;
   case_completed: number;
   matching_completed: number;
-  tf_completed: number;
   pathway_total: number;
-  pathway_viewed: number;
-  flashcard_total: number;
-  flashcard_reviewed: number;
-  mind_map_total: number;
-  mind_map_viewed: number;
-  guided_total: number;
-  guided_viewed: number;
-  reference_total: number;
-  reference_viewed: number;
-  clinical_tool_total: number;
-  clinical_tool_viewed: number;
+pathway_viewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -124,22 +89,12 @@ export function useChapterProgress(chapterId?: string) {
         completedItems: 0,
         totalItems: 0,
         pathwayViewed: 0,
-        pathwayTotal: 0,
-        mcqCompleted: 0, mcqTotal: 0,
-        essayCompleted: 0, essayTotal: 0,
-        osceCompleted: 0, osceTotal: 0,
-        caseCompleted: 0, caseTotal: 0,
-        matchingCompleted: 0, matchingTotal: 0,
-        tfCompleted: 0, tfTotal: 0,
-        flashcardReviewed: 0, flashcardTotal: 0,
-        mindMapViewed: 0, mindMapTotal: 0,
-        guidedViewed: 0, guidedTotal: 0,
-        referenceViewed: 0, referenceTotal: 0,
-        clinicalToolViewed: 0, clinicalToolTotal: 0,
+pathwayTotal: 0,
       };
 
       if (!user?.id || !chapterId) return emptyResult;
 
+      // Single RPC call replaces ~17 separate REST calls
       const { data, error } = await supabase.rpc('get_content_progress', {
         p_chapter_id: chapterId,
         p_topic_id: null,
@@ -150,22 +105,11 @@ export function useChapterProgress(chapterId?: string) {
 
       const rpc = data as unknown as RpcProgressResult;
 
-      const practiceTotal =
-        rpc.mcq_total +
-        rpc.essay_total +
-        rpc.osce_total +
-        rpc.case_total +
-        rpc.matching_total +
-        rpc.tf_total;
+      // Practice totals
+      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total;
+      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed;
 
-      const practiceCompleted =
-        rpc.mcq_completed +
-        rpc.essay_completed +
-        rpc.osce_completed +
-        rpc.case_completed +
-        rpc.matching_completed +
-        rpc.tf_completed;
-
+      // Video progress (client-side matching since video_id is extracted via regex)
       const videoProgressMap = new Map(
         (rpc.video_progress || []).map(vp => [vp.video_id, vp.percent_watched])
       );
@@ -186,14 +130,16 @@ export function useChapterProgress(chapterId?: string) {
         }
       }
 
-      const practiceProgress = practiceTotal > 0
-        ? Math.round((practiceCompleted / practiceTotal) * 100)
+      // Calculate percentages
+      const practiceProgress = practiceTotal > 0 
+        ? Math.round((practiceCompleted / practiceTotal) * 100) 
+        : 0;
+      
+      const videoProgress = videosTotal > 0 
+        ? Math.round(totalVideoProgress / videosTotal) 
         : 0;
 
-      const videoProgress = videosTotal > 0
-        ? Math.round(totalVideoProgress / videosTotal)
-        : 0;
-
+      // Weighted total
       let totalProgress: number;
       if (practiceTotal === 0 && videosTotal === 0) {
         totalProgress = 0;
@@ -221,29 +167,7 @@ export function useChapterProgress(chapterId?: string) {
         completedItems: practiceCompleted + videosCompleted,
         totalItems: practiceTotal + videosTotal,
         pathwayViewed: rpc.pathway_viewed,
-        pathwayTotal: rpc.pathway_total,
-        mcqCompleted: rpc.mcq_completed,
-        mcqTotal: rpc.mcq_total,
-        essayCompleted: rpc.essay_completed,
-        essayTotal: rpc.essay_total,
-        osceCompleted: rpc.osce_completed,
-        osceTotal: rpc.osce_total,
-        caseCompleted: rpc.case_completed,
-        caseTotal: rpc.case_total,
-        matchingCompleted: rpc.matching_completed,
-        matchingTotal: rpc.matching_total,
-        tfCompleted: rpc.tf_completed,
-        tfTotal: rpc.tf_total,
-        flashcardReviewed: rpc.flashcard_reviewed,
-        flashcardTotal: rpc.flashcard_total,
-        mindMapViewed: rpc.mind_map_viewed,
-        mindMapTotal: rpc.mind_map_total,
-        guidedViewed: rpc.guided_viewed,
-        guidedTotal: rpc.guided_total,
-        referenceViewed: rpc.reference_viewed,
-        referenceTotal: rpc.reference_total,
-        clinicalToolViewed: rpc.clinical_tool_viewed,
-        clinicalToolTotal: rpc.clinical_tool_total,
+pathwayTotal: rpc.pathway_total,
       };
     },
     enabled: !!user?.id && !!chapterId,
@@ -288,6 +212,8 @@ export function useMarkItemComplete() {
       isCorrect?: boolean;
       selectedAnswer?: unknown;
     }) => {
+      // Attempt saving is now handled by useSaveQuestionAttempt via RPC.
+      // This hook is retained for backward compatibility but no longer writes to the DB.
       return { questionId, chapterId: chapterId || '' };
     },
     onSuccess: ({ chapterId }) => {

@@ -1,5 +1,4 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useSearchParams } from 'react-router-dom';
 import { DashboardData } from '@/hooks/useStudentDashboard';
 import { LearningHubOverview } from './LearningHubOverview';
 import { LearningHubStudyPlan } from './LearningHubStudyPlan';
@@ -23,12 +22,8 @@ interface LearningHubTabsProps {
 }
 
 export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, selectedYearId, selectedModuleId, onNavigate }: LearningHubTabsProps) {
-  const [searchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab');
-  const defaultTab = (tabFromUrl && ['overview', 'study-plan', 'unlocks'].includes(tabFromUrl)) ? tabFromUrl : 'overview';
-
   return (
-    <Tabs defaultValue={defaultTab} className="w-full">
+    <Tabs defaultValue="overview" className="w-full">
       <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent p-1 gap-2">
         <TabsTrigger 
           value="overview" 

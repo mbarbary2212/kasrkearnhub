@@ -13,7 +13,6 @@ import {
   getCapMessage,
   READINESS_WEIGHTS,
 } from '@/lib/readinessCalculator';
-import { ReadinessTrendSparkline } from './ReadinessTrendSparkline';
 
 interface DashboardStatusStripProps {
   examReadiness: number;
@@ -24,7 +23,6 @@ interface DashboardStatusStripProps {
   chaptersTotal: number;
   studyStreak: number;
   readinessResult?: ReadinessResult;
-  readinessTrend?: number[];
 }
 
 export function DashboardStatusStrip({
@@ -36,7 +34,6 @@ export function DashboardStatusStrip({
   chaptersTotal,
   studyStreak,
   readinessResult,
-  readinessTrend,
 }: DashboardStatusStripProps) {
   const capMessage = readinessResult?.cap ? getCapMessage(readinessResult.cap) : null;
   const hasDetailedBreakdown = !!readinessResult;
@@ -54,9 +51,6 @@ export function DashboardStatusStrip({
               <span className="text-3xl font-heading font-bold text-foreground">
                 {examReadiness}%
               </span>
-              {readinessTrend && readinessTrend.length >= 2 && (
-                <ReadinessTrendSparkline dataPoints={readinessTrend} className="ml-1" />
-              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

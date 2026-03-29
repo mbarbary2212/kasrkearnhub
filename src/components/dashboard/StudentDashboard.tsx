@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { useTestProgress } from '@/hooks/useTestProgress';
 import { useYears } from '@/hooks/useYears';
@@ -22,43 +21,43 @@ import { HomeAnnouncementAlert } from '@/components/announcements/HomeAnnounceme
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { GraduationCap, BookOpen, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
+const LAST_SELECTED_YEAR_KEY = 'kasrlearn_last_selected_year';
 
 export function StudentDashboard() {
   const { profile } = useAuthContext();
   const navigate = useNavigate();
-  const location = useLocation();
   const moduleSelectRef = useRef<HTMLButtonElement>(null);
-  const { activeYear } = useActiveYear();
-  
-  // Detect if user arrived from Learning tab click
-  const [highlightModuleSelect, setHighlightModuleSelect] = useState(false);
-  
-  useEffect(() => {
-    if ((location.state as any)?.fromLearning) {
-      setHighlightModuleSelect(true);
-      // Clear the state to prevent re-triggering on back navigation
-      window.history.replaceState({}, document.title);
-      // Auto-scroll to module selector
-      setTimeout(() => {
-        moduleSelectRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
-      // Remove highlight after animation
-      const timer = setTimeout(() => setHighlightModuleSelect(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [location.state]);
   
   // Filter state
+  const [selectedYearId, setSelectedYearId] = useState<string>('');
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
   
-  // Fetch years to resolve activeYear to an ID
+  // Fetch years and modules for dropdowns
   const { data: years, isLoading: yearsLoading } = useYears();
-  
-  // Derive selectedYearId from activeYear context
-  const selectedYearId = years?.find(y => y.number === activeYear?.yearNumber)?.id || '';
-  
   const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
+  
+  // Auto-select year on load
+  useEffect(() => {
+    if (years && years.length > 0 && !selectedYearId) {
+      // Try to get last selected year from localStorage
+      const lastSelectedYear = localStorage.getItem(LAST_SELECTED_YEAR_KEY);
+      
+      if (lastSelectedYear && years.find(y => y.id === lastSelectedYear)) {
+        setSelectedYearId(lastSelectedYear);
+      } else {
+        // Default to first year
+        setSelectedYearId(years[0].id);
+      }
+    }
+  }, [years, selectedYearId]);
+
+  // Save selected year to localStorage when it changes
+  useEffect(() => {
+    if (selectedYearId && selectedYearId !== 'all') {
+      localStorage.setItem(LAST_SELECTED_YEAR_KEY, selectedYearId);
+    }
+  }, [selectedYearId]);
   
   const moduleSelected = !!selectedModuleId && selectedModuleId !== 'all';
 
@@ -74,6 +73,12 @@ export function StudentDashboard() {
   }, testProgress);
 
   const isLoading = yearsLoading;
+
+  // Reset module when year changes
+  const handleYearChange = (yearId: string) => {
+    setSelectedYearId(yearId);
+    setSelectedModuleId(''); // Reset module selection
+  };
 
   const handleSelectModuleClick = () => {
     // Focus the module select dropdown
@@ -133,15 +138,24 @@ export function StudentDashboard() {
 
             {/* Dropdowns row */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              {/* Year label + Module Dropdown */}
+              {/* Year and Module Dropdowns */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Year label (read-only from context) */}
-                {selectedYear && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Year:</span>
-                    <span className="text-sm font-medium">{selectedYear.name}</span>
-                  </div>
-                )}
+                {/* Year Dropdown */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Year:</span>
+                  <Select value={selectedYearId} onValueChange={handleYearChange}>
+                    <SelectTrigger className="h-8 w-[160px] bg-background text-sm">
+                      <SelectValue placeholder="Select Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {years?.map((year) => (
+                        <SelectItem key={year.id} value={year.id}>
+                          {year.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <span className="hidden sm:inline text-muted-foreground/40">|</span>
 
@@ -153,8 +167,8 @@ export function StudentDashboard() {
                     onValueChange={setSelectedModuleId}
                     disabled={!selectedYearId}
                   >
-                    <SelectTrigger ref={moduleSelectRef} className={cn("h-8 w-[220px] bg-background text-sm transition-all duration-500", highlightModuleSelect && "ring-2 ring-primary ring-offset-2 ring-offset-background")}>
-                      <SelectValue placeholder="Select module" />
+                    <SelectTrigger ref={moduleSelectRef} className="h-8 w-[220px] bg-background text-sm">
+                      <SelectValue placeholder={selectedYearId ? "Select module" : "Select year first"} />
                     </SelectTrigger>
                     <SelectContent>
                       {modules?.map((module) => (
@@ -217,7 +231,7 @@ export function StudentDashboard() {
 
       {/* Content based on module selection */}
       {!moduleSelected ? (
-        <LearningHubEmptyState onSelectModule={handleSelectModuleClick} highlight={highlightModuleSelect} />
+        <LearningHubEmptyState onSelectModule={handleSelectModuleClick} />
       ) : (dashboardLoading || testProgressLoading) ? (
         <DashboardContentSkeleton />
       ) : dashboard ? (

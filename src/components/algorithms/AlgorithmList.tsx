@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, Play, GitBranch, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTrackContentView } from '@/hooks/useTrackContentView';
 import { InteractiveAlgorithm, NODE_TYPE_CONFIG } from '@/types/algorithm';
 import { AlgorithmPlayer } from './AlgorithmPlayer';
-import { useTrackContentView } from '@/hooks/useTrackContentView';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,17 +20,16 @@ import {
 
 interface AlgorithmListProps {
   algorithms: InteractiveAlgorithm[];
-  canManage?: boolean;
   chapterId?: string;
-  topicId?: string;
+  canManage?: boolean;
   onEdit?: (alg: InteractiveAlgorithm) => void;
   onDelete?: (alg: InteractiveAlgorithm) => void;
 }
 
-export function AlgorithmList({ algorithms, canManage, chapterId, topicId, onEdit, onDelete }: AlgorithmListProps) {
+export function AlgorithmList({ algorithms, chapterId, canManage, onEdit, onDelete }: AlgorithmListProps) {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InteractiveAlgorithm | null>(null);
-  const trackView = useTrackContentView();
+  const trackContentView = useTrackContentView();
 
   if (algorithms.length === 0) {
     return (
@@ -65,7 +64,14 @@ export function AlgorithmList({ algorithms, canManage, chapterId, topicId, onEdi
           const nodeCount = alg.algorithm_json?.nodes?.length || 0;
           const decisionCount = alg.algorithm_json?.nodes?.filter(n => n.type === 'decision').length || 0;
           return (
-            <Card key={alg.id} className="group hover:shadow-md transition-shadow cursor-pointer" onClick={() => { trackView.mutate({ contentType: 'pathway', contentId: alg.id, chapterId, topicId }); setPlayingId(alg.id); }}>
+            <Card key={alg.id} className="group hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
+              setPlayingId(alg.id);
+              trackContentView.mutate({
+                contentType: 'pathway',
+                contentId: alg.id,
+                chapterId,
+              });
+            }}>
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-sm font-semibold leading-tight">{alg.title}</CardTitle>
@@ -111,7 +117,15 @@ export function AlgorithmList({ algorithms, canManage, chapterId, topicId, onEdi
                     <Badge variant="outline" className="text-xs">{decisionCount} decisions</Badge>
                   )}
                   <div className="flex-1" />
-                  <Button size="sm" variant="default" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); trackView.mutate({ contentType: 'pathway', contentId: alg.id, chapterId, topicId }); setPlayingId(alg.id); }}>
+                  <Button size="sm" variant="default" className="h-7 text-xs" onClick={(e) => {
+                    e.stopPropagation();
+                    setPlayingId(alg.id);
+                    trackContentView.mutate({
+                      contentType: 'pathway',
+                      contentId: alg.id,
+                      chapterId,
+                    });
+                  }}>
                     <Play className="w-3 h-3 mr-1" /> Start
                   </Button>
                 </div>

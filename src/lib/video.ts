@@ -1,6 +1,77 @@
 /**
  * Video utility functions for YouTube and Google Drive
  */
+const TUS_CHUNK_SIZE = 6 * 1024 * 1024; // 6 MB
+
+/**
+ * Upload a video file to Supabase Storage using the TUS resumable upload protocol.
+ * This bypasses the standard endpoint's request body size limit and supports large files.
+ */
+export async function uploadVideoToStorage({
+  file,
+  storagePath,
+  supabaseUrl,
+  accessToken,
+  onProgress,
+}: {
+  file: File;
+  storagePath: string;
+  supabaseUrl: string;
+  accessToken: string;
+  onProgress?: (percent: number) => void;
+}): Promise<void> {
+  const metadata = [
+    `bucketName ${btoa("video-uploads")}`,
+    `objectName ${btoa(storagePath)}`,
+    `contentType ${btoa(file.type || "video/mp4")}`,
+    `cacheControl ${btoa("3600")}`,
+  ].join(",");
+
+  // Step 1: Create the resumable upload
+  const createRes = await fetch(`${supabaseUrl}/storage/v1/upload/resumable`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Tus-Resumable": "1.0.0",
+      "Upload-Length": String(file.size),
+      "Upload-Metadata": metadata,
+      "x-upsert": "true",
+    },
+  });
+
+  if (!createRes.ok) {
+    throw new Error(`Storage upload failed: ${await createRes.text()}`);
+  }
+
+  const uploadUrl = createRes.headers.get("Location");
+  if (!uploadUrl) throw new Error("No Location header from storage");
+
+  // Step 2: Upload in chunks
+  let offset = 0;
+  while (offset < file.size) {
+    const chunk = file.slice(offset, offset + TUS_CHUNK_SIZE);
+    const chunkBuffer = await chunk.arrayBuffer();
+
+    const patchRes = await fetch(uploadUrl, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Tus-Resumable": "1.0.0",
+        "Content-Type": "application/offset+octet-stream",
+        "Content-Length": String(chunkBuffer.byteLength),
+        "Upload-Offset": String(offset),
+      },
+      body: chunkBuffer,
+    });
+
+    if (!patchRes.ok) {
+      throw new Error(`Storage upload failed: ${await patchRes.text()}`);
+    }
+
+    offset += chunkBuffer.byteLength;
+    onProgress?.(Math.round((offset / file.size) * 100));
+  }
+}
 
 export type VideoSource = "youtube" | "googledrive" | "unknown";
 

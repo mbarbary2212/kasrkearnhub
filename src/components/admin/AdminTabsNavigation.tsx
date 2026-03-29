@@ -1,5 +1,6 @@
 import { Shield, BookOpen, MessageSquare, Users, UserPlus, Activity, Settings, Layers, FileText, Sparkles, HelpCircle, BarChart3, Megaphone, Radio, Video, ClipboardList } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
@@ -30,6 +31,7 @@ export function AdminTabsNavigation({
   activeGroup,
   setActiveGroup,
 }: AdminTabsNavigationProps) {
+  const navigate = useNavigate();
   const groups: GroupDef[] = [
     {
       key: 'system',
@@ -55,7 +57,7 @@ export function AdminTabsNavigation({
         { value: 'analytics', label: 'Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
         { value: 'videos', label: 'Videos', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'ai-settings', label: 'Content Factory', icon: Sparkles, visible: isSuperAdmin },
-        { value: 'blueprint', label: 'Assessment Blueprint', icon: ClipboardList, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
+        { value: '__blueprint__', label: 'Assessment Blueprint', icon: ClipboardList, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
       ],
     },
     {
@@ -126,6 +128,18 @@ export function AdminTabsNavigation({
       <TabsList className="h-auto gap-1 p-1.5 w-full justify-start flex-wrap">
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;
+          if (tab.value === '__blueprint__') {
+            return (
+              <button
+                key={tab.value}
+                onClick={() => navigate('/admin/blueprint')}
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-primary hover:text-primary-foreground"
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            );
+          }
           return (
             <TabsTrigger
               key={tab.value}

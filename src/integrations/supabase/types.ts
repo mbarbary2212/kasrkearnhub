@@ -1285,6 +1285,58 @@ export type Database = {
           },
         ]
       }
+      chapter_component_weights: {
+        Row: {
+          assessment_id: string
+          chapter_id: string
+          component_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          assessment_id: string
+          chapter_id: string
+          component_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          assessment_id?: string
+          chapter_id?: string
+          component_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_component_weights_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_component_weights_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_component_weights_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_components"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_question_upvotes: {
         Row: {
           created_at: string
@@ -2776,6 +2828,39 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lecture_sections: {
+        Row: {
+          id: string
+          lecture_id: string
+          section_id: string
+        }
+        Insert: {
+          id?: string
+          lecture_id: string
+          section_id: string
+        }
+        Update: {
+          id?: string
+          lecture_id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_sections_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecture_sections_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
         ]

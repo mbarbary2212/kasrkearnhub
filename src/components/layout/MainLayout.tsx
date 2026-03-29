@@ -1,6 +1,5 @@
 import { ReactNode, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,68 +11,39 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, ChevronRight } from 'lucide-react';
-import { usePresence } from '@/contexts/PresenceContext';
-import logo from '@/assets/kalm-hub-logo-transparent.png';
-import InquiryModal from '@/components/feedback/InquiryModal';
-import { AskCoachButton } from '@/components/coach/AskCoachButton';
-import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
-import { useYears } from '@/hooks/useYears';
-import { StudentSidebar } from '@/components/layout/StudentSidebar';
-import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { useActiveYear } from '@/contexts/ActiveYearContext';
-import { getYearIcon } from '@/lib/yearIcons';
-import { useModule } from '@/hooks/useModules';
-import { useChapter } from '@/hooks/useChapters';
-import { useChapterProgress } from '@/hooks/useChapterProgress';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Home, LogOut, Shield, Settings, Trophy, GraduationCap, GalleryHorizontal, BookOpen } from 'lucide-react';
+import logo from '@/assets/kalm-hub-logo-transparent.png';
+import InquiryModal from '@/components/feedback/InquiryModal';
+import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { HeaderBadgesPanel } from '@/components/dashboard/HeaderBadgesPanel';
+import { useBadgeStats } from '@/hooks/useBadges';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
+import { useDueCards } from '@/hooks/useFSRS';
+import { useYears } from '@/hooks/useYears';
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
-function OnlinePill() {
-  const { onlineCount } = usePresence();
-  return (
-    <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-emerald-600/15 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-green-500/10 dark:text-green-400">
-      <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-      </span>
-      <Users className="h-3.5 w-3.5" />
-      <span>{onlineCount}</span>
-    </div>
-  );
-}
-
 export default function MainLayout({ children }: MainLayoutProps) {
-  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
+  const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [badgesOpen, setBadgesOpen] = useState(false);
+  const { earned } = useBadgeStats();
   const isMobile = useIsMobile();
-  const { activeYear } = useActiveYear();
-
-  // Extract moduleId and chapterId from URL for breadcrumb display
-  const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
-  const chapterIdMatch = location.pathname.match(/\/chapter\/([^/]+)/);
-  const currentModuleId = moduleIdMatch?.[1] || '';
-  const currentChapterId = chapterIdMatch?.[1] || '';
-  const { data: currentModule } = useModule(currentModuleId);
-  const { data: currentChapter } = useChapter(currentChapterId || undefined);
-  const { data: chapterProgress, isLoading: progressLoading } = useChapterProgress(currentChapterId || undefined);
-
+  const { data: dueCards } = useDueCards();
+  const dueCount = dueCards?.length ?? 0;
   const { data: years } = useYears();
-  const matchedYear = years?.find(y => y.number === activeYear?.yearNumber);
-  const yearIcon = matchedYear?.image_url || (activeYear ? getYearIcon(activeYear.yearNumber) : undefined);
 
   // Track route changes for resume functionality
   useRouteResume(isAdmin);
@@ -89,11 +59,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const handleGoHome = () => {
     sessionStorage.setItem('skipAutoLogin', 'true');
+    if (profile?.preferred_year_id && years) {
+      const preferredYear = years.find(y => y.id === profile.preferred_year_id);
+      if (preferredYear) {
+        navigate(`/year/${preferredYear.number}`);
+        return;
+      }
+    }
     navigate('/');
-  };
-
-  const handleYearClick = () => {
-    navigate('/years');
   };
 
   const getInitials = (name: string | null | undefined) => {
@@ -148,94 +121,64 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   const displayName = profile?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
-  const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
+    <div className="min-h-screen bg-background dark:bg-transparent">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
-        <div className="container mx-auto px-3 md:px-4 h-14 md:h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
             </button>
-            {/* Active year indicator */}
-            {activeYear && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
-                <button
-                  onClick={handleYearClick}
-                  className="flex items-center gap-1.5 hover:opacity-80 transition-all duration-200"
-                >
-                  {yearIcon && (
-                    <img src={yearIcon} alt={activeYear.yearName} className="h-6 w-6 rounded object-contain" />
-                  )}
-                  <span className="text-xs md:text-sm font-medium text-muted-foreground hidden sm:inline">
-                    {activeYear.yearName}
-                  </span>
-                </button>
-              </>
+            {/* Achievements Trophy Icon - Right of logo (students only) */}
+            {user && !isAdmin && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => setBadgesOpen(true)}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-md bg-yellow-500/10 hover:bg-yellow-500/20 transition-transform duration-200 hover:scale-110"
+                    >
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    Achievements
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
-            {/* Module slug breadcrumb */}
-            {currentModule?.slug && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
-                <button
-                  onClick={() => navigate(`/module/${currentModuleId}`)}
-                  className="flex items-center gap-1 hover:opacity-80 transition-all duration-200"
-                >
-                  <span className="text-xs md:text-sm font-medium text-muted-foreground uppercase">
-                    {currentModule.slug}
-                  </span>
-                </button>
-              </>
-            )}
-            {/* Chapter breadcrumb */}
-            {currentChapter && (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  {currentChapter.icon_url && (
-                    <img src={currentChapter.icon_url} alt="" className="h-7 w-7 md:h-8 md:w-8 rounded-lg object-cover" />
-                  )}
-                  <span className="text-xs md:text-sm font-medium text-foreground truncate max-w-[120px] md:max-w-[200px]">
-                    {currentChapter.title}
-                  </span>
-                </div>
-              </>
+            {/* Review Due Icon - Right of trophy (students only, always visible) */}
+            {user && !isAdmin && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => navigate('/review/flashcards')}
+                      variant="ghost"
+                      size="icon"
+                      className="relative h-8 w-8 rounded-md bg-primary/10 hover:bg-primary/20 transition-transform duration-200 hover:scale-110"
+                    >
+                      <GalleryHorizontal className="h-4 w-4 text-primary" />
+                      {(dueCount ?? 0) > 0 && (
+                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                          {(dueCount ?? 0) > 9 ? '9+' : dueCount}
+                        </span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-black">
+                    {(dueCount ?? 0) > 0
+                      ? `${dueCount} flashcard${dueCount === 1 ? '' : 's'} due today`
+                      : 'Flashcards'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
-
-          {/* Chapter progress bar - between breadcrumb and right icons */}
-          {!isAdmin && currentChapterId && currentChapter && !progressLoading && chapterProgress && (chapterProgress.practiceTotal > 0 || chapterProgress.videosTotal > 0) && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <div className="w-16 md:w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{ width: `${chapterProgress.totalProgress}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] md:text-xs font-semibold text-muted-foreground">
-                      {chapterProgress.totalProgress}%
-                    </span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs space-y-1 max-w-[200px]">
-                  <p className="font-semibold">Chapter Progress: {chapterProgress.totalProgress}%</p>
-                  {chapterProgress.practiceTotal > 0 && (
-                    <p>Practice: {chapterProgress.practiceCompleted}/{chapterProgress.practiceTotal} ({chapterProgress.practiceProgress}%)</p>
-                  )}
-                  {chapterProgress.videosTotal > 0 && (
-                    <p>Videos: {chapterProgress.videoProgress}% watched</p>
-                  )}
-                  <p className="text-muted-foreground">Practice 60% · Videos 40%</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
 
           {/* Admin Panel button - prominent header placement */}
           {user && isAdmin && (
@@ -254,8 +197,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </Button>
           )}
 
-          <div className="flex items-center gap-1.5 md:gap-2">
-            {user && <OnlinePill />}
+          <div className="flex items-center gap-2">
             <ThemeToggle />
             {/* Admin notifications for admins */}
             {user && isAdmin && (
@@ -276,6 +218,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
                       {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
+                  {/* Badge count indicator (students only) */}
+                  {!isAdmin && earned > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-yellow-500 text-white text-xs font-bold flex items-center justify-center border-2 border-background shadow-sm">
+                      {earned > 9 ? '9+' : earned}
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end">
@@ -295,7 +243,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
                   <Home className="mr-2 h-4 w-4" />
                   Home
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/years')}>
+                <DropdownMenuItem onClick={() => {
+                  sessionStorage.setItem('skipAutoLogin', 'true');
+                  navigate('/');
+                }}>
                   <BookOpen className="mr-2 h-4 w-4" />
                   All Years
                 </DropdownMenuItem>
@@ -326,34 +277,17 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
 
-      <div className="flex flex-1">
-        {/* Student Sidebar - desktop only */}
-        {isStudent && <StudentSidebar />}
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8 pb-24">
+        {children}
+      </main>
 
-        {/* Main Content */}
-        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden", isStudent ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', isStudent ? '' : 'container mx-auto')}>
-          <div className={isStudent ? 'container mx-auto' : ''}>
-            {children}
-          </div>
-        </main>
-      </div>
-
-      {/* Mobile Bottom Navigation */}
-      {isStudent && <MobileBottomNav />}
-
-      {/* Persistent Ask Footer — all devices */}
-      {user && !isAdmin && (
-        <div className={cn(
-          "fixed z-40 right-3 sm:right-4",
-          isStudent ? "bottom-[calc(56px+env(safe-area-inset-bottom)+8px)] sm:bottom-4" : "bottom-4"
-        )}>
-          <AskCoachButton variant="icon" className="h-10 w-10 shadow-lg border border-border bg-card/90 backdrop-blur-sm hover:bg-accent" />
-        </div>
-      )}
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />
 
+      {/* Achievements Panel (students only) */}
+      {!isAdmin && <HeaderBadgesPanel open={badgesOpen} onOpenChange={setBadgesOpen} />}
     </div>
   );
 }

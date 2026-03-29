@@ -54,11 +54,11 @@ export function AskCoachButton({
           shouldPulse && "animate-pulse ring-2 ring-primary/50",
           className
         )}
-        title="Ask"
+        title="Ask Study Coach"
       >
         <img 
           src={studyCoachIcon} 
-          alt="Ask" 
+          alt="Ask Coach" 
           className="h-full w-full object-contain rounded-full" 
         />
       </Button>
@@ -79,7 +79,7 @@ export function AskCoachButton({
         )}
       >
         <Sparkles className="h-3 w-3 text-primary" />
-        <span>Ask</span>
+        <span>Ask Coach</span>
       </Button>
     );
   }
@@ -108,7 +108,7 @@ export function AskCoachButton({
           alt="" 
           className="h-5 w-5 object-contain rounded-full" 
         />
-        <span>Ask</span>
+        <span>Ask Coach</span>
       </Button>
     );
   }
@@ -129,7 +129,7 @@ export function AskCoachButton({
         alt="" 
         className="h-5 w-5 object-contain rounded-full" 
       />
-      <span>Ask</span>
+      <span>Ask Study Coach</span>
     </Button>
   );
 }

@@ -273,8 +273,6 @@ export function ResourcesTabContent({
                   title={doc.title}
                   content={doc.rich_content || ''}
                   documentType="summary"
-                  resourceId={doc.id}
-                  chapterId={chapterId}
                 />
               ))}
             </div>

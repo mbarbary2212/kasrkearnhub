@@ -22,7 +22,7 @@ import { PasswordRequirements, isPasswordValid } from '@/components/auth/Passwor
 import { useAdminApiKeyStatus, useSaveAdminApiKey, useRevokeAdminApiKey, useAIPlatformSettings } from '@/hooks/useAIGovernance';
 
 export default function AccountPage() {
-  const { user, profile, isLoading: authLoading, patchProfile } = useAuthContext();
+  const { user, profile, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   const { data: years, isLoading: yearsLoading } = useYears();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -174,22 +174,16 @@ export default function AccountPage() {
     setIsSaving(true);
 
     try {
-      const updates = {
-        full_name: fullName.trim() || null,
-        preferred_year_id: preferredYearId || null,
-        auto_login_to_year: autoLoginToYear,
-      };
-
       const { error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({
+          full_name: fullName.trim() || null,
+          preferred_year_id: preferredYearId || null,
+          auto_login_to_year: autoLoginToYear,
+        })
         .eq('id', user.id);
 
       if (error) throw error;
-
-      // Optimistically update local auth state
-      patchProfile(updates as any);
-
       toast.success('Profile saved successfully');
     } catch (error: any) {
       console.error('Error saving profile:', error);

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -78,9 +78,10 @@ import {
   Image,
   Sparkles,
   HelpCircle,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from '@/hooks/useCustomizeView';
-
+import { CustomizeViewSheet } from '@/components/student/CustomizeViewSheet';
 import { usePresence } from '@/contexts/PresenceContext';
 import { cn } from '@/lib/utils';
 import { AlgorithmList } from '@/components/algorithms';
@@ -111,20 +112,7 @@ export default function TopicDetailPage() {
 
   const canManageContent = !!(auth.isTeacher || (topicId && auth.canManageTopic(topicId)));
 
-  const [searchParams] = useSearchParams();
-  const getSection = (): SectionMode => {
-    const s = searchParams.get('section') as SectionMode;
-    return s && ['resources', 'interactive', 'practice', 'test'].includes(s) ? s : 'resources';
-  };
-  const [activeSection, setActiveSection] = useState<SectionMode>(getSection);
-
-  // Sync activeSection when URL search params change (sidebar clicks)
-  useEffect(() => {
-    const s = searchParams.get('section') as SectionMode;
-    if (s && ['resources', 'interactive', 'practice', 'test'].includes(s)) {
-      setActiveSection(s);
-    }
-  }, [searchParams]);
+  const [activeSection, setActiveSection] = useState<SectionMode>('resources');
   
   const [resourcesTab, setResourcesTab] = useState<ResourceTabId>('lectures');
   const [interactiveTab, setInteractiveTab] = useState<InteractiveTabId>('cases');
@@ -331,7 +319,7 @@ export default function TopicDetailPage() {
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
   const { data: studentPrefs } = useStudentModulePreferences();
-  
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const resourcesTabs = useMemo(() => {
     if (canManageContent) return allResourcesTabs;
@@ -430,7 +418,42 @@ export default function TopicDetailPage() {
               </>
             )}
           </div>
+          {/* Ask Coach Button - visible in Resources and Practice sections */}
+          {!auth.isAdmin && (activeSection === 'resources' || activeSection === 'practice') && (
+            <AskCoachButton 
+              variant="header"
+              context={{
+                pageType: activeSection === 'resources' ? 'resource' : 'practice',
+                moduleId: module?.id,
+                moduleName: module?.name,
+                topicId: topic?.id,
+              }}
+            />
+          )}
+          {/* Customize View button for students */}
+          {!canManageContent && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCustomizeOpen(true)}
+                className="md:hidden text-muted-foreground hover:text-foreground"
+                title="Customize View"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setCustomizeOpen(true)}
+                className="hidden md:inline-flex gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                Customize View
+              </Button>
+            </>
+          )}
         </div>
+        <CustomizeViewSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
 
         {/* Topic Progress Bar - hidden for admins */}
         {!canManageContent && (
@@ -478,6 +501,35 @@ export default function TopicDetailPage() {
             </nav>
           </div>
 
+          {/* Desktop: Fixed Vertical Navigation Rail */}
+          <div className="hidden md:block w-[180px] flex-shrink-0">
+            <nav className="sticky top-4 bg-muted/30 rounded-lg p-2">
+              <div className="flex flex-col gap-1">
+                {sectionNav.map((section) => {
+                  const Icon = section.icon;
+                  const isActive = activeSection === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveSection(section.id)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-colors text-left",
+                        isActive 
+                          ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="whitespace-nowrap">{section.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+
+          {/* Divider */}
+          <div className="hidden md:block w-px bg-border/50 mx-4 self-stretch min-h-[200px]" />
 
           {/* Main Content */}
           <div className="flex-1 min-w-0">
@@ -677,8 +729,6 @@ export default function TopicDetailPage() {
                                   title={doc.title}
                                   content={doc.rich_content}
                                   documentType="socratic_tutorial"
-                                  resourceId={doc.id}
-                                  topicId={topicId}
                                 />
                               ) : (
                                 <SocraticDocumentCard

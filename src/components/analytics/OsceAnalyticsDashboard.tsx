@@ -394,7 +394,7 @@ export function OsceAnalyticsDashboard({ modules, moduleAdminModuleIds }: OsceAn
             <DialogTitle>Station Details</DialogTitle>
           </DialogHeader>
           
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           {selectedQuestion && (
             <div className="space-y-6 pb-4">
               {/* Question ID */}

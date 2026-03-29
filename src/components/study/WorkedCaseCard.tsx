@@ -10,32 +10,16 @@ import {
 } from '@/components/ui/collapsible';
 import { StudyResource, ClinicalCaseWorkedContent } from '@/hooks/useStudyResources';
 import { requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
-import { useTrackContentView } from '@/hooks/useTrackContentView';
 
 interface WorkedCaseCardProps {
   resource: StudyResource;
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
-  chapterId?: string;
-  topicId?: string;
 }
 
-export function WorkedCaseCard({ resource, canManage = false, onEdit, chapterId, topicId }: WorkedCaseCardProps) {
+export function WorkedCaseCard({ resource, canManage = false, onEdit }: WorkedCaseCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const content = resource.content as ClinicalCaseWorkedContent;
-  const trackView = useTrackContentView();
-
-  const handleOpenChange = (open: boolean) => {
-    if (open && !isOpen) {
-      trackView.mutate({
-        contentType: 'clinical_tool',
-        contentId: resource.id,
-        chapterId: chapterId || resource.chapter_id || undefined,
-        topicId: topicId || resource.topic_id || undefined,
-      });
-    }
-    setIsOpen(open);
-  };
 
   const handleDelete = () => {
     requestResourceDelete('clinical_case_worked', resource.id, resource.title);
@@ -104,7 +88,7 @@ export function WorkedCaseCard({ resource, canManage = false, onEdit, chapterId,
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <Card className="transition-all hover:shadow-md">
         <CardHeader className="p-4">
           <div className="flex items-center justify-between">

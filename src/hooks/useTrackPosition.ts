@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -17,12 +17,12 @@ interface TrackPositionProps {
 // Global ref so multiple instances share one latest position
 let globalPosition: (TrackPositionProps & { userId: string }) | null = null;
 let listenerAttached = false;
-let globalAccessToken: string | null = null;
-let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-function buildPayload(pos: typeof globalPosition) {
-  if (!pos || (!pos.module_id && !pos.year_number)) return null;
-  return {
+function flushGlobalPosition() {
+  const pos = globalPosition;
+  if (!pos || (!pos.module_id && !pos.year_number)) return;
+
+  const payload = {
     user_id: pos.userId,
     year_number: pos.year_number ?? null,
     module_id: pos.module_id ?? null,
@@ -35,11 +35,6 @@ function buildPayload(pos: typeof globalPosition) {
     activity_position: pos.activity_position ?? null,
     updated_at: new Date().toISOString(),
   };
-}
-
-function flushGlobalPosition() {
-  const payload = buildPayload(globalPosition);
-  if (!payload) return;
 
   const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/student_last_position?on_conflict=user_id`;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -58,31 +53,21 @@ function flushGlobalPosition() {
   }).catch(() => {/* best-effort */});
 }
 
-/** Debounced flush — saves after 2s of no new updates */
-function scheduleDebouncedFlush() {
-  if (flushTimer) clearTimeout(flushTimer);
-  flushTimer = setTimeout(() => {
-    flushGlobalPosition();
-    flushTimer = null;
-  }, 2000);
-}
+let globalAccessToken: string | null = null;
 
 /**
- * Tracks student navigation position in memory and persists to DB:
- * - Debounced (2s) on every navigation change
- * - Immediately on tab/browser close (beforeunload)
- * - On logout (SIGNED_OUT)
+ * Tracks student navigation position in memory and only persists to DB
+ * on tab/browser close (beforeunload) or logout — NOT on every navigation.
  */
 export function useTrackPosition(props: TrackPositionProps) {
   const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, user } = useAuthContext();
   const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
-  // Update global position whenever props change (in-memory + debounced flush)
+  // Update global position whenever props change (in-memory only, no DB call)
   useEffect(() => {
     if (!isStudent || !user?.id) return;
     if (!props.module_id && !props.year_number) return;
     globalPosition = { ...props, userId: user.id };
-    scheduleDebouncedFlush();
   }, [isStudent, user?.id, JSON.stringify(props)]);
 
   // Attach global listeners once
@@ -104,7 +89,6 @@ export function useTrackPosition(props: TrackPositionProps) {
     });
 
     const handleBeforeUnload = () => {
-      if (flushTimer) clearTimeout(flushTimer);
       flushGlobalPosition();
     };
 

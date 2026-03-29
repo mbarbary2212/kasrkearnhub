@@ -627,39 +627,17 @@ async function inviteUser(
     // - 'recovery' for existing users (password reset)
     const linkType = isNewUser ? 'invite' : 'recovery';
     
-    let linkData: any;
-    try {
-      const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-        type: linkType,
-        email,
-        options: {
-          redirectTo: `${publicAppUrl}/auth?view=change-password`,
-        },
-      });
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: linkType,
+      email,
+      options: {
+        redirectTo: `${publicAppUrl}/auth?view=change-password`,
+      },
+    });
 
-      if (linkError) {
-        throw linkError;
-      }
-      linkData = data;
-    } catch (linkErr: any) {
-      const errMsg = linkErr?.message || String(linkErr);
-      if (errMsg.includes('User exists but could not be found')) {
-        console.warn(`generateLink(${linkType}) failed for ${email} with conflicted-state error, falling back to magiclink`);
-        const { data: fallbackData, error: fallbackError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'magiclink',
-          email,
-          options: {
-            redirectTo: `${publicAppUrl}/auth?view=change-password`,
-          },
-        });
-        if (fallbackError) {
-          console.error('Magiclink fallback also failed:', fallbackError);
-          throw new Error(fallbackError.message);
-        }
-        linkData = fallbackData;
-      } else {
-        throw new Error(errMsg);
-      }
+    if (linkError) {
+      console.error('Error generating link:', linkError);
+      throw new Error(linkError.message);
     }
 
     const inviteLink = linkData.properties.action_link;

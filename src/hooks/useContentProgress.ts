@@ -36,21 +36,11 @@ interface RpcProgressResult {
   osce_total: number;
   case_total: number;
   matching_total: number;
-  tf_total: number;
   mcq_completed: number;
   essay_completed: number;
   osce_completed: number;
   case_completed: number;
   matching_completed: number;
-  tf_completed: number;
-  mind_map_total: number;
-  mind_map_viewed: number;
-  guided_total: number;
-  guided_viewed: number;
-  reference_total: number;
-  reference_viewed: number;
-  clinical_tool_total: number;
-  clinical_tool_viewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -107,8 +97,8 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
       const rpc = data as unknown as RpcProgressResult;
 
       // Practice totals
-      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total + rpc.tf_total;
-      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed + rpc.tf_completed;
+      const practiceTotal = rpc.mcq_total + rpc.essay_total + rpc.osce_total + rpc.case_total + rpc.matching_total;
+      const practiceCompleted = rpc.mcq_completed + rpc.essay_completed + rpc.osce_completed + rpc.case_completed + rpc.matching_completed;
 
       // Video progress (client-side matching since video_id is extracted via regex)
       const videoProgressMap = new Map(

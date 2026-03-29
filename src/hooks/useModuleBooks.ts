@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
 export interface ModuleBook {
   id: string;
   module_id: string;
@@ -12,7 +13,6 @@ export interface ModuleBook {
 }
 
 // Get books for a module with their metadata (order, prefix)
-// Includes virtual cross-module books automatically
 export function useModuleBooks(moduleId?: string) {
   return useQuery({
     queryKey: ['module-books', moduleId],
@@ -24,7 +24,7 @@ export function useModuleBooks(moduleId?: string) {
         .order('display_order', { ascending: true });
 
       if (error) throw error;
-      return (data || []) as ModuleBook[];
+      return data as ModuleBook[];
     },
     enabled: !!moduleId,
   });

@@ -104,21 +104,6 @@ export function useAuth() {
     }
   }, []);
 
-  // Optimistically merge partial profile updates into local state
-  const patchProfile = useCallback((updates: Partial<Profile>) => {
-    setState(prev => ({
-      ...prev,
-      profile: prev.profile ? { ...prev.profile, ...updates } : prev.profile,
-    }));
-  }, []);
-
-  // Re-fetch profile & role from server
-  const refreshProfile = useCallback(() => {
-    if (state.user) {
-      fetchUserData(state.user.id);
-    }
-  }, [state.user, fetchUserData]);
-
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -322,8 +307,6 @@ export function useAuth() {
     resetPassword,
     updatePassword,
     hasRole,
-    patchProfile,
-    refreshProfile,
     canManageDepartment,
     canManageTopic,
     canManageChapter,

@@ -24,7 +24,6 @@ interface FlashcardClozeModeProps {
   topicId?: string;
   /** When true, only show cloze cards and display empty state if none exist */
   clozeOnly?: boolean;
-  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 interface TopicGroup {
@@ -89,7 +88,6 @@ export function FlashcardClozeMode({
   chapterId,
   topicId,
   clozeOnly = false,
-  onActiveItemChange,
 }: FlashcardClozeModeProps) {
   const { settings, setSelectedTopics, setShuffle } = useFlashcardSettings({ chapterId, topicId });
 
@@ -148,17 +146,6 @@ export function FlashcardClozeMode({
   const isCurrentCloze = currentContent ? isClozeCard(currentContent) : false;
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: fsrsState } = useCardState(currentCard?.resource?.id);
-
-  // Report active card to parent for position tracking
-  useEffect(() => {
-    if (currentCard && onActiveItemChange) {
-      onActiveItemChange({
-        item_id: currentCard.resource.id,
-        item_label: currentCard.front || 'Flashcard',
-        item_index: cardIndex,
-      });
-    }
-  }, [currentCard?.resource?.id, cardIndex, onActiveItemChange]);
 
   useEffect(() => {
     setCardIndex(0);

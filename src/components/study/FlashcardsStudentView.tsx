@@ -24,7 +24,6 @@ interface FlashcardsStudentViewProps {
   chapterId?: string;
   /** Topic ID - for topic-based modules. Mutually exclusive with chapterId. */
   topicId?: string;
-  onActiveItemChange?: (item: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
 interface TopicGroup {
@@ -55,7 +54,6 @@ export function FlashcardsStudentView({
   availableTopics = [],
   chapterId,
   topicId,
-  onActiveItemChange,
 }: FlashcardsStudentViewProps) {
   // Persisted settings - supports both chapter and topic
   const { 
@@ -116,17 +114,6 @@ export function FlashcardsStudentView({
   const currentCard = displayCards[cardIndex];
   const isCurrentMarked = currentCard && markedIds?.has(currentCard.resource.id);
   const { data: fsrsState } = useCardState(currentCard?.resource?.id);
-
-  // Report active card to parent for position tracking
-  useEffect(() => {
-    if (currentCard && onActiveItemChange) {
-      onActiveItemChange({
-        item_id: currentCard.resource.id,
-        item_label: currentCard.front || 'Flashcard',
-        item_index: cardIndex,
-      });
-    }
-  }, [currentCard?.resource?.id, cardIndex, onActiveItemChange]);
 
   // Reset when filtered cards change
   useEffect(() => {

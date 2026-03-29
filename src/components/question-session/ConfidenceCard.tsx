@@ -1,17 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { supabase } from '@/integrations/supabase/client';
 
 interface ConfidenceCardProps {
   questionId: string;
 }
-
-const confidenceValueMap: Record<string, number> = {
-  low: 1,
-  medium: 2,
-  high: 3,
-};
 
 export function ConfidenceCard({ questionId }: ConfidenceCardProps) {
   const storageKey = `confidence_${questionId}`;
@@ -21,34 +14,11 @@ export function ConfidenceCard({ questionId }: ConfidenceCardProps) {
     return localStorage.getItem(storageKey) || '';
   });
 
-  // Save to DB when confidence changes
-  const saveConfidenceToDB = useCallback(async (level: string) => {
-    const numericLevel = confidenceValueMap[level];
-    if (!numericLevel) return;
-
-    try {
-      // Update the most recent question_attempt for this question
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.id) return;
-
-      await supabase
-        .from('question_attempts')
-        .update({ confidence_level: numericLevel } as any)
-        .eq('user_id', user.id)
-        .eq('question_id', questionId)
-        .order('created_at', { ascending: false })
-        .limit(1);
-    } catch {
-      // Silent fail — confidence is supplementary
-    }
-  }, [questionId]);
-
   useEffect(() => {
     if (confidence) {
       localStorage.setItem(storageKey, confidence);
-      saveConfidenceToDB(confidence);
     }
-  }, [confidence, storageKey, saveConfidenceToDB]);
+  }, [confidence, storageKey]);
 
   return (
     <Card>

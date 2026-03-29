@@ -26,8 +26,6 @@ export function ClinicalToolsSection({
   canManage = false,
   onEdit,
   onAdd,
-  chapterId,
-  topicId,
 }: ClinicalToolsSectionProps) {
   return (
     <div className="space-y-4">
@@ -52,7 +50,7 @@ export function ClinicalToolsSection({
       ) : (
         <div className="space-y-4">
           {workedCases.map((resource) => (
-            <WorkedCaseCard key={resource.id} resource={resource} canManage={canManage} onEdit={onEdit} chapterId={chapterId} topicId={topicId} />
+            <WorkedCaseCard key={resource.id} resource={resource} canManage={canManage} onEdit={onEdit} />
           ))}
         </div>
       )}

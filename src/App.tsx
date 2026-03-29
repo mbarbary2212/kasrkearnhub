@@ -12,12 +12,9 @@ import { PresencePageTracker } from "@/components/PresencePageTracker";
 import { BadgeCelebrationProvider } from "@/contexts/BadgeCelebrationContext";
 import { CoachProvider } from "@/contexts/CoachContext";
 import { AudioPlayerProvider } from "@/contexts/AudioPlayerContext";
-import { ActiveYearProvider } from "@/contexts/ActiveYearContext";
 import { BadgeCelebration } from "@/components/ui/badge-celebration";
 import { GlobalErrorBoundary } from "@/components/GlobalErrorBoundary";
 import { AskCoachPanel } from "@/components/coach";
-import { ConnectProvider } from "@/contexts/ConnectContext";
-import { ConnectModal } from "@/components/connect/ConnectModal";
 import { AudioMiniPlayer } from "@/components/audio";
 import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -29,7 +26,7 @@ import { useDisclaimerEnabled } from "@/hooks/useDisclaimerSetting";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 
-const AllYearsPage = lazy(() => import("./pages/AllYearsPage"));
+const YearPage = lazy(() => import("./pages/YearPage"));
 const ModulePage = lazy(() => import("./pages/ModulePage"));
 const ChapterPage = lazy(() => import("./pages/ChapterPage"));
 const TopicDetailPage = lazy(() => import("./pages/TopicDetailPage"));
@@ -48,11 +45,7 @@ const ExamResultsPage = lazy(() => import("./pages/ExamResultsPage"));
 const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage"));
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
-const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
-const CustomizeContentPage = lazy(() => import("./pages/CustomizeContentPage"));
-const FormativePage = lazy(() => import("./pages/FormativePage"));
-const DiscussionsPage = lazy(() => import("./pages/DiscussionsPage"));
-const StudyGroupsPage = lazy(() => import("./pages/StudyGroupsPage"));
+const AssessmentBlueprintPage = lazy(() => import("./pages/AssessmentBlueprintPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,18 +113,15 @@ const App = () => {
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <DisclaimerGate>
-      <ActiveYearProvider>
       <PresenceProvider>
       <BadgeCelebrationProvider>
         <CoachProvider>
-          <ConnectProvider>
           <AudioPlayerProvider>
             <TooltipProvider>
               <Toaster />
               <Sonner />
                <BadgeCelebration />
                <AskCoachPanel />
-               <ConnectModal />
                <AudioMiniPlayer />
                <PWAInstallBanner />
                
@@ -144,7 +134,7 @@ const App = () => {
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/progress" element={<ProtectedRoute><RouteErrorBoundary><ProgressPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/account" element={<ProtectedRoute><RouteErrorBoundary><AccountPage /></RouteErrorBoundary></ProtectedRoute>} />
-                <Route path="/years" element={<ProtectedRoute><RouteErrorBoundary><AllYearsPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/year/:yearId" element={<ProtectedRoute><RouteErrorBoundary><YearPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId" element={<ProtectedRoute><RouteErrorBoundary><ModulePage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId/mock-exam" element={<ProtectedRoute><RouteErrorBoundary><MockExamPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId/blueprint-exam/:paperIndex" element={<ProtectedRoute><RouteErrorBoundary><BlueprintExamPage /></RouteErrorBoundary></ProtectedRoute>} />
@@ -154,30 +144,22 @@ const App = () => {
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/inbox" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/integrity-report" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/blueprint" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AssessmentBlueprintPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/activity-log" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/feedback" element={<ProtectedRoute><RouteErrorBoundary><FeedbackPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/virtual-patient/:caseId" element={<ProtectedRoute><RouteErrorBoundary><VirtualPatientPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/structured-case/:caseId/edit" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><CasePreviewEditorPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/case-summary/:attemptId" element={<ProtectedRoute><RouteErrorBoundary><CaseSummaryPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
-                
-                <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
-                <Route path="/connect/discussions" element={<ProtectedRoute><RouteErrorBoundary><DiscussionsPage /></RouteErrorBoundary></ProtectedRoute>} />
-                <Route path="/connect/groups" element={<ProtectedRoute><RouteErrorBoundary><StudyGroupsPage /></RouteErrorBoundary></ProtectedRoute>} />
-                
-                <Route path="/student-settings" element={<ProtectedRoute><RouteErrorBoundary><StudentSettingsPage /></RouteErrorBoundary></ProtectedRoute>} />
-                <Route path="/customize-content" element={<ProtectedRoute><RouteErrorBoundary><CustomizeContentPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="*" element={<RouteErrorBoundary><NotFound /></RouteErrorBoundary>} />
               </Routes>
               </Suspense>
               </BrowserRouter>
             </TooltipProvider>
           </AudioPlayerProvider>
-          </ConnectProvider>
         </CoachProvider>
       </BadgeCelebrationProvider>
       </PresenceProvider>
-      </ActiveYearProvider>
       </DisclaimerGate>
     </AuthProvider>
       </QueryClientProvider>

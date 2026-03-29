@@ -9,17 +9,7 @@ import {
   type ReadinessResult,
   type ReadinessComponents,
 } from '@/lib/readinessCalculator';
-import {
-  buildAdaptiveStudyPlan,
-  getWeakTopics,
-  calculateAggregateReadiness,
-  buildCoachInsights,
-} from '@/lib/studentMetrics';
-import type { PlannedTask, AdaptiveStudyPlan, CoachInsight } from '@/lib/studentMetrics';
-import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
-import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
-import { getStudyMode } from '@/lib/studyModes';
 
 export interface ChapterStatus {
   id: string;
@@ -41,36 +31,20 @@ export interface DashboardInsight {
 }
 
 export interface SuggestedItem {
-  type: string;
+  type: 'read' | 'mcq' | 'video' | 'essay';
   title: string;
-  detail?: string;
   chapterTitle?: string;
   estimatedMinutes?: number;
   chapterId?: string;
   moduleId?: string;
-  reason?: string;
-  isPrimary?: boolean;
-  subtab?: string;
-  tab?: string;
-  trend?: 'declining' | 'stable' | 'improving';
-  revisionState?: string;
-  prescribedStudyMode?: { key: string; label: string; tab: string };
-}
-
-export interface WeakChapter {
-  chapterId: string;
-  chapterTitle: string;
-  moduleId: string;
-  accuracy: number;
-  attempts: number;
 }
 
 export interface DashboardData {
   // Core metrics
   examReadiness: number;
   coveragePercent: number;
-  coverageCompleted: number;
-  coverageTotal: number;
+  coverageCompleted: number; // completed items count
+  coverageTotal: number; // total items count
   chaptersStarted: number;
   chaptersTotal: number;
   studyStreak: number;
@@ -84,7 +58,7 @@ export interface DashboardData {
   // Weekly stats
   weeklyTimeMinutes: number;
   weeklyChaptersAdvanced: number;
-  hasRealAccuracyData: boolean;
+  hasRealAccuracyData: boolean; // flag to control UI display
   
   // Chapters
   chapters: ChapterStatus[];
@@ -92,25 +66,12 @@ export interface DashboardData {
   // Insights
   insights: DashboardInsight[];
   
-  // Adaptive study plan
+  // Today's suggestions
   suggestions: SuggestedItem[];
-  studyPlan: AdaptiveStudyPlan | null;
-  
-  // Weak chapters
-  weakChapters: WeakChapter[];
-  
-  // Confidence insight
-  confidenceInsight: string | null;
   
   // Selected context
   selectedModuleName?: string;
   selectedYearName?: string;
-
-  // New: data for enhanced dashboard widgets
-  chapterMetrics: StudentChapterMetric[];
-  chapterTitleMap: Map<string, string>;
-  activityDates: string[];
-  readinessTrend: number[];
 }
 
 interface DashboardFilters {
@@ -169,7 +130,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         .in('module_id', moduleIds)
         .order('order_index');
 
-      // Fetch all data in parallel
+      // Fetch all data in parallel (no more question_attempts — uses testProgress param)
       const [
         chaptersRes,
         userProgressRes,
@@ -179,9 +140,6 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         vpCasesRes,
         lecturesRes,
         yearRes,
-        sessionsRes,
-        recentAttemptsRes,
-        chapterMetricsRes,
       ] = await Promise.all([
         chaptersQuery,
         supabase.from('user_progress').select('*').eq('user_id', user.id),
@@ -191,13 +149,6 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         supabase.from('virtual_patient_cases').select('id, chapter_id, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         supabase.from('lectures').select('id, chapter_id, title, module_id').eq('is_deleted', false).in('module_id', moduleIds),
         filters?.yearId ? supabase.from('years').select('name').eq('id', filters.yearId).single() : null,
-        supabase.from('user_sessions').select('session_start').eq('user_id', user.id)
-          .gte('session_start', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
-          .order('session_start', { ascending: false }).limit(200),
-        supabase.from('question_attempts').select('created_at').eq('user_id', user.id)
-          .gte('created_at', new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
-          .order('created_at', { ascending: false }).limit(200),
-        supabase.from('student_chapter_metrics' as any).select('*').eq('student_id', user.id),
       ]);
 
       const chapters = chaptersRes.data || [];
@@ -275,13 +226,8 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const chaptersStarted = chaptersWithContent.filter(c => c.status !== 'not_started').length;
       const chaptersTotal = chaptersWithContent.length;
 
-      // Calculate study streak from ALL activity sources
-      const allActivityDates: string[] = [
-        ...userProgress.filter(p => p.completed_at).map(p => p.completed_at!),
-        ...(sessionsRes.data || []).map(s => s.session_start),
-        ...(recentAttemptsRes.data || []).map(a => a.created_at),
-      ];
-      const studyStreak = calculateStudyStreak(allActivityDates);
+      // Calculate study streak (days with activity in user_progress)
+      const studyStreak = calculateStudyStreak(userProgress);
       
       // Calculate consistency score (0-100) based on recent activity
       const consistencyScore = calculateConsistencyScore(userProgress, contentIds);
@@ -355,173 +301,19 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           .filter(Boolean)
       ).size;
 
-      // Generate insights — placeholder, real coach insights built after metrics load
-      let insights: DashboardInsight[] = [];
+      // Generate insights
+      const insights = generateInsights(chapterStatuses);
 
-      // ============================================================================
-      // Use real chapter metrics for suggestions and weak chapters
-      // ============================================================================
-      const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
-        .filter(m => moduleIds.includes(m.module_id));
-
-      // ============================================================================
-      // Fetch exam weights for priority boosting + prescribed study modes
-      // ============================================================================
-      let examWeightMap: Map<string, ChapterExamWeight> | undefined;
-      try {
-        const { data: activeAssessments } = await supabase
-          .from('assessment_structures')
-          .select('id, module_id')
-          .in('module_id', moduleIds)
-          .eq('is_active', true);
-
-        if (activeAssessments && activeAssessments.length > 0) {
-          const { data: weights } = await supabase
-            .from('topic_exam_weights')
-            .select('chapter_id, module_id, weight_percent, weight_marks, component_id, assessment_components!inner(component_type)')
-            .in('assessment_id', activeAssessments.map(a => a.id))
-            .not('chapter_id', 'is', null)
-            .not('component_id', 'is', null);
-
-          if (weights && weights.length > 0) {
-            examWeightMap = new Map<string, ChapterExamWeight>();
-            const SECONDARY_THRESHOLD = 0.7;
-
-            for (const w of weights as any[]) {
-              if (!w.chapter_id) continue;
-              const componentType: string = w.assessment_components?.component_type || 'unknown';
-              const percent = Number(w.weight_percent) || 0;
-              const marks = Number(w.weight_marks) || 0;
-
-              let entry = examWeightMap.get(w.chapter_id);
-              if (!entry) {
-                entry = {
-                  chapter_id: w.chapter_id,
-                  module_id: w.module_id,
-                  total_weight_percent: 0,
-                  total_weight_marks: 0,
-                  component_weights: {},
-                  dominant_component: null,
-                  secondary_component: null,
-                  prescribed_study_mode: getStudyMode(null),
-                };
-                examWeightMap.set(w.chapter_id, entry);
-              }
-              entry.total_weight_percent += percent;
-              entry.total_weight_marks += marks;
-              if (!entry.component_weights[componentType]) {
-                entry.component_weights[componentType] = { percent: 0, marks: 0 };
-              }
-              entry.component_weights[componentType].percent += percent;
-              entry.component_weights[componentType].marks += marks;
-            }
-
-            // Compute dominant/secondary for each chapter
-            for (const entry of examWeightMap.values()) {
-              const sorted = Object.entries(entry.component_weights)
-                .map(([type, vals]) => ({ type, total: vals.percent || vals.marks }))
-                .sort((a, b) => b.total - a.total);
-
-              entry.dominant_component = sorted[0]?.type ?? null;
-              if (sorted.length >= 2 && sorted[0].total > 0) {
-                const ratio = sorted[1].total / sorted[0].total;
-                if (ratio >= SECONDARY_THRESHOLD) {
-                  entry.secondary_component = sorted[1].type;
-                }
-              }
-              entry.prescribed_study_mode = getStudyMode(entry.dominant_component);
-            }
-          }
-        }
-      } catch {
-        // Non-critical: proceed without exam weights
-      }
-
-      // Build chapter info for suggestion builder
-      const chapterInfos = chapters.map(ch => ({
-        id: ch.id,
-        title: ch.title,
-        moduleId: ch.module_id,
-        moduleName: moduleMap.get(ch.module_id) || 'Unknown Module',
-        hasLectures: lectures.some(l => l.chapter_id === ch.id),
-        firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
-      }));
-
-      // Build adaptive study plan from real metrics + exam weights
-      const studyPlan = buildAdaptiveStudyPlan({
-        metrics: realMetrics,
-        chapters: chapterInfos,
-        examWeightMap,
-      });
-
-      // Convert PlannedTask[] to SuggestedItem[] for backward compat
-      const suggestions: SuggestedItem[] = studyPlan.tasks.map(t => ({
-        type: t.type as SuggestedItem['type'],
-        title: t.title,
-        chapterTitle: t.chapterTitle,
-        estimatedMinutes: t.estimatedMinutes,
-        chapterId: t.chapterId,
-        moduleId: t.moduleId,
-        reason: t.reason,
-        isPrimary: t.isPrimary,
-        subtab: t.subtab,
-        tab: t.tab,
-        trend: t.trend,
-        revisionState: t.revisionState,
-        prescribedStudyMode: t.prescribedStudyMode,
-      }));
-
-      // Build coach insights from real metrics + exam weights
-      const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
-      const coachInsights = buildCoachInsights({
-        metrics: realMetrics,
-        chapterTitleMap,
-        examWeightMap,
-      });
-
-      // Convert CoachInsight[] to DashboardInsight[] for existing UI
-      insights = coachInsights.map(ci => {
-        const typeMap: Record<string, DashboardInsight['type']> = {
-          priority: 'attention',
-          misallocation: 'attention',
-          trend: 'attention',
-          strength: 'strong',
-          confidence: 'missed',
-        };
-        return {
-          type: typeMap[ci.type] || 'attention',
-          label: ci.type === 'priority' ? 'Priority'
-            : ci.type === 'misallocation' ? 'Study Allocation'
-            : ci.type === 'trend' ? 'Trend Alert'
-            : ci.type === 'strength' ? 'Strength'
-            : 'Confidence',
-          detail: ci.message,
-        };
-      });
-
-      // Get weak chapters from real metrics
-      const weakChapters: WeakChapter[] = getWeakTopics(realMetrics, chapterTitleMap);
-
-      // Use real aggregate readiness if available
-      const metricsReadiness = calculateAggregateReadiness(realMetrics);
-      const finalExamReadiness = realMetrics.length > 0 ? metricsReadiness : examReadiness;
+      // Generate suggestions (book-first approach)
+      const suggestions = generateSuggestions(chapterStatuses, lectures);
 
       // Get selected module name
       const selectedModuleName = filters?.moduleId 
         ? moduleMap.get(filters.moduleId) 
         : undefined;
 
-      // Build activity dates for streak calendar
-      const activityDates = allActivityDates;
-
-      // Build readiness trend (simple: use per-chapter readiness scores as proxy)
-      // In production this would come from a time-series table
-      const readinessTrend = realMetrics.length > 0
-        ? realMetrics.slice(-14).map(m => m.readiness_score)
-        : [];
-
       return {
-        examReadiness: finalExamReadiness,
+        examReadiness,
         coveragePercent,
         coverageCompleted: completedItems,
         coverageTotal: totalItems,
@@ -538,19 +330,12 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         chapters: chapterStatuses,
         insights,
         suggestions,
-        studyPlan,
-        weakChapters,
-        confidenceInsight: studyPlan.confidenceInsight ?? null,
         selectedModuleName,
         selectedYearName: yearRes?.data?.name,
-        chapterMetrics: realMetrics,
-        chapterTitleMap,
-        activityDates,
-        readinessTrend,
       };
     },
     enabled: !!user?.id,
-    staleTime: 60000,
+    staleTime: 60000, // Cache for 1 minute
   });
 }
 
@@ -573,13 +358,6 @@ function getEmptyDashboard(): DashboardData {
     chapters: [],
     insights: [],
     suggestions: [],
-    studyPlan: null,
-    weakChapters: [],
-    confidenceInsight: null,
-    chapterMetrics: [],
-    chapterTitleMap: new Map(),
-    activityDates: [],
-    readinessTrend: [],
   };
 }
 
@@ -624,12 +402,14 @@ function calculateConsistencyScore(
   return Math.round(fourteenDayScore + sevenDayScore);
 }
 
-function calculateStudyStreak(activityTimestamps: string[]): number {
-  if (activityTimestamps.length === 0) return 0;
+function calculateStudyStreak(userProgress: { completed_at: string | null }[]): number {
+  if (userProgress.length === 0) return 0;
 
   // Get unique dates with activity
   const activityDates = new Set(
-    activityTimestamps.map(ts => new Date(ts).toDateString())
+    userProgress
+      .filter(p => p.completed_at)
+      .map(p => new Date(p.completed_at!).toDateString())
   );
 
   if (activityDates.size === 0) return 0;
@@ -653,9 +433,104 @@ function calculateStudyStreak(activityTimestamps: string[]): number {
   return streak;
 }
 
-// Old proxy-based classifyChapter, generateSuggestions, and detectWeakChapters
-// have been removed. All suggestion/weak logic now flows through:
-//   src/lib/studentMetrics/buildDashboardSuggestions.ts
-//   src/lib/studentMetrics/classifyChapterState.ts
-// Insights now flow through:
-//   src/lib/studentMetrics/buildCoachInsights.ts
+function generateInsights(chapters: ChapterStatus[]): DashboardInsight[] {
+  const insights: DashboardInsight[] = [];
+
+  // Strong areas: chapters with highest coverage (completed or high progress)
+  const highCoverageChapters = chapters
+    .filter(c => c.status === 'completed' || (c.status === 'in_progress' && c.progress >= 75))
+    .sort((a, b) => b.progress - a.progress)
+    .slice(0, 3);
+  
+  highCoverageChapters.forEach(ch => {
+    insights.push({
+      type: 'strong',
+      label: ch.title,
+      detail: ch.status === 'completed' ? '100% coverage' : `${ch.progress}% coverage`,
+    });
+  });
+
+  // Needs attention: in-progress chapters with low progress (prioritize lowest)
+  const needsAttention = chapters
+    .filter(c => c.status === 'in_progress' && c.progress < 50 && c.totalItems > 0)
+    .sort((a, b) => a.progress - b.progress)
+    .slice(0, 3);
+  
+  needsAttention.forEach(ch => {
+    insights.push({
+      type: 'attention',
+      label: ch.title,
+      detail: `${ch.progress}% coverage — ${ch.completedItems} of ${ch.totalItems} items`,
+    });
+  });
+
+  // If no strong areas but have not-started chapters, encourage starting
+  if (insights.filter(i => i.type === 'strong').length === 0) {
+    const notStarted = chapters.filter(c => c.status === 'not_started' && c.totalItems > 0);
+    if (notStarted.length > 0) {
+      insights.push({
+        type: 'attention',
+        label: 'Ready to begin',
+        detail: `${notStarted.length} chapter${notStarted.length > 1 ? 's' : ''} awaiting your study`,
+      });
+    }
+  }
+
+  return insights;
+}
+
+function generateSuggestions(
+  chapters: ChapterStatus[], 
+  lectures: { id: string; chapter_id: string | null; title: string }[]
+): SuggestedItem[] {
+  const suggestions: SuggestedItem[] = [];
+
+  // Find chapters to suggest (prioritize in-progress, then not started)
+  const inProgressChapters = chapters
+    .filter(c => c.status === 'in_progress' && c.totalItems > 0)
+    .sort((a, b) => b.progress - a.progress);
+
+  const notStartedChapters = chapters
+    .filter(c => c.status === 'not_started' && c.totalItems > 0);
+
+  const priorityChapters = [...inProgressChapters, ...notStartedChapters].slice(0, 2);
+
+  priorityChapters.forEach(chapter => {
+    // Primary suggestion: Book study
+    suggestions.push({
+      type: 'read',
+      title: chapter.title,
+      chapterTitle: chapter.moduleName,
+      estimatedMinutes: 30,
+      chapterId: chapter.id,
+      moduleId: chapter.moduleId,
+    });
+
+    // Secondary: MCQs if available
+    if (chapter.totalItems > 0) {
+      suggestions.push({
+        type: 'mcq',
+        title: `Practice MCQs: ${chapter.title}`,
+        estimatedMinutes: 15,
+        chapterId: chapter.id,
+        moduleId: chapter.moduleId,
+      });
+    }
+
+    // Check for video lectures
+    const chapterLectures = lectures.filter(l => l.chapter_id === chapter.id);
+    if (chapterLectures.length > 0) {
+      suggestions.push({
+        type: 'video',
+        title: chapterLectures[0].title,
+        chapterTitle: chapter.title,
+        estimatedMinutes: 20,
+        chapterId: chapter.id,
+        moduleId: chapter.moduleId,
+      });
+    }
+  });
+
+  // Limit suggestions
+  return suggestions.slice(0, 5);
+}
