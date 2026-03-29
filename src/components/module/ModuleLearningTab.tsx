@@ -586,8 +586,8 @@ export function ModuleLearningTab({
   const { data: pharmacologyTopics } = useTopics(PHARMACOLOGY_DEPT_ID, moduleId);
   
   // Cross-module book mapping
-  const CROSS_MODULE_BOOKS: Record<string, Record<string, string>> = {
-    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General surgery Book 1': '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10' },
+  const CROSS_MODULE_BOOKS: Record<string, Record<string, { moduleId: string; bookLabel: string }>> = {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General': { moduleId: '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', bookLabel: 'General surgery Book 1' } },
   };
   
   // Fetch chapter counts per book
@@ -609,15 +609,15 @@ export function ModuleLearningTab({
       
       const crossBooks = CROSS_MODULE_BOOKS[moduleId];
       if (crossBooks) {
-        for (const [bookLabel, sourceModuleId] of Object.entries(crossBooks)) {
+        for (const [localLabel, crossRef] of Object.entries(crossBooks)) {
           const { data: crossData, error: crossError } = await supabase
             .from('module_chapters')
             .select('book_label')
-            .eq('module_id', sourceModuleId)
-            .eq('book_label', bookLabel);
+            .eq('module_id', crossRef.moduleId)
+            .eq('book_label', crossRef.bookLabel);
           
           if (!crossError && crossData) {
-            counts[bookLabel] = crossData.length;
+            counts[localLabel] = crossData.length;
           }
         }
       }
