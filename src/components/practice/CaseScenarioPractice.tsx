@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCaseScenarios } from '@/hooks/useCaseScenarios';
+import { useCaseScenarios, useDeleteCaseScenario } from '@/hooks/useCaseScenarios';
 import type { CaseScenario, CaseDifficulty } from '@/types/caseScenario';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,12 +12,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileText, ArrowLeft, Eye, EyeOff, ChevronRight } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { FileText, ArrowLeft, Eye, EyeOff, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { CaseScenarioEditModal } from '@/components/admin/CaseScenarioEditModal';
 
 interface Props {
   chapterId?: string;
   topicId?: string;
+  canManage?: boolean;
 }
 
 const DIFFICULTY_COLORS: Record<CaseDifficulty, string> = {
@@ -26,10 +45,13 @@ const DIFFICULTY_COLORS: Record<CaseDifficulty, string> = {
   difficult: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export function CaseScenarioPractice({ chapterId, topicId }: Props) {
+export function CaseScenarioPractice({ chapterId, topicId, canManage }: Props) {
   const { data: cases, isLoading } = useCaseScenarios(chapterId || topicId);
+  const deleteMutation = useDeleteCaseScenario();
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
   const [activeCase, setActiveCase] = useState<CaseScenario | null>(null);
+  const [editingCase, setEditingCase] = useState<CaseScenario | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CaseScenario | null>(null);
 
   const filtered = (cases || []).filter(
     c => difficultyFilter === 'all' || c.difficulty === difficultyFilter
@@ -63,6 +85,17 @@ export function CaseScenarioPractice({ chapterId, topicId }: Props) {
     );
   }
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      toast.success('Case scenario deleted');
+    } catch {
+      toast.error('Failed to delete');
+    }
+    setDeleteTarget(null);
+  };
+
   return (
     <div className="space-y-4">
       {/* Filter */}
@@ -88,11 +121,13 @@ export function CaseScenarioPractice({ chapterId, topicId }: Props) {
         {filtered.map(c => (
           <Card
             key={c.id}
-            className="cursor-pointer hover:border-primary/50 transition-colors group"
-            onClick={() => setActiveCase(c)}
+            className="hover:border-primary/50 transition-colors group"
           >
             <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+              <div
+                className="flex-1 min-w-0 cursor-pointer"
+                onClick={() => setActiveCase(c)}
+              >
                 <div className="flex items-center gap-2 mb-1">
                   <Badge className={cn('text-xs', DIFFICULTY_COLORS[c.difficulty])}>
                     {c.difficulty}
@@ -100,14 +135,62 @@ export function CaseScenarioPractice({ chapterId, topicId }: Props) {
                   <span className="text-xs text-muted-foreground">
                     {c.questions?.length || 0} question{(c.questions?.length || 0) !== 1 ? 's' : ''}
                   </span>
+                  {c.topic?.name && (
+                    <span className="text-xs text-muted-foreground">• {c.topic.name}</span>
+                  )}
                 </div>
                 <p className="text-sm line-clamp-2">{c.stem}</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 ml-3" />
+
+              {canManage ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setEditingCase(c)}>
+                      <Pencil className="w-3.5 h-3.5 mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => setDeleteTarget(c)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 ml-3 cursor-pointer" onClick={() => setActiveCase(c)} />
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Edit modal */}
+      <CaseScenarioEditModal
+        caseData={editingCase}
+        open={!!editingCase}
+        onOpenChange={(open) => { if (!open) setEditingCase(null); }}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Case Scenario</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove this case scenario and its questions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
