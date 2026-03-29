@@ -346,9 +346,21 @@ PEDAGOGICAL GUIDELINES (Clinical Decision Pathway):
 - Include 4-8 nodes for manageable complexity
 - Make options mutually exclusive at each decision point`;
 
+    case 'case_scenario':
+      return `
+PEDAGOGICAL GUIDELINES (Case Scenario - Structured Exam Practice):
+- Each case is ONE clinical scenario with a realistic patient presentation (stem)
+- The stem should be a rich clinical vignette: age, sex, presenting complaint, history, examination findings, investigations
+- Include 1-3 focused sub-questions that test different cognitive levels (recall, application, analysis)
+- Each question must have a clear model answer and ideally a brief explanation/teaching point
+- Difficulty levels: easy (straightforward presentation), moderate (requires clinical reasoning), difficult (atypical or complex)
+- Questions should progress logically: diagnosis → investigation → management
+- Do NOT include branching, simulation, or interactive elements — these are static practice cases
+- Cases should be exam-style: concise, factual, and testable
+- Each case counts as ONE unit in exam structure — sub-questions are bundled together`;
+
     default:
-      return '';
-  }
+      return '';`;
 }
 
 function jsonResponse(body: unknown, status = 200) {
