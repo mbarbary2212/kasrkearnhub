@@ -444,26 +444,29 @@ function StudentBookPillView({
   moduleId,
   fetchModuleId,
   activeBookLabel,
+  fetchBookLabel,
   sortedBooks,
   onSelectPill,
 }: {
   moduleId: string;
   fetchModuleId: string;
   activeBookLabel: string;
+  fetchBookLabel?: string;
   sortedBooks: ModuleBook[];
   onSelectPill: (label: string) => void;
 }) {
   const navigate = useNavigate();
   const auth = useAuthContext();
+  const actualFetchLabel = fetchBookLabel || activeBookLabel;
 
   const { data: chapters, isLoading } = useQuery({
-    queryKey: ['module-chapters-for-book', fetchModuleId, activeBookLabel],
+    queryKey: ['module-chapters-for-book', fetchModuleId, actualFetchLabel],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
         .select('*')
         .eq('module_id', fetchModuleId)
-        .eq('book_label', activeBookLabel)
+        .eq('book_label', actualFetchLabel)
         .order('order_index', { ascending: true });
       if (error) throw error;
       return data as ModuleChapter[];
