@@ -98,6 +98,8 @@ export function YouTubePlayer({ videoId, title, onReady, onTimeUpdate }: YouTube
     async (currentTime: number, duration: number, percentWatched: number) => {
       const u = userRef.current;
       if (!u) return;
+      // Don't overwrite if user manually unmarked this video
+      if (manuallyUnmarkedIds.has(videoId)) return;
 
       await supabase.from('video_progress').upsert(
         {
