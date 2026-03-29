@@ -113,24 +113,38 @@ export function useChapterExamWeights(moduleIds: string[]) {
 
 /**
  * Applies exam weight boosting to priority scores.
- * Supports both percent and marks modes — uses whichever is non-zero.
+ * Uses normalized weight: boost = 0.5 + normalized_weight * 1.5
+ * Where normalized_weight = effectiveWeight / maxWeight across all chapters.
+ * Chapters with no blueprint data get a medium boost (1.0).
  */
 export function getExamWeightBoost(
   chapterId: string,
   weightMap: Map<string, ChapterExamWeight> | undefined
 ): number {
-  if (!weightMap) return 1.0;
+  if (!weightMap || weightMap.size === 0) return 1.0; // No blueprint → medium
+
   const w = weightMap.get(chapterId);
-  if (!w) return 1.0;
+  if (!w) return 1.0; // Chapter has no blueprint data → medium fallback
 
   const effectiveWeight = w.total_weight_percent > 0
     ? w.total_weight_percent
     : w.total_weight_marks > 0
-      ? Math.min(w.total_weight_marks, 100) // normalize marks to a 0-100ish scale
+      ? Math.min(w.total_weight_marks, 100)
       : 0;
 
-  if (effectiveWeight === 0) return 1.0;
+  if (effectiveWeight === 0) return 0.5; // Explicitly zero weight → low priority
 
-  // 10% weight → 1.5x boost, 20%+ → up to 2.0x
-  return Math.min(2.0, 1.0 + (effectiveWeight / 20));
+  // Find max weight across all chapters for normalization
+  let maxWeight = 0;
+  for (const entry of weightMap.values()) {
+    const ew = entry.total_weight_percent > 0
+      ? entry.total_weight_percent
+      : entry.total_weight_marks > 0
+        ? Math.min(entry.total_weight_marks, 100)
+        : 0;
+    if (ew > maxWeight) maxWeight = ew;
+  }
+
+  const normalizedWeight = maxWeight > 0 ? effectiveWeight / maxWeight : 0.5;
+  return 0.5 + normalizedWeight * 1.5; // Range: 0.5 to 2.0
 }

@@ -8,6 +8,8 @@ import { classifyLearningPattern, type LearningPattern } from './classifyLearnin
 import { getRevisionState, getReviewType, type RevisionState } from './reviewScheduling';
 import { generateConfidenceInsight } from './classifyLearningPattern';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
+import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
+import { getStudyMode, type StudyMode } from '@/lib/studyModes';
 
 // ─── Public Types ─────────────────────────────────────────────
 
@@ -23,9 +25,11 @@ export interface PlannedTask {
   state?: string;
   isPrimary?: boolean;
   subtab?: string;
+  tab?: string;
   trend?: PerformanceTrend;
   learningPattern?: string;
   revisionState?: RevisionState;
+  prescribedStudyMode?: StudyMode;
 }
 
 export interface AdaptiveStudyPlan {
@@ -50,6 +54,7 @@ export interface AdaptivePlanInput {
   metrics: StudentChapterMetric[];
   chapters: ChapterInfo[];
   availableMinutes?: number;  // null = default 45-60 min
+  examWeightMap?: Map<string, ChapterExamWeight>;
 }
 
 // ─── Task Buckets ─────────────────────────────────────────────
@@ -109,7 +114,7 @@ function getMaxTasks(availableMinutes: number | undefined): number {
 // ─── Main Builder ─────────────────────────────────────────────
 
 export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyPlan {
-  const { metrics, chapters, availableMinutes } = input;
+  const { metrics, chapters, availableMinutes, examWeightMap } = input;
   const maxTasks = getMaxTasks(availableMinutes);
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
 
@@ -285,6 +290,23 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
         trend,
         learningPattern: patternLabel,
       });
+    }
+  }
+
+  // ── Apply exam weight boost + engagement factor to all candidates ──
+  for (const c of candidates) {
+    const examBoost = getExamWeightBoost(c.chapterId || '', examWeightMap);
+    const m = c.chapterId ? metricsMap.get(c.chapterId) : undefined;
+    const engagementFactor = (m && (m.mcq_attempts ?? 0) < 3) ? 1.15 : 1.0;
+    c.priority = c.priority * examBoost * engagementFactor;
+
+    // Attach prescribed study mode from exam weights
+    if (c.chapterId && examWeightMap) {
+      const w = examWeightMap.get(c.chapterId);
+      if (w) {
+        c.prescribedStudyMode = w.prescribed_study_mode;
+        c.tab = w.prescribed_study_mode.tab;
+      }
     }
   }
 
