@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb } from 'lucide-react';
+import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
 
@@ -10,14 +10,32 @@ interface DashboardTodayPlanProps {
   confidenceInsight?: string | null;
 }
 
-const iconMap: Record<string, React.ElementType> = {
+/** Maps study mode keys to icons */
+const studyModeIconMap: Record<string, React.ElementType> = {
+  mcq_practice: FileQuestion,
+  recall_practice: Brain,
+  case_scenarios: FileText,
+  clinical_practice: Stethoscope,
+  visual_practice: Eye,
+  review: GalleryHorizontal,
+};
+
+/** Fallback icon map for legacy type field */
+const legacyIconMap: Record<string, React.ElementType> = {
   read: BookOpen,
   mcq: FileQuestion,
   video: Play,
-  essay: FileText,
   flashcard: GalleryHorizontal,
   review: ArrowRight,
 };
+
+function getTaskIcon(item: SuggestedItem): React.ElementType {
+  // Prefer prescribed study mode icon
+  if (item.prescribedStudyMode?.key) {
+    return studyModeIconMap[item.prescribedStudyMode.key] ?? BookOpen;
+  }
+  return legacyIconMap[item.type] ?? BookOpen;
+}
 
 const trendIndicator: Record<string, { icon: string; className: string }> = {
   declining: { icon: '↓', className: 'text-destructive' },
@@ -78,12 +96,12 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           <div
             className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors group bg-primary/5 hover:bg-primary/10 border border-primary/20"
             onClick={() => {
-              const tab = primarySuggestion.tab || primarySuggestion.prescribedStudyMode?.tab || (primarySuggestion.type === 'mcq' ? 'practice' : 'resources');
+              const tab = primarySuggestion.prescribedStudyMode?.tab || primarySuggestion.tab || 'resources';
               onNavigate(primarySuggestion.moduleId, primarySuggestion.chapterId, tab, primarySuggestion.subtab);
             }}
           >
             <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-primary/10">
-              {(() => { const Icon = iconMap[primarySuggestion.type] || BookOpen; return <Icon className="w-5 h-5 text-primary" />; })()}
+              {(() => { const Icon = getTaskIcon(primarySuggestion); return <Icon className="w-5 h-5 text-primary" />; })()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">▶ Start Here</p>
@@ -106,13 +124,13 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
         {otherSuggestions.length > 0 && (
           <div className="space-y-1.5">
             {otherSuggestions.map((item, idx) => {
-              const Icon = iconMap[item.type] || BookOpen;
+              const Icon = getTaskIcon(item);
               return (
                 <div
                   key={idx}
                   className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors bg-muted/50 hover:bg-muted group"
                   onClick={() => {
-                    const tab = item.tab || item.prescribedStudyMode?.tab || (item.type === 'mcq' ? 'practice' : 'resources');
+                    const tab = item.prescribedStudyMode?.tab || item.tab || 'resources';
                     onNavigate(item.moduleId, item.chapterId, tab, item.subtab);
                   }}
                 >
@@ -138,7 +156,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           </div>
         )}
 
-        {/* Confidence Insight — one optional smart insight */}
+        {/* Confidence Insight */}
         {insight && (
           <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-accent/50 border border-accent">
             <Lightbulb className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />

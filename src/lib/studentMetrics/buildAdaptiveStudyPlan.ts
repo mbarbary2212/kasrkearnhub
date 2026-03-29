@@ -11,15 +11,39 @@ import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
 import { getStudyMode, type StudyMode } from '@/lib/studyModes';
 
+// ─── Study mode task details ──────────────────────────────────
+
+interface StudyModeTaskConfig {
+  detail: string;
+  estimatedMinutes: number;
+}
+
+const STUDY_MODE_TASK_CONFIG: Record<string, StudyModeTaskConfig> = {
+  mcq_practice:      { detail: '10–20 questions',    estimatedMinutes: 15 },
+  recall_practice:   { detail: 'structured recall',  estimatedMinutes: 15 },
+  case_scenarios:    { detail: '1–2 clinical cases',  estimatedMinutes: 20 },
+  clinical_practice: { detail: 'OSCE / case walkthrough', estimatedMinutes: 25 },
+  visual_practice:   { detail: 'images & pathology',  estimatedMinutes: 15 },
+  review:            { detail: 'flashcards',           estimatedMinutes: 10 },
+};
+
+function getTaskConfig(mode: StudyMode): StudyModeTaskConfig {
+  return STUDY_MODE_TASK_CONFIG[mode.key] ?? STUDY_MODE_TASK_CONFIG.review;
+}
+
 // ─── Public Types ─────────────────────────────────────────────
 
+export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'clinical_practice' | 'visual_practice' | 'review';
+
 export interface PlannedTask {
-  type: 'video' | 'read' | 'mcq' | 'flashcard' | 'review' | 'resume';
+  /** @deprecated Use prescribedStudyMode.key instead */
+  type: string;
   moduleId?: string;
   chapterId?: string;
   title: string;
   chapterTitle?: string;
   reason: string;
+  detail?: string;
   estimatedMinutes: number;
   priority: number;
   state?: string;
@@ -53,62 +77,60 @@ export interface ChapterInfo {
 export interface AdaptivePlanInput {
   metrics: StudentChapterMetric[];
   chapters: ChapterInfo[];
-  availableMinutes?: number;  // null = default 45-60 min
+  availableMinutes?: number;
   examWeightMap?: Map<string, ChapterExamWeight>;
 }
 
-// ─── Task Buckets ─────────────────────────────────────────────
+// ─── Slot types for balanced daily plan ───────────────────────
 
-type Bucket = 'resume' | 'learn' | 'repair' | 'retain';
+type Slot = 'review_due' | 'weakness' | 'progress';
 
-interface BucketedTask extends PlannedTask {
-  bucket: Bucket;
+interface SlottedTask extends PlannedTask {
+  slot: Slot;
 }
 
 // ─── Plan Labels ──────────────────────────────────────────────
 
-function derivePlanLabel(tasks: BucketedTask[]): string {
-  const buckets = new Set(tasks.map(t => t.bucket));
-  const repairCount = tasks.filter(t => t.bucket === 'repair').length;
-  const retainCount = tasks.filter(t => t.bucket === 'retain').length;
-  const learnCount = tasks.filter(t => t.bucket === 'learn').length;
+function derivePlanLabel(tasks: SlottedTask[]): string {
+  const slots = new Set(tasks.map(t => t.slot));
+  const weakCount = tasks.filter(t => t.slot === 'weakness').length;
+  const reviewCount = tasks.filter(t => t.slot === 'review_due').length;
+  const progressCount = tasks.filter(t => t.slot === 'progress').length;
 
-  if (repairCount >= 2) return 'Recovery plan';
-  if (retainCount >= 2) return 'Revision-focused plan';
-  if (learnCount >= 2) return 'New topic plan';
-  if (buckets.has('repair') && buckets.has('retain')) return 'Reinforcement plan';
+  if (weakCount >= 2) return 'Recovery plan';
+  if (reviewCount >= 2) return 'Revision-focused plan';
+  if (progressCount >= 2) return 'New topic plan';
+  if (slots.has('weakness') && slots.has('review_due')) return 'Reinforcement plan';
   return 'Mixed momentum plan';
 }
 
-function deriveRationale(tasks: BucketedTask[], planLabel: string): string {
-  const buckets = new Set(tasks.map(t => t.bucket));
-
-  if (planLabel === 'Recovery plan') {
-    return 'Today focuses on weak areas that need attention.';
-  }
-  if (planLabel === 'Revision-focused plan') {
-    return 'Several topics are due for review to maintain retention.';
-  }
-  if (planLabel === 'New topic plan') {
-    return 'You are starting new topics while maintaining progress.';
-  }
-  if (planLabel === 'Reinforcement plan') {
-    return 'Recent performance needs reinforcement alongside revision.';
-  }
-  if (buckets.has('repair')) {
-    return 'Today balances weak area practice with continued learning.';
-  }
+function deriveRationale(tasks: SlottedTask[], planLabel: string): string {
+  if (planLabel === 'Recovery plan') return 'Today focuses on weak areas that need attention.';
+  if (planLabel === 'Revision-focused plan') return 'Several topics are due for review to maintain retention.';
+  if (planLabel === 'New topic plan') return 'You are starting new topics while maintaining progress.';
+  if (planLabel === 'Reinforcement plan') return 'Recent performance needs reinforcement alongside revision.';
   return 'A balanced day of learning and revision.';
 }
 
-// ─── Determine max tasks from available time ──────────────────
+// ─── Resolve study mode for a chapter ─────────────────────────
+
+function resolveStudyMode(
+  chapterId: string,
+  examWeightMap?: Map<string, ChapterExamWeight>,
+): StudyMode {
+  if (!examWeightMap) return getStudyMode(null); // fallback → Review
+  const w = examWeightMap.get(chapterId);
+  return w ? w.prescribed_study_mode : getStudyMode(null);
+}
+
+// ─── Max tasks ────────────────────────────────────────────────
 
 function getMaxTasks(availableMinutes: number | undefined): number {
   const mins = availableMinutes ?? 50;
   if (mins <= 15) return 1;
   if (mins <= 30) return 2;
   if (mins <= 60) return 3;
-  return 3; // cap at 3 visible
+  return 4; // allow up to 4 for longer sessions
 }
 
 // ─── Main Builder ─────────────────────────────────────────────
@@ -118,8 +140,8 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   const maxTasks = getMaxTasks(availableMinutes);
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
 
-  // Collect all candidate tasks into buckets
-  const candidates: BucketedTask[] = [];
+  // Collect candidates into slots
+  const candidates: SlottedTask[] = [];
 
   for (const chapter of chapters) {
     const m = metricsMap.get(chapter.id);
@@ -129,9 +151,12 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     const patternLabel = patternResult?.pattern;
     const revState: RevisionState = m ? getRevisionState(m) : 'none';
 
-    // ── Retain bucket: overdue/due revision ──
+    // Resolve prescribed study mode from blueprint
+    const studyMode = resolveStudyMode(chapter.id, examWeightMap);
+    const taskConfig = getTaskConfig(studyMode);
+
+    // ── review_due slot: overdue/due revision or flashcards ──
     if (m && (revState === 'overdue' || revState === 'due')) {
-      const reviewType = getReviewType(state, patternLabel);
       const isOverdue = revState === 'overdue';
       const weakBoost = state === 'weak' ? 10 : 0;
 
@@ -141,86 +166,74 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       }
       if (state === 'strong') reason = 'Quick refresh';
 
-      let subtab: string | undefined;
-      let mins = 15;
-      if (reviewType === 'flashcard') { subtab = 'flashcards'; mins = 10; }
-      else if (reviewType === 'mcq') { subtab = 'mcqs'; mins = 15; }
-      else if (reviewType === 'video') { subtab = 'lectures'; mins = 20; }
-      if (state === 'strong') mins = 5;
+      const mins = state === 'strong' ? 5 : taskConfig.estimatedMinutes;
 
       candidates.push({
-        bucket: 'retain',
-        type: reviewType === 'flashcard' ? 'flashcard' : reviewType === 'video' ? 'video' : 'review',
-        title: chapter.title,
+        slot: 'review_due',
+        type: studyMode.key,
+        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
         chapterTitle: chapter.moduleName,
         reason,
+        detail: taskConfig.detail,
         estimatedMinutes: mins,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        subtab,
+        tab: studyMode.tab,
         priority: (isOverdue ? 95 : 85) + weakBoost + (trend === 'declining' ? 15 : 0),
         state,
         trend,
         learningPattern: patternLabel,
         revisionState: revState,
+        prescribedStudyMode: studyMode,
       });
     }
 
-    // ── Retain bucket: FSRS flashcards due ──
+    // ── review_due slot: FSRS flashcards due ──
     if (m && (m.flashcards_overdue > 0 || m.flashcards_due > 0) && revState !== 'overdue' && revState !== 'due') {
+      const reviewMode = getStudyMode(null); // Review mode for flashcards
       candidates.push({
-        bucket: 'retain',
-        type: 'flashcard',
-        title: chapter.title,
+        slot: 'review_due',
+        type: 'review',
+        title: `${chapter.title} — Review (flashcards)`,
         chapterTitle: chapter.moduleName,
         reason: m.flashcards_overdue > 0 ? 'Overdue revision' : 'Due today',
+        detail: 'flashcards',
         estimatedMinutes: 10,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
+        tab: 'resources',
         priority: (m.flashcards_overdue > 0 ? 93 : 83),
         state,
         trend,
         learningPattern: patternLabel,
+        prescribedStudyMode: reviewMode,
       });
     }
 
-    // ── Learn bucket: not started / early ──
+    // ── progress slot: not started / early ──
     if (state === 'not_started' || state === 'early') {
-      if (chapter.hasLectures) {
-        candidates.push({
-          bucket: 'learn',
-          type: 'video',
-          title: chapter.firstLectureTitle || chapter.title,
-          chapterTitle: chapter.title,
-          reason: 'Start here',
-          estimatedMinutes: 20,
-          moduleId: chapter.moduleId,
-          chapterId: chapter.id,
-          subtab: 'lectures',
-          priority: 80,
-          state,
-          trend,
-        });
-      }
       candidates.push({
-        bucket: 'learn',
-        type: 'read',
-        title: chapter.title,
+        slot: 'progress',
+        type: studyMode.key,
+        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
         chapterTitle: chapter.moduleName,
-        reason: 'Build understanding',
-        estimatedMinutes: 30,
+        reason: 'Start here',
+        detail: taskConfig.detail,
+        estimatedMinutes: taskConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        priority: 70,
+        tab: studyMode.tab,
+        priority: 75,
         state,
         trend,
+        prescribedStudyMode: studyMode,
       });
       continue;
     }
 
     if (state === 'strong') continue;
 
-    // ── Repair bucket: weak / misconception / unstable ──
+    // ── weakness slot: weak / unstable ──
     if (state === 'weak' || state === 'unstable') {
       let reason = state === 'weak' ? 'Low recent accuracy' : 'Needs reinforcement';
       if (patternResult?.pattern === 'misconception') reason = 'Confident mistakes detected';
@@ -232,43 +245,26 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
         : patternResult?.pattern === 'hesitant' ? 10 : 0;
 
       candidates.push({
-        bucket: 'repair',
-        type: 'mcq',
-        title: chapter.title,
+        slot: 'weakness',
+        type: studyMode.key,
+        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        estimatedMinutes: 15,
+        detail: taskConfig.detail,
+        estimatedMinutes: taskConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        subtab: 'mcqs',
+        tab: studyMode.tab,
         priority: (state === 'weak' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost,
         state,
         trend,
         learningPattern: patternLabel,
+        prescribedStudyMode: studyMode,
       });
-
-      // For misconception weak topics, also suggest review video
-      if (chapter.hasLectures && patternResult?.pattern === 'misconception') {
-        candidates.push({
-          bucket: 'repair',
-          type: 'video',
-          title: chapter.firstLectureTitle || chapter.title,
-          chapterTitle: chapter.title,
-          reason: 'Review this concept carefully',
-          estimatedMinutes: 20,
-          moduleId: chapter.moduleId,
-          chapterId: chapter.id,
-          subtab: 'lectures',
-          priority: 65 + pBoost,
-          state,
-          trend,
-          learningPattern: patternLabel,
-        });
-      }
       continue;
     }
 
-    // ── In progress → repair-light ──
+    // ── weakness slot (light): in-progress chapters ──
     {
       let reason = 'Continue where you left';
       if (patternResult?.pattern === 'hesitant') reason = 'Build confidence with quick practice';
@@ -276,94 +272,67 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       else if (trend === 'improving') reason = 'Keep momentum';
 
       candidates.push({
-        bucket: 'repair',
-        type: 'mcq',
-        title: chapter.title,
+        slot: 'weakness',
+        type: studyMode.key,
+        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        estimatedMinutes: 15,
+        detail: taskConfig.detail,
+        estimatedMinutes: taskConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        subtab: 'mcqs',
+        tab: studyMode.tab,
         priority: 65 + (trend === 'declining' ? 15 : trend === 'improving' ? 5 : 0),
         state,
         trend,
         learningPattern: patternLabel,
+        prescribedStudyMode: studyMode,
       });
     }
   }
 
-  // ── Apply exam weight boost + engagement factor to all candidates ──
+  // ── Apply exam weight boost + engagement factor ──
   for (const c of candidates) {
     const examBoost = getExamWeightBoost(c.chapterId || '', examWeightMap);
     const m = c.chapterId ? metricsMap.get(c.chapterId) : undefined;
     const engagementFactor = (m && (m.mcq_attempts ?? 0) < 3) ? 1.15 : 1.0;
     c.priority = c.priority * examBoost * engagementFactor;
-
-    // Attach prescribed study mode from exam weights
-    if (c.chapterId && examWeightMap) {
-      const w = examWeightMap.get(c.chapterId);
-      if (w) {
-        c.prescribedStudyMode = w.prescribed_study_mode;
-        c.tab = w.prescribed_study_mode.tab;
-      }
-    }
   }
 
-  // ── Sort all candidates by priority ──
+  // ── Sort strictly by priority ──
   candidates.sort((a, b) => b.priority - a.priority);
 
-  // ── Assemble balanced plan ──
-  const plan: BucketedTask[] = [];
+  // ── Assemble balanced plan: 1 review_due, 1 weakness, 1 progress ──
+  const plan: SlottedTask[] = [];
   const usedChapters = new Set<string>();
-  const usedBuckets = new Set<Bucket>();
-  let misconceptionCount = 0;
+  const filledSlots = new Set<Slot>();
 
-  // Pass 1: Pick primary (highest priority)
-  if (candidates.length > 0) {
-    const primary = candidates[0];
-    plan.push({ ...primary, isPrimary: true });
-    usedChapters.add(primary.chapterId || '');
-    usedBuckets.add(primary.bucket);
-    if (primary.learningPattern === 'misconception') misconceptionCount++;
-  }
-
-  // Pass 2: Pick complementary from different bucket if possible
-  for (const c of candidates) {
+  // Pass 1: Fill each slot with highest-priority candidate
+  const slotOrder: Slot[] = ['review_due', 'weakness', 'progress'];
+  for (const slot of slotOrder) {
     if (plan.length >= maxTasks) break;
-    if (usedChapters.has(c.chapterId || '')) continue;
-    // Prefer a different bucket for balance
-    if (usedBuckets.has(c.bucket) && candidates.some(x => !usedBuckets.has(x.bucket) && !usedChapters.has(x.chapterId || ''))) continue;
-    if (c.learningPattern === 'misconception' && misconceptionCount >= 1) continue;
-
-    plan.push(c);
-    usedChapters.add(c.chapterId || '');
-    usedBuckets.add(c.bucket);
-    if (c.learningPattern === 'misconception') misconceptionCount++;
-  }
-
-  // Pass 3: Fill remaining slots (allow same bucket)
-  for (const c of candidates) {
-    if (plan.length >= maxTasks) break;
-    if (usedChapters.has(c.chapterId || '')) continue;
-    if (c.learningPattern === 'misconception' && misconceptionCount >= 1) continue;
-
-    plan.push(c);
-    usedChapters.add(c.chapterId || '');
-    if (c.learningPattern === 'misconception') misconceptionCount++;
-  }
-
-  // Pass 4: Ensure at least one retention task if any exist
-  const hasRetainTask = plan.some(t => t.bucket === 'retain');
-  if (!hasRetainTask && plan.length >= maxTasks) {
-    const retainCandidate = candidates.find(c => c.bucket === 'retain' && !usedChapters.has(c.chapterId || ''));
-    if (retainCandidate) {
-      // Replace lowest-priority non-primary task
-      const replaceIdx = plan.length > 1 ? plan.length - 1 : -1;
-      if (replaceIdx > 0) {
-        plan[replaceIdx] = retainCandidate;
-      }
+    const candidate = candidates.find(
+      c => c.slot === slot && !usedChapters.has(c.chapterId || '')
+    );
+    if (candidate) {
+      plan.push(candidate);
+      usedChapters.add(candidate.chapterId || '');
+      filledSlots.add(slot);
     }
+  }
+
+  // Pass 2: Fill remaining slots from any candidates by priority
+  for (const c of candidates) {
+    if (plan.length >= maxTasks) break;
+    if (usedChapters.has(c.chapterId || '')) continue;
+    plan.push(c);
+    usedChapters.add(c.chapterId || '');
+  }
+
+  // Mark highest-priority as primary
+  if (plan.length > 0) {
+    plan.sort((a, b) => b.priority - a.priority);
+    plan[0].isPrimary = true;
   }
 
   // ── Derive plan metadata ──
@@ -375,8 +344,8 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   const chapterTitleMap = new Map(chapters.map(ch => [ch.id, ch.title]));
   const confidenceInsight = generateConfidenceInsight(metrics, chapterTitleMap);
 
-  // ── Convert to PlannedTask[] (strip bucket) ──
-  const tasks: PlannedTask[] = plan.map(({ bucket: _, ...rest }) => rest);
+  // ── Convert to PlannedTask[] (strip slot) ──
+  const tasks: PlannedTask[] = plan.map(({ slot: _, ...rest }) => rest);
   const primaryTask = tasks.find(t => t.isPrimary);
 
   return {

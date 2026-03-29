@@ -7,4 +7,4 @@ export type { LearningPattern, LearningPatternResult } from './classifyLearningP
 export { getRevisionState, calculateReviewStrength, getReviewType, getDueReviewChapters } from './reviewScheduling';
 export type { RevisionState } from './reviewScheduling';
 export { buildAdaptiveStudyPlan } from './buildAdaptiveStudyPlan';
-export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo } from './buildAdaptiveStudyPlan';
+export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo, TaskStudyModeKey } from './buildAdaptiveStudyPlan';

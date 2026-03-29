@@ -40,8 +40,9 @@ export interface DashboardInsight {
 }
 
 export interface SuggestedItem {
-  type: 'read' | 'mcq' | 'video' | 'essay' | 'flashcard' | 'review';
+  type: string;
   title: string;
+  detail?: string;
   chapterTitle?: string;
   estimatedMinutes?: number;
   chapterId?: string;
