@@ -42,16 +42,16 @@ export function useAssessments(moduleId: string, yearId: string) {
   return useQuery({
     queryKey: ['assessments', moduleId, yearId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('assessment_structures')
         .select('*')
-        .eq('module_id', moduleId)
-        .eq('year_id', yearId)
-        .order('created_at');
+        .eq('module_id', moduleId);
+      if (yearId) query = query.eq('year_id', yearId);
+      const { data, error } = await query.order('created_at');
       if (error) throw error;
       return data as AssessmentStructure[];
     },
-    enabled: !!moduleId && !!yearId,
+    enabled: !!moduleId,
   });
 }
 
