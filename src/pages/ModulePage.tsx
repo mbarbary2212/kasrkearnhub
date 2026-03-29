@@ -110,16 +110,22 @@ export default function ModulePage() {
   const bookStorageKey = `kasrlearn_book_${actualModuleId}`;
   const [activeBookLabel, setActiveBookLabel] = useState<string | null>(null);
 
-  // Initialize active book from localStorage once books are loaded
+  // Initialize active book from URL param, localStorage, or first book
   useEffect(() => {
     if (!isStudent || !hasMultipleBooks || sortedModuleBooks.length === 0) return;
+    const bookParam = searchParams.get('book');
+    if (bookParam && sortedModuleBooks.some(b => b.book_label === bookParam)) {
+      setActiveBookLabel(bookParam);
+      localStorage.setItem(bookStorageKey, bookParam);
+      return;
+    }
     const saved = localStorage.getItem(bookStorageKey);
     if (saved && sortedModuleBooks.some(b => b.book_label === saved)) {
       setActiveBookLabel(saved);
     } else {
       setActiveBookLabel(sortedModuleBooks[0]?.book_label || null);
     }
-  }, [isStudent, hasMultipleBooks, sortedModuleBooks, bookStorageKey]);
+  }, [isStudent, hasMultipleBooks, sortedModuleBooks, bookStorageKey, searchParams]);
 
   const handleSelectBookPill = (bookLabel: string) => {
     setActiveBookLabel(bookLabel);
