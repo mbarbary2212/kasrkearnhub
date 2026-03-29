@@ -894,13 +894,16 @@ export function ModuleLearningTab({
       );
     }
 
-    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[externalActiveBookLabel] || moduleId;
+    const crossRef = CROSS_MODULE_BOOKS[moduleId]?.[externalActiveBookLabel];
+    const fetchModuleId = crossRef?.moduleId || moduleId;
+    const fetchBookLabel = crossRef?.bookLabel || externalActiveBookLabel;
     
     return (
       <StudentBookPillView
         moduleId={moduleId}
         fetchModuleId={fetchModuleId}
         activeBookLabel={externalActiveBookLabel}
+        fetchBookLabel={fetchBookLabel}
         sortedBooks={[]} // pills rendered externally, pass empty
         onSelectPill={() => {}} // no-op, handled by parent
       />
@@ -937,13 +940,16 @@ export function ModuleLearningTab({
       );
     }
 
-    const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[activeBookLabel] || moduleId;
+    const crossRefLegacy = CROSS_MODULE_BOOKS[moduleId]?.[activeBookLabel];
+    const fetchModuleId = crossRefLegacy?.moduleId || moduleId;
+    const fetchBookLabel = crossRefLegacy?.bookLabel || activeBookLabel;
     
     return (
       <StudentBookPillView
         moduleId={moduleId}
         fetchModuleId={fetchModuleId}
         activeBookLabel={activeBookLabel}
+        fetchBookLabel={fetchBookLabel}
         sortedBooks={sortedBooks}
         onSelectPill={handleSelectBookPill}
       />
