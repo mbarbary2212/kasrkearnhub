@@ -38,6 +38,8 @@ import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
 import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
+import { useCaseScenarios } from '@/hooks/useCaseScenarios';
+import { CaseScenarioPractice } from '@/components/practice/CaseScenarioPractice';
 import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
@@ -347,18 +349,21 @@ export default function TopicDetailPage() {
     return filterByCustomPrefs(filtered, pinSettings, studentPrefs);
   }, [canManageContent, allInteractiveTabs, hideEmptyTabs, pinSettings, studentPrefs]);
 
+  const { data: topicCaseScenarios } = useCaseScenarios(topicId);
+
   const allPracticeTabs = useMemo(() => {
     return createPracticeTabs({
       mcqs: mcqs?.length || 0,
       sba: sbaQuestions?.length || 0,
       true_false: trueFalseQuestions?.length || 0,
       essays: essays?.length || 0,
+      case_scenarios: topicCaseScenarios?.length || 0,
       osce: osceQuestions?.length || 0,
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
     });
-  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, topicCaseScenarios?.length, osceQuestions?.length, matchingQuestions?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -1064,6 +1069,11 @@ export default function TopicDetailPage() {
                       />
                     )}
                   </div>
+                )}
+
+                {/* Case Scenarios Content */}
+                {practiceTab === 'case_scenarios' && (
+                  <CaseScenarioPractice topicId={topicId} />
                 )}
 
                 {/* Practical Content (placeholder) */}
