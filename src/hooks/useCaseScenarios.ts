@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 import type { CaseScenario, CaseScenarioQuestion } from '@/types/caseScenario';
 
 /** Lightweight count hook for chapter case scenarios (badges) */
@@ -94,6 +95,48 @@ export function useCaseScenarioDetail(caseId?: string) {
       return data as unknown as CaseScenario;
     },
     enabled: !!caseId,
+  });
+}
+
+/** Update a case scenario and its questions */
+export function useUpdateCaseScenario() {
+  const qc = useQueryClient();
+  const { user } = useAuthContext();
+  return useMutation({
+    mutationFn: async ({ id, data, questions }: {
+      id: string;
+      data: { stem?: string; difficulty?: string; chapter_id?: string | null; topic_id?: string | null; tags?: string[] };
+      questions?: { id?: string; question_text: string; model_answer?: string | null; explanation?: string | null; max_marks?: number; display_order: number }[];
+    }) => {
+      const { error } = await supabase
+        .from('case_scenarios')
+        .update({ ...data, updated_by: user?.id } as any)
+        .eq('id', id);
+      if (error) throw error;
+
+      if (questions) {
+        // Delete existing questions then re-insert
+        await supabase.from('case_scenario_questions').delete().eq('case_id', id);
+        if (questions.length > 0) {
+          const inserts = questions.map((q, idx) => ({
+            case_id: id,
+            question_text: q.question_text,
+            model_answer: q.model_answer || null,
+            explanation: q.explanation || null,
+            max_marks: q.max_marks || 5,
+            display_order: idx + 1,
+            question_type: 'short_answer' as const,
+          }));
+          const { error: qErr } = await supabase.from('case_scenario_questions').insert(inserts);
+          if (qErr) throw qErr;
+        }
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['case-scenarios'] });
+      qc.invalidateQueries({ queryKey: ['case-scenario-pool'] });
+      qc.invalidateQueries({ queryKey: ['case-scenario'] });
+    },
   });
 }
 

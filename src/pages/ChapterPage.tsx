@@ -1217,7 +1217,7 @@ export default function ChapterPage() {
                         </Button>
                       </div>
                     )}
-                    <CaseScenarioPractice chapterId={chapterId} />
+                    <CaseScenarioPractice chapterId={chapterId} canManage={canManageContent} />
                     <CaseScenarioBulkUpload
                       moduleId={moduleId || ''}
                       chapterId={chapterId}
