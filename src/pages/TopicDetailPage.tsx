@@ -40,6 +40,7 @@ import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
 import { useCaseScenarios } from '@/hooks/useCaseScenarios';
 import { CaseScenarioPractice } from '@/components/practice/CaseScenarioPractice';
+import { CaseScenarioBulkUpload } from '@/components/admin/CaseScenarioBulkUpload';
 import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
@@ -137,6 +138,7 @@ export default function TopicDetailPage() {
   const [flashcardFormOpen, setFlashcardFormOpen] = useState(false);
   const [flashcardBulkOpen, setFlashcardBulkOpen] = useState(false);
   const [mindMapBulkOpen, setMindMapBulkOpen] = useState(false);
+  const [caseBulkUploadOpen, setCaseBulkUploadOpen] = useState(false);
   const [visualBulkType, setVisualBulkType] = useState<'mind_map' | 'infographic'>('mind_map');
   const [editingFlashcard, setEditingFlashcard] = useState<StudyResource | null>(null);
 
@@ -1073,7 +1075,23 @@ export default function TopicDetailPage() {
 
                 {/* Case Scenarios Content */}
                 {practiceTab === 'case_scenarios' && (
-                  <CaseScenarioPractice topicId={topicId} />
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex justify-end">
+                        <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
+                          <Upload className="w-4 h-4 mr-1" />
+                          Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    <CaseScenarioPractice topicId={topicId} />
+                    <CaseScenarioBulkUpload
+                      moduleId={moduleId}
+                      topicId={topicId}
+                      open={caseBulkUploadOpen}
+                      onOpenChange={setCaseBulkUploadOpen}
+                    />
+                  </div>
                 )}
 
                 {/* Practical Content (placeholder) */}
