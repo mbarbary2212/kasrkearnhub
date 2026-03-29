@@ -42,6 +42,8 @@ interface ChapterProgressData {
   resourcesTotal: number;
   completedItems: number;
   totalItems: number;
+  pathwayViewed: number;
+pathwayTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -61,6 +63,8 @@ interface RpcProgressResult {
   osce_completed: number;
   case_completed: number;
   matching_completed: number;
+  pathway_total: number;
+pathway_viewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -84,6 +88,8 @@ export function useChapterProgress(chapterId?: string) {
         resourcesTotal: 0,
         completedItems: 0,
         totalItems: 0,
+        pathwayViewed: 0,
+pathwayTotal: 0,
       };
 
       if (!user?.id || !chapterId) return emptyResult;
@@ -160,6 +166,8 @@ export function useChapterProgress(chapterId?: string) {
         resourcesTotal: videosTotal,
         completedItems: practiceCompleted + videosCompleted,
         totalItems: practiceTotal + videosTotal,
+        pathwayViewed: rpc.pathway_viewed,
+pathwayTotal: rpc.pathway_total,
       };
     },
     enabled: !!user?.id && !!chapterId,
