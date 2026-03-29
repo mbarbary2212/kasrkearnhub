@@ -8,3 +8,5 @@ export { getRevisionState, calculateReviewStrength, getReviewType, getDueReviewC
 export type { RevisionState } from './reviewScheduling';
 export { buildAdaptiveStudyPlan } from './buildAdaptiveStudyPlan';
 export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo, TaskStudyModeKey } from './buildAdaptiveStudyPlan';
+export { buildCoachInsights } from './buildCoachInsights';
+export type { CoachInsight } from './buildCoachInsights';
