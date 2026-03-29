@@ -186,6 +186,7 @@ export function IntegrityCheckTab() {
     mcq_sets: { setRunning: setQualityMcqSetsRunning, setResult: setQualityMcqSetsResult, setError: setQualityMcqSetsError, setHasRun: setQualityMcqSetsHasRun, issueType: 'mcq_set_integrity' },
     guided_explanation: { setRunning: setQualityGuidedRunning, setResult: setQualityGuidedResult, setError: setQualityGuidedError, setHasRun: setQualityGuidedHasRun, issueType: 'guided_explanation_integrity' },
     mind_map: { setRunning: setQualityMindMapRunning, setResult: setQualityMindMapResult, setError: setQualityMindMapError, setHasRun: setQualityMindMapHasRun, issueType: 'mind_map_integrity' },
+    case_scenarios: { setRunning: setQualityCaseScenariosRunning, setResult: setQualityCaseScenariosResult, setError: setQualityCaseScenariosError, setHasRun: setQualityCaseScenariosHasRun, issueType: 'case_scenario_integrity' },
   };
 
   const runOrphanCheck = async (checkType: OrphanCheckType) => {
