@@ -362,6 +362,79 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
         .filter(m => moduleIds.includes(m.module_id));
 
+      // ============================================================================
+      // Fetch exam weights for priority boosting + prescribed study modes
+      // ============================================================================
+      let examWeightMap: Map<string, ChapterExamWeight> | undefined;
+      try {
+        const { data: activeAssessments } = await supabase
+          .from('assessment_structures')
+          .select('id, module_id')
+          .in('module_id', moduleIds)
+          .eq('is_active', true);
+
+        if (activeAssessments && activeAssessments.length > 0) {
+          const { data: weights } = await supabase
+            .from('topic_exam_weights')
+            .select('chapter_id, module_id, weight_percent, weight_marks, component_id, assessment_components!inner(component_type)')
+            .in('assessment_id', activeAssessments.map(a => a.id))
+            .not('chapter_id', 'is', null)
+            .not('component_id', 'is', null);
+
+          if (weights && weights.length > 0) {
+            examWeightMap = new Map<string, ChapterExamWeight>();
+            const SECONDARY_THRESHOLD = 0.7;
+
+            for (const w of weights as any[]) {
+              if (!w.chapter_id) continue;
+              const componentType: string = w.assessment_components?.component_type || 'unknown';
+              const percent = Number(w.weight_percent) || 0;
+              const marks = Number(w.weight_marks) || 0;
+
+              let entry = examWeightMap.get(w.chapter_id);
+              if (!entry) {
+                entry = {
+                  chapter_id: w.chapter_id,
+                  module_id: w.module_id,
+                  total_weight_percent: 0,
+                  total_weight_marks: 0,
+                  component_weights: {},
+                  dominant_component: null,
+                  secondary_component: null,
+                  prescribed_study_mode: getStudyMode(null),
+                };
+                examWeightMap.set(w.chapter_id, entry);
+              }
+              entry.total_weight_percent += percent;
+              entry.total_weight_marks += marks;
+              if (!entry.component_weights[componentType]) {
+                entry.component_weights[componentType] = { percent: 0, marks: 0 };
+              }
+              entry.component_weights[componentType].percent += percent;
+              entry.component_weights[componentType].marks += marks;
+            }
+
+            // Compute dominant/secondary for each chapter
+            for (const entry of examWeightMap.values()) {
+              const sorted = Object.entries(entry.component_weights)
+                .map(([type, vals]) => ({ type, total: vals.percent || vals.marks }))
+                .sort((a, b) => b.total - a.total);
+
+              entry.dominant_component = sorted[0]?.type ?? null;
+              if (sorted.length >= 2 && sorted[0].total > 0) {
+                const ratio = sorted[1].total / sorted[0].total;
+                if (ratio >= SECONDARY_THRESHOLD) {
+                  entry.secondary_component = sorted[1].type;
+                }
+              }
+              entry.prescribed_study_mode = getStudyMode(entry.dominant_component);
+            }
+          }
+        }
+      } catch {
+        // Non-critical: proceed without exam weights
+      }
+
       // Build chapter info for suggestion builder
       const chapterInfos = chapters.map(ch => ({
         id: ch.id,
@@ -372,10 +445,11 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
       }));
 
-      // Build adaptive study plan from real metrics
+      // Build adaptive study plan from real metrics + exam weights
       const studyPlan = buildAdaptiveStudyPlan({
         metrics: realMetrics,
         chapters: chapterInfos,
+        examWeightMap,
       });
 
       // Convert PlannedTask[] to SuggestedItem[] for backward compat
@@ -389,8 +463,10 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         reason: t.reason,
         isPrimary: t.isPrimary,
         subtab: t.subtab,
+        tab: t.tab,
         trend: t.trend,
         revisionState: t.revisionState,
+        prescribedStudyMode: t.prescribedStudyMode,
       }));
 
       // Get weak chapters from real metrics
