@@ -57,6 +57,8 @@ interface ChapterProgressData {
   matchingTotal: number;
   tfCompleted: number;
   tfTotal: number;
+  flashcardReviewed: number;
+  flashcardTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
