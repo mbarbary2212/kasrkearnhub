@@ -211,6 +211,16 @@ export function validateGenerationContext(ctx: GenerationContext): ValidationIss
     }
   }
 
+  // Check difficulty distribution totals 100
+  const { easy, moderate, difficult } = ctx.rules.difficultyDistribution;
+  const diffTotal = easy + moderate + difficult;
+  if (diffTotal !== 100) {
+    issues.push({
+      severity: 'error',
+      message: `Difficulty distribution totals ${diffTotal}% — it must equal 100%.`,
+    });
+  }
+
   // Check total eligible chapters
   if (ctx.eligibleChapters.length === 0) {
     issues.push({
