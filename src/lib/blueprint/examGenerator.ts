@@ -516,5 +516,20 @@ export async function dryRunAssembly(assessmentId: string): Promise<Omit<Generat
     }
   }
 
-  return { success: allQuestions.length > 0, questions: allQuestions, warnings, errors };
+  // Validate + repair
+  let finalQuestions = allQuestions;
+  const validation = validateGeneratedExam(finalQuestions, ctx);
+  if (!validation.valid) {
+    const { questions: repairedQ, validation: repairedV } = repairExam(finalQuestions, ctx);
+    finalQuestions = repairedQ;
+    for (const v of validation.violations) {
+      warnings.push(`[REPAIR] ${v.rule}: ${v.message}`);
+    }
+    if (repairedV.repaired) {
+      warnings.push(`Auto-repair removed ${allQuestions.length - finalQuestions.length} question(s)`);
+    }
+  }
+
+  const debugReport = buildDebugReport(assessmentId, finalQuestions, ctx, warnings);
+  return { success: finalQuestions.length > 0, questions: finalQuestions, warnings, errors, debugReport, validation };
 }
