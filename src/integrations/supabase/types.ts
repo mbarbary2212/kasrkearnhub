@@ -1465,6 +1465,36 @@ export type Database = {
           },
         ]
       }
+      content_views: {
+        Row: {
+          chapter_id: string | null
+          content_id: string
+          content_type: string
+          first_viewed_at: string
+          id: string
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          content_id: string
+          content_type: string
+          first_viewed_at?: string
+          id?: string
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          content_id?: string
+          content_type?: string
+          first_viewed_at?: string
+          id?: string
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       department_admins: {
         Row: {
           assigned_by: string | null

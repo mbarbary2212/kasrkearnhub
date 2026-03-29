@@ -46,7 +46,23 @@ export function useManualVideoComplete() {
       );
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async (videoId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['video-watched', user?.id] });
+      const prev = queryClient.getQueryData(['video-watched', user?.id]);
+      queryClient.setQueryData(['video-watched', user?.id], (old: typeof data) => {
+        if (!old) return old;
+        const newWatched = new Set(old.watchedIds);
+        newWatched.add(videoId);
+        const newPercent = new Map(old.percentMap);
+        newPercent.set(videoId, 100);
+        return { watchedIds: newWatched, percentMap: newPercent };
+      });
+      return { prev };
+    },
+    onError: (_err, _vid, context) => {
+      if (context?.prev) queryClient.setQueryData(['video-watched', user?.id], context.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['video-watched'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
     },
@@ -62,7 +78,23 @@ export function useManualVideoComplete() {
         .eq('video_id', videoId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onMutate: async (videoId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['video-watched', user?.id] });
+      const prev = queryClient.getQueryData(['video-watched', user?.id]);
+      queryClient.setQueryData(['video-watched', user?.id], (old: typeof data) => {
+        if (!old) return old;
+        const newWatched = new Set(old.watchedIds);
+        newWatched.delete(videoId);
+        const newPercent = new Map(old.percentMap);
+        newPercent.delete(videoId);
+        return { watchedIds: newWatched, percentMap: newPercent };
+      });
+      return { prev };
+    },
+    onError: (_err, _vid, context) => {
+      if (context?.prev) queryClient.setQueryData(['video-watched', user?.id], context.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['video-watched'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
     },
