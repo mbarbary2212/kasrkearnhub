@@ -11,7 +11,8 @@ export type ContentTableName =
   | 'osce_questions'
   | 'matching_questions'
   | 'virtual_patient_cases'
-  | 'true_false_questions';
+  | 'true_false_questions'
+  | 'case_scenarios';
 
 // Query key patterns to invalidate for each table
 const QUERY_INVALIDATION_MAP: Record<ContentTableName, string[]> = {
@@ -24,6 +25,7 @@ const QUERY_INVALIDATION_MAP: Record<ContentTableName, string[]> = {
   matching_questions: ['matching-questions'],
   virtual_patient_cases: ['clinical-cases', 'virtual-patient-cases'],
   true_false_questions: ['true_false'],
+  case_scenarios: ['case-scenarios', 'case-scenario-pool'],
 };
 
 function shouldInvalidate(queryKey: unknown[], tableName: ContentTableName): boolean {

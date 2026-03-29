@@ -72,7 +72,7 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   mind_map: 'Mind Maps',
   guided_explanation: 'Guided Explanations',
   worked_case: 'Interactive Cases',
-  case_scenario: 'Interactive Cases',
+  case_scenario: 'Case Scenarios',
 };
 
 interface StepResultItemProps {
