@@ -245,6 +245,39 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
       ],
     ],
   },
+  case_scenario: {
+    columns: ['chapter', 'topic', 'difficulty', 'case_stem', 'question_1', 'answer_1', 'question_2', 'answer_2', 'question_3', 'answer_3', 'explanation'],
+    required: ['chapter', 'difficulty', 'case_stem', 'question_1', 'answer_1'],
+    optional: ['topic', 'question_2', 'answer_2', 'question_3', 'answer_3', 'explanation'],
+    examples: [
+      [
+        'Acute Abdomen',
+        'Appendicitis',
+        'moderate',
+        'A 22-year-old male presents to the emergency department with a 12-hour history of periumbilical pain that has migrated to the right iliac fossa. He reports nausea and one episode of vomiting. On examination, there is rebound tenderness at McBurney\'s point. Temperature is 38.1°C.',
+        'What is the most likely diagnosis?',
+        'Acute appendicitis. The migration of pain from the periumbilical region to the right iliac fossa (McBurney\'s point) with rebound tenderness and low-grade fever is classic.',
+        'Name two investigations you would request.',
+        'Full blood count (expecting leukocytosis) and abdominal ultrasound or CT abdomen/pelvis to confirm the diagnosis.',
+        'What is the definitive management?',
+        'Appendicectomy (laparoscopic preferred). IV antibiotics should be started preoperatively.',
+        'Appendicitis classically presents with migratory RIF pain, anorexia, and low-grade fever. Alvarado score helps risk-stratify. Early surgical referral reduces perforation risk.',
+      ],
+      [
+        'Respiratory Physiology',
+        'Asthma',
+        'easy',
+        'A 16-year-old girl presents with episodic wheezing, chest tightness, and shortness of breath worse at night and during exercise. She has a history of eczema. Peak flow is 65% of predicted.',
+        'What is the likely diagnosis and why?',
+        'Bronchial asthma. Episodic symptoms of wheeze, chest tightness, and dyspnea with nocturnal/exercise worsening, atopic history (eczema), and reduced peak flow are characteristic.',
+        'What initial treatment would you prescribe?',
+        'Short-acting beta-2 agonist (salbutamol) as reliever, and a low-dose inhaled corticosteroid (e.g., beclomethasone) as preventer therapy.',
+        '',
+        '',
+        'Asthma is a chronic inflammatory airway disease with reversible obstruction. Diagnosis is clinical + spirometry showing reversibility. Step-wise management per GINA guidelines.',
+      ],
+    ],
+  },
   user_invite: {
     columns: ['full_name', 'email', 'role'],
     required: ['full_name', 'email'],
@@ -356,6 +389,13 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     id: 'guided_explanation',
     title: 'Guided Explanations Template',
     description: 'Socratic-method guided questions with hints, answers, and key takeaways',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'case_scenario',
+    title: 'Case Scenarios Template',
+    description: 'Clinical case scenarios with 1–3 sub-questions for practice and exam generation. Each case is one clinical scenario tagged by chapter, topic, and difficulty.',
     format: 'csv',
     icon: 'spreadsheet',
   },
@@ -906,6 +946,7 @@ function generateTemplateDownload(templateId: string) {
     case 'essay':
     case 'true_false':
     case 'guided_explanation':
+    case 'case_scenario':
       // All CSV-based templates use the schema system
       if (schema) {
         const fileName = templateId === 'algorithm' ? 'pathways_template.csv' : `${templateId}_template.csv`;
