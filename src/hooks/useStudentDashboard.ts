@@ -17,6 +17,8 @@ import {
 import type { PlannedTask, AdaptiveStudyPlan } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
+import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
+import { getStudyMode } from '@/lib/studyModes';
 
 export interface ChapterStatus {
   id: string;
@@ -47,8 +49,10 @@ export interface SuggestedItem {
   reason?: string;
   isPrimary?: boolean;
   subtab?: string;
+  tab?: string;
   trend?: 'declining' | 'stable' | 'improving';
   revisionState?: string;
+  prescribedStudyMode?: { key: string; label: string; tab: string };
 }
 
 export interface WeakChapter {
