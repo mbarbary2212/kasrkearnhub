@@ -44,6 +44,7 @@ const ActivityLogPage = lazy(() => import("./pages/ActivityLogPage"));
 const ExamResultsPage = lazy(() => import("./pages/ExamResultsPage"));
 const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage"));
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
+const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
 const AssessmentBlueprintPage = lazy(() => import("./pages/AssessmentBlueprintPage"));
 
 const queryClient = new QueryClient({
