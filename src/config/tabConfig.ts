@@ -30,7 +30,7 @@ export type InteractiveTabId = 'cases' | 'pathways';
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
 // clinical_cases moved to Interactive section
-export type PracticeTabId = 'mcqs' | 'sba' | 'true_false' | 'essays' | 'osce' | 'practical' | 'matching' | 'images';
+export type PracticeTabId = 'mcqs' | 'sba' | 'true_false' | 'essays' | 'osce' | 'practical' | 'matching' | 'images' | 'case_scenarios';
 
 export interface TabConfig {
   id: string;
@@ -64,6 +64,7 @@ export const PRACTICE_TABS: TabConfig[] = [
   { id: 'sba', label: 'SBA', icon: HelpCircle },
   { id: 'true_false', label: 'True/False', icon: ToggleLeft },
   { id: 'essays', label: 'Short Answer', icon: PenTool },
+  { id: 'case_scenarios', label: 'Case Scenarios', icon: FileText },
   { id: 'osce', label: 'OSCE', icon: FlaskConical },
   { id: 'practical', label: 'Practical', icon: Stethoscope },
   { id: 'matching', label: 'Matching', icon: Link2 },
@@ -104,6 +105,7 @@ export function createPracticeTabs(counts: {
   sba?: number;
   true_false?: number;
   essays?: number;
+  case_scenarios?: number;
   osce?: number;
   practical?: number;
   matching?: number;
