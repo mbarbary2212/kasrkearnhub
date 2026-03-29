@@ -370,6 +370,7 @@ export default function ModulePage() {
                 canManageBooks={canManageBooks}
                 canManageChapters={canManageChapters}
                 externalActiveBookLabel={isStudent && hasMultipleBooks ? activeBookLabel : undefined}
+                initialBook={searchParams.get('book') || undefined}
               />
             )}
 
