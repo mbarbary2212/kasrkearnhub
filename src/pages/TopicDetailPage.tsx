@@ -40,6 +40,7 @@ import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
 import { useCaseScenarios } from '@/hooks/useCaseScenarios';
 import { CaseScenarioPractice } from '@/components/practice/CaseScenarioPractice';
+import { CaseScenarioBulkUpload } from '@/components/admin/CaseScenarioBulkUpload';
 import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
