@@ -2,6 +2,24 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { CaseScenario, CaseScenarioQuestion } from '@/types/caseScenario';
 
+/** Lightweight count hook for chapter case scenarios (badges) */
+export function useChapterCaseScenarioCount(chapterId?: string) {
+  return useQuery({
+    queryKey: ['case-scenarios', 'chapter-count', chapterId],
+    queryFn: async () => {
+      if (!chapterId) return 0;
+      const { count, error } = await supabase
+        .from('case_scenarios')
+        .select('id', { count: 'exact', head: true })
+        .eq('chapter_id', chapterId)
+        .eq('is_deleted', false);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!chapterId,
+  });
+}
+
 /** Fetch case scenarios for a chapter (with embedded questions) */
 export function useCaseScenarios(chapterId?: string) {
   return useQuery({

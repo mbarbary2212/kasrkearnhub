@@ -41,6 +41,8 @@ import { useChapterOsceQuestions, useChapterOsceCount } from '@/hooks/useOsceQue
 import { useChapterProgress } from '@/hooks/useChapterProgress';
 import { useChapterMatchingQuestions, useChapterMatchingCount } from '@/hooks/useMatchingQuestions';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
+import { useChapterCaseScenarioCount } from '@/hooks/useCaseScenarios';
+import { CaseScenarioPractice } from '@/components/practice/CaseScenarioPractice';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
@@ -202,6 +204,7 @@ export default function ChapterPage() {
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
   const { data: essayCount = 0 } = useChapterEssayCount(chapterId);
   const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
+  const { data: caseScenarioCount = 0 } = useChapterCaseScenarioCount(chapterId);
   
   // Full practice data hooks - only fetch when Practice or Test section is active
   const isPracticeActive = activeSection === 'practice' || activeSection === 'test' || activeSection === 'interactive';
@@ -447,6 +450,7 @@ export default function ChapterPage() {
       sba: sbaCount,
       true_false: trueFalseCount,
       essays: essayCount,
+      case_scenarios: caseScenarioCount,
       osce: osceCount,
       practical: 0,
       matching: matchingCount,
@@ -457,6 +461,7 @@ export default function ChapterPage() {
     sbaCount,
     trueFalseCount,
     essayCount,
+    caseScenarioCount,
     osceCount,
     matchingCount,
   ]);
@@ -1198,6 +1203,11 @@ export default function ChapterPage() {
                       />
                     )}
                   </div>
+                )}
+
+                {/* Case Scenarios Content */}
+                {practiceTab === 'case_scenarios' && (
+                  <CaseScenarioPractice chapterId={chapterId} />
                 )}
 
                 {/* Practical Content (placeholder) */}
