@@ -311,12 +311,12 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                 <Trash2 className="h-3.5 w-3.5" />
                 Delete
               </Button>
-              {sections.length > 0 && chapterId && (
+              {sections.length > 0 && chapterId && contentTable !== 'case_scenarios' && (
                 <BulkSectionAssignment
                   chapterId={chapterId}
                   topicId={topicId}
                   selectedIds={Array.from(selectedIds)}
-                  contentTable={contentTable}
+                  contentTable={contentTable as Exclude<ContentTableName, 'case_scenarios'>}
                   onComplete={clearSelection}
                 />
               )}
