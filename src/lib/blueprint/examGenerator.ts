@@ -203,32 +203,50 @@ function selectWithDifficulty(
 }
 
 /**
- * Simple selection without difficulty (for Recall / components without difficulty data).
+ * Selection with chapter tracking and optional difficulty distribution.
+ * Used for Recall and Case components.
  */
-function selectSimple(
+function selectWithChapterTracking(
   pool: PoolQuestion[],
   count: number,
+  distribution: { easy: number; moderate: number; difficult: number },
   excludeChapterIds?: Set<string>
 ): { selected: PoolQuestion[]; usedChapterIds: Set<string>; warnings: string[] } {
   const warnings: string[] = [];
-  const shuffled = shuffle(pool);
-  const selected: PoolQuestion[] = [];
   const usedChapterIds = new Set<string>();
   const usedIds = new Set<string>();
 
+  // Filter out excluded chapters first
+  const filtered = excludeChapterIds
+    ? pool.filter(q => !q.chapter_id || !excludeChapterIds.has(q.chapter_id))
+    : pool;
+
+  // Check if pool has any difficulty data
+  const hasDifficultyData = filtered.some(q => q.difficulty != null);
+
+  if (hasDifficultyData) {
+    // Use difficulty-aware selection
+    const { selected, warnings: w } = selectWithDifficulty(filtered, count, distribution);
+    warnings.push(...w);
+    for (const q of selected) {
+      if (q.chapter_id) usedChapterIds.add(q.chapter_id);
+    }
+    return { selected, usedChapterIds, warnings };
+  }
+
+  // Fallback: simple random selection (no difficulty data available)
+  const shuffled = shuffle(filtered);
+  const selected: PoolQuestion[] = [];
   for (const q of shuffled) {
     if (selected.length >= count) break;
     if (usedIds.has(q.id)) continue;
-    if (excludeChapterIds && q.chapter_id && excludeChapterIds.has(q.chapter_id)) continue;
     selected.push(q);
     usedIds.add(q.id);
     if (q.chapter_id) usedChapterIds.add(q.chapter_id);
   }
-
   if (selected.length < count) {
     warnings.push(`Could only select ${selected.length}/${count} questions (pool exhausted)`);
   }
-
   return { selected, usedChapterIds, warnings };
 }
 
