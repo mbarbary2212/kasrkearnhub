@@ -127,7 +127,6 @@ export function RichDocumentViewer({
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
-            </Button>
           </div>
         </div>
       </CardHeader>
