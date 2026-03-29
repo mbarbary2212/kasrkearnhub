@@ -4367,6 +4367,7 @@ export type Database = {
           concept_id: string | null
           created_at: string | null
           created_by: string | null
+          difficulty: string | null
           display_order: number | null
           explanation_1: string | null
           explanation_2: string | null
@@ -4404,6 +4405,7 @@ export type Database = {
           concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          difficulty?: string | null
           display_order?: number | null
           explanation_1?: string | null
           explanation_2?: string | null
@@ -4441,6 +4443,7 @@ export type Database = {
           concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          difficulty?: string | null
           display_order?: number | null
           explanation_1?: string | null
           explanation_2?: string | null
