@@ -186,13 +186,13 @@ function CasePlayer({ caseData, onBack }: { caseData: CaseScenario; onBack: () =
                 </Button>
 
                 {isRevealed && q.model_answer && (
-                  <div className="mt-3 p-3 rounded-md bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-400 mb-1">
+                  <div className="mt-3 p-3 rounded-md bg-accent/50 border border-border">
+                    <p className="text-sm font-medium text-primary mb-1">
                       Model Answer
                     </p>
                     <p className="text-sm whitespace-pre-wrap">{q.model_answer}</p>
                     {q.explanation && (
-                      <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800">
+                      <div className="mt-2 pt-2 border-t border-border">
                         <p className="text-xs text-muted-foreground font-medium mb-1">Explanation</p>
                         <p className="text-sm whitespace-pre-wrap">{q.explanation}</p>
                       </div>
