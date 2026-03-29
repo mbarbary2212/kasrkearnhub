@@ -19,6 +19,11 @@ import type {
   ComponentSpec,
   GenerationRules,
 } from './generationContext';
+import {
+  validateGeneratedExam,
+  repairExam,
+  buildDebugReport,
+} from './examValidator';
 
 // ── Types ──
 
@@ -39,6 +44,8 @@ export interface GenerationResult {
   questions: GeneratedQuestion[];
   warnings: string[];
   errors: string[];
+  debugReport?: import('./examValidator').ExamDebugReport;
+  validation?: import('./examValidator').ValidationResult;
 }
 
 interface PoolQuestion {
