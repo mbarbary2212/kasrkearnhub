@@ -200,11 +200,13 @@ function BookLecturesView({
   
   const deleteChapter = useDeleteChapter();
   
-  // Cross-module book mapping: SUR-523's Book 1 fetches from SUR-423
-  const CROSS_MODULE_BOOKS: Record<string, Record<string, string>> = {
-    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General surgery Book 1': '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10' },
+  // Cross-module book mapping: SUR-523's "General" fetches from SUR-423's "General surgery Book 1"
+  const CROSS_MODULE_BOOKS: Record<string, Record<string, { moduleId: string; bookLabel: string }>> = {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': { 'General': { moduleId: '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10', bookLabel: 'General surgery Book 1' } },
   };
-  const fetchModuleId = CROSS_MODULE_BOOKS[moduleId]?.[bookLabel] || moduleId;
+  const crossRef = CROSS_MODULE_BOOKS[moduleId]?.[bookLabel];
+  const fetchModuleId = crossRef?.moduleId || moduleId;
+  const fetchBookLabel = crossRef?.bookLabel || bookLabel;
   
   // Module IDs for SUR-423 and SUR-523 that show sort filter for Book 2 and Book 3
   const SURGERY_MODULE_IDS = [
@@ -217,13 +219,13 @@ function BookLecturesView({
   const [sortMode, setSortMode] = useState<SortMode>('default');
   
   const { data: chaptersRaw, isLoading: chaptersLoading } = useQuery({
-    queryKey: ['module-chapters-for-book', fetchModuleId, bookLabel],
+    queryKey: ['module-chapters-for-book', fetchModuleId, fetchBookLabel],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('module_chapters')
         .select('*')
         .eq('module_id', fetchModuleId)
-        .eq('book_label', bookLabel)
+        .eq('book_label', fetchBookLabel)
         .order('order_index', { ascending: true });
       
       if (error) throw error;
