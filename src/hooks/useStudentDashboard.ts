@@ -653,53 +653,9 @@ function calculateStudyStreak(activityTimestamps: string[]): number {
   return streak;
 }
 
-function generateInsights(chapters: ChapterStatus[]): DashboardInsight[] {
-  const insights: DashboardInsight[] = [];
-
-  // Strong areas: chapters with highest coverage (completed or high progress)
-  const highCoverageChapters = chapters
-    .filter(c => c.status === 'completed' || (c.status === 'in_progress' && c.progress >= 75))
-    .sort((a, b) => b.progress - a.progress)
-    .slice(0, 3);
-  
-  highCoverageChapters.forEach(ch => {
-    insights.push({
-      type: 'strong',
-      label: ch.title,
-      detail: ch.status === 'completed' ? '100% coverage' : `${ch.progress}% coverage`,
-    });
-  });
-
-  // Needs attention: in-progress chapters with low progress (prioritize lowest)
-  const needsAttention = chapters
-    .filter(c => c.status === 'in_progress' && c.progress < 50 && c.totalItems > 0)
-    .sort((a, b) => a.progress - b.progress)
-    .slice(0, 3);
-  
-  needsAttention.forEach(ch => {
-    insights.push({
-      type: 'attention',
-      label: ch.title,
-      detail: `${ch.progress}% coverage — ${ch.completedItems} of ${ch.totalItems} items`,
-    });
-  });
-
-  // If no strong areas but have not-started chapters, encourage starting
-  if (insights.filter(i => i.type === 'strong').length === 0) {
-    const notStarted = chapters.filter(c => c.status === 'not_started' && c.totalItems > 0);
-    if (notStarted.length > 0) {
-      insights.push({
-        type: 'attention',
-        label: 'Ready to begin',
-        detail: `${notStarted.length} chapter${notStarted.length > 1 ? 's' : ''} awaiting your study`,
-      });
-    }
-  }
-
-  return insights;
-}
-
 // Old proxy-based classifyChapter, generateSuggestions, and detectWeakChapters
 // have been removed. All suggestion/weak logic now flows through:
 //   src/lib/studentMetrics/buildDashboardSuggestions.ts
 //   src/lib/studentMetrics/classifyChapterState.ts
+// Insights now flow through:
+//   src/lib/studentMetrics/buildCoachInsights.ts
