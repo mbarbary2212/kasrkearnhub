@@ -388,7 +388,7 @@ export function LectureList({
               {sectionsEnabled && chapterSections.length > 0 && (
                 <div className="space-y-1.5">
                   <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
-                  <div className="mt-1 space-y-2 rounded-md border p-3">
+                  <div className="mt-1 max-h-40 overflow-y-auto rounded-md border p-3 space-y-2">
                     {chapterSections.map((s) => (
                       <label key={s.id} className="flex items-center gap-2 cursor-pointer">
                         <Checkbox
@@ -848,7 +848,7 @@ export function LectureList({
             {sectionsEnabled && chapterSections.length > 0 && (
               <div className="space-y-1.5">
                 <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
-                <div className="mt-1 space-y-2 rounded-md border p-3">
+                <div className="mt-1 max-h-40 overflow-y-auto rounded-md border p-3 space-y-2">
                   {chapterSections.map((s) => (
                     <label key={s.id} className="flex items-center gap-2 cursor-pointer">
                       <Checkbox
