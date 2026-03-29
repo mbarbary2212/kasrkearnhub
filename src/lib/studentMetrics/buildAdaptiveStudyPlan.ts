@@ -8,6 +8,8 @@ import { classifyLearningPattern, type LearningPattern } from './classifyLearnin
 import { getRevisionState, getReviewType, type RevisionState } from './reviewScheduling';
 import { generateConfidenceInsight } from './classifyLearningPattern';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
+import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
+import { getStudyMode, type StudyMode } from '@/lib/studyModes';
 
 // ─── Public Types ─────────────────────────────────────────────
 
@@ -23,9 +25,11 @@ export interface PlannedTask {
   state?: string;
   isPrimary?: boolean;
   subtab?: string;
+  tab?: string;
   trend?: PerformanceTrend;
   learningPattern?: string;
   revisionState?: RevisionState;
+  prescribedStudyMode?: StudyMode;
 }
 
 export interface AdaptiveStudyPlan {
@@ -50,6 +54,7 @@ export interface AdaptivePlanInput {
   metrics: StudentChapterMetric[];
   chapters: ChapterInfo[];
   availableMinutes?: number;  // null = default 45-60 min
+  examWeightMap?: Map<string, ChapterExamWeight>;
 }
 
 // ─── Task Buckets ─────────────────────────────────────────────
