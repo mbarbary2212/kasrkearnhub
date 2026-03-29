@@ -104,7 +104,7 @@ export function useCreateAssessment() {
     }) => {
       const { data, error } = await supabase
         .from('assessment_structures')
-        .insert(values)
+        .insert(values as any)
         .select()
         .single();
       if (error) throw error;
@@ -146,7 +146,7 @@ export function useAddComponent() {
       // Don't include total_marks - it's a generated column
       const { data, error } = await supabase
         .from('assessment_components')
-        .insert(values)
+        .insert(values as any)
         .select()
         .single();
       if (error) throw error;
