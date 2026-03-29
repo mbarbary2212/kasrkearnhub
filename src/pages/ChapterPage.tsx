@@ -963,6 +963,8 @@ export default function ChapterPage() {
                                   title={doc.title}
                                   content={doc.rich_content}
                                   documentType="socratic_tutorial"
+                                  resourceId={doc.id}
+                                  chapterId={chapterId}
                                 />
                               ) : (
                                 <SocraticDocumentCard
