@@ -78,7 +78,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           <div
             className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors group bg-primary/5 hover:bg-primary/10 border border-primary/20"
             onClick={() => {
-              const tab = primarySuggestion.type === 'mcq' || primarySuggestion.type === 'essay' ? 'practice' : 'resources';
+              const tab = primarySuggestion.tab || primarySuggestion.prescribedStudyMode?.tab || (primarySuggestion.type === 'mcq' ? 'practice' : 'resources');
               onNavigate(primarySuggestion.moduleId, primarySuggestion.chapterId, tab, primarySuggestion.subtab);
             }}
           >
@@ -112,7 +112,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                   key={idx}
                   className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors bg-muted/50 hover:bg-muted group"
                   onClick={() => {
-                    const tab = item.type === 'mcq' || item.type === 'essay' ? 'practice' : 'resources';
+                    const tab = item.tab || item.prescribedStudyMode?.tab || (item.type === 'mcq' ? 'practice' : 'resources');
                     onNavigate(item.moduleId, item.chapterId, tab, item.subtab);
                   }}
                 >
