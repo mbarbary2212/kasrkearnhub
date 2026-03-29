@@ -1075,7 +1075,23 @@ export default function TopicDetailPage() {
 
                 {/* Case Scenarios Content */}
                 {practiceTab === 'case_scenarios' && (
-                  <CaseScenarioPractice topicId={topicId} />
+                  <div className="space-y-4">
+                    {canManageContent && (
+                      <div className="flex justify-end">
+                        <Button size="sm" variant="outline" onClick={() => setCaseBulkUploadOpen(true)}>
+                          <Upload className="w-4 h-4 mr-1" />
+                          Bulk Upload
+                        </Button>
+                      </div>
+                    )}
+                    <CaseScenarioPractice topicId={topicId} />
+                    <CaseScenarioBulkUpload
+                      moduleId={moduleId}
+                      topicId={topicId}
+                      open={caseBulkUploadOpen}
+                      onOpenChange={setCaseBulkUploadOpen}
+                    />
+                  </div>
                 )}
 
                 {/* Practical Content (placeholder) */}
