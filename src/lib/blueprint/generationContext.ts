@@ -40,6 +40,12 @@ export interface ComponentSpec {
   totalMarks: number;
   /** Chapter IDs eligible for this specific component */
   eligibleChapterIds: string[];
+  /**
+   * For 'short_answer_case': each case_scenario is ONE atomic question unit.
+   * Sub-questions inside a case are bundled — the case counts as 1 toward questionCount.
+   * The generator must select whole cases, not individual sub-questions.
+   */
+  selectionUnit: 'individual_question' | 'case_scenario';
 }
 
 export interface GenerationRules {
@@ -135,6 +141,7 @@ export async function resolveGenerationContext(assessmentId: string): Promise<Ge
       marksPerQuestion: comp.marks_per_question,
       totalMarks: comp.question_count * comp.marks_per_question,
       eligibleChapterIds,
+      selectionUnit: comp.component_type === 'short_answer_case' ? 'case_scenario' : 'individual_question',
     };
   });
 
