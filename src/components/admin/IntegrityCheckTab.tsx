@@ -50,8 +50,8 @@ interface OrphanCheckResult {
   checkedAt: string;
 }
 
-type OrphanCheckType = 'mcqs' | 'mcq_sets' | 'essays' | 'osce' | 'flashcards' | 'lectures' | 'matching' | 'study_resources';
-type QualityCheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'mcq_sets' | 'guided_explanation' | 'mind_map';
+type OrphanCheckType = 'mcqs' | 'mcq_sets' | 'essays' | 'osce' | 'flashcards' | 'lectures' | 'matching' | 'study_resources' | 'case_scenarios';
+type QualityCheckType = 'osce' | 'flashcards' | 'clinical_cases' | 'lectures' | 'matching' | 'mcq_sets' | 'guided_explanation' | 'mind_map' | 'case_scenarios';
 
 export function IntegrityCheckTab() {
   const [activeSubTab, setActiveSubTab] = useState<'orphaned' | 'quality'>('orphaned');
@@ -97,6 +97,11 @@ export function IntegrityCheckTab() {
   const [orphanStudyResourcesError, setOrphanStudyResourcesError] = useState<string | null>(null);
   const [orphanStudyResourcesHasRun, setOrphanStudyResourcesHasRun] = useState(false);
 
+  const [orphanCaseScenariosRunning, setOrphanCaseScenariosRunning] = useState(false);
+  const [orphanCaseScenariosResult, setOrphanCaseScenariosResult] = useState<OrphanCheckResult | null>(null);
+  const [orphanCaseScenariosError, setOrphanCaseScenariosError] = useState<string | null>(null);
+  const [orphanCaseScenariosHasRun, setOrphanCaseScenariosHasRun] = useState(false);
+
   const [qualityOsceRunning, setQualityOsceRunning] = useState(false);
   const [qualityOsceResult, setQualityOsceResult] = useState<IntegrityIssue | null>(null);
   const [qualityOsceError, setQualityOsceError] = useState<string | null>(null);
@@ -136,6 +141,11 @@ export function IntegrityCheckTab() {
   const [qualityMindMapResult, setQualityMindMapResult] = useState<IntegrityIssue | null>(null);
   const [qualityMindMapError, setQualityMindMapError] = useState<string | null>(null);
   const [qualityMindMapHasRun, setQualityMindMapHasRun] = useState(false);
+
+  const [qualityCaseScenariosRunning, setQualityCaseScenariosRunning] = useState(false);
+  const [qualityCaseScenariosResult, setQualityCaseScenariosResult] = useState<IntegrityIssue | null>(null);
+  const [qualityCaseScenariosError, setQualityCaseScenariosError] = useState<string | null>(null);
+  const [qualityCaseScenariosHasRun, setQualityCaseScenariosHasRun] = useState(false);
 
   const getAuthToken = async () => {
     const { data: sessionData } = await supabase.auth.getSession();
