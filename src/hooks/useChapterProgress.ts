@@ -57,6 +57,8 @@ interface ChapterProgressData {
   matchingTotal: number;
   tfCompleted: number;
   tfTotal: number;
+  flashcardReviewed: number;
+  flashcardTotal: number;
 }
 
 function extractVideoId(videoUrl: string | null | undefined): string | null {
@@ -80,6 +82,8 @@ interface RpcProgressResult {
   tf_completed: number;
   pathway_total: number;
   pathway_viewed: number;
+  flashcard_total: number;
+  flashcard_reviewed: number;
   lectures: { video_url: string | null }[];
   video_progress: { video_id: string; percent_watched: number }[];
 }
@@ -111,6 +115,7 @@ export function useChapterProgress(chapterId?: string) {
         caseCompleted: 0, caseTotal: 0,
         matchingCompleted: 0, matchingTotal: 0,
         tfCompleted: 0, tfTotal: 0,
+        flashcardReviewed: 0, flashcardTotal: 0,
       };
 
       if (!user?.id || !chapterId) return emptyResult;
@@ -209,6 +214,8 @@ export function useChapterProgress(chapterId?: string) {
         matchingTotal: rpc.matching_total,
         tfCompleted: rpc.tf_completed,
         tfTotal: rpc.tf_total,
+        flashcardReviewed: rpc.flashcard_reviewed,
+        flashcardTotal: rpc.flashcard_total,
       };
     },
     enabled: !!user?.id && !!chapterId,

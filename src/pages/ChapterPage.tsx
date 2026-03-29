@@ -674,6 +674,10 @@ export default function ChapterPage() {
                 case "true_false":
                   return { completed: chapterProgress.tfCompleted, total: chapterProgress.tfTotal || tabCount };
                 case "flashcards":
+                  return {
+                    completed: chapterProgress.flashcardReviewed,
+                    total: chapterProgress.flashcardTotal || tabCount,
+                  };
                 case "mind_maps":
                 case "guided_explanations":
                 case "reference_materials":
