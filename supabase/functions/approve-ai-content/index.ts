@@ -363,29 +363,58 @@ serve(async (req) => {
         throw new Error(`Failed to insert cloze flashcards: ${error.message}`);
       }
     } else if (contentType === "case_scenario") {
-      // Case scenarios now go into virtual_patient_cases as read_case
-      const casesToInsert = items.map((item: any, idx: number) => ({
-        module_id: moduleId,
-        chapter_id: chapterId,
-        title: item.title,
-        intro_text: item.case_history,
-        case_mode: 'read_case',
-        level: 'intermediate',
-        estimated_minutes: 10,
-        tags: [],
-        is_published: true,
-        display_order: idx,
-        created_by: user.id,
-        is_deleted: false,
-      }));
+      // Insert into case_scenarios + case_scenario_questions
+      let insertedCount = 0;
+      for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
+        const difficulty = ['easy', 'moderate', 'difficult'].includes(item.difficulty) ? item.difficulty : 'moderate';
 
-      const { error } = await serviceClient
-        .from("virtual_patient_cases")
-        .insert(casesToInsert);
-      if (error) {
-        console.error(`[${jobId}] Case scenario insert error:`, error.message);
-        throw new Error(`Failed to insert case scenarios: ${error.message}`);
+        // Insert parent case
+        const { data: caseRow, error: caseError } = await serviceClient
+          .from("case_scenarios")
+          .insert({
+            module_id: moduleId,
+            chapter_id: chapterId,
+            stem: item.stem,
+            difficulty,
+            tags: [],
+            display_order: idx,
+            created_by: user.id,
+            is_deleted: false,
+          })
+          .select("id")
+          .single();
+
+        if (caseError) {
+          console.error(`[${jobId}] Case scenario #${idx + 1} insert error:`, caseError.message);
+          throw new Error(`Failed to insert case scenario #${idx + 1}: ${caseError.message}`);
+        }
+
+        // Insert sub-questions
+        const questions = Array.isArray(item.questions) ? item.questions.slice(0, 3) : [];
+        if (questions.length > 0) {
+          const questionsToInsert = questions.map((q: any, qIdx: number) => ({
+            case_id: caseRow.id,
+            question_text: q.question_text,
+            question_type: 'short_answer' as const,
+            model_answer: q.model_answer || null,
+            explanation: q.explanation || null,
+            max_marks: q.max_marks || 1,
+            display_order: qIdx,
+          }));
+
+          const { error: qError } = await serviceClient
+            .from("case_scenario_questions")
+            .insert(questionsToInsert);
+
+          if (qError) {
+            console.error(`[${jobId}] Case scenario #${idx + 1} questions insert error:`, qError.message);
+            throw new Error(`Failed to insert case scenario questions: ${qError.message}`);
+          }
+        }
+        insertedCount++;
       }
+      console.log(`[${jobId}] Inserted ${insertedCount} case scenarios with sub-questions`);
     } else if (contentType === "essay") {
       const essaysToInsert = items.map((item: any, idx: number) => ({
         module_id: moduleId,
