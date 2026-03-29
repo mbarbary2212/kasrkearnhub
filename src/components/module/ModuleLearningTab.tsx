@@ -573,11 +573,14 @@ export function ModuleLearningTab({
   canManageChapters = false,
   selectedDepartmentId,
   externalActiveBookLabel,
+  initialBook,
 }: ModuleLearningTabProps) {
   const navigate = useNavigate();
   const auth = useAuthContext();
   const storageKey = `kasrlearn_book_${moduleId}`;
   const [selectedBook, setSelectedBook] = useState<string | null>(() => {
+    // If navigating back from a chapter, auto-select the book
+    if (initialBook) return initialBook;
     if (typeof window !== 'undefined') {
       return localStorage.getItem(storageKey);
     }
