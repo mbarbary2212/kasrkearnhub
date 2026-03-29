@@ -57,6 +57,7 @@ export function AdminTabsNavigation({
         { value: 'analytics', label: 'Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
         { value: 'videos', label: 'Videos', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
         { value: 'ai-settings', label: 'Content Factory', icon: Sparkles, visible: isSuperAdmin },
+        { value: '__blueprint__', label: 'Assessment Blueprint', icon: ClipboardList, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
       ],
     },
     {
