@@ -28,9 +28,9 @@ const CROSS_MODULE_SOURCE = '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10';
 type EligibilityField = 'allow_mcq' | 'allow_recall' | 'allow_case';
 
 const ELIGIBILITY_COLUMNS: { key: EligibilityField; label: string }[] = [
-  { key: 'allow_mcq', label: 'MCQ' },
-  { key: 'allow_recall', label: 'Recall' },
-  { key: 'allow_case', label: 'Case' },
+  { key: 'allow_mcq', label: 'Allowed in MCQ' },
+  { key: 'allow_recall', label: 'Allowed in Recall' },
+  { key: 'allow_case', label: 'Allowed in Case' },
 ];
 
 interface Props {
@@ -104,7 +104,10 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
 
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
-        <span>Selected chapters are eligible sources for questions. Not all must appear in the exam. Use the checkboxes to define the question pool per component.</span>
+        <div className="space-y-1">
+          <p>Chapters marked here are possible sources for questions — the exam will select from these chapters, not necessarily include all.</p>
+          <p className="text-xs italic">Eligibility ≠ guaranteed appearance. Use <strong>Included</strong> to add a chapter to the pool, then toggle <strong>MCQ</strong>, <strong>Recall</strong>, or <strong>Case</strong> to define allowed question types.</p>
+        </div>
       </div>
 
       {selectedAssessmentId && (
@@ -112,8 +115,8 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="min-w-[220px]">Chapter</TableHead>
-                <TableHead className="text-center min-w-[100px]">Included</TableHead>
+                <TableHead className="min-w-[220px]">Chapter (Question Pool)</TableHead>
+                <TableHead className="text-center min-w-[100px]">In Pool</TableHead>
                 {ELIGIBILITY_COLUMNS.map(col => (
                   <TableHead key={col.key} className="text-center min-w-[90px]">{col.label}</TableHead>
                 ))}
@@ -154,7 +157,7 @@ export function ChapterWeightsTab({ moduleId, canManage }: Props) {
               ))}
               {/* Summary row */}
               <TableRow className="bg-muted/30 font-semibold">
-                <TableCell>Eligible</TableCell>
+                <TableCell>Eligible Chapters</TableCell>
                 <TableCell className="text-center">
                   <Badge variant="secondary">{allChapters.filter(ch => getRow(ch.id)?.included_in_exam).length} / {allChapters.length}</Badge>
                 </TableCell>
