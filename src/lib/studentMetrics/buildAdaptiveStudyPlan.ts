@@ -293,6 +293,23 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     }
   }
 
+  // ── Apply exam weight boost + engagement factor to all candidates ──
+  for (const c of candidates) {
+    const examBoost = getExamWeightBoost(c.chapterId || '', examWeightMap);
+    const m = c.chapterId ? metricsMap.get(c.chapterId) : undefined;
+    const engagementFactor = (m && (m.mcq_attempts ?? 0) < 3) ? 1.15 : 1.0;
+    c.priority = c.priority * examBoost * engagementFactor;
+
+    // Attach prescribed study mode from exam weights
+    if (c.chapterId && examWeightMap) {
+      const w = examWeightMap.get(c.chapterId);
+      if (w) {
+        c.prescribedStudyMode = w.prescribed_study_mode;
+        c.tab = w.prescribed_study_mode.tab;
+      }
+    }
+  }
+
   // ── Sort all candidates by priority ──
   candidates.sort((a, b) => b.priority - a.priority);
 
