@@ -50,6 +50,12 @@ export interface GenerationRules {
   difficultyDistribution: DifficultyDistribution;
 }
 
+/**
+ * Supported content source types for exam generation.
+ * 'case_scenario' is used for the Case component in blueprints.
+ */
+export type ExamContentSource = 'mcq' | 'osce_question' | 'case_scenario';
+
 export interface GenerationContext {
   assessment: AssessmentStructure;
   components: ComponentSpec[];
