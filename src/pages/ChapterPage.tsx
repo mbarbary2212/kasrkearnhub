@@ -678,8 +678,12 @@ export default function ChapterPage() {
                 case "guided_explanations":
                 case "reference_materials":
                 case "clinical_tools":
-                case "pathways":
                   return { completed: 0, total: tabCount };
+                case "pathways":
+                  return {
+                    completed: chapterProgress.pathwayViewed,
+                    total: chapterProgress.pathwayTotal || tabCount,
+                  };
                 default:
                   return { completed: 0, total: tabCount };
               }
@@ -1132,6 +1136,7 @@ export default function ChapterPage() {
                     <AlgorithmList
                       algorithms={interactiveAlgorithms || []}
                       canManage={canManageContent}
+                      chapterId={chapterId}
                       onEdit={(alg) => {
                         setEditingAlgorithm(alg);
                         setAlgorithmBuilderOpen(true);
