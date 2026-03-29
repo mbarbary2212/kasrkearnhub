@@ -1084,7 +1084,7 @@ export default function TopicDetailPage() {
                         </Button>
                       </div>
                     )}
-                    <CaseScenarioPractice topicId={topicId} />
+                    <CaseScenarioPractice topicId={topicId} canManage={canManageContent} />
                     <CaseScenarioBulkUpload
                       moduleId={moduleId}
                       topicId={topicId}
