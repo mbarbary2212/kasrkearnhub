@@ -13,8 +13,9 @@ import {
   buildAdaptiveStudyPlan,
   getWeakTopics,
   calculateAggregateReadiness,
+  buildCoachInsights,
 } from '@/lib/studentMetrics';
-import type { PlannedTask, AdaptiveStudyPlan } from '@/lib/studentMetrics';
+import type { PlannedTask, AdaptiveStudyPlan, CoachInsight } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
@@ -354,8 +355,8 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           .filter(Boolean)
       ).size;
 
-      // Generate insights
-      const insights = generateInsights(chapterStatuses);
+      // Generate insights — placeholder, real coach insights built after metrics load
+      let insights: DashboardInsight[] = [];
 
       // ============================================================================
       // Use real chapter metrics for suggestions and weak chapters
