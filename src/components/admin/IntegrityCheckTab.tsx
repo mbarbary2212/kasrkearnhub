@@ -168,6 +168,7 @@ export function IntegrityCheckTab() {
     lectures: { setRunning: setOrphanLecturesRunning, setResult: setOrphanLecturesResult, setError: setOrphanLecturesError, setHasRun: setOrphanLecturesHasRun },
     matching: { setRunning: setOrphanMatchingRunning, setResult: setOrphanMatchingResult, setError: setOrphanMatchingError, setHasRun: setOrphanMatchingHasRun },
     study_resources: { setRunning: setOrphanStudyResourcesRunning, setResult: setOrphanStudyResourcesResult, setError: setOrphanStudyResourcesError, setHasRun: setOrphanStudyResourcesHasRun },
+    case_scenarios: { setRunning: setOrphanCaseScenariosRunning, setResult: setOrphanCaseScenariosResult, setError: setOrphanCaseScenariosError, setHasRun: setOrphanCaseScenariosHasRun },
   };
 
   const qualityStateMap: Record<QualityCheckType, {
