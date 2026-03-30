@@ -6,6 +6,7 @@ import { useAdminData } from '@/hooks/useAdminData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { ChapterBlueprintTab } from '@/components/admin/blueprint/ChapterBlueprintTab';
 import { ExamStructureTab } from '@/components/admin/blueprint/ExamStructureTab';
 import { ChapterWeightsTab } from '@/components/admin/blueprint/ChapterWeightsTab';
 import { AssessmentRulesTab } from '@/components/admin/blueprint/AssessmentRulesTab';
@@ -22,7 +23,7 @@ export default function AssessmentBlueprintPage() {
 
   const [selectedYearId, setSelectedYearId] = useState<string>('');
   const [selectedModuleId, setSelectedModuleId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState('structure');
+  const [activeTab, setActiveTab] = useState('chapter-blueprint');
 
   // Auto-select first year/module
   useEffect(() => {
@@ -58,7 +59,8 @@ export default function AssessmentBlueprintPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="chapter-blueprint">Chapter Blueprint</TabsTrigger>
             <TabsTrigger value="structure">Exam Structure</TabsTrigger>
             <TabsTrigger value="weights">Chapter Eligibility</TabsTrigger>
             <TabsTrigger value="rules">Generation Rules</TabsTrigger>
@@ -91,6 +93,13 @@ export default function AssessmentBlueprintPage() {
             </div>
           </div>
 
+          <TabsContent value="chapter-blueprint">
+            <ChapterBlueprintTab
+              moduleId={selectedModuleId}
+              yearId={selectedYearId}
+              canManage={!!canManage}
+            />
+          </TabsContent>
           <TabsContent value="structure">
             <ExamStructureTab
               moduleId={selectedModuleId}
