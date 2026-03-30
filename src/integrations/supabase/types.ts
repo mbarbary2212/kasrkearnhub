@@ -1488,6 +1488,61 @@ export type Database = {
           },
         ]
       }
+      chapter_blueprint_config: {
+        Row: {
+          assessment_id: string
+          chapter_id: string
+          component_type: string
+          created_at: string
+          id: string
+          inclusion_level: string
+          module_id: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          chapter_id: string
+          component_type: string
+          created_at?: string
+          id?: string
+          inclusion_level?: string
+          module_id: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          chapter_id?: string
+          component_type?: string
+          created_at?: string
+          id?: string
+          inclusion_level?: string
+          module_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_blueprint_config_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_blueprint_config_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_blueprint_config_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chapter_component_weights: {
         Row: {
           assessment_id: string
