@@ -14,7 +14,7 @@ export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) 
   const { initialLoading, user, hasRole, isLoading } = useAuthContext();
   const hasShownToast = useRef(false);
 
-  const shouldDeny = !isLoading && user && requiredRole && !hasRole(requiredRole);
+  const shouldDeny = !isLoading && !initialLoading && user && requiredRole && !hasRole(requiredRole);
 
   useEffect(() => {
     if (shouldDeny && !hasShownToast.current) {
