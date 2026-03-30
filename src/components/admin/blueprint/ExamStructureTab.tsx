@@ -17,7 +17,7 @@ import {
   useDeleteComponent,
   useModuleChapters,
 } from '@/hooks/useAssessmentBlueprint';
-import { useChapterBlueprintConfigs, COMPONENT_TYPES as BP_COMPONENT_TYPES, type ChapterBlueprintConfig } from '@/hooks/useChapterBlueprint';
+import { useChapterBlueprintConfigs, EXAM_TYPES, type ChapterBlueprintConfig } from '@/hooks/useChapterBlueprint';
 
 const COMPONENT_TYPES = [
   { value: 'mcq', label: 'MCQ' },
@@ -25,7 +25,6 @@ const COMPONENT_TYPES = [
   { value: 'short_answer_case', label: 'Short Answer (Case)' },
   { value: 'osce', label: 'OSCE' },
   { value: 'long_case', label: 'Long Case' },
-  { value: 'short_case', label: 'Short Case' },
   { value: 'paraclinical', label: 'Paraclinical' },
 ];
 
@@ -42,6 +41,10 @@ function ComponentLabel(type: string) {
 
 function AssessmentTypeLabel(type: string) {
   return ASSESSMENT_TYPES.find(a => a.value === type)?.label || type;
+}
+
+function ExamTypeLabel(type: string) {
+  return EXAM_TYPES.find(e => e.key === type)?.label || type;
 }
 
 const INCLUSION_COLORS: Record<string, string> = {
@@ -65,6 +68,7 @@ export function ExamStructureTab({ moduleId, yearId, canManage }: Props) {
 
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState('final_written');
+  const [newExamType, setNewExamType] = useState('written');
   const [newMarks, setNewMarks] = useState(100);
   const [showAdd, setShowAdd] = useState(false);
 
@@ -74,12 +78,12 @@ export function ExamStructureTab({ moduleId, yearId, canManage }: Props) {
     return map;
   }, [chapters]);
 
-  // Group blueprint configs by assessment_id -> component_type -> chapters
-  const blueprintByAssessment = useMemo(() => {
+  // Group blueprint configs by exam_type -> component_type -> chapters
+  const blueprintByExamType = useMemo(() => {
     const map = new Map<string, Map<string, ChapterBlueprintConfig[]>>();
     blueprintConfigs?.forEach(cfg => {
-      if (!map.has(cfg.assessment_id)) map.set(cfg.assessment_id, new Map());
-      const compMap = map.get(cfg.assessment_id)!;
+      if (!map.has(cfg.exam_type)) map.set(cfg.exam_type, new Map());
+      const compMap = map.get(cfg.exam_type)!;
       if (!compMap.has(cfg.component_type)) compMap.set(cfg.component_type, []);
       compMap.get(cfg.component_type)!.push(cfg);
     });
@@ -97,7 +101,8 @@ export function ExamStructureTab({ moduleId, yearId, canManage }: Props) {
       assessment_type: newType,
       total_marks: newMarks,
       weight_mode: 'marks',
-    }, {
+      exam_type: newExamType,
+    } as any, {
       onSuccess: () => {
         setNewName('');
         setShowAdd(false);
@@ -125,12 +130,23 @@ export function ExamStructureTab({ moduleId, yearId, canManage }: Props) {
                 <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Paper 1" className="w-[200px]" />
               </div>
               <div>
-                <label className="text-sm font-medium block mb-1">Type</label>
+                <label className="text-sm font-medium block mb-1">Assessment Type</label>
                 <Select value={newType} onValueChange={setNewType}>
                   <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {ASSESSMENT_TYPES.map(t => (
                       <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1">Exam Type</label>
+                <Select value={newExamType} onValueChange={setNewExamType}>
+                  <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {EXAM_TYPES.map(t => (
+                      <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -158,7 +174,7 @@ export function ExamStructureTab({ moduleId, yearId, canManage }: Props) {
           canManage={canManage}
           onDelete={() => deleteAssessment.mutate(assessment.id)}
           chapterMap={chapterMap}
-          blueprintMap={blueprintByAssessment.get(assessment.id)}
+          blueprintMap={blueprintByExamType.get((assessment as any).exam_type ?? 'written')}
         />
       ))}
     </div>
@@ -195,6 +211,7 @@ function AssessmentCard({ assessment, canManage, onDelete, chapterMap, blueprint
 
   const totalComponentMarks = components?.reduce((sum, c) => sum + c.question_count * c.marks_per_question, 0) ?? 0;
   const marksMatch = totalComponentMarks === assessment.total_marks;
+  const examType = (assessment as any).exam_type ?? 'written';
 
   return (
     <Card>
@@ -203,6 +220,7 @@ function AssessmentCard({ assessment, canManage, onDelete, chapterMap, blueprint
           <div className="flex items-center gap-3 flex-wrap">
             <span className="font-bold">{assessment.name}</span>
             <Badge variant="secondary">{AssessmentTypeLabel(assessment.assessment_type)}</Badge>
+            <Badge variant="outline">{ExamTypeLabel(examType)}</Badge>
             <span className="text-sm text-muted-foreground">{assessment.total_marks} marks</span>
             {components && components.length > 0 && !marksMatch && (
               <Badge variant="destructive" className="text-xs">
@@ -264,7 +282,6 @@ function AssessmentCard({ assessment, canManage, onDelete, chapterMap, blueprint
                       </Button>
                     )}
                   </div>
-                  {/* Chapter source summary from blueprint */}
                   <ChapterSourceSummary chapters={eligibleChapters} chapterMap={chapterMap} />
                 </div>
               );
@@ -304,7 +321,6 @@ function ChapterSourceSummary({ chapters, chapterMap }: {
     );
   }
 
-  // Sort: high → average → low
   const sorted = [...chapters].sort((a, b) => {
     const order = { high: 0, average: 1, low: 2 };
     return (order[a.inclusion_level] ?? 1) - (order[b.inclusion_level] ?? 1);

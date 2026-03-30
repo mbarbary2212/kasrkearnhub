@@ -9,10 +9,11 @@ import {
   useUpsertChapterBlueprint,
   useDeleteChapterBlueprint,
   COMPONENT_TYPES,
+  EXAM_TYPES,
   INCLUSION_LEVELS,
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprint';
-import { useModuleChapters, useAssessments } from '@/hooks/useAssessmentBlueprint';
+import { useModuleChapters } from '@/hooks/useAssessmentBlueprint';
 
 const CROSS_MODULE_SOURCE = '153318ba-32b9-4f8e-9cbc-bdd8df9b9b10';
 
@@ -24,7 +25,6 @@ interface Props {
 
 export function ChapterBlueprintTab({ moduleId, yearId, canManage }: Props) {
   const { data: chapters, isLoading: chaptersLoading } = useModuleChapters(moduleId);
-  const { data: assessments, isLoading: assessmentsLoading } = useAssessments(moduleId, yearId);
   const { data: configs, isLoading: configsLoading } = useChapterBlueprintConfigs(moduleId);
 
   const upsert = useUpsertChapterBlueprint();
@@ -36,40 +36,40 @@ export function ChapterBlueprintTab({ moduleId, yearId, canManage }: Props) {
   const configMap = useMemo(() => {
     const map = new Map<string, ChapterBlueprintConfig>();
     configs?.forEach(c => {
-      map.set(`${c.chapter_id}:${c.assessment_id}:${c.component_type}`, c);
+      map.set(`${c.chapter_id}:${c.exam_type}:${c.component_type}`, c);
     });
     return map;
   }, [configs]);
 
   const getConfig = useCallback(
-    (chapterId: string, assessmentId: string, componentType: string) =>
-      configMap.get(`${chapterId}:${assessmentId}:${componentType}`),
+    (chapterId: string, examType: string, componentType: string) =>
+      configMap.get(`${chapterId}:${examType}:${componentType}`),
     [configMap]
   );
 
   const handleToggle = useCallback(
-    (chapterId: string, assessmentId: string, componentType: string, checked: boolean) => {
+    (chapterId: string, examType: string, componentType: string, checked: boolean) => {
       if (checked) {
         upsert.mutate({
           module_id: moduleId,
           chapter_id: chapterId,
-          assessment_id: assessmentId,
+          exam_type: examType,
           component_type: componentType,
           inclusion_level: 'average',
         });
       } else {
-        remove.mutate({ chapter_id: chapterId, assessment_id: assessmentId, component_type: componentType });
+        remove.mutate({ chapter_id: chapterId, exam_type: examType, component_type: componentType });
       }
     },
     [moduleId, upsert, remove]
   );
 
   const handleLevelChange = useCallback(
-    (chapterId: string, assessmentId: string, componentType: string, level: string) => {
+    (chapterId: string, examType: string, componentType: string, level: string) => {
       upsert.mutate({
         module_id: moduleId,
         chapter_id: chapterId,
-        assessment_id: assessmentId,
+        exam_type: examType,
         component_type: componentType,
         inclusion_level: level,
       });
@@ -77,12 +77,8 @@ export function ChapterBlueprintTab({ moduleId, yearId, canManage }: Props) {
     [moduleId, upsert]
   );
 
-  if (chaptersLoading || assessmentsLoading || configsLoading) {
+  if (chaptersLoading || configsLoading) {
     return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
-  }
-
-  if (!assessments?.length) {
-    return <p className="text-muted-foreground text-sm py-4">Create assessments in the Exam Structure tab first.</p>;
   }
 
   const allChapters = [...crossChapters, ...ownChapters];
@@ -92,7 +88,7 @@ export function ChapterBlueprintTab({ moduleId, yearId, canManage }: Props) {
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
-          <p>Define each chapter's profile: which assessments it belongs to, which component types it can appear in, and its inclusion level (High / Average / Low).</p>
+          <p>Define each chapter's profile: which exam types it belongs to, which component types it can appear in, and its inclusion level (High / Average / Low).</p>
           <p className="text-xs italic mt-1">This becomes the primary source of truth for all exam generation logic.</p>
         </div>
       </div>
@@ -116,7 +112,6 @@ export function ChapterBlueprintTab({ moduleId, yearId, canManage }: Props) {
             )}
             <ChapterProfileCard
               chapter={chapter}
-              assessments={assessments}
               getConfig={getConfig}
               onToggle={handleToggle}
               onLevelChange={handleLevelChange}
@@ -131,21 +126,19 @@ export function ChapterBlueprintTab({ moduleId, yearId, canManage }: Props) {
 
 function ChapterProfileCard({
   chapter,
-  assessments,
   getConfig,
   onToggle,
   onLevelChange,
   canManage,
 }: {
   chapter: { id: string; title: string; module_id: string };
-  assessments: { id: string; name: string; assessment_type: string }[];
-  getConfig: (chapterId: string, assessmentId: string, componentType: string) => ChapterBlueprintConfig | undefined;
-  onToggle: (chapterId: string, assessmentId: string, componentType: string, checked: boolean) => void;
-  onLevelChange: (chapterId: string, assessmentId: string, componentType: string, level: string) => void;
+  getConfig: (chapterId: string, examType: string, componentType: string) => ChapterBlueprintConfig | undefined;
+  onToggle: (chapterId: string, examType: string, componentType: string, checked: boolean) => void;
+  onLevelChange: (chapterId: string, examType: string, componentType: string, level: string) => void;
   canManage: boolean;
 }) {
-  const activeCount = assessments.reduce((acc, a) => {
-    return acc + COMPONENT_TYPES.filter(ct => getConfig(chapter.id, a.id, ct.key)).length;
+  const activeCount = EXAM_TYPES.reduce((acc, et) => {
+    return acc + COMPONENT_TYPES.filter(ct => getConfig(chapter.id, et.key, ct.key)).length;
   }, 0);
 
   return (
@@ -160,31 +153,31 @@ function ChapterProfileCard({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[180px]">Assessment</TableHead>
+              <TableHead className="min-w-[180px]">Exam Type</TableHead>
               {COMPONENT_TYPES.map(ct => (
                 <TableHead key={ct.key} className="text-center min-w-[90px] text-xs">{ct.label}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {assessments.map(assessment => (
-              <TableRow key={assessment.id}>
-                <TableCell className="text-sm font-medium">{assessment.name}</TableCell>
+            {EXAM_TYPES.map(examType => (
+              <TableRow key={examType.key}>
+                <TableCell className="text-sm font-medium">{examType.label}</TableCell>
                 {COMPONENT_TYPES.map(ct => {
-                  const config = getConfig(chapter.id, assessment.id, ct.key);
+                  const config = getConfig(chapter.id, examType.key, ct.key);
                   const isEnabled = !!config;
                   return (
                     <TableCell key={ct.key} className="text-center">
                       <div className="flex flex-col items-center gap-1">
                         <Checkbox
                           checked={isEnabled}
-                          onCheckedChange={(v) => onToggle(chapter.id, assessment.id, ct.key, !!v)}
+                          onCheckedChange={(v) => onToggle(chapter.id, examType.key, ct.key, !!v)}
                           disabled={!canManage}
                         />
                         {isEnabled && (
                           <Select
                             value={config.inclusion_level}
-                            onValueChange={(v) => onLevelChange(chapter.id, assessment.id, ct.key, v)}
+                            onValueChange={(v) => onLevelChange(chapter.id, examType.key, ct.key, v)}
                             disabled={!canManage}
                           >
                             <SelectTrigger className="h-6 w-[70px] text-[10px] px-1">
