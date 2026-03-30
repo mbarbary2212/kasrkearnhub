@@ -1683,6 +1683,60 @@ export type Database = {
           },
         ]
       }
+      chat_perf_logs: {
+        Row: {
+          audio_download_ms: number | null
+          audio_play_ms: number | null
+          case_id: string | null
+          chat_ai_ms: number | null
+          chat_api_ms: number | null
+          chat_db_ms: number | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          stt_ms: number | null
+          total_ms: number | null
+          tts_api_ms: number | null
+          tts_generation_ms: number | null
+          tts_provider: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_download_ms?: number | null
+          audio_play_ms?: number | null
+          case_id?: string | null
+          chat_ai_ms?: number | null
+          chat_api_ms?: number | null
+          chat_db_ms?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          stt_ms?: number | null
+          total_ms?: number | null
+          tts_api_ms?: number | null
+          tts_generation_ms?: number | null
+          tts_provider?: string | null
+          user_id: string
+        }
+        Update: {
+          audio_download_ms?: number | null
+          audio_play_ms?: number | null
+          case_id?: string | null
+          chat_ai_ms?: number | null
+          chat_api_ms?: number | null
+          chat_db_ms?: number | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          stt_ms?: number | null
+          total_ms?: number | null
+          tts_api_ms?: number | null
+          tts_generation_ms?: number | null
+          tts_provider?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       coach_usage: {
         Row: {
           created_at: string
