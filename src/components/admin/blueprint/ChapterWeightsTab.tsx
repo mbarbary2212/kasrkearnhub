@@ -19,7 +19,6 @@ const COMPONENT_LABELS: Record<string, string> = {
   short_answer_case: 'Short Answer (Case)',
   osce: 'OSCE',
   long_case: 'Long Case',
-  short_case: 'Short Case',
   paraclinical: 'Paraclinical',
 };
 
