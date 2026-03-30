@@ -94,6 +94,7 @@ serve(async (req) => {
       );
     }
 
+    const _t_gen_start = Date.now();
     const response = await fetchWithRetry(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`,
       {
@@ -121,11 +122,13 @@ serve(async (req) => {
       );
     }
 
+    const _t_gen_ms = Date.now() - _t_gen_start;
     return new Response(response.body, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'audio/mpeg',
         'Transfer-Encoding': 'chunked',
+        'X-Timing': `generation_ms=${_t_gen_ms}`,
       },
     });
   } catch (err) {

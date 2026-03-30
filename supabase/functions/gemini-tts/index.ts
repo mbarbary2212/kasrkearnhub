@@ -145,6 +145,8 @@ serve(async (req) => {
     const voice = voiceName || 'Kore';
     const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
 
+    const _t_gen_start = Date.now();
+
     // First attempt with style prompt (with retry on 500)
     console.log('[gemini-tts] Attempt 1 with style prompt:', !!stylePrompt);
     let result = await callGemini(finalText, voice);
@@ -184,9 +186,10 @@ serve(async (req) => {
       );
     }
 
+    const _t_gen_ms = Date.now() - _t_gen_start;
     const wavBuffer = addWavHeader(audioData);
     return new Response(wavBuffer, {
-      headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
+      headers: { ...corsHeaders, 'Content-Type': 'audio/wav', 'X-Timing': `generation_ms=${_t_gen_ms}` }
     });
   } catch (err) {
     console.error('gemini-tts error:', err);
