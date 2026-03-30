@@ -864,6 +864,57 @@ export type Database = {
           },
         ]
       }
+      assessment_chapter_eligibility: {
+        Row: {
+          allow_case: boolean
+          allow_mcq: boolean
+          allow_recall: boolean
+          assessment_id: string
+          chapter_id: string
+          created_at: string
+          id: string
+          included_in_exam: boolean
+          updated_at: string
+        }
+        Insert: {
+          allow_case?: boolean
+          allow_mcq?: boolean
+          allow_recall?: boolean
+          assessment_id: string
+          chapter_id: string
+          created_at?: string
+          id?: string
+          included_in_exam?: boolean
+          updated_at?: string
+        }
+        Update: {
+          allow_case?: boolean
+          allow_mcq?: boolean
+          allow_recall?: boolean
+          assessment_id?: string
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          included_in_exam?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_chapter_eligibility_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_chapter_eligibility_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_components: {
         Row: {
           assessment_id: string
@@ -908,12 +959,51 @@ export type Database = {
           },
         ]
       }
+      assessment_rules: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          description: string | null
+          id: string
+          rule_key: string
+          rule_value: Json
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          rule_key: string
+          rule_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          rule_key?: string
+          rule_value?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_rules_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_structures: {
         Row: {
           assessment_type: Database["public"]["Enums"]["assessment_type"]
           created_at: string
           created_by: string | null
           duration_minutes: number | null
+          exam_type: string
           id: string
           is_active: boolean
           module_id: string
@@ -929,6 +1019,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration_minutes?: number | null
+          exam_type?: string
           id?: string
           is_active?: boolean
           module_id: string
@@ -944,6 +1035,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration_minutes?: number | null
+          exam_type?: string
           id?: string
           is_active?: boolean
           module_id?: string
@@ -1165,6 +1257,120 @@ export type Database = {
           },
         ]
       }
+      case_scenario_questions: {
+        Row: {
+          case_id: string
+          created_at: string
+          display_order: number
+          explanation: string | null
+          id: string
+          max_marks: number
+          model_answer: string | null
+          question_text: string
+          question_type: Database["public"]["Enums"]["case_question_type"]
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          max_marks?: number
+          model_answer?: string | null
+          question_text: string
+          question_type?: Database["public"]["Enums"]["case_question_type"]
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          max_marks?: number
+          model_answer?: string | null
+          question_text?: string
+          question_type?: Database["public"]["Enums"]["case_question_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_scenario_questions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_scenarios: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          created_by: string | null
+          difficulty: Database["public"]["Enums"]["case_difficulty"]
+          display_order: number
+          id: string
+          is_deleted: boolean
+          module_id: string | null
+          stem: string
+          tags: string[] | null
+          topic_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: Database["public"]["Enums"]["case_difficulty"]
+          display_order?: number
+          id?: string
+          is_deleted?: boolean
+          module_id?: string | null
+          stem: string
+          tags?: string[] | null
+          topic_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          difficulty?: Database["public"]["Enums"]["case_difficulty"]
+          display_order?: number
+          id?: string
+          is_deleted?: boolean
+          module_id?: string | null
+          stem?: string
+          tags?: string[] | null
+          topic_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_scenarios_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_section_answers: {
         Row: {
           ai_feedback: string | null
@@ -1281,6 +1487,106 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_blueprint_config: {
+        Row: {
+          chapter_id: string
+          component_type: string
+          created_at: string
+          exam_type: string
+          id: string
+          inclusion_level: string
+          module_id: string
+          updated_at: string
+        }
+        Insert: {
+          chapter_id: string
+          component_type: string
+          created_at?: string
+          exam_type: string
+          id?: string
+          inclusion_level?: string
+          module_id: string
+          updated_at?: string
+        }
+        Update: {
+          chapter_id?: string
+          component_type?: string
+          created_at?: string
+          exam_type?: string
+          id?: string
+          inclusion_level?: string
+          module_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_blueprint_config_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_blueprint_config_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chapter_component_weights: {
+        Row: {
+          assessment_id: string
+          chapter_id: string
+          component_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          assessment_id: string
+          chapter_id: string
+          component_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          assessment_id?: string
+          chapter_id?: string
+          component_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chapter_component_weights_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_component_weights_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_component_weights_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_components"
             referencedColumns: ["id"]
           },
         ]
@@ -1998,6 +2304,114 @@ export type Database = {
             columns: ["attempt_id"]
             isOneToOne: false
             referencedRelation: "mock_exam_attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_instance_questions: {
+        Row: {
+          chapter_id: string | null
+          component_id: string
+          component_type: string
+          created_at: string
+          difficulty: string | null
+          display_order: number
+          id: string
+          instance_id: string
+          marks: number
+          question_id: string
+          topic_id: string | null
+        }
+        Insert: {
+          chapter_id?: string | null
+          component_id: string
+          component_type: string
+          created_at?: string
+          difficulty?: string | null
+          display_order?: number
+          id?: string
+          instance_id: string
+          marks?: number
+          question_id: string
+          topic_id?: string | null
+        }
+        Update: {
+          chapter_id?: string | null
+          component_id?: string
+          component_type?: string
+          created_at?: string
+          difficulty?: string | null
+          display_order?: number
+          id?: string
+          instance_id?: string
+          marks?: number
+          question_id?: string
+          topic_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_instance_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_instance_questions_component_id_fkey"
+            columns: ["component_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_components"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_instance_questions_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "exam_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exam_instances: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          created_by: string | null
+          generation_rules: Json | null
+          id: string
+          label: string | null
+          metadata: Json | null
+          status: string
+          total_marks: number
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          created_by?: string | null
+          generation_rules?: Json | null
+          id?: string
+          label?: string | null
+          metadata?: Json | null
+          status?: string
+          total_marks?: number
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          created_by?: string | null
+          generation_rules?: Json | null
+          id?: string
+          label?: string | null
+          metadata?: Json | null
+          status?: string
+          total_marks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_instances_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessment_structures"
             referencedColumns: ["id"]
           },
         ]
@@ -2776,6 +3190,39 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lecture_sections: {
+        Row: {
+          id: string
+          lecture_id: string
+          section_id: string
+        }
+        Insert: {
+          id?: string
+          lecture_id: string
+          section_id: string
+        }
+        Update: {
+          id?: string
+          lecture_id?: string
+          section_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lecture_sections_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lecture_sections_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
         ]
@@ -3971,6 +4418,7 @@ export type Database = {
           concept_id: string | null
           created_at: string | null
           created_by: string | null
+          difficulty: string | null
           display_order: number | null
           explanation_1: string | null
           explanation_2: string | null
@@ -4008,6 +4456,7 @@ export type Database = {
           concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          difficulty?: string | null
           display_order?: number | null
           explanation_1?: string | null
           explanation_2?: string | null
@@ -4045,6 +4494,7 @@ export type Database = {
           concept_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          difficulty?: string | null
           display_order?: number | null
           explanation_1?: string | null
           explanation_2?: string | null
@@ -6843,6 +7293,8 @@ export type Database = {
         | "final_practical"
         | "module_exam"
       card_rating_type: "easy" | "hard" | "revise"
+      case_difficulty: "easy" | "moderate" | "difficult"
+      case_question_type: "short_answer" | "single_best_answer"
       content_type:
         | "lecture"
         | "resource"
@@ -7029,6 +7481,8 @@ export const Constants = {
         "module_exam",
       ],
       card_rating_type: ["easy", "hard", "revise"],
+      case_difficulty: ["easy", "moderate", "difficult"],
+      case_question_type: ["short_answer", "single_best_answer"],
       content_type: [
         "lecture",
         "resource",
