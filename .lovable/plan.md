@@ -1,31 +1,28 @@
 
 
-# Fix: Auto-Login to Preferred Year Not Working
+## Fix: Permission Toast Firing During Loading
 
-## Root Cause
+### Root Cause
 
-The `kalmhub:hasVisitedHome` sessionStorage flag is **never cleared on logout**. Since sessionStorage persists within the same browser tab across page reloads:
+In `ProtectedRoute.tsx`, line 17:
+```typescript
+const shouldDeny = !isLoading && user && requiredRole && !hasRole(requiredRole);
+```
 
-1. Student logs in → visits Home → `hasVisitedHome` is set → auto-redirect works ✓
-2. Student logs out (MainLayout does `window.location.href = '/'` — same tab)
-3. Student logs back in → visits Home → `hasVisitedHome` is **still set** → auto-redirect is **skipped** ✗
+This does NOT check `initialLoading`. During hard refresh, there's a brief state where:
+- `initialLoading: true` (fetchUserData hasn't completed, role is null)
+- `isLoading: false` (set by `onAuthStateChange` when prev.user exists)
+- `user` is set, `role` is null
 
-The guard on lines 41-45 of `Home.tsx` short-circuits the entire redirect logic after the first visit to Home in any browser session.
+The JSX correctly returns the spinner (line 26 checks `initialLoading`), but `shouldDeny` evaluates to `true`, and the `useEffect` on line 19 fires the toast anyway.
 
-## Fix
+### Fix (1 file)
 
-### Step 1: Clear `hasVisitedHome` on logout
+**`src/components/ProtectedRoute.tsx`** — Add `initialLoading` to the `shouldDeny` guard:
 
-**File: `src/components/layout/MainLayout.tsx`** — In `handleLogout`, add `sessionStorage.removeItem('kalmhub:hasVisitedHome')` before the sign-out call.
+```typescript
+const shouldDeny = !isLoading && !initialLoading && user && requiredRole && !hasRole(requiredRole);
+```
 
-**File: `src/pages/Auth.tsx`** — In the `signOut` function, also clear this flag (covers the blocked-user and password-reset sign-out paths).
-
-### Step 2: Clear on sign-out from BlockedUserScreen
-
-**File: `src/components/auth/BlockedUserScreen.tsx`** — Add the same `sessionStorage.removeItem` before `signOut`.
-
-### Files Modified
-- `src/components/layout/MainLayout.tsx` — 1 line added
-- `src/pages/Auth.tsx` — 1 line added
-- `src/components/auth/BlockedUserScreen.tsx` — 1 line added
+This ensures the toast and redirect logic only activate after both auth session AND role data have fully loaded. No other files need changes.
 
