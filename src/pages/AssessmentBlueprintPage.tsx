@@ -6,6 +6,7 @@ import { useAdminData } from '@/hooks/useAdminData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
+import { ChapterBlueprintTab } from '@/components/admin/blueprint/ChapterBlueprintTab';
 import { ExamStructureTab } from '@/components/admin/blueprint/ExamStructureTab';
 import { ChapterWeightsTab } from '@/components/admin/blueprint/ChapterWeightsTab';
 import { AssessmentRulesTab } from '@/components/admin/blueprint/AssessmentRulesTab';
