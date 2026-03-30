@@ -303,6 +303,8 @@ export function HistoryTakingSection({
     console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
 
+    const _perfStart = performance.now();
+
     // Pre-unlock audio element while still in user gesture context
     const preUnlockedAudio = selectedMode === 'voice' && !isMuted
       ? (unlockedAudioRef.current ?? createUnlockedAudio())
@@ -314,7 +316,16 @@ export function HistoryTakingSection({
     setChatInput('');
     setIsSending(true);
 
+    // Perf timing collectors
+    let _perf_chat_api_ms = 0;
+    let _perf_chat_db_ms: number | null = null;
+    let _perf_chat_ai_ms: number | null = null;
+    let _perf_tts_api_ms: number | null = null;
+    let _perf_tts_generation_ms: number | null = null;
+    let _perf_audio_play_ms: number | null = null;
+
     try {
+      const _t1 = performance.now();
       const { data: fnData, error } = await supabase.functions.invoke('patient-history-chat', {
         body: {
           case_id: caseId,
@@ -323,8 +334,15 @@ export function HistoryTakingSection({
           language: selectedLanguage || 'en',
         },
       });
+      _perf_chat_api_ms = Math.round(performance.now() - _t1);
 
       if (error) throw error;
+
+      // Extract server-side timing
+      if (fnData?._timing) {
+        _perf_chat_db_ms = fnData._timing.db_ms ?? null;
+        _perf_chat_ai_ms = fnData._timing.ai_ms ?? null;
+      }
 
       const reply = fnData?.reply || 'Sorry, I could not respond.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
@@ -348,6 +366,7 @@ export function HistoryTakingSection({
               const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
               const { data: { session } } = await supabase.auth.getSession();
               console.log('[Response TTS] Fetching gemini-tts, voice:', geminiVoiceToUse);
+              const _t_tts = performance.now();
               const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
                 method: 'POST',
                 headers: {
@@ -356,6 +375,15 @@ export function HistoryTakingSection({
                 },
                 body: JSON.stringify({ text: reply, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
               });
+              _perf_tts_api_ms = Math.round(performance.now() - _t_tts);
+
+              // Parse X-Timing header
+              const xTiming = res.headers.get('X-Timing');
+              if (xTiming) {
+                const match = xTiming.match(/generation_ms=(\d+)/);
+                if (match) _perf_tts_generation_ms = parseInt(match[1], 10);
+              }
+
               if (!res.ok) {
                 console.warn('[Response TTS] Gemini reply failed:', res.status, '— skipping audio');
               } else {
@@ -369,9 +397,10 @@ export function HistoryTakingSection({
                   audio.src = blobUrl;
                   registerCurrentAudio(audio);
                   console.log('[Response TTS] Calling audio.play()');
+                  const _t_play = performance.now();
                   await new Promise<void>((resolve, reject) => {
-                    audio.onended = () => { console.log('[Response TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
-                    audio.onerror = (e) => { console.error('[Response TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
+                    audio.onended = () => { _perf_audio_play_ms = Math.round(performance.now() - _t_play); console.log('[Response TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
+                    audio.onerror = (e) => { _perf_audio_play_ms = Math.round(performance.now() - _t_play); console.error('[Response TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
                     audio.play().then(() => {
                       console.log('[Response TTS] Audio playing, duration:', audio.duration);
                     }).catch((err) => {
@@ -383,7 +412,9 @@ export function HistoryTakingSection({
                 }
               }
             } else {
+              const _t_tts = performance.now();
               await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
+              _perf_tts_api_ms = Math.round(performance.now() - _t_tts);
             }
           } finally {
             setIsSpeaking(false);
@@ -401,6 +432,29 @@ export function HistoryTakingSection({
           connectScribe();
         }
       }
+
+      // Fire-and-forget: log perf data
+      const _perfTotal = Math.round(performance.now() - _perfStart);
+      supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
+        if (currentUser) {
+          supabase.from('chat_perf_logs').insert({
+            user_id: currentUser.id,
+            case_id: caseId,
+            chat_api_ms: _perf_chat_api_ms,
+            chat_db_ms: _perf_chat_db_ms,
+            chat_ai_ms: _perf_chat_ai_ms,
+            tts_api_ms: _perf_tts_api_ms,
+            tts_generation_ms: _perf_tts_generation_ms,
+            audio_play_ms: _perf_audio_play_ms,
+            total_ms: _perfTotal,
+            tts_provider: ttsProvider,
+            metadata: { language: selectedLanguage, mode: selectedMode },
+          } as any).then(({ error: insertErr }) => {
+            if (insertErr) console.warn('[PerfLog] Insert failed:', insertErr);
+            else console.log(`[PerfLog] Logged: total=${_perfTotal}ms chat=${_perf_chat_api_ms}ms tts=${_perf_tts_api_ms}ms`);
+          });
+        }
+      });
     } catch (err) {
       console.error('Chat error:', err);
       setChatMessages(prev => [

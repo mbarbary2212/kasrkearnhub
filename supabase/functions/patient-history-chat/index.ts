@@ -43,6 +43,7 @@ serve(async (req) => {
     }
 
     // Fetch case data and AI settings in parallel
+    const _t_db_start = Date.now();
     const [caseResult, aiSettings] = await Promise.all([
       supabase
         .from('virtual_patient_cases')
@@ -51,6 +52,7 @@ serve(async (req) => {
         .single(),
       getAISettings(supabase),
     ]);
+    const _t_db_ms = Date.now() - _t_db_start;
 
     if (caseResult.error || !caseResult.data) {
       return new Response(
@@ -97,10 +99,12 @@ serve(async (req) => {
 
     const provider = getAIProvider(aiSettings);
 
+    const _t_ai_start = Date.now();
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
       maxTokens: 1024,
     });
+    const _t_ai_ms = Date.now() - _t_ai_start;
 
     if (!result.success || !result.content) {
       return new Response(
@@ -109,8 +113,10 @@ serve(async (req) => {
       );
     }
 
+    const _t_total_ms = Date.now() - _t_db_start;
+
     return new Response(
-      JSON.stringify({ reply: result.content }),
+      JSON.stringify({ reply: result.content, _timing: { db_ms: _t_db_ms, ai_ms: _t_ai_ms, total_ms: _t_total_ms } }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err) {
