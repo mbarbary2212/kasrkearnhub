@@ -812,21 +812,12 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
       const { data: { session } } = await supabase.auth.getSession();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        const uploadEndpoint = `${supabaseUrl}/storage/v1/object/video-uploads/${storagePath}`;
-        const accessToken = session?.access_token ?? '';
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage upload failed: ${xhr.responseText}`));
-        xhr.onerror = () => reject(new Error('Network error uploading to storage.'));
-        xhr.open('POST', uploadEndpoint);
-        xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-        xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
-        xhr.setRequestHeader('x-upsert', 'true');
-        xhr.send(file);
+      await uploadVideoToStorage({
+        file,
+        storagePath,
+        supabaseUrl,
+        accessToken: session?.access_token ?? '',
+        onProgress: setUploadProgress,
       });
 
       // Step 2: Call edge function to upload from storage → YouTube → create lecture
