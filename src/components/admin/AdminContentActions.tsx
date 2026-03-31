@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { Plus, Upload, ShieldAlert, AlertTriangle, Copy, CheckCircle2, Link, Loader2, Check, ExternalLink } from 'lucide-react';
-import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
+import { isValidVideoUrl, detectVideoSource, normalizeVideoInput, uploadVideoToStorage } from '@/lib/video';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
@@ -695,18 +695,12 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
       const { data: { session } } = await supabase.auth.getSession();
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setYtProgress(Math.round((e.loaded / e.total) * 100));
-        };
-        xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Storage upload failed: ${xhr.responseText}`));
-        xhr.onerror = () => reject(new Error('Network error uploading to storage.'));
-        xhr.open('POST', `${supabaseUrl}/storage/v1/object/video-uploads/${storagePath}`);
-        xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token ?? ''}`);
-        xhr.setRequestHeader('Content-Type', ytFile.type || 'video/mp4');
-        xhr.setRequestHeader('x-upsert', 'true');
-        xhr.send(ytFile);
+      await uploadVideoToStorage({
+        file: ytFile,
+        storagePath,
+        supabaseUrl,
+        accessToken: session?.access_token ?? '',
+        onProgress: setYtProgress,
       });
 
       setYtStatus('finalizing');

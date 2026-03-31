@@ -196,3 +196,80 @@ export function isValidYouTubeUrl(url: string | null | undefined): boolean {
 export function isValidGoogleDriveUrl(url: string | null | undefined): boolean {
   return extractGoogleDriveId(url) !== null;
 }
+
+/**
+ * Upload a video file to Supabase Storage using the TUS resumable upload protocol.
+ * Splits the file into 6 MB chunks and reports progress after each chunk.
+ */
+export async function uploadVideoToStorage({
+  file,
+  storagePath,
+  supabaseUrl,
+  accessToken,
+  onProgress,
+}: {
+  file: File;
+  storagePath: string;
+  supabaseUrl: string;
+  accessToken: string;
+  onProgress?: (percent: number) => void;
+}): Promise<void> {
+  const CHUNK_SIZE = 6 * 1024 * 1024; // 6 MB
+
+  // Encode metadata values as base64
+  const toBase64 = (str: string) => btoa(unescape(encodeURIComponent(str)));
+  const bucketName = toBase64("video-uploads");
+  const objectName = toBase64(storagePath);
+  const contentType = toBase64(file.type || "video/mp4");
+  const cacheControl = toBase64("3600");
+
+  // Step 1: Create the resumable upload
+  const createRes = await fetch(`${supabaseUrl}/storage/v1/upload/resumable`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "x-upsert": "true",
+      "Upload-Length": String(file.size),
+      "Upload-Metadata": `bucketName ${bucketName},objectName ${objectName},contentType ${contentType},cacheControl ${cacheControl}`,
+      "Tus-Resumable": "1.0.0",
+    },
+  });
+
+  if (!createRes.ok) {
+    const body = await createRes.text().catch(() => "");
+    throw new Error(`TUS create failed (${createRes.status}): ${body}`);
+  }
+
+  const location = createRes.headers.get("Location");
+  if (!location) {
+    throw new Error("TUS create response missing Location header");
+  }
+
+  // Step 2: Upload in chunks via PATCH
+  let offset = 0;
+  while (offset < file.size) {
+    const end = Math.min(offset + CHUNK_SIZE, file.size);
+    const chunk = file.slice(offset, end);
+
+    const patchRes = await fetch(location, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Upload-Offset": String(offset),
+        "Content-Type": "application/offset+octet-stream",
+        "Tus-Resumable": "1.0.0",
+      },
+      body: chunk,
+    });
+
+    if (!patchRes.ok) {
+      const body = await patchRes.text().catch(() => "");
+      throw new Error(`TUS patch failed at offset ${offset} (${patchRes.status}): ${body}`);
+    }
+
+    offset = end;
+    if (onProgress) {
+      onProgress(Math.round((offset / file.size) * 100));
+    }
+  }
+}
