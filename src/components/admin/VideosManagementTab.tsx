@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { extractYouTubeId } from '@/lib/video';
+import { extractYouTubeId, uploadVideoToStorage } from '@/lib/video';
 import { useVideosHierarchy, YearNode, ModuleNode, ChapterNode, LectureNode } from '@/hooks/useVideosHierarchy';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
