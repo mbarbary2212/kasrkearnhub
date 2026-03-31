@@ -34,7 +34,7 @@ export default function AdminPage() {
 
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
-    if (['users', 'accounts', 'activity-log', 'settings'].includes(tab)) return 'system';
+    if (['users', 'accounts', 'activity-log', 'settings', 'perf-logs'].includes(tab)) return 'system';
     if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases', 'videos', 'blueprint'].includes(tab)) return 'content';
     if (['announcements', 'inbox'].includes(tab)) return 'messaging';
     return 'system';

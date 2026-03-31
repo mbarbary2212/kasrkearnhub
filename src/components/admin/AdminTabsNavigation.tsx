@@ -41,6 +41,7 @@ export function AdminTabsNavigation({
         { value: 'accounts', label: 'Accounts', icon: UserPlus, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'activity-log', label: 'Activity Log', icon: Activity, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'live', label: 'Live', icon: Radio, visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'perf-logs', label: 'Performance', icon: Timer, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'settings', label: 'Platform Settings', icon: Settings, visible: isPlatformAdmin },
       ],
     },
