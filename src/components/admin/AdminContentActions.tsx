@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { Plus, Upload, ShieldAlert, AlertTriangle, Copy, CheckCircle2, Link, Loader2, Check, ExternalLink } from 'lucide-react';
-import { isValidVideoUrl, detectVideoSource, normalizeVideoInput } from '@/lib/video';
+import { isValidVideoUrl, detectVideoSource, normalizeVideoInput, uploadVideoToStorage } from '@/lib/video';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { getPermissionErrorMessage } from '@/lib/permissionErrors';
