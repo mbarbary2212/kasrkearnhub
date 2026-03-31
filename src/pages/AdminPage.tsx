@@ -243,6 +243,12 @@ export default function AdminPage() {
               <RealtimeAnalyticsTab />
             </TabsContent>
           )}
+
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="perf-logs">
+              <PerfLogsTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </MainLayout>
