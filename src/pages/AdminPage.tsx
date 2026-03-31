@@ -22,6 +22,7 @@ import { AdminInboxTab } from '@/components/admin/AdminInboxTab';
 import { RealtimeAnalyticsTab } from '@/components/admin/RealtimeAnalyticsTab';
 import { VideosManagementTab } from '@/components/admin/VideosManagementTab';
 import { AssessmentBlueprintTab } from '@/components/admin/blueprint/AssessmentBlueprintTab';
+import { PerfLogsTab } from '@/components/admin/PerfLogsTab';
 
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, isLoading: authLoading } = useAuthContext();
