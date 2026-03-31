@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ExamStructureSubtab } from './ExamStructureSubtab';
 import { TopicWeightsSubtab } from './TopicWeightsSubtab';
 import { ValidationSummarySubtab } from './ValidationSummarySubtab';
+import { ChapterBlueprintSubtab } from './ChapterBlueprintSubtab';
 
 interface Props {
   years: { id: string; name: string }[];
@@ -10,7 +11,7 @@ interface Props {
 }
 
 export function AssessmentBlueprintTab({ years, modules }: Props) {
-  const [subtab, setSubtab] = useState('structure');
+  const [subtab, setSubtab] = useState('chapters');
 
   return (
     <div className="space-y-4">
@@ -23,11 +24,15 @@ export function AssessmentBlueprintTab({ years, modules }: Props) {
 
       <Tabs value={subtab} onValueChange={setSubtab}>
         <TabsList>
+          <TabsTrigger value="chapters">Chapter Blueprint</TabsTrigger>
           <TabsTrigger value="structure">Exam Structure</TabsTrigger>
           <TabsTrigger value="weights">Topic / Chapter Weights</TabsTrigger>
           <TabsTrigger value="validation">Validation & Summary</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="chapters" className="mt-4">
+          <ChapterBlueprintSubtab years={years} modules={modules} />
+        </TabsContent>
         <TabsContent value="structure" className="mt-4">
           <ExamStructureSubtab years={years} modules={modules} />
         </TabsContent>
