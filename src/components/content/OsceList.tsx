@@ -27,6 +27,7 @@ import {
 import { isOsceDuplicate } from '@/lib/duplicateDetection';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
+import { ContentItemAdminBar } from '@/components/admin/ContentItemAdminBar';
 import {
   AlertDialog,
   AlertDialogAction,
