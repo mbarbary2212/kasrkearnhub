@@ -6,6 +6,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import FeedbackModal from '@/components/feedback/FeedbackModal';
 import { MessagesCard } from '@/components/connect/MessagesCard';
+import { MyQuestionsCard } from '@/components/connect/MyQuestionsCard';
 import { DiscussionSection } from '@/components/discussion';
 import { StudyGroupList, GroupDetailView } from '@/components/study-groups';
 
@@ -142,6 +143,9 @@ export default function ConnectPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* My Questions Card */}
+          <MyQuestionsCard />
 
           {/* Study Groups Card */}
           <Card
