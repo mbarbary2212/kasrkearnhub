@@ -35,7 +35,11 @@ import {
   ChevronDown,
   ChevronRight,
   List,
-  Layers
+  Layers,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +55,8 @@ import { useModuleBooks } from "@/hooks/useModuleBooks";
 import { useModuleChapters } from "@/hooks/useChapters";
 import { McqAnalyticsDetailModal } from "./McqAnalyticsDetailModal";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useQualitySignals, useModuleQualitySummary } from "@/hooks/useContentQualitySignals";
+import { QualitySignalBadges } from "./QualitySignalBadges";
 
 interface Module {
   id: string;
