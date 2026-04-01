@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,10 @@ import { useUserManagedModules } from '@/hooks/useModuleAdmin';
 import { useThreadReplies, useSubmitReply } from '@/hooks/useAdminReplies';
 import { AdminReplyDialog } from '@/components/feedback/AdminReplyDialog';
 import { getInquiryCategoryLabel, INQUIRY_CATEGORY_DISPLAY } from '@/lib/feedbackValidation';
+import { buildContentLink } from '@/lib/contentNavigation';
 import {
   MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff, Reply,
-  MoreHorizontal, Clock, CheckCircle, Search, Send, Loader2, Circle
+  MoreHorizontal, Clock, CheckCircle, Search, Send, Loader2, Circle, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, differenceInHours } from 'date-fns';
@@ -709,6 +710,29 @@ function InquiryDetailSheet({
                     </div>
                   )}
                 </div>
+
+                {/* Open Content button */}
+                {inquiry.module_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      const link = buildContentLink({
+                        moduleId: inquiry.module_id!,
+                        chapterId: inquiry.chapter_id,
+                        from: 'inbox',
+                      });
+                      window.open(link, '_blank');
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open Content
+                    {!inquiry.chapter_id && (
+                      <span className="text-xs text-muted-foreground ml-auto">(module only)</span>
+                    )}
+                  </Button>
+                )}
 
                 {/* Full question */}
                 <div className="p-3 rounded-lg bg-muted border">

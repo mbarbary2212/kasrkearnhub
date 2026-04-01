@@ -460,6 +460,27 @@ export default function ChapterPage() {
     });
   }, [module, chapter, activeSection, resourcesTab, interactiveTab, practiceTab, updatePresence]);
 
+  // ─── Content highlight + context banner ───
+  const highlightId = searchParams.get('highlight');
+  const fromSource = searchParams.get('from');
+  const [showContextBanner, setShowContextBanner] = useState(!!fromSource);
+
+  // Scroll to highlighted element after content loads
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-content-id="${highlightId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        }, 3000);
+      }
+    }, 800); // wait for content to render
+    return () => clearTimeout(timer);
+  }, [highlightId, activeSection, practiceTab, resourcesTab, interactiveTab]);
+
   if (!chapterLoading && !chapter) {
     return (
       <MainLayout>
@@ -606,6 +627,32 @@ export default function ChapterPage() {
   return (
     <MainLayout>
       <div className="space-y-3 md:space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-2 md:-mx-4 -mt-4 px-2 md:px-4 pt-3 md:pt-4 rounded-xl">
+        {/* Context banner when opened from Inbox or Analytics */}
+        {showContextBanner && fromSource && (
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-primary/5 border-primary/20 text-sm">
+            <span className="text-primary font-medium">
+              {fromSource === 'inbox' ? 'Opened from Inbox' : fromSource === 'analytics' ? 'Opened from Analytics' : 'Opened from Admin'}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  if (fromSource === 'inbox') navigate('/admin/inbox');
+                  else if (fromSource === 'analytics') navigate('/admin?tab=analytics');
+                  else navigate('/admin');
+                }}
+              >
+                <ArrowLeft className="h-3 w-3 mr-1" />
+                {fromSource === 'inbox' ? 'Back to Inbox' : fromSource === 'analytics' ? 'Back to Analytics' : 'Back'}
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowContextBanner(false)}>
+                ✕
+              </Button>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           <Button

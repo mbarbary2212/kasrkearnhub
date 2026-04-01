@@ -23,6 +23,7 @@ import {
   Hash
 } from "lucide-react";
 import { toast } from "sonner";
+import { buildContentLink } from "@/lib/contentNavigation";
 import {
   type McqWithAnalytics,
   getFacilityStatus,
@@ -131,7 +132,7 @@ export function McqAnalyticsDetailModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Question ID Badge */}
+          {/* Question ID Badge + Open Content */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="font-mono text-xs px-2 py-1">
@@ -148,6 +149,26 @@ export function McqAnalyticsDetailModal({
                 Copy Full ID
               </Button>
             </div>
+            {analytics.module_id && analytics.chapter_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5"
+                onClick={() => {
+                  const link = buildContentLink({
+                    moduleId: analytics.module_id,
+                    chapterId: analytics.chapter_id,
+                    materialType: 'mcq',
+                    materialId: analytics.mcq_id,
+                    from: 'analytics',
+                  });
+                  window.open(link, '_blank');
+                }}
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open in Content
+              </Button>
+            )}
           </div>
 
           {/* Question Display */}

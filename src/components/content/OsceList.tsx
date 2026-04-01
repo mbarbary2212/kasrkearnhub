@@ -27,6 +27,7 @@ import {
 import { isOsceDuplicate } from '@/lib/duplicateDetection';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
+import { ContentItemAdminBar } from '@/components/admin/ContentItemAdminBar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -471,7 +472,7 @@ export function OsceList({
           {displayQuestions.map((question, index) => {
             const previousAttempt = !isAdmin ? fullAttemptMap.get(question.id) : undefined;
             return (
-              <div key={question.id} className="flex gap-2">
+              <div key={question.id} data-content-id={question.id} className="flex gap-2">
                 {/* Admin multi-select checkbox */}
                 {isAdmin && !showDeleted && (
                   <div className="pt-4 flex-shrink-0">
@@ -496,6 +497,14 @@ export function OsceList({
                     isStarred={starredIds.has(question.id)}
                     onToggleStar={toggleStar}
                   />
+                  {isAdmin && !showDeleted && (
+                    <ContentItemAdminBar
+                      materialType="osce"
+                      materialId={question.id}
+                      chapterId={chapterId}
+                      onEdit={() => handleEdit(question)}
+                    />
+                  )}
                 </div>
               </div>
             );

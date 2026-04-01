@@ -71,6 +71,7 @@ import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewTogg
 import { McqAdminTable } from './McqAdminTable';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
+import { ContentItemAdminBar } from '@/components/admin/ContentItemAdminBar';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -866,7 +867,7 @@ export function McqList({
             } : undefined;
             
             return (
-              <div key={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
+              <div key={mcq.id} data-content-id={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
                 {/* Admin multi-select checkbox */}
                 {isAdmin && !showDeleted && (
                   <div className="pt-4 flex-shrink-0">
@@ -911,6 +912,14 @@ export function McqList({
                     previousAttempt={previousAttempt}
                     questionFormat={questionFormat}
                   />
+                  {isAdmin && !showDeleted && (
+                    <ContentItemAdminBar
+                      materialType={questionFormat === 'sba' ? 'sba' : 'mcq'}
+                      materialId={mcq.id}
+                      chapterId={chapterId ?? undefined}
+                      onEdit={() => setEditingMcq(mcq)}
+                    />
+                  )}
                 </div>
               </div>
             );
