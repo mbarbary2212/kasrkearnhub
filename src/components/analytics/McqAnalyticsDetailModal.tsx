@@ -23,6 +23,7 @@ import {
   Hash
 } from "lucide-react";
 import { toast } from "sonner";
+import { buildContentLink } from "@/lib/contentNavigation";
 import {
   type McqWithAnalytics,
   getFacilityStatus,
