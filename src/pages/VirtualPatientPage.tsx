@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { useExaminerAvatarById } from '@/lib/examinerAvatars';
 import { CaseLeaderboard } from '@/components/clinical-cases/CaseLeaderboard';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { MaterialReactionRow } from '@/components/shared/MaterialReactionRow';
 
 const SESSION_KEY = 'ai_case_session';
 
@@ -230,6 +231,13 @@ export default function VirtualPatientRunner() {
                 {(vpCase as any).chief_complaint || vpCase.intro_text}
               </p>
             </div>
+
+            <MaterialReactionRow
+              materialType="case"
+              materialId={caseId}
+              chapterId={vpCase.chapter_id}
+              className="justify-center"
+            />
 
             <div className="flex items-center gap-3">
               <Button 
