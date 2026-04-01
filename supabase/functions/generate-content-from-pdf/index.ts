@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAISettings, getAIProvider, callAI, resolveApiKey, logAIUsage, loadAIRules, getContentTypeOverrides, getModelForContentType } from "../_shared/ai-provider.ts";
 import { detectPromptInjection, validateInputLimits, validateStrictSchema, sanitizeSectionNumber } from "../_shared/security.ts";
 import { checkDatabaseDuplicates, checkIntraBatchDuplicates } from "../_shared/duplicates.ts";
+import { getBlueprintContext } from "../_shared/blueprint.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
