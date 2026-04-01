@@ -3539,6 +3539,44 @@ export type Database = {
           },
         ]
       }
+      material_reactions: {
+        Row: {
+          chapter_id: string | null
+          id: string
+          material_id: string
+          material_type: string
+          reaction_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          id?: string
+          material_id: string
+          material_type: string
+          reaction_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          id?: string
+          material_id?: string
+          material_type?: string
+          reaction_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_reactions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mcq_analytics: {
         Row: {
           avg_time_seconds: number | null
