@@ -660,6 +660,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                                   <TableHead className="text-center">Discrimination</TableHead>
                                   <TableHead className="text-center">Avg Time</TableHead>
                                   <TableHead className="text-center">Status</TableHead>
+                                  <TableHead className="text-center">Quality</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
