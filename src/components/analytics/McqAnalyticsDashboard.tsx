@@ -389,7 +389,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -471,6 +471,63 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                     <span className="text-2xl font-bold">{summary?.healthScore || 0}%</span>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Quality Summary Cards */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Helpful Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <ThumbsUp className="h-5 w-5 text-green-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.helpfulRate || 0}%</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Negative Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <ThumbsDown className="h-5 w-5 text-red-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.negativeFeedback || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Flagged by Students
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-orange-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.totalFlagged || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Needs Review
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-blue-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.needsReview || 0}</span>
+                </div>
               </CardContent>
             </Card>
           </div>
