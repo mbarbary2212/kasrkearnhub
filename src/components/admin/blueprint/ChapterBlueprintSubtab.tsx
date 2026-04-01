@@ -1,21 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronRight, ChevronDown, Download } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { useModuleChapters } from '@/hooks/useChapters';
+import { useChapterSections } from '@/hooks/useSections';
 import {
   useChapterBlueprintConfigs,
-  useUpsertChapterBlueprintConfig,
-  useDeleteChapterBlueprintConfig,
   COMPONENT_COLUMNS,
-  INCLUSION_LEVELS,
-  type InclusionLevel,
+  configKey,
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprintConfig';
+import { BlueprintCellPopover } from './BlueprintCellPopover';
+import { exportBlueprintToExcel } from './blueprintExcelExport';
 
 interface Props {
   years: { id: string; name: string }[];
@@ -44,114 +43,105 @@ function getLevelLabel(level: string) {
   }
 }
 
-function CellPopover({
-  config,
+/** Section sub-rows for a single chapter */
+function ChapterSectionRows({
   chapterId,
   moduleId,
-  componentType,
+  configMap,
 }: {
-  config: ChapterBlueprintConfig | undefined;
   chapterId: string;
   moduleId: string;
-  componentType: string;
+  configMap: Map<string, ChapterBlueprintConfig>;
 }) {
-  const [open, setOpen] = useState(false);
-  const upsert = useUpsertChapterBlueprintConfig();
-  const remove = useDeleteChapterBlueprintConfig();
+  const { data: sections = [], isLoading } = useChapterSections(chapterId);
 
-  const handleSelect = (level: InclusionLevel) => {
-    upsert.mutate({
-      chapter_id: chapterId,
-      module_id: moduleId,
-      exam_type: 'written',
-      component_type: componentType,
-      inclusion_level: level,
-    });
-    setOpen(false);
-  };
+  if (isLoading) {
+    return (
+      <tr>
+        <td colSpan={COMPONENT_COLUMNS.length + 1} className="py-2 px-6 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> Loading sections…
+        </td>
+      </tr>
+    );
+  }
 
-  const handleClear = () => {
-    if (config) {
-      remove.mutate({ id: config.id, module_id: moduleId });
-    }
-    setOpen(false);
-  };
+  if (sections.length === 0) {
+    return (
+      <tr>
+        <td colSpan={COMPONENT_COLUMNS.length + 1} className="py-1.5 px-6 text-xs text-muted-foreground italic">
+          No sections for this chapter
+        </td>
+      </tr>
+    );
+  }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className="w-full h-full min-h-[32px] flex items-center justify-center rounded transition-colors hover:bg-muted/50"
-        >
-          {config ? (
-            <Badge variant="outline" className={`text-xs font-semibold px-2 py-0.5 cursor-pointer ${getLevelStyle(config.inclusion_level)}`}>
-              {getLevelLabel(config.inclusion_level)}
-            </Badge>
-          ) : (
-            <span className="text-muted-foreground/40 text-sm">—</span>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-36 p-1.5" align="center" side="bottom">
-        <div className="space-y-0.5">
-          {INCLUSION_LEVELS.map((l) => (
-            <Button
-              key={l.value}
-              variant={config?.inclusion_level === l.value ? 'secondary' : 'ghost'}
-              size="sm"
-              className="w-full justify-start text-xs h-7"
-              onClick={() => handleSelect(l.value)}
-            >
-              <Badge variant="outline" className={`mr-2 text-[10px] px-1.5 py-0 ${getLevelStyle(l.value)}`}>
-                {getLevelLabel(l.value)}
-              </Badge>
-              {l.label}
-            </Button>
+    <>
+      {sections.map((sec) => (
+        <tr key={sec.id} className="border-b bg-muted/10 hover:bg-muted/20 transition-colors">
+          <td className="py-1.5 px-3 text-sm pl-8">
+            <span className="text-muted-foreground mr-1">→</span>
+            {sec.section_number ? `${sec.section_number}. ` : ''}{sec.name}
+          </td>
+          {COMPONENT_COLUMNS.map(col => (
+            <td key={col.key} className="py-1 px-1 text-center">
+              <BlueprintCellPopover
+                config={configMap.get(configKey(chapterId, sec.id, col.key))}
+                chapterId={chapterId}
+                moduleId={moduleId}
+                sectionId={sec.id}
+                componentType={col.key}
+                getLevelStyle={getLevelStyle}
+                getLevelLabel={getLevelLabel}
+              />
+            </td>
           ))}
-          {config && (
-            <>
-              <div className="border-t my-1" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-xs h-7 text-muted-foreground"
-                onClick={handleClear}
-              >
-                Clear
-              </Button>
-            </>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </tr>
+      ))}
+    </>
   );
 }
 
 export function ChapterBlueprintSubtab({ years, modules }: Props) {
   const [selectedYearId, setSelectedYearId] = useState('');
   const [selectedModuleId, setSelectedModuleId] = useState('');
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
 
   const filteredModules = selectedYearId ? modules.filter(m => m.year_id === selectedYearId) : modules;
+  const selectedModuleName = modules.find(m => m.id === selectedModuleId)?.name ?? 'Blueprint';
+
   const { data: chapters = [], isLoading: chaptersLoading } = useModuleChapters(selectedModuleId || undefined);
   const { data: configs = [], isLoading: configsLoading } = useChapterBlueprintConfigs(selectedModuleId || undefined);
 
-  const configMap = useMemo(() => {
+  const cfgMap = useMemo(() => {
     const map = new Map<string, ChapterBlueprintConfig>();
     for (const c of configs) {
-      map.set(`${c.chapter_id}::${c.component_type}`, c);
+      map.set(configKey(c.chapter_id, c.section_id, c.component_type), c);
     }
     return map;
   }, [configs]);
+
+  const toggleChapter = useCallback((chId: string) => {
+    setExpandedChapters(prev => {
+      const next = new Set(prev);
+      if (next.has(chId)) next.delete(chId); else next.add(chId);
+      return next;
+    });
+  }, []);
+
+  const handleDownload = useCallback(() => {
+    exportBlueprintToExcel(chapters, configs, selectedModuleName);
+  }, [chapters, configs, selectedModuleName]);
 
   const isLoading = chaptersLoading || configsLoading;
 
   return (
     <div className="space-y-4">
       {/* Selectors */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-end">
         <div className="w-48">
           <Label className="text-xs mb-1 block">Year</Label>
-          <Select value={selectedYearId} onValueChange={(v) => { setSelectedYearId(v); setSelectedModuleId(''); }}>
+          <Select value={selectedYearId} onValueChange={(v) => { setSelectedYearId(v); setSelectedModuleId(''); setExpandedChapters(new Set()); }}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Select year" /></SelectTrigger>
             <SelectContent>
               {years.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
@@ -160,13 +150,19 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
         </div>
         <div className="w-56">
           <Label className="text-xs mb-1 block">Module</Label>
-          <Select value={selectedModuleId} onValueChange={setSelectedModuleId}>
+          <Select value={selectedModuleId} onValueChange={(v) => { setSelectedModuleId(v); setExpandedChapters(new Set()); }}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Select module" /></SelectTrigger>
             <SelectContent>
               {filteredModules.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
+        {selectedModuleId && chapters.length > 0 && (
+          <Button variant="outline" size="sm" className="h-9 gap-1.5" onClick={handleDownload}>
+            <Download className="h-4 w-4" />
+            Download Excel
+          </Button>
+        )}
       </div>
 
       {/* Legend */}
@@ -204,24 +200,45 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {chapters.map((ch) => (
-                  <tr key={ch.id} className="border-b hover:bg-muted/30 transition-colors">
-                    <td className="py-1.5 px-3 font-medium text-sm">
-                      <span className="text-muted-foreground mr-1">Ch {ch.chapter_number}:</span>
-                      {ch.title}
-                    </td>
-                    {COMPONENT_COLUMNS.map(col => (
-                      <td key={col.key} className="py-1 px-1 text-center">
-                        <CellPopover
-                          config={configMap.get(`${ch.id}::${col.key}`)}
+                {chapters.map((ch) => {
+                  const isExpanded = expandedChapters.has(ch.id);
+                  return (
+                    <> 
+                      <tr key={ch.id} className="border-b hover:bg-muted/30 transition-colors">
+                        <td className="py-1.5 px-3 font-medium text-sm">
+                          <button
+                            className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                            onClick={() => toggleChapter(ch.id)}
+                          >
+                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                            <span className="text-muted-foreground mr-1">Ch {ch.chapter_number}:</span>
+                            {ch.title}
+                          </button>
+                        </td>
+                        {COMPONENT_COLUMNS.map(col => (
+                          <td key={col.key} className="py-1 px-1 text-center">
+                            <BlueprintCellPopover
+                              config={cfgMap.get(configKey(ch.id, null, col.key))}
+                              chapterId={ch.id}
+                              moduleId={selectedModuleId}
+                              sectionId={null}
+                              componentType={col.key}
+                              getLevelStyle={getLevelStyle}
+                              getLevelLabel={getLevelLabel}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                      {isExpanded && (
+                        <ChapterSectionRows
                           chapterId={ch.id}
                           moduleId={selectedModuleId}
-                          componentType={col.key}
+                          configMap={cfgMap}
                         />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
