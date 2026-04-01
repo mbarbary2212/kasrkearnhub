@@ -1,139 +1,100 @@
 
-# Admin UI Improvement Plan — 6 Sessions
+
+# Content Deep-Link & Admin Action Bar — Implementation Plan
+
+## Current State
+
+- **Inquiries** have `module_id`, `chapter_id`, `topic_id` columns but no `material_type` or `material_id` — most inquiries only have `module_id` (chapter/topic are usually null)
+- **Chapter route**: `/module/:moduleId/chapter/:chapterId` with query params `?section=practice&subtab=mcqs`
+- **Analytics**: `McqAnalyticsDashboard` rows open a detail modal (`McqAnalyticsDetailModal`). Each row has `mcq_id`, `module_id`, `chapter_id`
+- **No existing highlight/scroll-to-item mechanism** in ChapterPage
+
+## Plan
+
+### Step 1 — Build Content Link Utility
+
+Create `src/lib/contentNavigation.ts`:
+
+- `buildContentLink(params)` — generates a URL like `/module/{moduleId}/chapter/{chapterId}?section=practice&subtab=mcqs&highlight={mcqId}&from=inbox`
+- Maps material types to the correct section + subtab (e.g., `mcq` → `practice/mcqs`, `video`/`lecture` → `resources/lectures`, `osce` → `practice/osce`, `flashcard` → `resources/flashcards`, `case` → `interactive/cases`)
+- Accepts optional `from` param (`inbox` | `analytics`) for the context banner
+- Handles fallback: if only `module_id` available, links to `/module/{moduleId}`; if only `module_id` + `chapter_id`, links to chapter without highlight
+
+### Step 2 — Add "Open Content" Button to Inquiry Detail Sheet
+
+In `AdminInboxPage.tsx` `InquiryDetailSheet`:
+
+- Below the metadata grid, add an "Open Content" button (using `ExternalLink` icon)
+- Only show when `module_id` exists (at minimum)
+- Uses `buildContentLink` with `inquiry.module_id`, `inquiry.chapter_id`, `from='inbox'`
+- If only `module_id` available (no chapter), navigates to module page
+- Uses `navigate()` or `window.open()` in new tab
+
+### Step 3 — Add "Open Content" to Analytics Detail Modal
+
+In `McqAnalyticsDetailModal.tsx`:
+
+- Add an "Open in Content" button in the modal header area
+- Uses `buildContentLink` with `analytics.module_id`, `analytics.chapter_id`, `analytics.mcq_id`, `materialType='mcq'`, `from='analytics'`
+- Opens chapter page at the exact MCQ
+
+### Step 4 — Highlight Target Content in ChapterPage
+
+In `ChapterPage.tsx`:
+
+- Read `highlight` and `from` from `searchParams`
+- On mount, if `highlight` param exists:
+  - Auto-switch to the correct `section` and `subtab` (already handled by existing `?section=&subtab=` params)
+  - After content loads, find the DOM element with `data-content-id={highlightId}` and scroll into view
+  - Apply a temporary CSS highlight (ring + pulse animation, 3 seconds, then fade)
+- Add `data-content-id` attributes to MCQ cards, OSCE items, etc. in their respective list components (`McqList`, `OsceList`, etc.)
+
+### Step 5 — Context Banner in ChapterPage
+
+In `ChapterPage.tsx`:
+
+- If `from` search param is present (`inbox` or `analytics`), show a small dismissible banner at top:
+  - "Opened from Inbox" or "Opened from Analytics"
+  - "Back to Inbox" / "Back to Analytics" link
+- Auto-dismiss after navigation or manual close
+
+### Step 6 — Admin Action Bar on Content Items
+
+Create `src/components/admin/ContentItemAdminBar.tsx`:
+
+- Small inline bar shown above/beside content cards (MCQ, OSCE, etc.) when `isAdmin`
+- Actions: "Edit" (triggers existing edit modal if available), "View Analytics" (links to analytics with the item pre-selected), "Mark for Review" (uses existing `useUpsertReviewNote`)
+- Only visible for admin roles — does not affect student UI
+- Add this component to `McqList` item rendering (and optionally `OsceList`, etc.) behind `isAdmin` check
+
+### Step 7 — Update Overview Deep Links
+
+In `AdminOverview.tsx`:
+
+- Ensure "Unanswered questions" links already point to `/admin/inbox?urgency=overdue` (already done in previous session)
+- No additional changes needed unless links are broken
 
 ---
 
-## Session 1 — Admin Navigation (Sidebar + Mobile Bottom Nav)
+## Files Modified
 
-**Problem:** Admins have no sidebar or bottom nav. They can only reach the Admin Panel via a header button and cannot browse student content without typing URLs.
+| File | Changes |
+|------|---------|
+| `src/lib/contentNavigation.ts` | New — URL builder utility |
+| `src/pages/AdminInboxPage.tsx` | Add "Open Content" button in InquiryDetailSheet |
+| `src/components/analytics/McqAnalyticsDetailModal.tsx` | Add "Open in Content" button |
+| `src/pages/ChapterPage.tsx` | Read `highlight`/`from` params, scroll + highlight logic, context banner |
+| `src/components/content/McqList.tsx` | Add `data-content-id` attribute to items |
+| `src/components/content/OsceList.tsx` | Add `data-content-id` attribute to items |
+| `src/components/admin/ContentItemAdminBar.tsx` | New — admin action bar component |
+| `src/components/content/McqList.tsx` | Render `ContentItemAdminBar` for admins |
 
-**What to build:**
+## Files Created
 
-1. **Extract shared nav constants** into `src/components/layout/sharedNavItems.ts` — pull `learningSubItems`, `connectSubItems`, and color maps out of `StudentSidebar.tsx` so both sidebars can reuse them.
+- `src/lib/contentNavigation.ts`
+- `src/components/admin/ContentItemAdminBar.tsx`
 
-2. **Create `AdminSidebar.tsx`** — same visual style as `StudentSidebar` (80px icon rail, glassmorphic submenus). Two sections separated by a divider:
-   - **Browse** (top): Dashboard, Learning (same submenu), Connect (same submenu), Formative, Coach
-   - **Admin** (bottom, purple accent): Admin Panel (`/admin`), Inbox, Analytics, Content Factory
+## No Database Changes
 
-3. **Create `AdminBottomNav.tsx`** — 5-item mobile bar: Dashboard, Learning (sheet), Admin Panel, Connect (sheet), More (Formative, Coach, Settings)
+All data exists. Inquiries have `module_id` and `chapter_id`. Analytics have `mcq_id`, `module_id`, `chapter_id`. Content items have their own IDs. No new tables or columns needed.
 
-4. **Update `MainLayout.tsx`**:
-   - Add `{isAdmin && <AdminSidebar />}` and `{isAdmin && <AdminBottomNav />}`
-   - Apply same padding/offset logic for admins as students
-   - Remove the standalone "Admin Panel" header button (now in sidebar)
-
-**Files:** `sharedNavItems.ts` (new), `AdminSidebar.tsx` (new), `AdminBottomNav.tsx` (new), `MainLayout.tsx` (edit), `StudentSidebar.tsx` (refactor imports)
-
----
-
-## Session 2 — Admin Dashboard (Home Page)
-
-**Problem:** Admins land on the student Home page with module cards and no overview of platform health or pending items.
-
-**What to build:**
-
-1. **Create `AdminDashboard.tsx`** — shown at `/` when user is admin. Summary cards in a responsive grid:
-   - **Users Online** (from presence context)
-   - **Pending Questions** (count from `inquiries` where status = `open`)
-   - **Negative Feedback** (count from `material_feedback` where status = `new`)
-   - **Items Needing Review** (count from `content_review_notes` where review_status != `resolved`)
-   - **New Access Requests** (count from `access_requests` where status = `pending`)
-
-2. **Quick Actions row** — buttons/links: Go to Inbox, Content Factory, Announcements, Curriculum
-
-3. **Recent Activity feed** — last 10 entries from `activity_logs` (admin actions) and `inquiries` (new student questions), merged and sorted by timestamp
-
-4. **Update Home page** — conditionally render `AdminDashboard` when `isAdmin`, keep student Home unchanged
-
-**Files:** `AdminDashboard.tsx` (new), `useAdminDashboardStats.ts` (new hook), Home page (edit conditional)
-
----
-
-## Session 3 — Feedback Triage View
-
-**Problem:** `material_feedback` data is collected but only visible as counts inside Content Analytics detail modals. No dedicated view to browse, filter, and act on feedback.
-
-**What to build:**
-
-1. **Create `FeedbackTriageTab.tsx`** — new sub-tab inside Content Analytics (alongside MCQ, SBA, OSCE, Matching):
-   - Table columns: Material Type, Question/Item preview, Feedback Type, Student (anonymous or name), Date, Status (new/reviewed/resolved)
-   - Filters: feedback_type dropdown, material_type dropdown, module/chapter selectors, status filter
-   - Row actions: Mark Reviewed, Mark Resolved, Jump to Content (link to the actual question/item)
-
-2. **Add "Feedback" sub-tab** to `QuestionAnalyticsTabs.tsx`
-
-3. **Create `useFeedbackTriage.ts`** hook — queries `material_feedback` joined with content tables (mcqs, osce_stations, etc.) to get item previews
-
-**Files:** `FeedbackTriageTab.tsx` (new), `useFeedbackTriage.ts` (new), `QuestionAnalyticsTabs.tsx` (edit)
-
----
-
-## Session 4 — Enhanced Inbox & Q&A
-
-**Problem:** The inbox exists but lacks priority indicators, SLA visibility, and structured triage. Student questions and admin replies work but aren't surfaced proactively.
-
-**What to build:**
-
-1. **Add priority badges to inbox list** — based on age: >48h unanswered = red "Overdue", >24h = yellow "Attention", else green "New"
-
-2. **Add unread count badge** to the Messaging group card in `AdminTabsNavigation.tsx` (count of `inquiries` where status = `open`)
-
-3. **Add "Unanswered Questions" card to Admin Dashboard** (Session 2) — top 5 oldest unanswered, with direct links to inbox
-
-4. **Add category filter** to inbox — filter by inquiry category (content, technical, general, etc.)
-
-**Files:** Inbox component (edit), `AdminTabsNavigation.tsx` (edit badge), `AdminDashboard.tsx` (edit)
-
----
-
-## Session 5 — Content Coverage Report
-
-**Problem:** Admins can't see which chapters have content and which are empty. No way to identify gaps (e.g., "Chapter 3 has 0 MCQs, 0 videos").
-
-**What to build:**
-
-1. **Create `ContentCoverageTab.tsx`** — new tab in Content group showing a table:
-   - Rows: each chapter grouped by module
-   - Columns: MCQs count, Flashcards count, Videos count, Cases count, OSCE count, Mind Maps count
-   - Color coding: 0 = red cell, 1-5 = yellow, 5+ = green
-   - Filter by module
-
-2. **Create `useContentCoverage.ts`** hook — counts content items per chapter across all content tables
-
-3. **Add tab to `AdminTabsNavigation.tsx`** under Content group
-
-**Files:** `ContentCoverageTab.tsx` (new), `useContentCoverage.ts` (new), `AdminTabsNavigation.tsx` (edit), `AdminPage.tsx` (edit)
-
----
-
-## Session 6 — Student Performance Overview
-
-**Problem:** Admins have no aggregate view of how students are performing across modules. `student_chapter_metrics` data exists but is only used in individual student views.
-
-**What to build:**
-
-1. **Create `StudentPerformanceTab.tsx`** — new sub-tab inside Analytics:
-   - Summary cards: Avg Readiness Score, Avg Accuracy, Active Students (last 7d), Completion Rate
-   - Table: Module | Avg Readiness | Avg Accuracy | Students Engaged | Lowest Chapter
-   - Expandable rows showing per-chapter breakdown
-
-2. **Create `useStudentPerformanceOverview.ts`** hook — aggregates `student_chapter_metrics` by module/chapter
-
-3. **Add as sub-tab** in Analytics alongside Content Analytics
-
-**Files:** `StudentPerformanceTab.tsx` (new), `useStudentPerformanceOverview.ts` (new), analytics tabs (edit)
-
----
-
-## Execution Order & Dependencies
-
-```text
-Session 1 (Navigation)     — standalone, no dependencies
-Session 2 (Dashboard)      — benefits from Session 1 (sidebar links to dashboard)
-Session 3 (Feedback Triage) — standalone, extends existing analytics
-Session 4 (Inbox/Q&A)      — benefits from Session 2 (dashboard cards)
-Session 5 (Coverage Report) — standalone
-Session 6 (Student Perf)   — standalone
-```
-
-Sessions 1 and 2 are the highest priority — they fix the core navigation and landing experience. Sessions 3-6 can be done in any order after that.
