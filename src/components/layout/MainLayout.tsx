@@ -328,19 +328,19 @@ export default function MainLayout({ children }: MainLayoutProps) {
       </header>
 
       <div className="flex flex-1">
-        {/* Student Sidebar - desktop only */}
-        {isStudent && <StudentSidebar />}
+        {/* Shared Sidebar - desktop only */}
+        {showSharedNav && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden", isStudent ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', isStudent ? '' : 'container mx-auto')}>
-          <div className={isStudent ? 'container mx-auto' : ''}>
+        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
+          <div className={showSharedNav ? 'container mx-auto' : ''}>
             {children}
           </div>
         </main>
       </div>
 
       {/* Mobile Bottom Navigation */}
-      {isStudent && <MobileBottomNav />}
+      {showSharedNav && <MobileBottomNav />}
 
       {/* Persistent Ask Footer — all devices */}
       {user && !isAdmin && (
