@@ -122,6 +122,7 @@ serve(async (req) => {
       stageCount, 
       learningObjectives,
       aiDriven,
+      chapter_id,
     } = await req.json();
 
     // Reuse serviceClient for AI settings
