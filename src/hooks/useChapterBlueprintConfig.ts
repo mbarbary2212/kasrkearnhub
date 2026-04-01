@@ -10,6 +10,7 @@ export interface ChapterBlueprintConfig {
   exam_type: string;
   component_type: string;
   inclusion_level: string;
+  question_types: string[];
   created_at: string;
   updated_at: string;
 }
@@ -30,6 +31,23 @@ export const INCLUSION_LEVELS: { value: InclusionLevel; label: string }[] = [
   { value: 'average', label: 'Average' },
   { value: 'low', label: 'Low' },
 ];
+
+export const QUESTION_TYPE_OPTIONS = [
+  { value: 'sba', label: 'Single Best Answer (SBA)' },
+  { value: 'true_false', label: 'True / False' },
+  { value: 'emq', label: 'Extended Matching (EMQ)' },
+  { value: 'cross_matching', label: 'Cross-matching' },
+  { value: 'cloze', label: 'Fill-in-blank (Cloze)' },
+  { value: 'short_essay', label: 'Short Essay' },
+  { value: 'long_essay', label: 'Long Essay' },
+  { value: 'clinical_case', label: 'Clinical Scenario (Case)' },
+  { value: 'osce_station', label: 'OSCE Station' },
+  { value: 'spot_diagnosis', label: 'Spot Diagnosis' },
+  { value: 'paraclinical', label: 'Paraclinical Interpretation' },
+  { value: 'flashcard', label: 'Flashcard' },
+  { value: 'mind_map', label: 'Mind Map' },
+  { value: 'pathway', label: 'Pathway' },
+] as const;
 
 /** Build a consistent map key for configs */
 export function configKey(chapterId: string, sectionId: string | null, componentType: string) {
@@ -61,6 +79,7 @@ export function useUpsertChapterBlueprintConfig() {
       exam_type: string;
       component_type: string;
       inclusion_level: string;
+      question_types?: string[];
     }) => {
       // Because we use a COALESCE unique index (not a constraint),
       // we need to manually check + insert/update
@@ -85,7 +104,7 @@ export function useUpsertChapterBlueprintConfig() {
       if (existing) {
         const { data, error } = await supabase
           .from('chapter_blueprint_config')
-          .update({ inclusion_level: input.inclusion_level })
+          .update({ inclusion_level: input.inclusion_level, question_types: input.question_types ?? [] })
           .eq('id', existing.id)
           .select()
           .single();
@@ -101,6 +120,7 @@ export function useUpsertChapterBlueprintConfig() {
             exam_type: input.exam_type,
             component_type: input.component_type,
             inclusion_level: input.inclusion_level,
+            question_types: input.question_types ?? [],
           })
           .select()
           .single();

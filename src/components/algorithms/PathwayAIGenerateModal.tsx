@@ -181,6 +181,7 @@ export function PathwayAIGenerateModal({
           nodeCount,
           additionalInstructions: additionalInstructions.trim() || undefined,
           pdfContent,
+          chapterId,
         },
       });
 

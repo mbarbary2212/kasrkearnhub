@@ -1500,6 +1500,7 @@ export type Database = {
           id: string
           inclusion_level: string
           module_id: string
+          question_types: string[] | null
           section_id: string | null
           updated_at: string
         }
@@ -1511,6 +1512,7 @@ export type Database = {
           id?: string
           inclusion_level?: string
           module_id: string
+          question_types?: string[] | null
           section_id?: string | null
           updated_at?: string
         }
@@ -1522,6 +1524,7 @@ export type Database = {
           id?: string
           inclusion_level?: string
           module_id?: string
+          question_types?: string[] | null
           section_id?: string | null
           updated_at?: string
         }

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAISettings, getAIProvider, callAI } from "../_shared/ai-provider.ts";
+import { getBlueprintContext } from "../_shared/blueprint.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,6 +141,7 @@ serve(async (req) => {
       nodeCount,
       additionalInstructions,
       pdfContent,
+      chapterId,
     } = await req.json();
 
     const serviceClient = authServiceClient;
@@ -180,7 +182,22 @@ ${pdfContent ? "11. Ground ALL clinical content in the reference document provid
 
 Output valid JSON only.`;
 
-    const result = await callAI(SYSTEM_PROMPT, userPrompt, provider);
+    // Inject blueprint context if chapterId provided
+    let blueprintInstruction = '';
+    if (chapterId && typeof chapterId === 'string' && chapterId.trim().length > 0) {
+      try {
+        const blueprint = await getBlueprintContext(serviceClient, chapterId);
+        blueprintInstruction = blueprint.distribution_instruction;
+      } catch (e) {
+        console.warn("[generate-pathway] Blueprint context fetch failed:", e);
+      }
+    }
+
+    const effectiveSystemPrompt = blueprintInstruction
+      ? `${blueprintInstruction}\n\n${SYSTEM_PROMPT}`
+      : SYSTEM_PROMPT;
+
+    const result = await callAI(effectiveSystemPrompt, userPrompt, provider);
 
     if (!result.success) {
       console.error("AI call failed:", result.error);

@@ -5,13 +5,18 @@ import {
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprintConfig';
 
-function levelText(level: string) {
+function levelText(level: string, questionTypes?: string[]) {
+  let text = '';
   switch (level) {
-    case 'high': return 'High';
-    case 'average': return 'Average';
-    case 'low': return 'Low';
+    case 'high': text = 'High'; break;
+    case 'average': text = 'Average'; break;
+    case 'low': text = 'Low'; break;
     default: return '';
   }
+  if (questionTypes && questionTypes.length > 0) {
+    text += ` (${questionTypes.join(', ')})`;
+  }
+  return text;
 }
 
 function levelFill(level: string): ExcelJS.Fill | undefined {
@@ -58,7 +63,7 @@ export async function exportBlueprintToExcel(
     for (const col of COMPONENT_COLUMNS) {
       const cfg = cfgMap.get(configKey(ch.id, null, col.key));
       const lv = cfg?.inclusion_level;
-      rowData.push(lv ? levelText(lv) : '');
+      rowData.push(lv ? levelText(lv, cfg?.question_types) : '');
       levels.push(lv);
     }
     const row = ws.addRow(rowData);
@@ -82,7 +87,7 @@ export async function exportBlueprintToExcel(
       for (const col of COMPONENT_COLUMNS) {
         const cfg = cfgMap.get(configKey(ch.id, secId, col.key));
         const lv = cfg?.inclusion_level;
-        secRowData.push(lv ? levelText(lv) : '');
+        secRowData.push(lv ? levelText(lv, cfg?.question_types) : '');
         secLevels.push(lv);
       }
       const secRow = ws.addRow(secRowData);
