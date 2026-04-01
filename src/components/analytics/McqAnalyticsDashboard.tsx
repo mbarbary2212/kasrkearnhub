@@ -291,6 +291,9 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             </Badge>
           )}
         </TableCell>
+        <TableCell className="text-center">
+          <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+        </TableCell>
       </TableRow>
     );
   };
