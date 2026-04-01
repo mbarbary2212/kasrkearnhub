@@ -866,7 +866,7 @@ export function McqList({
             } : undefined;
             
             return (
-              <div key={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
+              <div key={mcq.id} data-content-id={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
                 {/* Admin multi-select checkbox */}
                 {isAdmin && !showDeleted && (
                   <div className="pt-4 flex-shrink-0">

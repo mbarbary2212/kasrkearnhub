@@ -471,7 +471,7 @@ export function OsceList({
           {displayQuestions.map((question, index) => {
             const previousAttempt = !isAdmin ? fullAttemptMap.get(question.id) : undefined;
             return (
-              <div key={question.id} className="flex gap-2">
+              <div key={question.id} data-content-id={question.id} className="flex gap-2">
                 {/* Admin multi-select checkbox */}
                 {isAdmin && !showDeleted && (
                   <div className="pt-4 flex-shrink-0">
