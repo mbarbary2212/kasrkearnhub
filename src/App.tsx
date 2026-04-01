@@ -36,6 +36,7 @@ const TopicDetailPage = lazy(() => import("./pages/TopicDetailPage"));
 const MockExamPage = lazy(() => import("./pages/MockExamPage"));
 const BlueprintExamPage = lazy(() => import("./pages/BlueprintExamPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
+const AdminOverview = lazy(() => import("./pages/AdminOverview"));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
 const AdminInboxPage = lazy(() => import("./pages/AdminInboxPage"));
 const ProgressPage = lazy(() => import("./pages/ProgressPage"));
