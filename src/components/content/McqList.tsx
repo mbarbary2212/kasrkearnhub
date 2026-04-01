@@ -71,6 +71,7 @@ import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewTogg
 import { McqAdminTable } from './McqAdminTable';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
+import { ContentItemAdminBar } from '@/components/admin/ContentItemAdminBar';
 
 interface McqListProps {
   mcqs: Mcq[];
