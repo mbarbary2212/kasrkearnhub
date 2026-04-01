@@ -5,13 +5,18 @@ import {
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprintConfig';
 
-function levelText(level: string) {
+function levelText(level: string, questionTypes?: string[]) {
+  let text = '';
   switch (level) {
-    case 'high': return 'High';
-    case 'average': return 'Average';
-    case 'low': return 'Low';
+    case 'high': text = 'High'; break;
+    case 'average': text = 'Average'; break;
+    case 'low': text = 'Low'; break;
     default: return '';
   }
+  if (questionTypes && questionTypes.length > 0) {
+    text += ` (${questionTypes.join(', ')})`;
+  }
+  return text;
 }
 
 function levelFill(level: string): ExcelJS.Fill | undefined {
