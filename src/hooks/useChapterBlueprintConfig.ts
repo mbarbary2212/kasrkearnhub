@@ -120,6 +120,7 @@ export function useUpsertChapterBlueprintConfig() {
             exam_type: input.exam_type,
             component_type: input.component_type,
             inclusion_level: input.inclusion_level,
+            question_types: input.question_types ?? [],
           })
           .select()
           .single();
