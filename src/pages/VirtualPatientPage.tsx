@@ -232,6 +232,13 @@ export default function VirtualPatientRunner() {
               </p>
             </div>
 
+            <MaterialReactionRow
+              materialType="case"
+              materialId={caseId}
+              chapterId={vpCase.chapter_id}
+              className="justify-center"
+            />
+
             <div className="flex items-center gap-3">
               <Button 
                 onClick={() => setShowBriefing(true)}
