@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getAISettings, getAIProvider, callAI } from "../_shared/ai-provider.ts";
+import { getBlueprintContext } from "../_shared/blueprint.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
