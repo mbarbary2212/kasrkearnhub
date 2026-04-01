@@ -39,6 +39,8 @@ export interface Inquiry {
   seen_by_admin: boolean;
   first_viewed_at: string | null;
   first_viewed_by: string | null;
+  // Computed
+  reply_count: number;
   // Joined profile data
   user_profile?: {
     full_name: string | null;
