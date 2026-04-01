@@ -104,7 +104,7 @@ export function useUpsertChapterBlueprintConfig() {
       if (existing) {
         const { data, error } = await supabase
           .from('chapter_blueprint_config')
-          .update({ inclusion_level: input.inclusion_level })
+          .update({ inclusion_level: input.inclusion_level, question_types: input.question_types ?? [] })
           .eq('id', existing.id)
           .select()
           .single();
