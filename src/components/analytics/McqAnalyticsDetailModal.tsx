@@ -302,6 +302,13 @@ export function McqAnalyticsDetailModal({
             </CardContent>
           </Card>
 
+          {/* Content Quality Section */}
+          <ContentQualitySection
+            materialType="mcq"
+            materialId={analytics.mcq_id}
+            chapterId={analytics.chapter_id}
+          />
+
           <Separator />
 
           <p className="text-xs text-muted-foreground text-center">
