@@ -1310,6 +1310,17 @@ RULES:
 ${dedup_fingerprints.map((fp, i) => `${i + 1}) ${fp}`).join('\n')}`;
     }
 
+    // Inject blueprint distribution context
+    let blueprintInstruction = '';
+    if (chapter_id && typeof chapter_id === 'string' && chapter_id.trim().length > 0) {
+      try {
+        const blueprint = await getBlueprintContext(serviceClient, chapter_id);
+        blueprintInstruction = blueprint.distribution_instruction;
+      } catch (e) {
+        console.warn(`[${jobId}] Blueprint context fetch failed:`, e);
+      }
+    }
+
     const baseSystemPrompt = `You are an AI assistant that generates medical education content.
 
 CRITICAL SAFETY RULES:
