@@ -230,7 +230,7 @@ export default function AdminOverview() {
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin?tab=content-factory')}>
                     <FileQuestion className="h-3.5 w-3.5" /> Create MCQ
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin?tab=messaging')}>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin/inbox')}>
                     <Inbox className="h-3.5 w-3.5" /> Open inbox
                   </Button>
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin?tab=content-analytics')}>
