@@ -70,7 +70,7 @@ export default function AdminOverview() {
               <CardContent className="space-y-2">
                 {stats.unansweredOver48h > 0 && (
                   <button
-                    onClick={() => navigate('/admin?tab=messaging')}
+                    onClick={() => navigate('/admin/inbox?urgency=overdue')}
                     className="w-full flex items-center justify-between p-3 rounded-lg bg-destructive/10 hover:bg-destructive/15 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
