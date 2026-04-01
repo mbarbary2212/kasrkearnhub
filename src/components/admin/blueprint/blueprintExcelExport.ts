@@ -63,7 +63,7 @@ export async function exportBlueprintToExcel(
     for (const col of COMPONENT_COLUMNS) {
       const cfg = cfgMap.get(configKey(ch.id, null, col.key));
       const lv = cfg?.inclusion_level;
-      rowData.push(lv ? levelText(lv) : '');
+      rowData.push(lv ? levelText(lv, cfg?.question_types) : '');
       levels.push(lv);
     }
     const row = ws.addRow(rowData);
