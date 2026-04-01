@@ -19,8 +19,8 @@ export function QuestionAnalyticsTabs({ modules, moduleAdminModuleIds }: Questio
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Question Analytics</h2>
-        <p className="text-muted-foreground">Analyze question performance across different assessment types</p>
+        <h2 className="text-2xl font-bold">Content Analytics</h2>
+        <p className="text-muted-foreground">Question performance and content quality signals across assessment types</p>
       </div>
 
       <Tabs defaultValue="mcq" className="w-full">
