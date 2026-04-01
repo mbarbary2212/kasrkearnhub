@@ -315,7 +315,7 @@ export default function AdminOverview() {
                 <CardTitle className="text-sm font-semibold">Quick Links</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
-                <QuickLink icon={Inbox} label="Inbox" onClick={() => navigate('/admin?tab=messaging')} />
+                <QuickLink icon={Inbox} label="Inbox" onClick={() => navigate('/admin/inbox')} />
                 <QuickLink icon={BarChart3} label="Analytics" onClick={() => navigate('/admin?tab=content-analytics')} />
                 <QuickLink icon={Shield} label="Admin Panel" onClick={() => navigate('/admin')} />
               </CardContent>
