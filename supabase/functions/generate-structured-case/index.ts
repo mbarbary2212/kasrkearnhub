@@ -9,6 +9,7 @@ import {
   logAIUsage,
   loadAIRules,
 } from "../_shared/ai-provider.ts";
+import { getBlueprintContext } from "../_shared/blueprint.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
