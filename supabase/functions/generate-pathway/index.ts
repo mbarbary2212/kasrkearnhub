@@ -182,7 +182,22 @@ ${pdfContent ? "11. Ground ALL clinical content in the reference document provid
 
 Output valid JSON only.`;
 
-    const result = await callAI(SYSTEM_PROMPT, userPrompt, provider);
+    // Inject blueprint context if chapterId provided
+    let blueprintInstruction = '';
+    if (chapterId && typeof chapterId === 'string' && chapterId.trim().length > 0) {
+      try {
+        const blueprint = await getBlueprintContext(serviceClient, chapterId);
+        blueprintInstruction = blueprint.distribution_instruction;
+      } catch (e) {
+        console.warn("[generate-pathway] Blueprint context fetch failed:", e);
+      }
+    }
+
+    const effectiveSystemPrompt = blueprintInstruction
+      ? `${blueprintInstruction}\n\n${SYSTEM_PROMPT}`
+      : SYSTEM_PROMPT;
+
+    const result = await callAI(effectiveSystemPrompt, userPrompt, provider);
 
     if (!result.success) {
       console.error("AI call failed:", result.error);

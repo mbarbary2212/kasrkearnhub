@@ -141,7 +141,21 @@ Deno.serve(async (req) => {
 
     const sectionCounts: Record<string, number> = vpCase.section_question_counts || {};
 
-    const systemPrompt = buildSystemPrompt();
+    // Inject blueprint context if chapter_id available
+    let blueprintInstruction = '';
+    if (vpCase.chapter_id && typeof vpCase.chapter_id === 'string' && vpCase.chapter_id.trim().length > 0) {
+      try {
+        const blueprint = await getBlueprintContext(serviceClient, vpCase.chapter_id);
+        blueprintInstruction = blueprint.distribution_instruction;
+      } catch (e) {
+        console.warn("[generate-structured-case] Blueprint context fetch failed:", e);
+      }
+    }
+
+    const rawSystemPrompt = buildSystemPrompt();
+    const systemPrompt = blueprintInstruction
+      ? `${blueprintInstruction}\n\n${rawSystemPrompt}`
+      : rawSystemPrompt;
     const userPrompt = buildUserPrompt(vpCase, chapter, referenceDocs, activeSections, sectionCounts, aiRules);
 
     console.log(`[generate-structured-case] Generating for case ${caseId}, provider: ${provider.name}, model: ${provider.model}`);

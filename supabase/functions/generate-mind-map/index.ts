@@ -509,7 +509,21 @@ Return ONLY the JSON array, no other text.`;
       effectiveSectionPrompt = adminSectionStyle;
     }
 
-    const fullSystemPrompt = fullPromptRow?.system_prompt || defaultFullPrompt;
+    // Inject blueprint context if available
+    let blueprintInstruction = '';
+    if (chapter_id && typeof chapter_id === 'string' && chapter_id.trim().length > 0) {
+      try {
+        const blueprint = await getBlueprintContext(serviceClient, chapter_id);
+        blueprintInstruction = blueprint.distribution_instruction;
+      } catch (e) {
+        console.warn("[generate-mind-map] Blueprint context fetch failed:", e);
+      }
+    }
+
+    const rawFullPrompt = fullPromptRow?.system_prompt || defaultFullPrompt;
+    const fullSystemPrompt = blueprintInstruction
+      ? `${blueprintInstruction}\n\n${rawFullPrompt}`
+      : rawFullPrompt;
     const fullPromptVersion = fullPromptRow?.id || "built-in-default";
     const sectionPromptVersion = sectionPromptRow?.id || "built-in-default";
 

@@ -131,7 +131,21 @@ serve(async (req) => {
 
     console.log(`Using AI provider: ${provider.name}, model: ${provider.model}, aiDriven: ${!!aiDriven}`);
 
-    const systemPrompt = aiDriven ? AI_DRIVEN_SYSTEM_PROMPT : STAGED_SYSTEM_PROMPT;
+    // Inject blueprint context if chapter_id provided
+    let blueprintInstruction = '';
+    if (chapter_id && typeof chapter_id === 'string' && chapter_id.trim().length > 0) {
+      try {
+        const blueprint = await getBlueprintContext(serviceClient, chapter_id);
+        blueprintInstruction = blueprint.distribution_instruction;
+      } catch (e) {
+        console.warn("[generate-vp-case] Blueprint context fetch failed:", e);
+      }
+    }
+
+    const baseSystemPrompt = aiDriven ? AI_DRIVEN_SYSTEM_PROMPT : STAGED_SYSTEM_PROMPT;
+    const systemPrompt = blueprintInstruction
+      ? `${blueprintInstruction}\n\n${baseSystemPrompt}`
+      : baseSystemPrompt;
 
     // Build the generation prompt
     const userPrompt = aiDriven
