@@ -481,6 +481,7 @@ export default function ChapterPage() {
     return () => clearTimeout(timer);
   }, [highlightId, activeSection, practiceTab, resourcesTab, interactiveTab]);
 
+  if (!chapterLoading && !chapter) {
     return (
       <MainLayout>
         <div className="text-center py-12">
