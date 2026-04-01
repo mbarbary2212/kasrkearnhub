@@ -70,7 +70,7 @@ export default function AdminOverview() {
               <CardContent className="space-y-2">
                 {stats.unansweredOver48h > 0 && (
                   <button
-                    onClick={() => navigate('/admin?tab=messaging')}
+                    onClick={() => navigate('/admin/inbox?urgency=overdue')}
                     className="w-full flex items-center justify-between p-3 rounded-lg bg-destructive/10 hover:bg-destructive/15 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ export default function AdminOverview() {
                 )}
                 {stats.unansweredOver24h > 0 && stats.unansweredOver24h !== stats.unansweredOver48h && (
                   <button
-                    onClick={() => navigate('/admin?tab=messaging')}
+                    onClick={() => navigate('/admin/inbox?urgency=attention')}
                     className="w-full flex items-center justify-between p-3 rounded-lg bg-orange-500/10 hover:bg-orange-500/15 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
@@ -230,7 +230,7 @@ export default function AdminOverview() {
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin?tab=content-factory')}>
                     <FileQuestion className="h-3.5 w-3.5" /> Create MCQ
                   </Button>
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin?tab=messaging')}>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin/inbox')}>
                     <Inbox className="h-3.5 w-3.5" /> Open inbox
                   </Button>
                   <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/admin?tab=content-analytics')}>
@@ -315,7 +315,7 @@ export default function AdminOverview() {
                 <CardTitle className="text-sm font-semibold">Quick Links</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
-                <QuickLink icon={Inbox} label="Inbox" onClick={() => navigate('/admin?tab=messaging')} />
+                <QuickLink icon={Inbox} label="Inbox" onClick={() => navigate('/admin/inbox')} />
                 <QuickLink icon={BarChart3} label="Analytics" onClick={() => navigate('/admin?tab=content-analytics')} />
                 <QuickLink icon={Shield} label="Admin Panel" onClick={() => navigate('/admin')} />
               </CardContent>
