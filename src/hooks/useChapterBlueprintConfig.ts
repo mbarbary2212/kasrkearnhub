@@ -10,6 +10,7 @@ export interface ChapterBlueprintConfig {
   exam_type: string;
   component_type: string;
   inclusion_level: string;
+  question_types: string[];
   created_at: string;
   updated_at: string;
 }
