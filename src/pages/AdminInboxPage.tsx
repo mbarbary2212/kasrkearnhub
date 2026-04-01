@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,9 +21,10 @@ import { useUserManagedModules } from '@/hooks/useModuleAdmin';
 import { useThreadReplies, useSubmitReply } from '@/hooks/useAdminReplies';
 import { AdminReplyDialog } from '@/components/feedback/AdminReplyDialog';
 import { getInquiryCategoryLabel, INQUIRY_CATEGORY_DISPLAY } from '@/lib/feedbackValidation';
+import { buildContentLink } from '@/lib/contentNavigation';
 import {
   MessageSquare, Mail, Flag, Star, AlertTriangle, User, Eye, EyeOff, Reply,
-  MoreHorizontal, Clock, CheckCircle, Search, Send, Loader2, Circle
+  MoreHorizontal, Clock, CheckCircle, Search, Send, Loader2, Circle, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow, differenceInHours } from 'date-fns';
