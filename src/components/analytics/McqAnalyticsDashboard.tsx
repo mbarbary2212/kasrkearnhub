@@ -35,7 +35,11 @@ import {
   ChevronDown,
   ChevronRight,
   List,
-  Layers
+  Layers,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +55,8 @@ import { useModuleBooks } from "@/hooks/useModuleBooks";
 import { useModuleChapters } from "@/hooks/useChapters";
 import { McqAnalyticsDetailModal } from "./McqAnalyticsDetailModal";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useQualitySignals, useModuleQualitySummary } from "@/hooks/useContentQualitySignals";
+import { QualitySignalBadges } from "./QualitySignalBadges";
 
 interface Module {
   id: string;
@@ -103,6 +109,12 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
   const { data: analytics, isLoading } = useModuleMcqAnalytics(selectedModuleId || '');
   const { data: summary, isLoading: summaryLoading } = useModuleAnalyticsSummary(selectedModuleId || '');
   const calculateMutation = useCalculateMcqAnalytics();
+  const materialType = questionFormat === 'sba' ? 'sba' : 'mcq';
+  const { data: qualitySummary } = useModuleQualitySummary(selectedModuleId || undefined, materialType);
+
+  // Get material IDs for quality signals
+  const materialIds = useMemo(() => (analytics || []).map(a => a.mcq_id), [analytics]);
+  const { data: qualitySignals } = useQualitySignals(materialType, materialIds);
 
   // Reset book/chapter when module changes
   const handleModuleChange = (moduleId: string) => {
@@ -279,6 +291,9 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             </Badge>
           )}
         </TableCell>
+        <TableCell className="text-center">
+          <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+        </TableCell>
       </TableRow>
     );
   };
@@ -374,7 +389,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -458,6 +473,63 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                 )}
               </CardContent>
             </Card>
+
+            {/* Quality Summary Cards */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Helpful Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <ThumbsUp className="h-5 w-5 text-green-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.helpfulRate || 0}%</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Negative Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <ThumbsDown className="h-5 w-5 text-red-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.negativeFeedback || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Flagged by Students
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-orange-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.totalFlagged || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Needs Review
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-blue-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.needsReview || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Filter, View Toggle, and Table */}
@@ -530,6 +602,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                         <TableHead className="text-center">Discrimination</TableHead>
                         <TableHead className="text-center">Avg Time</TableHead>
                         <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-center">Quality</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -587,6 +660,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                                   <TableHead className="text-center">Discrimination</TableHead>
                                   <TableHead className="text-center">Avg Time</TableHead>
                                   <TableHead className="text-center">Status</TableHead>
+                                  <TableHead className="text-center">Quality</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>

@@ -4,6 +4,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ContentQualitySection } from "./ContentQualitySection";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -300,6 +301,13 @@ export function McqAnalyticsDetailModal({
               </ul>
             </CardContent>
           </Card>
+
+          {/* Content Quality Section */}
+          <ContentQualitySection
+            materialType="mcq"
+            materialId={analytics.mcq_id}
+            chapterId={analytics.chapter_id}
+          />
 
           <Separator />
 

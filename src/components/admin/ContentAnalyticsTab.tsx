@@ -17,7 +17,7 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
   const { isSuperAdmin, isPlatformAdmin, isModuleAdmin, isTopicAdmin } = useAuthContext();
 
   const tabs = [
-    { value: 'questions', label: 'Question Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
+    { value: 'questions', label: 'Content Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
     { value: 'integrity', label: 'Content Integrity', icon: ShieldAlert, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
     { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
     { value: 'video-analytics', label: 'Video Analytics', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
