@@ -10,6 +10,7 @@ import { FlashcardContent } from '@/hooks/useStudyResources';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthContext } from '@/contexts/AuthContext';
 import FSRSRatingButtons from '@/components/study/FSRSRatingButtons';
+import { MaterialReactionRow } from '@/components/shared/MaterialReactionRow';
 
 export default function FlashcardReviewPage() {
   const navigate = useNavigate();
