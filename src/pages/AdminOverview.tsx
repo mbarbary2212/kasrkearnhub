@@ -85,7 +85,7 @@ export default function AdminOverview() {
                 )}
                 {stats.unansweredOver24h > 0 && stats.unansweredOver24h !== stats.unansweredOver48h && (
                   <button
-                    onClick={() => navigate('/admin?tab=messaging')}
+                    onClick={() => navigate('/admin/inbox?urgency=attention')}
                     className="w-full flex items-center justify-between p-3 rounded-lg bg-orange-500/10 hover:bg-orange-500/15 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
