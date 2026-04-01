@@ -1,0 +1,1 @@
+ALTER TABLE public.chapter_blueprint_config ADD COLUMN IF NOT EXISTS question_types text[] DEFAULT '{}';
