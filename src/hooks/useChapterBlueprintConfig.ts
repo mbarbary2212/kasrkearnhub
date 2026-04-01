@@ -32,6 +32,23 @@ export const INCLUSION_LEVELS: { value: InclusionLevel; label: string }[] = [
   { value: 'low', label: 'Low' },
 ];
 
+export const QUESTION_TYPE_OPTIONS = [
+  { value: 'sba', label: 'Single Best Answer (SBA)' },
+  { value: 'true_false', label: 'True / False' },
+  { value: 'emq', label: 'Extended Matching (EMQ)' },
+  { value: 'cross_matching', label: 'Cross-matching' },
+  { value: 'cloze', label: 'Fill-in-blank (Cloze)' },
+  { value: 'short_essay', label: 'Short Essay' },
+  { value: 'long_essay', label: 'Long Essay' },
+  { value: 'clinical_case', label: 'Clinical Scenario (Case)' },
+  { value: 'osce_station', label: 'OSCE Station' },
+  { value: 'spot_diagnosis', label: 'Spot Diagnosis' },
+  { value: 'paraclinical', label: 'Paraclinical Interpretation' },
+  { value: 'flashcard', label: 'Flashcard' },
+  { value: 'mind_map', label: 'Mind Map' },
+  { value: 'pathway', label: 'Pathway' },
+] as const;
+
 /** Build a consistent map key for configs */
 export function configKey(chapterId: string, sectionId: string | null, componentType: string) {
   return `${chapterId}::${sectionId ?? ''}::${componentType}`;
