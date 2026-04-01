@@ -460,7 +460,27 @@ export default function ChapterPage() {
     });
   }, [module, chapter, activeSection, resourcesTab, interactiveTab, practiceTab, updatePresence]);
 
-  if (!chapterLoading && !chapter) {
+  // ─── Content highlight + context banner ───
+  const highlightId = searchParams.get('highlight');
+  const fromSource = searchParams.get('from');
+  const [showContextBanner, setShowContextBanner] = useState(!!fromSource);
+
+  // Scroll to highlighted element after content loads
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-content-id="${highlightId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        }, 3000);
+      }
+    }, 800); // wait for content to render
+    return () => clearTimeout(timer);
+  }, [highlightId, activeSection, practiceTab, resourcesTab, interactiveTab]);
+
     return (
       <MainLayout>
         <div className="text-center py-12">
