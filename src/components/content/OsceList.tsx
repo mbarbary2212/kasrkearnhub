@@ -497,6 +497,14 @@ export function OsceList({
                     isStarred={starredIds.has(question.id)}
                     onToggleStar={toggleStar}
                   />
+                  {isAdmin && !showDeleted && (
+                    <ContentItemAdminBar
+                      materialType="osce"
+                      materialId={question.id}
+                      chapterId={chapterId}
+                      onEdit={() => handleEdit(question)}
+                    />
+                  )}
                 </div>
               </div>
             );

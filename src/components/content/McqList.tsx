@@ -912,6 +912,14 @@ export function McqList({
                     previousAttempt={previousAttempt}
                     questionFormat={questionFormat}
                   />
+                  {isAdmin && !showDeleted && (
+                    <ContentItemAdminBar
+                      materialType={questionFormat === 'sba' ? 'sba' : 'mcq'}
+                      materialId={mcq.id}
+                      chapterId={chapterId ?? undefined}
+                      onEdit={() => setEditingMcq(mcq)}
+                    />
+                  )}
                 </div>
               </div>
             );
