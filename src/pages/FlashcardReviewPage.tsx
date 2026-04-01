@@ -167,15 +167,23 @@ export default function FlashcardReviewPage() {
 
           {/* Rating buttons - shown after flip */}
           {flipped ? (
-            <FSRSRatingButtons
-              cardId={current.cardId}
-              fsrsState={fsrsState}
-              visible={flipped}
-              onRated={(rating) => {
-                setRatingCounts(prev => ({ ...prev, [rating]: (prev[rating] || 0) + 1 }));
-                advanceToNext();
-              }}
-            />
+            <>
+              <FSRSRatingButtons
+                cardId={current.cardId}
+                fsrsState={fsrsState}
+                visible={flipped}
+                onRated={(rating) => {
+                  setRatingCounts(prev => ({ ...prev, [rating]: (prev[rating] || 0) + 1 }));
+                  advanceToNext();
+                }}
+              />
+              <MaterialReactionRow
+                materialType="flashcard"
+                materialId={current.cardId}
+                chapterId={current.chapterId}
+                className="justify-center mt-2"
+              />
+            </>
           ) : (
             <p className="text-center text-sm text-muted-foreground mt-4">Tap card to reveal answer</p>
           )}

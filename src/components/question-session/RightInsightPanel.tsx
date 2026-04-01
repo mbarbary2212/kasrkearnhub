@@ -75,6 +75,13 @@ export function RightInsightPanel({
       />
 
       <ActionsCard onRepeat={onRepeat} />
+
+      <MaterialReactionRow
+        materialType={questionType}
+        materialId={questionId}
+        chapterId={chapterId}
+        className="justify-center pt-1"
+      />
     </div>
   );
 }
