@@ -1500,6 +1500,7 @@ export type Database = {
           id: string
           inclusion_level: string
           module_id: string
+          section_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1510,6 +1511,7 @@ export type Database = {
           id?: string
           inclusion_level?: string
           module_id: string
+          section_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1520,6 +1522,7 @@ export type Database = {
           id?: string
           inclusion_level?: string
           module_id?: string
+          section_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1535,6 +1538,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chapter_blueprint_config_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
         ]

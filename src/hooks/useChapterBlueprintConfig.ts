@@ -6,6 +6,7 @@ export interface ChapterBlueprintConfig {
   id: string;
   chapter_id: string;
   module_id: string;
+  section_id: string | null;
   exam_type: string;
   component_type: string;
   inclusion_level: string;
@@ -30,6 +31,11 @@ export const INCLUSION_LEVELS: { value: InclusionLevel; label: string }[] = [
   { value: 'low', label: 'Low' },
 ];
 
+/** Build a consistent map key for configs */
+export function configKey(chapterId: string, sectionId: string | null, componentType: string) {
+  return `${chapterId}::${sectionId ?? ''}::${componentType}`;
+}
+
 export function useChapterBlueprintConfigs(moduleId?: string) {
   return useQuery({
     queryKey: ['chapter-blueprint-config', moduleId],
@@ -51,26 +57,56 @@ export function useUpsertChapterBlueprintConfig() {
     mutationFn: async (input: {
       chapter_id: string;
       module_id: string;
+      section_id?: string | null;
       exam_type: string;
       component_type: string;
       inclusion_level: string;
     }) => {
-      const { data, error } = await supabase
+      // Because we use a COALESCE unique index (not a constraint),
+      // we need to manually check + insert/update
+      const sectionId = input.section_id ?? null;
+
+      // Try to find existing
+      let query = supabase
         .from('chapter_blueprint_config')
-        .upsert(
-          {
+        .select('id')
+        .eq('chapter_id', input.chapter_id)
+        .eq('exam_type', input.exam_type)
+        .eq('component_type', input.component_type);
+
+      if (sectionId) {
+        query = query.eq('section_id', sectionId);
+      } else {
+        query = query.is('section_id', null);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+
+      if (existing) {
+        const { data, error } = await supabase
+          .from('chapter_blueprint_config')
+          .update({ inclusion_level: input.inclusion_level })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      } else {
+        const { data, error } = await supabase
+          .from('chapter_blueprint_config')
+          .insert({
             chapter_id: input.chapter_id,
             module_id: input.module_id,
+            section_id: sectionId,
             exam_type: input.exam_type,
             component_type: input.component_type,
             inclusion_level: input.inclusion_level,
-          },
-          { onConflict: 'chapter_id,exam_type,component_type' }
-        )
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ['chapter-blueprint-config', variables.module_id] });
