@@ -4,6 +4,7 @@ import { ConfidenceCard } from './ConfidenceCard';
 import { QuestionStatsCard } from './QuestionStatsCard';
 import { PerformanceStatsCard } from './PerformanceStatsCard';
 import { ActionsCard } from './ActionsCard';
+import { MaterialReactionRow } from '@/components/shared/MaterialReactionRow';
 import type { Mcq } from '@/hooks/useMcqs';
 import type { OsceQuestion } from '@/hooks/useOsceQuestions';
 
