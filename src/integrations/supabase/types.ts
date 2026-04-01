@@ -1838,6 +1838,50 @@ export type Database = {
           },
         ]
       }
+      content_review_notes: {
+        Row: {
+          admin_note: string | null
+          chapter_id: string | null
+          created_at: string
+          id: string
+          material_id: string
+          material_type: string
+          review_status: string
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          material_id: string
+          material_type: string
+          review_status?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          material_id?: string
+          material_type?: string
+          review_status?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_review_notes_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_views: {
         Row: {
           chapter_id: string | null
