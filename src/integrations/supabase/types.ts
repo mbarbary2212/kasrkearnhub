@@ -3539,6 +3539,50 @@ export type Database = {
           },
         ]
       }
+      material_feedback: {
+        Row: {
+          chapter_id: string | null
+          created_at: string
+          feedback_type: string
+          id: string
+          material_id: string
+          material_type: string
+          message: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          chapter_id?: string | null
+          created_at?: string
+          feedback_type: string
+          id?: string
+          material_id: string
+          material_type: string
+          message?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          chapter_id?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          material_id?: string
+          material_type?: string
+          message?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_feedback_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_reactions: {
         Row: {
           chapter_id: string | null
