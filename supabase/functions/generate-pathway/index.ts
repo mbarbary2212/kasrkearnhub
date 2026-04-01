@@ -141,6 +141,7 @@ serve(async (req) => {
       nodeCount,
       additionalInstructions,
       pdfContent,
+      chapterId,
     } = await req.json();
 
     const serviceClient = authServiceClient;
