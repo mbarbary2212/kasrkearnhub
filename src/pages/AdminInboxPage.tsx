@@ -711,6 +711,29 @@ function InquiryDetailSheet({
                   )}
                 </div>
 
+                {/* Open Content button */}
+                {inquiry.module_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      const link = buildContentLink({
+                        moduleId: inquiry.module_id!,
+                        chapterId: inquiry.chapter_id,
+                        from: 'inbox',
+                      });
+                      window.open(link, '_blank');
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open Content
+                    {!inquiry.chapter_id && (
+                      <span className="text-xs text-muted-foreground ml-auto">(module only)</span>
+                    )}
+                  </Button>
+                )}
+
                 {/* Full question */}
                 <div className="p-3 rounded-lg bg-muted border">
                   <p className="text-xs text-muted-foreground mb-1">Question:</p>
