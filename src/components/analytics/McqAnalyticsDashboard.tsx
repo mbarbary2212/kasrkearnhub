@@ -109,6 +109,12 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
   const { data: analytics, isLoading } = useModuleMcqAnalytics(selectedModuleId || '');
   const { data: summary, isLoading: summaryLoading } = useModuleAnalyticsSummary(selectedModuleId || '');
   const calculateMutation = useCalculateMcqAnalytics();
+  const materialType = questionFormat === 'sba' ? 'sba' : 'mcq';
+  const { data: qualitySummary } = useModuleQualitySummary(selectedModuleId || undefined, materialType);
+
+  // Get material IDs for quality signals
+  const materialIds = useMemo(() => (analytics || []).map(a => a.mcq_id), [analytics]);
+  const { data: qualitySignals } = useQualitySignals(materialType, materialIds);
 
   // Reset book/chapter when module changes
   const handleModuleChange = (moduleId: string) => {
