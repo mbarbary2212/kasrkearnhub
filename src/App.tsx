@@ -36,6 +36,7 @@ const TopicDetailPage = lazy(() => import("./pages/TopicDetailPage"));
 const MockExamPage = lazy(() => import("./pages/MockExamPage"));
 const BlueprintExamPage = lazy(() => import("./pages/BlueprintExamPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
+const AdminOverview = lazy(() => import("./pages/AdminOverview"));
 const FeedbackPage = lazy(() => import("./pages/FeedbackPage"));
 const AdminInboxPage = lazy(() => import("./pages/AdminInboxPage"));
 const ProgressPage = lazy(() => import("./pages/ProgressPage"));
@@ -152,6 +153,7 @@ const App = () => {
                 <Route path="/module/:moduleId/chapter/:chapterId" element={<ProtectedRoute><RouteErrorBoundary><ChapterPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/module/:moduleId/topic/:topicId" element={<ProtectedRoute><RouteErrorBoundary><TopicDetailPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/overview" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminOverview /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/inbox" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/integrity-report" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/activity-log" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary></ProtectedRoute>} />

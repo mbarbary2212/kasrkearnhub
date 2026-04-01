@@ -37,9 +37,16 @@ export default function Home() {
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
+  // Redirect admins to overview dashboard
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      navigate('/admin/overview', { replace: true });
+    }
+  }, [user, authLoading, isAdmin, navigate]);
+
   // Handle resume last path (but NO auto-redirect to year page anymore)
   useEffect(() => {
-    if (!user || authLoading || hasCheckedAutoLogin) return;
+    if (!user || authLoading || hasCheckedAutoLogin || isAdmin) return;
 
     const skipAutoLogin = sessionStorage.getItem('skipAutoLogin');
     if (skipAutoLogin) {
@@ -77,6 +84,17 @@ export default function Home() {
   if (!user && !authLoading) {
     navigate('/auth', { replace: true });
     return null;
+  }
+
+  // Admin redirect in progress
+  if (user && isAdmin) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Skeleton className="h-8 w-64 mx-auto" />
+        </div>
+      </MainLayout>
+    );
   }
 
   if (user) {

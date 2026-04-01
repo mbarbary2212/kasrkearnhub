@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MoreHorizontal,
   MessageCircle, ClipboardCheck, SlidersHorizontal, Settings,
   HelpCircle, MessageSquare, MessagesSquare, Users,
-  FileText, Gamepad2, PenLine, ListChecks,
+  FileText, Gamepad2, PenLine, ListChecks, BarChart3, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
@@ -22,13 +23,23 @@ interface NavTab {
   icon: React.ElementType | 'coach-img';
   path: string;
   action?: 'learning' | 'connect' | 'more';
+  hideForAdmin?: boolean;
+  adminOnly?: boolean;
 }
 
-const tabs: NavTab[] = [
+const studentTabs: NavTab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { id: 'learning', label: 'Learning', icon: BookOpen, path: '', action: 'learning' },
   { id: 'connect', label: 'Connect', icon: MessageCircle, path: '', action: 'connect' },
-  { id: 'coach', label: 'Coach', icon: 'coach-img', path: '/progress' },
+  { id: 'coach', label: 'Coach', icon: 'coach-img', path: '/progress', hideForAdmin: true },
+  { id: 'more', label: 'More', icon: MoreHorizontal, path: '', action: 'more' },
+];
+
+const adminTabs: NavTab[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/overview' },
+  { id: 'learning', label: 'Learning', icon: BookOpen, path: '', action: 'learning' },
+  { id: 'connect', label: 'Connect', icon: MessageCircle, path: '', action: 'connect' },
+  { id: 'overview', label: 'Overview', icon: BarChart3, path: '/admin/overview', adminOnly: true },
   { id: 'more', label: 'More', icon: MoreHorizontal, path: '', action: 'more' },
 ];
 
@@ -36,8 +47,8 @@ interface SubItem {
   id: string;
   label: string;
   icon: React.ElementType;
-  section?: string;   // for learning sub-items (?section=)
-  path?: string;       // for more items (direct navigation)
+  section?: string;
+  path?: string;
 }
 
 const learningItems: SubItem[] = [
@@ -55,9 +66,15 @@ const connectItems = [
   { id: 'study-groups', label: 'Study Groups', icon: Users },
 ];
 
-const moreItems: SubItem[] = [
+const studentMoreItems: SubItem[] = [
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+];
+
+const adminMoreItems: SubItem[] = [
+  { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
+  { id: 'admin-panel', label: 'Admin Panel', icon: Shield, path: '/admin' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
 ];
 
@@ -72,6 +89,10 @@ export function MobileBottomNav() {
   const { data: dueCards } = useDueCards();
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
+  const { isAdmin } = useAuthContext();
+
+  const tabs = isAdmin ? adminTabs : studentTabs;
+  const moreItems = isAdmin ? adminMoreItems : studentMoreItems;
 
   // Sheet states — only one open at a time
   const [activeSheet, setActiveSheet] = useState<'learning' | 'connect' | 'more' | null>(null);
@@ -110,7 +131,11 @@ export function MobileBottomNav() {
   /* ---- Active-state helpers ---- */
 
   const isTabActive = useCallback((tab: NavTab) => {
-    if (tab.id === 'dashboard') return location.pathname === '/';
+    if (tab.id === 'dashboard') {
+      if (isAdmin) return location.pathname === '/admin/overview';
+      return location.pathname === '/';
+    }
+    if (tab.id === 'overview') return location.pathname === '/admin/overview';
     if (tab.id === 'learning') {
       return activeSheet === 'learning' ||
         location.pathname.startsWith('/year/') ||
@@ -123,7 +148,7 @@ export function MobileBottomNav() {
       return activeSheet === 'more' || moreItems.some(m => location.pathname === m.path);
     }
     return false;
-  }, [location.pathname, activeSheet]);
+  }, [location.pathname, activeSheet, isAdmin, moreItems]);
 
   const currentSection = searchParams.get('section');
 
@@ -140,19 +165,16 @@ export function MobileBottomNav() {
 
   const handleLearningItem = useCallback((item: SubItem) => {
     setActiveSheet(null);
-    // If on a chapter page, navigate to that chapter with ?section=
     const chapterMatch = location.pathname.match(/^(\/module\/[^/]+\/chapter\/[^/]+)/);
     if (chapterMatch && item.section) {
       navigate(`${chapterMatch[1]}?section=${item.section}`);
       return;
     }
-    // If on a module page
     const moduleMatch = location.pathname.match(/^(\/module\/[^/]+)/);
     if (moduleMatch) {
       navigate(moduleMatch[1]);
       return;
     }
-    // Otherwise resume last position or fall back
     if (lastPosition) {
       const url = buildResumeUrl(lastPosition);
       navigate(item.section ? `${url}${url.includes('?') ? '&' : '?'}section=${item.section}` : url);
