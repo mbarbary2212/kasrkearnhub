@@ -146,7 +146,10 @@ export function ModuleConnectTab({ moduleId, moduleName, moduleCode, yearId }: M
           </CardContent>
         </Card>
 
-        {/* Study Groups Card - NEW */}
+        {/* My Questions Card */}
+        <MyQuestionsCard moduleId={moduleId} />
+
+        {/* Study Groups Card */}
         <Card 
           className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 sm:col-span-2 lg:col-span-2"
           onClick={() => setShowStudyGroups(true)}

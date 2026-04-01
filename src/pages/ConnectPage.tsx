@@ -144,6 +144,9 @@ export default function ConnectPage() {
             </CardContent>
           </Card>
 
+          {/* My Questions Card */}
+          <MyQuestionsCard />
+
           {/* Study Groups Card */}
           <Card
             className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 sm:col-span-2"
