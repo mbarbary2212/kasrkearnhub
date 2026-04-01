@@ -149,6 +149,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const displayName = profile?.full_name || user?.email || 'User';
   const displayEmail = user?.email || '';
   const isStudent = !!user && !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
+  const showSharedNav = isStudent || isAdmin;
 
   return (
     <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
