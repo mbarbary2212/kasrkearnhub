@@ -238,8 +238,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </TooltipProvider>
           )}
 
-          {/* Admin Panel button - prominent header placement */}
-          {user && isAdmin && (
+          {/* Admin Panel button - only show on non-overview admin pages */}
+          {user && isAdmin && location.pathname !== '/admin/overview' && (
             <Button
               onClick={() => navigate('/admin')}
               variant="ghost"
