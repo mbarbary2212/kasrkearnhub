@@ -1,64 +1,66 @@
 
 
-# Chapter Blueprint Tab — Admin UI for Chapter Exam Profiles
+# Chapter Blueprint: Excel Download + Section-Level Rows
 
 ## What This Does
-Adds a new "Chapter Blueprint" subtab inside the Assessment Blueprint area. It shows a table of all chapters in a selected module, with columns for each question type. The admin checks which question types apply to each chapter and sets an importance level (High / Average / Low) for each.
+Two additions to the Chapter Blueprint tab:
 
-## Database (Already Exists)
-The `chapter_blueprint_config` table is already in Supabase with these columns:
-- `chapter_id`, `module_id`, `exam_type`, `component_type`, `inclusion_level` (High/Average/Low)
+1. **Download as Excel** — A button that exports the current matrix (module's chapters × question types with H/A/L levels) to a formatted `.xlsx` file that can be shared with colleagues.
 
-No migration needed.
+2. **Expandable sections under chapters** — Each chapter row can be expanded to show its sections as indented sub-rows. Each section gets its own independent H/A/L levels per question type, stored separately from the chapter-level config.
+
+## Database Change
+
+**Add `section_id` column to `chapter_blueprint_config`:**
+
+```sql
+ALTER TABLE chapter_blueprint_config
+  ADD COLUMN section_id uuid REFERENCES sections(id) ON DELETE CASCADE DEFAULT NULL;
+
+-- Drop old unique constraint and create new one that includes section_id
+ALTER TABLE chapter_blueprint_config
+  DROP CONSTRAINT chapter_blueprint_config_chapter_exam_type_component_key;
+
+ALTER TABLE chapter_blueprint_config
+  ADD CONSTRAINT chapter_blueprint_config_unique_key
+  UNIQUE (chapter_id, section_id, exam_type, component_type);
+```
+
+- `section_id = NULL` → chapter-level config (existing behavior, unchanged)
+- `section_id = <uuid>` → section-level config (new)
 
 ## Implementation Steps
 
-### 1. Create hook: `src/hooks/useChapterBlueprintConfig.ts`
-- `useChapterBlueprintConfigs(moduleId)` — fetches all rows from `chapter_blueprint_config` where `module_id` matches
-- `useUpsertChapterBlueprintConfig()` — mutation that upserts a row (insert if new chapter+component_type combo, update if exists)
-- `useDeleteChapterBlueprintConfig()` — mutation to remove a row (uncheck a question type)
+### 1. Migration
+Add `section_id` column and update the unique constraint.
 
-### 2. Create component: `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`
-- Year and Module selectors at the top (same pattern as TopicWeightsSubtab)
-- Fetch chapters for the selected module using `useModuleChapters`
-- Fetch existing config rows using the new hook
-- Render a table:
+### 2. Update hook: `useChapterBlueprintConfig.ts`
+- Update `ChapterBlueprintConfig` interface to include `section_id: string | null`
+- Update `useUpsertChapterBlueprintConfig` to accept optional `section_id` and include it in the upsert conflict key
+- Config map key becomes `chapter_id::section_id::component_type`
 
-```text
-┌──────────────┬─────┬────────┬──────┬──────┬───────────┬──────────────┐
-│ Chapter      │ MCQ │ Recall │ Case │ OSCE │ Long Case │ Paraclinical │
-├──────────────┼─────┼────────┼──────┼──────┼───────────┼──────────────┤
-│ Ch 1: Cardio │  H  │   A    │  H   │  —   │     L     │      —       │
-│ Ch 2: Resp   │  A  │   —    │  A   │  H   │     —     │      —       │
-└──────────────┴─────┴────────┴──────┴──────┴───────────┴──────────────┘
-```
+### 3. Update component: `ChapterBlueprintSubtab.tsx`
+- **Expand/collapse**: Add a chevron toggle on each chapter row. When expanded, fetch sections for that chapter using `useChapterSections(chapterId)` and render indented sub-rows.
+- **Section rows**: Each section gets the same CellPopover columns, but upserts include `section_id`.
+- **Download button**: Add a "Download Excel" button above the table. On click:
+  - Build a workbook using ExcelJS (already available via `src/lib/excel.ts`)
+  - Header row: Chapter | MCQ | Recall | Case | OSCE | Long Case | Paraclinical
+  - Chapter rows with their levels (H/A/L or empty)
+  - Indented section rows below each chapter (prefixed with "  → Section Name")
+  - Color-code cells: High=red fill, Average=yellow fill, Low=green fill
+  - Auto-download the file named `{ModuleName}_Blueprint.xlsx`
 
-- Each cell is either empty (—, meaning this question type is not applicable) or shows a badge/select with the inclusion level: **High**, **Average**, or **Low**
-- Clicking an empty cell opens a small dropdown to set the level (defaults to Average)
-- Clicking an existing badge opens the same dropdown to change level, with an option to clear/remove
-- Changes are saved immediately via upsert/delete mutations
-- Color-coded badges: High = red/strong, Average = yellow/amber, Low = green/muted
+### 4. Files Changed
 
-### 3. Wire into AssessmentBlueprintTab
-- Import `ChapterBlueprintSubtab`
-- Add a new tab trigger: `<TabsTrigger value="chapters">Chapter Blueprint</TabsTrigger>` — placed as the first tab
-- Add corresponding `<TabsContent value="chapters">`
-- Change the default subtab from `'structure'` to `'chapters'`
-
-### Files Changed
 | File | Action |
 |------|--------|
-| `src/hooks/useChapterBlueprintConfig.ts` | Create — query + mutations for `chapter_blueprint_config` |
-| `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx` | Create — table UI with inline level editing |
-| `src/components/admin/blueprint/AssessmentBlueprintTab.tsx` | Edit — add the new subtab |
+| Migration (new) | Add `section_id` column to `chapter_blueprint_config` |
+| `src/hooks/useChapterBlueprintConfig.ts` | Add `section_id` to types, upsert, and config map |
+| `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx` | Add expand/collapse sections, download button |
 
-### Component Types Shown as Columns
-Based on the memory context (Short Case removed, OSCE covers short clinical):
-**MCQ, Short Answer (Recall), Short Answer (Case), OSCE, Long Case, Paraclinical**
+## Technical Details
 
-### UX Details
-- Uses existing shadcn `Select`, `Badge`, `Table`, `ScrollArea` components
-- Each cell uses a `Popover` or inline `Select` with options: High, Average, Low, Clear
-- Loading spinner while fetching
-- Empty state when no module selected
+- Sections are loaded on-demand per chapter (only when expanded) using the existing `useChapterSections` hook
+- The Excel export uses the `ExcelJS` library already in the project — no new dependencies
+- The upsert conflict target changes to `chapter_id, section_id, exam_type, component_type` with a `COALESCE(section_id, '00000000-0000-0000-0000-000000000000')` approach or a partial unique index to handle NULLs properly in the unique constraint
 
