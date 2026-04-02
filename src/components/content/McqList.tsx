@@ -920,6 +920,8 @@ export function McqList({
                       materialId={mcq.id}
                       chapterId={chapterId ?? undefined}
                       onEdit={() => setEditingMcq(mcq)}
+                      feedbackOpen={feedbackOpenId === mcq.id}
+                      onToggleFeedback={() => setFeedbackOpenId(prev => prev === mcq.id ? null : mcq.id)}
                     />
                   )}
                 </div>

@@ -505,6 +505,8 @@ export function OsceList({
                       materialId={question.id}
                       chapterId={chapterId}
                       onEdit={() => handleEdit(question)}
+                      feedbackOpen={feedbackOpenId === question.id}
+                      onToggleFeedback={() => setFeedbackOpenId(prev => prev === question.id ? null : question.id)}
                     />
                   )}
                 </div>
