@@ -1,100 +1,57 @@
 
 
-# Content Deep-Link & Admin Action Bar — Implementation Plan
+# Fix Blueprint Excel Export & Align Question Types with Practice Content
 
-## Current State
+## Problem 1 — Excel Missing Section Names
 
-- **Inquiries** have `module_id`, `chapter_id`, `topic_id` columns but no `material_type` or `material_id` — most inquiries only have `module_id` (chapter/topic are usually null)
-- **Chapter route**: `/module/:moduleId/chapter/:chapterId` with query params `?section=practice&subtab=mcqs`
-- **Analytics**: `McqAnalyticsDashboard` rows open a detail modal (`McqAnalyticsDetailModal`). Each row has `mcq_id`, `module_id`, `chapter_id`
-- **No existing highlight/scroll-to-item mechanism** in ChapterPage
+The export function at line 85 writes `"→ Section"` for every section row because it only has `section_id` from configs but never fetches section names. The UI component (`ChapterSectionRows`) fetches sections via `useChapterSections` hook, but the export function doesn't have access to those names.
 
-## Plan
+**Fix:** Update `exportBlueprintToExcel` to accept a sections map or fetch sections before export. Since this is a download function (not a hook), we'll do a batch fetch of all sections for the relevant chapters before building the Excel.
 
-### Step 1 — Build Content Link Utility
+**File: `src/components/admin/blueprint/blueprintExcelExport.ts`**
+- Before building rows, collect all unique `chapter_id` values from configs that have `section_id`
+- Batch-fetch sections from Supabase: `supabase.from('sections').select('id, name, section_number').in('chapter_id', chapterIds)`
+- Build a `sectionNameMap: Map<string, { name: string, section_number: string | null }>`
+- Replace `"→ Section"` with `"  → {section_number}. {name}"` or `"  → {name}"`
 
-Create `src/lib/contentNavigation.ts`:
+**File: `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`**
+- Pass supabase client or update the export call (the function already imports supabase, so no caller change needed — just make the export function async with internal fetch)
 
-- `buildContentLink(params)` — generates a URL like `/module/{moduleId}/chapter/{chapterId}?section=practice&subtab=mcqs&highlight={mcqId}&from=inbox`
-- Maps material types to the correct section + subtab (e.g., `mcq` → `practice/mcqs`, `video`/`lecture` → `resources/lectures`, `osce` → `practice/osce`, `flashcard` → `resources/flashcards`, `case` → `interactive/cases`)
-- Accepts optional `from` param (`inbox` | `analytics`) for the context banner
-- Handles fallback: if only `module_id` available, links to `/module/{moduleId}`; if only `module_id` + `chapter_id`, links to chapter without highlight
+## Problem 2 — Question Types Should Match Practice Section Content
 
-### Step 2 — Add "Open Content" Button to Inquiry Detail Sheet
+Current `QUESTION_TYPE_OPTIONS` includes items like "Flashcard", "Mind Map", "Pathway" which are not practice/exam question types. It's missing "Matching", "Image Questions", and "Case Scenarios" which exist in the Practice section.
 
-In `AdminInboxPage.tsx` `InquiryDetailSheet`:
+**Fix:** Update `QUESTION_TYPE_OPTIONS` in `src/hooks/useChapterBlueprintConfig.ts` to align with actual Practice content types:
 
-- Below the metadata grid, add an "Open Content" button (using `ExternalLink` icon)
-- Only show when `module_id` exists (at minimum)
-- Uses `buildContentLink` with `inquiry.module_id`, `inquiry.chapter_id`, `from='inbox'`
-- If only `module_id` available (no chapter), navigates to module page
-- Uses `navigate()` or `window.open()` in new tab
+Replace with options that match the practice tabs + exam formats:
+- SBA (Single Best Answer)
+- True/False
+- EMQ (Extended Matching)
+- Cross-matching
+- Matching (from Practice tab)
+- Fill-in-blank (Cloze)
+- Short Essay / Short Answer
+- Long Essay
+- Clinical Scenario (Case)
+- Case Scenarios (short answer based on case — from Practice tab)
+- OSCE Station
+- Spot Diagnosis
+- Paraclinical Interpretation
+- Image Questions (from Practice tab)
+- Practical (from Practice tab)
 
-### Step 3 — Add "Open Content" to Analytics Detail Modal
+Remove non-exam types: Flashcard, Mind Map, Pathway (these are resources, not question formats).
 
-In `McqAnalyticsDetailModal.tsx`:
+## Summary of Changes
 
-- Add an "Open in Content" button in the modal header area
-- Uses `buildContentLink` with `analytics.module_id`, `analytics.chapter_id`, `analytics.mcq_id`, `materialType='mcq'`, `from='analytics'`
-- Opens chapter page at the exact MCQ
+| File | Change |
+|------|--------|
+| `src/components/admin/blueprint/blueprintExcelExport.ts` | Fetch section names from Supabase before building rows; display actual section names in Excel |
+| `src/hooks/useChapterBlueprintConfig.ts` | Update `QUESTION_TYPE_OPTIONS` to align with Practice section content types; add Matching, Image Questions, Case Scenarios, Practical; remove Flashcard, Mind Map, Pathway |
 
-### Step 4 — Highlight Target Content in ChapterPage
+No database changes. No new files.
 
-In `ChapterPage.tsx`:
+## Technical Detail
 
-- Read `highlight` and `from` from `searchParams`
-- On mount, if `highlight` param exists:
-  - Auto-switch to the correct `section` and `subtab` (already handled by existing `?section=&subtab=` params)
-  - After content loads, find the DOM element with `data-content-id={highlightId}` and scroll into view
-  - Apply a temporary CSS highlight (ring + pulse animation, 3 seconds, then fade)
-- Add `data-content-id` attributes to MCQ cards, OSCE items, etc. in their respective list components (`McqList`, `OsceList`, etc.)
-
-### Step 5 — Context Banner in ChapterPage
-
-In `ChapterPage.tsx`:
-
-- If `from` search param is present (`inbox` or `analytics`), show a small dismissible banner at top:
-  - "Opened from Inbox" or "Opened from Analytics"
-  - "Back to Inbox" / "Back to Analytics" link
-- Auto-dismiss after navigation or manual close
-
-### Step 6 — Admin Action Bar on Content Items
-
-Create `src/components/admin/ContentItemAdminBar.tsx`:
-
-- Small inline bar shown above/beside content cards (MCQ, OSCE, etc.) when `isAdmin`
-- Actions: "Edit" (triggers existing edit modal if available), "View Analytics" (links to analytics with the item pre-selected), "Mark for Review" (uses existing `useUpsertReviewNote`)
-- Only visible for admin roles — does not affect student UI
-- Add this component to `McqList` item rendering (and optionally `OsceList`, etc.) behind `isAdmin` check
-
-### Step 7 — Update Overview Deep Links
-
-In `AdminOverview.tsx`:
-
-- Ensure "Unanswered questions" links already point to `/admin/inbox?urgency=overdue` (already done in previous session)
-- No additional changes needed unless links are broken
-
----
-
-## Files Modified
-
-| File | Changes |
-|------|---------|
-| `src/lib/contentNavigation.ts` | New — URL builder utility |
-| `src/pages/AdminInboxPage.tsx` | Add "Open Content" button in InquiryDetailSheet |
-| `src/components/analytics/McqAnalyticsDetailModal.tsx` | Add "Open in Content" button |
-| `src/pages/ChapterPage.tsx` | Read `highlight`/`from` params, scroll + highlight logic, context banner |
-| `src/components/content/McqList.tsx` | Add `data-content-id` attribute to items |
-| `src/components/content/OsceList.tsx` | Add `data-content-id` attribute to items |
-| `src/components/admin/ContentItemAdminBar.tsx` | New — admin action bar component |
-| `src/components/content/McqList.tsx` | Render `ContentItemAdminBar` for admins |
-
-## Files Created
-
-- `src/lib/contentNavigation.ts`
-- `src/components/admin/ContentItemAdminBar.tsx`
-
-## No Database Changes
-
-All data exists. Inquiries have `module_id` and `chapter_id`. Analytics have `mcq_id`, `module_id`, `chapter_id`. Content items have their own IDs. No new tables or columns needed.
+The Excel export function already imports supabase indirectly via the config hook. We'll add a direct supabase import to the export file to fetch sections. The function is already async, so this is a clean addition. The section fetch uses a single `.in()` query covering all chapter IDs — no N+1 problem.
 
