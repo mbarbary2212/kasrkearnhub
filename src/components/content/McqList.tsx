@@ -126,6 +126,8 @@ export function McqList({
   } = useAddPermissionGuard({ moduleId, chapterId });
   
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
+  // Single-open-at-a-time feedback panel
+  const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
   const [deletingMcq, setDeletingMcq] = useState<Mcq | null>(null);
   const [restoringMcq, setRestoringMcq] = useState<Mcq | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
