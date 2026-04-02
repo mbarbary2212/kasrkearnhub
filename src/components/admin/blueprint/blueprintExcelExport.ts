@@ -83,7 +83,11 @@ export async function exportBlueprintToExcel(
     const sectionConfigs = configs.filter(c => c.chapter_id === ch.id && c.section_id);
     const sectionIds = [...new Set(sectionConfigs.map(c => c.section_id!))];
     for (const secId of sectionIds) {
-      const secRowData = [`  → Section`];
+      const secInfo = sectionNameMap.get(secId);
+      const secLabel = secInfo
+        ? `  → ${secInfo.section_number ? secInfo.section_number + '. ' : ''}${secInfo.name}`
+        : `  → Section`;
+      const secRowData = [secLabel];
       const secLevels: (string | undefined)[] = [];
       for (const col of COMPONENT_COLUMNS) {
         const cfg = cfgMap.get(configKey(ch.id, secId, col.key));
