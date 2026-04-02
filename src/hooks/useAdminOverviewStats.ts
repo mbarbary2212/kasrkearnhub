@@ -76,9 +76,9 @@ export function useAdminOverviewStats() {
         // Feedback last 7 days
         supabase.from('material_feedback' as any).select('id', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
         // Top feedback category
-        supabase.from('material_feedback' as any).select('feedback_type').limit(100),
+        supabase.from('material_feedback' as any).select('material_id, feedback_type').limit(100),
         // Reactions totals
-        supabase.from('material_reactions' as any).select('reaction_type').limit(1000),
+        supabase.from('material_reactions' as any).select('material_id, reaction_type').limit(1000),
         // Items needing review
         supabase.from('content_review_notes').select('id', { count: 'exact', head: true }).neq('review_status', 'resolved'),
         // Recent activity logs
