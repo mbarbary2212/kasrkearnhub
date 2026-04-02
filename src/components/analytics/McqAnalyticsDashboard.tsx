@@ -72,7 +72,7 @@ export interface McqAnalyticsDashboardProps {
   questionFormat?: 'mcq' | 'sba';
 }
 
-type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data';
+type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data' | 'needs-review' | 'high-priority';
 type ViewMode = 'flat' | 'grouped';
 
 export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionFormat = 'mcq' }: McqAnalyticsDashboardProps) {
