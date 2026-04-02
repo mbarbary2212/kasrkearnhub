@@ -1,57 +1,89 @@
 
+# Content Quality Scoring & Flagging System
 
-# Fix Blueprint Excel Export & Align Question Types with Practice Content
+## Overview
+Add a transparent, client-side scoring system that classifies content as **Normal**, **Needs Review** (yellow), or **High Priority** (red) using existing signals. Surface these flags in Content Analytics, Admin Overview, and inline content view.
 
-## Problem 1 — Excel Missing Section Names
+---
 
-The export function at line 85 writes `"→ Section"` for every section row because it only has `section_id` from configs but never fetches section names. The UI component (`ChapterSectionRows`) fetches sections via `useChapterSections` hook, but the export function doesn't have access to those names.
+## New Files
 
-**Fix:** Update `exportBlueprintToExcel` to accept a sections map or fetch sections before export. Since this is a download function (not a hook), we'll do a batch fetch of all sections for the relevant chapters before building the Excel.
+### 1. `src/lib/contentQualityScoring.ts` — Scoring Engine
+Pure utility with named threshold constants:
 
-**File: `src/components/admin/blueprint/blueprintExcelExport.ts`**
-- Before building rows, collect all unique `chapter_id` values from configs that have `section_id`
-- Batch-fetch sections from Supabase: `supabase.from('sections').select('id, name, section_number').in('chapter_id', chapterIds)`
-- Build a `sectionNameMap: Map<string, { name: string, section_number: string | null }>`
-- Replace `"→ Section"` with `"  → {section_number}. {name}"` or `"  → {name}"`
+```
+THRESHOLDS:
+  MIN_REACTIONS = 5
+  NEGATIVE_RATIO_REVIEW = 0.3
+  NEGATIVE_RATIO_HIGH = 0.5
+  FEEDBACK_COUNT_REVIEW = 3
+  INCORRECT_COUNT_REVIEW = 1
+  INCORRECT_COUNT_HIGH = 2
 
-**File: `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`**
-- Pass supabase client or update the export call (the function already imports supabase, so no caller change needed — just make the export function async with internal fetch)
+LOGIC:
+  HIGH PRIORITY if ANY of:
+    - negative ratio > 0.5 with >= 5 reactions
+    - incorrect_content feedback >= 2
+  
+  NEEDS REVIEW if ANY of:
+    - negative ratio > 0.3 with >= 5 reactions
+    - total feedback >= 3
+    - incorrect_content feedback >= 1
+  
+  Otherwise: NORMAL
+```
 
-## Problem 2 — Question Types Should Match Practice Section Content
+Exports:
+- `ContentQualityFlag` type
+- `computeContentQualityFlag(signals: QualitySignals): { flag, reasons: string[] }`
+- `getQualityFlagLabel(flag)` / `getQualityFlagColor(flag)` helpers
 
-Current `QUESTION_TYPE_OPTIONS` includes items like "Flashcard", "Mind Map", "Pathway" which are not practice/exam question types. It's missing "Matching", "Image Questions", and "Case Scenarios" which exist in the Practice section.
+The `reasons` array provides explainability (e.g. "High negative ratio (52%)", "2 incorrect content reports").
 
-**Fix:** Update `QUESTION_TYPE_OPTIONS` in `src/hooks/useChapterBlueprintConfig.ts` to align with actual Practice content types:
+### 2. `src/components/analytics/ContentQualityFlagBadge.tsx` — Reusable Badge
+Takes `QualitySignals`, computes flag, renders yellow/red Badge or nothing for normal. Used in analytics tables and admin bar.
 
-Replace with options that match the practice tabs + exam formats:
-- SBA (Single Best Answer)
-- True/False
-- EMQ (Extended Matching)
-- Cross-matching
-- Matching (from Practice tab)
-- Fill-in-blank (Cloze)
-- Short Essay / Short Answer
-- Long Essay
-- Clinical Scenario (Case)
-- Case Scenarios (short answer based on case — from Practice tab)
-- OSCE Station
-- Spot Diagnosis
-- Paraclinical Interpretation
-- Image Questions (from Practice tab)
-- Practical (from Practice tab)
+---
 
-Remove non-exam types: Flashcard, Mind Map, Pathway (these are resources, not question formats).
+## Modified Files
 
-## Summary of Changes
+### 3. `src/components/analytics/McqAnalyticsDashboard.tsx`
+- Add `'needs-review' | 'high-priority'` to `FilterType`
+- Add two filter options in the Select: "Needs Review", "High Priority"
+- In `filteredAnalytics` memo, add cases that compute flag per item using `qualitySignals` map and filter
+- In `renderQuestionRow`, replace `QualitySignalBadges` with `ContentQualityFlagBadge` (which still shows counts but adds the flag badge)
+- In summary cards, replace "Flagged by Students" and "Needs Review" cards with computed "Needs Review" and "High Priority" counts from quality scoring
 
-| File | Change |
-|------|--------|
-| `src/components/admin/blueprint/blueprintExcelExport.ts` | Fetch section names from Supabase before building rows; display actual section names in Excel |
-| `src/hooks/useChapterBlueprintConfig.ts` | Update `QUESTION_TYPE_OPTIONS` to align with Practice section content types; add Matching, Image Questions, Case Scenarios, Practical; remove Flashcard, Mind Map, Pathway |
+### 4. `src/components/analytics/OsceAnalyticsDashboard.tsx` (if exists)
+Same pattern as MCQ dashboard.
 
-No database changes. No new files.
+### 5. `src/components/admin/ContentItemAdminBar.tsx`
+- After the "Admin" Badge, render `ContentQualityFlagBadge` using already-fetched `feedbackData`
+- Convert feedbackData to QualitySignals shape inline (helpful/unhelpful counts + feedback breakdown already computed)
+- Static badge, visible immediately after data loads, no click needed
 
-## Technical Detail
+### 6. `src/components/analytics/ContentQualitySection.tsx`
+- At top of CardContent (before reaction counts), add a flag banner when item is flagged:
+  - Alert box: "This item is flagged: **High Priority**" or "**Needs Review**"
+  - Below: bullet list of reasons from `computeContentQualityFlag`
+  - Example: "High negative ratio (45%)" / "2 incorrect content reports" / "5 total feedback reports"
+- Compute flag from same data already loaded (reactions + feedbackByType)
 
-The Excel export function already imports supabase indirectly via the config hook. We'll add a direct supabase import to the export file to fetch sections. The function is already async, so this is a clean addition. The section fetch uses a single `.in()` query covering all chapter IDs — no N+1 problem.
+### 7. `src/hooks/useAdminOverviewStats.ts`
+- After fetching reactions and feedback, group by `material_id`, build QualitySignals per item, compute flag
+- Add `needsReviewCount` and `highPriorityCount` to `AdminOverviewStats` interface
 
+### 8. `src/pages/AdminOverview.tsx`
+- In "Needs Attention" section, add two new rows:
+  - "High priority content" (red background) — navigates to `/admin?tab=content-analytics`
+  - "Content needs review" (yellow background) — same navigation
+- In "Content Health" section, replace/augment "Flagged" stat with "High Priority" and "Needs Review" counts
+
+---
+
+## Key Design Decisions
+- **No new DB tables** — all computed client-side from existing `material_reactions`, `material_feedback`
+- **Reuses existing `useQualitySignals` batch hook** — no per-item queries
+- **Thresholds are named constants** — easy to adjust without code changes
+- **Reasons array** makes flags explainable to admins
+- **Lazy loading preserved** in ContentItemAdminBar — badge appears after data loads
