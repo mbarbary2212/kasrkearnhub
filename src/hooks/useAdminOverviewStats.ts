@@ -91,7 +91,7 @@ export function useAdminOverviewStats() {
         supabase.from('modules').select('id, name, slug'),
       ]);
 
-      // Calculate reaction percentages
+      // Calculate reaction percentages and quality flags
       const reactions = (reactionsRes.data || []) as any[];
       const totalReactions = reactions.length;
       const helpful = reactions.filter((r: any) => r.reaction_type === 'up').length;
