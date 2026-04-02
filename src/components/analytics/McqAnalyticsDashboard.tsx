@@ -523,13 +523,15 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Flagged by Students
+                  Needs Review
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-orange-500" />
-                  <span className="text-2xl font-bold">{qualitySummary?.totalFlagged || 0}</span>
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <span className="text-2xl font-bold">
+                    {qualitySignals ? Object.values(qualitySignals).filter(s => computeContentQualityFlag(s).flag === 'needs_review').length : 0}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -537,13 +539,15 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Needs Review
+                  High Priority
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Eye className="h-5 w-5 text-blue-500" />
-                  <span className="text-2xl font-bold">{qualitySummary?.needsReview || 0}</span>
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <span className="text-2xl font-bold">
+                    {qualitySignals ? Object.values(qualitySignals).filter(s => computeContentQualityFlag(s).flag === 'high_priority').length : 0}
+                  </span>
                 </div>
               </CardContent>
             </Card>
