@@ -45,7 +45,7 @@ export async function exportBlueprintToExcel(
 
   // Fetch section names for all chapters that have section configs
   const chapterIdsWithSections = [...new Set(configs.filter(c => c.section_id).map(c => c.chapter_id))];
-  const sectionNameMap = new Map<string, { name: string; section_number: number | null }>();
+  const sectionNameMap = new Map<string, { name: string; section_number: string | null }>();
   if (chapterIdsWithSections.length > 0) {
     const { data: sections } = await supabase
       .from('sections')
