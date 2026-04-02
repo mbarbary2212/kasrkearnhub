@@ -4,7 +4,7 @@
  */
 
 export type ContentMaterialType = 'mcq' | 'sba' | 'osce' | 'essay' | 'matching' | 'true_false' | 'flashcard' | 'case' | 'video' | 'lecture' | 'algorithm';
-export type ContentNavigationSource = 'inbox' | 'analytics';
+export type ContentNavigationSource = 'inbox' | 'analytics' | 'feedback';
 
 interface ContentLinkParams {
   moduleId: string;
@@ -73,6 +73,8 @@ export function getBackLink(from: ContentNavigationSource | string): { path: str
       return { path: '/admin/inbox', label: 'Back to Inbox' };
     case 'analytics':
       return { path: '/admin?tab=analytics', label: 'Back to Analytics' };
+    case 'feedback':
+      return { path: '/admin/inbox?tab=feedback', label: 'Back to Feedback' };
     default:
       return { path: '/admin', label: 'Back to Admin' };
   }
@@ -87,6 +89,8 @@ export function getSourceLabel(from: ContentNavigationSource | string): string {
       return 'Opened from Inbox';
     case 'analytics':
       return 'Opened from Analytics';
+    case 'feedback':
+      return 'Opened from Feedback';
     default:
       return 'Opened from Admin';
   }

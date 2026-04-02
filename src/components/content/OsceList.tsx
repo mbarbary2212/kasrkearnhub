@@ -81,6 +81,8 @@ export function OsceList({
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OsceQuestion | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Single-open-at-a-time feedback panel
+  const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
   
   // Admin view toggle
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
@@ -503,6 +505,8 @@ export function OsceList({
                       materialId={question.id}
                       chapterId={chapterId}
                       onEdit={() => handleEdit(question)}
+                      feedbackOpen={feedbackOpenId === question.id}
+                      onToggleFeedback={() => setFeedbackOpenId(prev => prev === question.id ? null : question.id)}
                     />
                   )}
                 </div>
