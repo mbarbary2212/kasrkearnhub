@@ -4,6 +4,7 @@ import {
   configKey,
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprintConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 function levelText(level: string, questionTypes?: string[]) {
   let text = '';
@@ -42,6 +43,21 @@ export async function exportBlueprintToExcel(
     cfgMap.set(configKey(c.chapter_id, c.section_id, c.component_type), c);
   }
 
+  // Fetch section names for all chapters that have section configs
+  const chapterIdsWithSections = [...new Set(configs.filter(c => c.section_id).map(c => c.chapter_id))];
+  const sectionNameMap = new Map<string, { name: string; section_number: string | null }>();
+  if (chapterIdsWithSections.length > 0) {
+    const { data: sections } = await supabase
+      .from('sections')
+      .select('id, name, section_number')
+      .in('chapter_id', chapterIdsWithSections);
+    if (sections) {
+      for (const s of sections) {
+        sectionNameMap.set(s.id, { name: s.name, section_number: s.section_number });
+      }
+    }
+  }
+
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Blueprint');
 
@@ -56,7 +72,7 @@ export async function exportBlueprintToExcel(
   });
   headerRow.getCell(1).alignment = { horizontal: 'left' };
 
-  // Data rows (chapters only — sections require async fetch per chapter, so we include what's in configs)
+  // Data rows
   for (const ch of chapters) {
     const rowData = [`Ch ${ch.chapter_number}: ${ch.title}`];
     const levels: (string | undefined)[] = [];
@@ -82,7 +98,11 @@ export async function exportBlueprintToExcel(
     const sectionConfigs = configs.filter(c => c.chapter_id === ch.id && c.section_id);
     const sectionIds = [...new Set(sectionConfigs.map(c => c.section_id!))];
     for (const secId of sectionIds) {
-      const secRowData = [`  → Section`];
+      const secInfo = sectionNameMap.get(secId);
+      const secLabel = secInfo
+        ? `  → ${secInfo.section_number ? secInfo.section_number + '. ' : ''}${secInfo.name}`
+        : `  → Section`;
+      const secRowData = [secLabel];
       const secLevels: (string | undefined)[] = [];
       for (const col of COMPONENT_COLUMNS) {
         const cfg = cfgMap.get(configKey(ch.id, secId, col.key));
