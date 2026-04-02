@@ -43,6 +43,21 @@ export async function exportBlueprintToExcel(
     cfgMap.set(configKey(c.chapter_id, c.section_id, c.component_type), c);
   }
 
+  // Fetch section names for all chapters that have section configs
+  const chapterIdsWithSections = [...new Set(configs.filter(c => c.section_id).map(c => c.chapter_id))];
+  const sectionNameMap = new Map<string, { name: string; section_number: number | null }>();
+  if (chapterIdsWithSections.length > 0) {
+    const { data: sections } = await supabase
+      .from('sections')
+      .select('id, name, section_number')
+      .in('chapter_id', chapterIdsWithSections);
+    if (sections) {
+      for (const s of sections) {
+        sectionNameMap.set(s.id, { name: s.name, section_number: s.section_number });
+      }
+    }
+  }
+
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Blueprint');
 
@@ -57,7 +72,7 @@ export async function exportBlueprintToExcel(
   });
   headerRow.getCell(1).alignment = { horizontal: 'left' };
 
-  // Data rows (chapters only — sections require async fetch per chapter, so we include what's in configs)
+  // Data rows
   for (const ch of chapters) {
     const rowData = [`Ch ${ch.chapter_number}: ${ch.title}`];
     const levels: (string | undefined)[] = [];
