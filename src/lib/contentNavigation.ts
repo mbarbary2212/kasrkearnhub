@@ -4,7 +4,7 @@
  */
 
 export type ContentMaterialType = 'mcq' | 'sba' | 'osce' | 'essay' | 'matching' | 'true_false' | 'flashcard' | 'case' | 'video' | 'lecture' | 'algorithm';
-export type ContentNavigationSource = 'inbox' | 'analytics';
+export type ContentNavigationSource = 'inbox' | 'analytics' | 'feedback';
 
 interface ContentLinkParams {
   moduleId: string;
