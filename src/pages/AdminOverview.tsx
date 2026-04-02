@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertTriangle, MessageCircle, ThumbsUp, ThumbsDown,
-  BookOpen, Plus, Upload, FileQuestion, Inbox, Flag,
+  Plus, Upload, FileQuestion, Inbox, Flag,
   Clock, ArrowRight, BarChart3, Shield, Activity,
   HelpCircle, MessageSquare,
 } from 'lucide-react';
