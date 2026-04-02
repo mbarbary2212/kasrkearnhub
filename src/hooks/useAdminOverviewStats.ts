@@ -16,6 +16,8 @@ export interface AdminOverviewStats {
   unhelpfulPercent: number;
   flaggedItems: number;
   itemsNeedingReview: number;
+  needsReviewCount: number;
+  highPriorityCount: number;
   totalReactions: number;
   recentActivity: Array<{
     id: string;
