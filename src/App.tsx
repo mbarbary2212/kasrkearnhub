@@ -156,6 +156,8 @@ const App = () => {
                 <Route path="/module/:moduleId/topic/:topicId" element={<ProtectedRoute><RouteErrorBoundary><TopicDetailPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/overview" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminOverview /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminDashboard /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/admin/learning" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminLearningPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/inbox" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><AdminInboxPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/integrity-report" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><IntegrityReportPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/admin/activity-log" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><ActivityLogPage /></RouteErrorBoundary></ProtectedRoute>} />
