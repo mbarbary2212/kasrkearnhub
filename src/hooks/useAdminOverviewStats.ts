@@ -108,6 +108,31 @@ export function useAdminOverviewStats() {
       });
       const topCategory = Object.entries(categoryCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || null;
 
+      // Compute quality flags per material_id
+      const perItem: Record<string, QualitySignals> = {};
+      for (const r of reactions) {
+        const mid = (r as any).material_id;
+        if (!mid) continue;
+        if (!perItem[mid]) perItem[mid] = { material_id: mid, helpful_count: 0, unhelpful_count: 0, feedback_count: 0, feedback_types: {} };
+        if (r.reaction_type === 'up') perItem[mid].helpful_count++;
+        else perItem[mid].unhelpful_count++;
+      }
+      for (const f of feedbackCategories) {
+        const mid = (f as any).material_id;
+        if (!mid) continue;
+        if (!perItem[mid]) perItem[mid] = { material_id: mid, helpful_count: 0, unhelpful_count: 0, feedback_count: 0, feedback_types: {} };
+        perItem[mid].feedback_count++;
+        const ft = f.feedback_type || 'unknown';
+        perItem[mid].feedback_types[ft] = (perItem[mid].feedback_types[ft] || 0) + 1;
+      }
+      let needsReviewCount = 0;
+      let highPriorityCount = 0;
+      for (const sig of Object.values(perItem)) {
+        const { flag } = computeContentQualityFlag(sig);
+        if (flag === 'needs_review') needsReviewCount++;
+        else if (flag === 'high_priority') highPriorityCount++;
+      }
+
       // Build recent activity feed
       const recentActivity: AdminOverviewStats['recentActivity'] = [];
       (recentActivityRes.data || []).forEach((a: any) => {
