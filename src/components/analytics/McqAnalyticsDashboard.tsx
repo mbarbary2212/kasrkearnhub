@@ -171,10 +171,22 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
       case 'needs-data': 
         result = result.filter(a => a.total_attempts < 10);
         break;
+      case 'needs-review':
+        result = result.filter(a => {
+          const sig = qualitySignals?.[a.mcq_id];
+          return sig && computeContentQualityFlag(sig).flag === 'needs_review';
+        });
+        break;
+      case 'high-priority':
+        result = result.filter(a => {
+          const sig = qualitySignals?.[a.mcq_id];
+          return sig && computeContentQualityFlag(sig).flag === 'high_priority';
+        });
+        break;
     }
     
     return result;
-  }, [analytics, selectedBookLabel, selectedChapterId, filteredChapters, filter]);
+  }, [analytics, selectedBookLabel, selectedChapterId, filteredChapters, filter, qualitySignals]);
 
   // Group analytics by chapter for grouped view
   const groupedAnalytics = useMemo(() => {
