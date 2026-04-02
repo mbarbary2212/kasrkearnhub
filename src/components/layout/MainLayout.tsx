@@ -239,7 +239,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           {/* Admin Panel button - only show on non-overview admin pages */}
-          {user && isAdmin && location.pathname !== '/admin/overview' && (
+          {user && isAdmin && !['/admin/overview', '/admin/dashboard'].includes(location.pathname) && (
             <Button
               onClick={() => navigate('/admin')}
               variant="ghost"
