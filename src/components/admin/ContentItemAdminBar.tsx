@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { ContentMaterialType } from '@/lib/contentNavigation';
 import { ContentQualitySection } from '@/components/analytics/ContentQualitySection';
+import { ContentQualityFlagBadge } from '@/components/analytics/ContentQualityFlagBadge';
+import type { QualitySignals } from '@/hooks/useContentQualitySignals';
 
 interface ContentItemAdminBarProps {
   materialType: ContentMaterialType;
