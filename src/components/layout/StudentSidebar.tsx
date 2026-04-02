@@ -144,9 +144,15 @@ export function StudentSidebar() {
 
   // ── Handle primary nav click ─────────────────────────
   const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
-    // Dashboard for admin goes to overview
+    // Dashboard for admin goes to admin dashboard
     if (item.id === 'dashboard' && isAdmin) {
-      navigate('/admin/overview');
+      navigate('/admin/dashboard');
+      setActiveSubmenu(null);
+      return;
+    }
+    // Learning for admin goes to admin learning page
+    if (item.id === 'learning' && isAdmin) {
+      navigate('/admin/learning');
       setActiveSubmenu(null);
       return;
     }
