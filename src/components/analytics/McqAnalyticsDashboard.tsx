@@ -306,7 +306,10 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
           )}
         </TableCell>
         <TableCell className="text-center">
-          <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+          <div className="flex items-center justify-center gap-1">
+            <ContentQualityFlagBadge signals={qualitySignals?.[item.mcq_id]} />
+            <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+          </div>
         </TableCell>
       </TableRow>
     );
