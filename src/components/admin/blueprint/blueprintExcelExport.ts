@@ -4,6 +4,7 @@ import {
   configKey,
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprintConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 function levelText(level: string, questionTypes?: string[]) {
   let text = '';
