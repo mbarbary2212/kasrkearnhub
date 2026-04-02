@@ -1,4 +1,5 @@
 
+
 # Content Quality Scoring & Flagging System
 
 ## Overview
@@ -11,7 +12,7 @@ Add a transparent, client-side scoring system that classifies content as **Norma
 ### 1. `src/lib/contentQualityScoring.ts` — Scoring Engine
 Pure utility with named threshold constants:
 
-```
+```text
 THRESHOLDS:
   MIN_REACTIONS = 5
   NEGATIVE_RATIO_REVIEW = 0.3
@@ -34,56 +35,45 @@ LOGIC:
 ```
 
 Exports:
-- `ContentQualityFlag` type
-- `computeContentQualityFlag(signals: QualitySignals): { flag, reasons: string[] }`
+- `ContentQualityFlag` type (`'normal' | 'needs_review' | 'high_priority'`)
+- `computeContentQualityFlag(signals): { flag, reasons: string[] }` -- reasons array provides explainability
 - `getQualityFlagLabel(flag)` / `getQualityFlagColor(flag)` helpers
 
-The `reasons` array provides explainability (e.g. "High negative ratio (52%)", "2 incorrect content reports").
-
 ### 2. `src/components/analytics/ContentQualityFlagBadge.tsx` — Reusable Badge
-Takes `QualitySignals`, computes flag, renders yellow/red Badge or nothing for normal. Used in analytics tables and admin bar.
+Takes `QualitySignals`, computes flag, renders yellow/red Badge or nothing for normal. Used everywhere.
 
 ---
 
 ## Modified Files
 
-### 3. `src/components/analytics/McqAnalyticsDashboard.tsx`
-- Add `'needs-review' | 'high-priority'` to `FilterType`
-- Add two filter options in the Select: "Needs Review", "High Priority"
-- In `filteredAnalytics` memo, add cases that compute flag per item using `qualitySignals` map and filter
-- In `renderQuestionRow`, replace `QualitySignalBadges` with `ContentQualityFlagBadge` (which still shows counts but adds the flag badge)
-- In summary cards, replace "Flagged by Students" and "Needs Review" cards with computed "Needs Review" and "High Priority" counts from quality scoring
+### 3. `McqAnalyticsDashboard.tsx` — Analytics Table
+- Add `'needs-review' | 'high-priority'` filter options
+- Compute flag per item using `qualitySignals` map in filter logic
+- Replace `QualitySignalBadges` column with `ContentQualityFlagBadge`
+- Update summary cards with computed "Needs Review" and "High Priority" counts
 
-### 4. `src/components/analytics/OsceAnalyticsDashboard.tsx` (if exists)
-Same pattern as MCQ dashboard.
+### 4. `ContentItemAdminBar.tsx` — Inline Badge
+- Render `ContentQualityFlagBadge` after "Admin" badge using already-fetched `feedbackData`
+- Static, visible immediately after data loads
 
-### 5. `src/components/admin/ContentItemAdminBar.tsx`
-- After the "Admin" Badge, render `ContentQualityFlagBadge` using already-fetched `feedbackData`
-- Convert feedbackData to QualitySignals shape inline (helpful/unhelpful counts + feedback breakdown already computed)
-- Static badge, visible immediately after data loads, no click needed
+### 5. `ContentQualitySection.tsx` — Explain the Flag
+- At top of card, show alert banner when flagged: "This item is flagged: **High Priority**"
+- Bullet list of reasons (e.g. "High negative ratio (45%)", "2 incorrect content reports")
+- Uses same data already loaded
 
-### 6. `src/components/analytics/ContentQualitySection.tsx`
-- At top of CardContent (before reaction counts), add a flag banner when item is flagged:
-  - Alert box: "This item is flagged: **High Priority**" or "**Needs Review**"
-  - Below: bullet list of reasons from `computeContentQualityFlag`
-  - Example: "High negative ratio (45%)" / "2 incorrect content reports" / "5 total feedback reports"
-- Compute flag from same data already loaded (reactions + feedbackByType)
+### 6. `useAdminOverviewStats.ts` — Aggregate Counts
+- Group reactions/feedback by `material_id`, compute flag per item
+- Add `needsReviewCount` and `highPriorityCount` to stats
 
-### 7. `src/hooks/useAdminOverviewStats.ts`
-- After fetching reactions and feedback, group by `material_id`, build QualitySignals per item, compute flag
-- Add `needsReviewCount` and `highPriorityCount` to `AdminOverviewStats` interface
-
-### 8. `src/pages/AdminOverview.tsx`
-- In "Needs Attention" section, add two new rows:
-  - "High priority content" (red background) — navigates to `/admin?tab=content-analytics`
-  - "Content needs review" (yellow background) — same navigation
-- In "Content Health" section, replace/augment "Flagged" stat with "High Priority" and "Needs Review" counts
+### 7. `AdminOverview.tsx` — Needs Attention Section
+- Add "High priority content" (red) and "Content needs review" (yellow) rows
+- Both navigate to `/admin?tab=content-analytics`
 
 ---
 
-## Key Design Decisions
-- **No new DB tables** — all computed client-side from existing `material_reactions`, `material_feedback`
-- **Reuses existing `useQualitySignals` batch hook** — no per-item queries
-- **Thresholds are named constants** — easy to adjust without code changes
-- **Reasons array** makes flags explainable to admins
-- **Lazy loading preserved** in ContentItemAdminBar — badge appears after data loads
+## Design Principles
+- No new DB tables -- all client-side from existing `material_reactions` + `material_feedback`
+- Reuses existing `useQualitySignals` batch hook -- no per-item queries
+- Thresholds as named constants -- easy to adjust
+- Reasons array makes every flag explainable to admins
+
