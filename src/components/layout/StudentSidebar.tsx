@@ -124,12 +124,13 @@ export function StudentSidebar() {
   // ── Active state detection ───────────────────────────
   const isItemActive = useCallback((item: NavItem) => {
     if (item.id === 'dashboard') {
-      if (isAdmin) return location.pathname === '/admin/overview';
+      if (isAdmin) return location.pathname === '/admin/dashboard';
       return location.pathname === '/';
     }
     if (item.id === 'overview') return location.pathname === '/admin/overview';
     if (item.id === 'admin-panel') return location.pathname === '/admin';
     if (item.id === 'learning') {
+      if (isAdmin) return location.pathname === '/admin/learning';
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
     }
@@ -143,9 +144,15 @@ export function StudentSidebar() {
 
   // ── Handle primary nav click ─────────────────────────
   const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
-    // Dashboard for admin goes to overview
+    // Dashboard for admin goes to admin dashboard
     if (item.id === 'dashboard' && isAdmin) {
-      navigate('/admin/overview');
+      navigate('/admin/dashboard');
+      setActiveSubmenu(null);
+      return;
+    }
+    // Learning for admin goes to admin learning page
+    if (item.id === 'learning' && isAdmin) {
+      navigate('/admin/learning');
       setActiveSubmenu(null);
       return;
     }

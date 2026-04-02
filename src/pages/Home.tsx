@@ -40,7 +40,7 @@ export default function Home() {
   // Redirect admins to overview dashboard
   useEffect(() => {
     if (!authLoading && user && isAdmin) {
-      navigate('/admin/overview', { replace: true });
+      navigate('/admin/dashboard', { replace: true });
     }
   }, [user, authLoading, isAdmin, navigate]);
 

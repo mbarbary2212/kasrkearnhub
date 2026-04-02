@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertTriangle, MessageCircle, ThumbsUp, ThumbsDown,
-  BookOpen, Plus, Upload, FileQuestion, Inbox, Flag,
+  Plus, Upload, FileQuestion, Inbox, Flag,
   Clock, ArrowRight, BarChart3, Shield, Activity,
   HelpCircle, MessageSquare,
 } from 'lucide-react';
@@ -202,47 +202,7 @@ export default function AdminOverview() {
               </CardContent>
             </Card>
 
-            {/* SECTION 4 — Modules Overview */}
-            {stats.modules.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                    Modules
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {stats.modules.map((mod) => (
-                    <div key={mod.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/50 transition-colors group">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs font-mono font-semibold text-muted-foreground uppercase w-12 flex-shrink-0">
-                          {mod.slug}
-                        </span>
-                        <span className="text-sm font-medium text-foreground truncate">{mod.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => navigate(`/module/${mod.id}`)}
-                        >
-                          Content
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => navigate(`/admin?tab=content-analytics`)}
-                        >
-                          Analytics
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* Modules removed — use Learning tab for module browsing */}
 
             {/* SECTION 5 — Quick Actions */}
             <Card>
