@@ -81,6 +81,8 @@ export function OsceList({
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OsceQuestion | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Single-open-at-a-time feedback panel
+  const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
   
   // Admin view toggle
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
