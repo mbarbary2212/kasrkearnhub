@@ -593,6 +593,8 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                         <SelectItem value="flagged">Flagged Only</SelectItem>
                         <SelectItem value="critical">Critical/High</SelectItem>
                         <SelectItem value="needs-data">Needs More Data</SelectItem>
+                        <SelectItem value="needs-review">Needs Review</SelectItem>
+                        <SelectItem value="high-priority">High Priority</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

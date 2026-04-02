@@ -183,6 +183,8 @@ export function useAdminOverviewStats() {
         unhelpfulPercent,
         flaggedItems: unhelpful,
         itemsNeedingReview: reviewNotesRes.count || 0,
+        needsReviewCount,
+        highPriorityCount,
         totalReactions,
         recentActivity: recentActivity.slice(0, 10),
         modules,

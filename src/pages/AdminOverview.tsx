@@ -196,8 +196,8 @@ export default function AdminOverview() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatCard label="Helpful" value={`${stats.helpfulPercent}%`} icon={ThumbsUp} variant="success" isText />
                   <StatCard label="Not helpful" value={`${stats.unhelpfulPercent}%`} icon={ThumbsDown} variant={stats.unhelpfulPercent > 20 ? 'danger' : 'default'} isText />
-                  <StatCard label="Flagged" value={stats.flaggedItems} icon={Flag} variant={stats.flaggedItems > 0 ? 'warning' : 'default'} />
-                  <StatCard label="Needs review" value={stats.itemsNeedingReview} icon={AlertTriangle} variant={stats.itemsNeedingReview > 0 ? 'warning' : 'default'} />
+                  <StatCard label="High Priority" value={stats.highPriorityCount} icon={AlertTriangle} variant={stats.highPriorityCount > 0 ? 'danger' : 'default'} />
+                  <StatCard label="Needs Review" value={stats.needsReviewCount} icon={Flag} variant={stats.needsReviewCount > 0 ? 'warning' : 'default'} />
                 </div>
               </CardContent>
             </Card>
