@@ -132,11 +132,12 @@ export function MobileBottomNav() {
 
   const isTabActive = useCallback((tab: NavTab) => {
     if (tab.id === 'dashboard') {
-      if (isAdmin) return location.pathname === '/admin/overview';
+      if (isAdmin) return location.pathname === '/admin/dashboard';
       return location.pathname === '/';
     }
     if (tab.id === 'overview') return location.pathname === '/admin/overview';
     if (tab.id === 'learning') {
+      if (isAdmin) return location.pathname === '/admin/learning';
       return activeSheet === 'learning' ||
         location.pathname.startsWith('/year/') ||
         location.pathname.startsWith('/module/') ||
