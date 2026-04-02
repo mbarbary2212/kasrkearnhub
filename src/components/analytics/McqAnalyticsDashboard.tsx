@@ -57,6 +57,8 @@ import { McqAnalyticsDetailModal } from "./McqAnalyticsDetailModal";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useQualitySignals, useModuleQualitySummary } from "@/hooks/useContentQualitySignals";
 import { QualitySignalBadges } from "./QualitySignalBadges";
+import { ContentQualityFlagBadge } from "./ContentQualityFlagBadge";
+import { computeContentQualityFlag } from "@/lib/contentQualityScoring";
 
 interface Module {
   id: string;
