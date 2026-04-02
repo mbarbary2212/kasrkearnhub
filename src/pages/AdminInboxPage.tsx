@@ -536,7 +536,40 @@ export default function AdminInboxPage() {
                               <span className="text-muted-foreground">• {formatDistanceToNow(new Date(feedback.created_at), { addSuffix: true })}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Open Content deep link */}
+                            {feedback.chapter_id && feedback.module_id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const link = buildContentLink({
+                                    moduleId: feedback.module_id!,
+                                    chapterId: feedback.chapter_id,
+                                    materialType: feedback.item_type as any,
+                                    materialId: feedback.item_id || undefined,
+                                    from: 'feedback',
+                                  });
+                                  window.open(link, '_blank');
+                                }}
+                              >
+                                <ExternalLink className="w-4 h-4 mr-1" />
+                                Open Content
+                              </Button>
+                            )}
+                            {!feedback.chapter_id && feedback.module_id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  window.open(`/module/${feedback.module_id}`, '_blank');
+                                }}
+                                title="Linked content not found — showing module"
+                              >
+                                <ExternalLink className="w-4 h-4 mr-1" />
+                                Open Module
+                              </Button>
+                            )}
                             <Button variant="outline" size="sm" onClick={() => handleOpenReply('feedback', feedback.id, feedback.message)}><Reply className="w-4 h-4 mr-1" />Reply</Button>
                             {isSuperAdmin && feedback.is_anonymous && !isRevealed && feedback.user_profile && (
                               <Button variant="outline" size="icon" className="h-8 w-8" title="Reveal user identity" onClick={() => {
