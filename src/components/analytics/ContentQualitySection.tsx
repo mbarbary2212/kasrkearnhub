@@ -11,9 +11,12 @@ import {
   CheckCircle, 
   Eye,
   Save,
-  Loader2
+  Loader2,
+  AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeContentQualityFlag, getQualityFlagLabel, getQualityFlagColor } from '@/lib/contentQualityScoring';
 import { 
   useMaterialFeedbackDetails, 
   useUpsertReviewNote 
