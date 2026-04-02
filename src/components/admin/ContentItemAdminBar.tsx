@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type { ContentMaterialType } from '@/lib/contentNavigation';
 import { ContentQualitySection } from '@/components/analytics/ContentQualitySection';
+import { ContentQualityFlagBadge } from '@/components/analytics/ContentQualityFlagBadge';
+import type { QualitySignals } from '@/hooks/useContentQualitySignals';
 
 interface ContentItemAdminBarProps {
   materialType: ContentMaterialType;
@@ -73,6 +75,20 @@ export function ContentItemAdminBar({
         <Badge variant="outline" className="text-[10px] h-5 px-1.5 bg-primary/5 text-primary border-primary/20">
           Admin
         </Badge>
+        {loadCounts && feedbackData && (
+          <ContentQualityFlagBadge
+            signals={{
+              material_id: materialId,
+              helpful_count: helpfulCount,
+              unhelpful_count: unhelpfulCount,
+              feedback_count: feedbackCount,
+              feedback_types: (feedbackData.feedback || []).reduce<Record<string, number>>((acc, f) => {
+                acc[f.feedback_type] = (acc[f.feedback_type] || 0) + 1;
+                return acc;
+              }, {}),
+            } satisfies QualitySignals}
+          />
+        )}
         {onEdit && (
           <Button
             variant="ghost"

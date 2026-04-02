@@ -57,6 +57,8 @@ import { McqAnalyticsDetailModal } from "./McqAnalyticsDetailModal";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useQualitySignals, useModuleQualitySummary } from "@/hooks/useContentQualitySignals";
 import { QualitySignalBadges } from "./QualitySignalBadges";
+import { ContentQualityFlagBadge } from "./ContentQualityFlagBadge";
+import { computeContentQualityFlag } from "@/lib/contentQualityScoring";
 
 interface Module {
   id: string;
@@ -70,7 +72,7 @@ export interface McqAnalyticsDashboardProps {
   questionFormat?: 'mcq' | 'sba';
 }
 
-type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data';
+type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data' | 'needs-review' | 'high-priority';
 type ViewMode = 'flat' | 'grouped';
 
 export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionFormat = 'mcq' }: McqAnalyticsDashboardProps) {
@@ -169,10 +171,22 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
       case 'needs-data': 
         result = result.filter(a => a.total_attempts < 10);
         break;
+      case 'needs-review':
+        result = result.filter(a => {
+          const sig = qualitySignals?.[a.mcq_id];
+          return sig && computeContentQualityFlag(sig).flag === 'needs_review';
+        });
+        break;
+      case 'high-priority':
+        result = result.filter(a => {
+          const sig = qualitySignals?.[a.mcq_id];
+          return sig && computeContentQualityFlag(sig).flag === 'high_priority';
+        });
+        break;
     }
     
     return result;
-  }, [analytics, selectedBookLabel, selectedChapterId, filteredChapters, filter]);
+  }, [analytics, selectedBookLabel, selectedChapterId, filteredChapters, filter, qualitySignals]);
 
   // Group analytics by chapter for grouped view
   const groupedAnalytics = useMemo(() => {
@@ -292,7 +306,10 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
           )}
         </TableCell>
         <TableCell className="text-center">
-          <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+          <div className="flex items-center justify-center gap-1">
+            <ContentQualityFlagBadge signals={qualitySignals?.[item.mcq_id]} />
+            <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+          </div>
         </TableCell>
       </TableRow>
     );
@@ -506,13 +523,15 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Flagged by Students
+                  Needs Review
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-orange-500" />
-                  <span className="text-2xl font-bold">{qualitySummary?.totalFlagged || 0}</span>
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <span className="text-2xl font-bold">
+                    {qualitySignals ? Object.values(qualitySignals).filter(s => computeContentQualityFlag(s).flag === 'needs_review').length : 0}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -520,13 +539,15 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Needs Review
+                  High Priority
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Eye className="h-5 w-5 text-blue-500" />
-                  <span className="text-2xl font-bold">{qualitySummary?.needsReview || 0}</span>
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <span className="text-2xl font-bold">
+                    {qualitySignals ? Object.values(qualitySignals).filter(s => computeContentQualityFlag(s).flag === 'high_priority').length : 0}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -572,6 +593,8 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                         <SelectItem value="flagged">Flagged Only</SelectItem>
                         <SelectItem value="critical">Critical/High</SelectItem>
                         <SelectItem value="needs-data">Needs More Data</SelectItem>
+                        <SelectItem value="needs-review">Needs Review</SelectItem>
+                        <SelectItem value="high-priority">High Priority</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

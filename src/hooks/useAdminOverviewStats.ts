@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { computeContentQualityFlag } from '@/lib/contentQualityScoring';
+import type { QualitySignals } from '@/hooks/useContentQualitySignals';
 
 export interface AdminOverviewStats {
   unansweredQuestions: number;
@@ -14,6 +16,8 @@ export interface AdminOverviewStats {
   unhelpfulPercent: number;
   flaggedItems: number;
   itemsNeedingReview: number;
+  needsReviewCount: number;
+  highPriorityCount: number;
   totalReactions: number;
   recentActivity: Array<{
     id: string;
@@ -72,9 +76,9 @@ export function useAdminOverviewStats() {
         // Feedback last 7 days
         supabase.from('material_feedback' as any).select('id', { count: 'exact', head: true }).gte('created_at', sevenDaysAgo),
         // Top feedback category
-        supabase.from('material_feedback' as any).select('feedback_type').limit(100),
+        supabase.from('material_feedback' as any).select('material_id, feedback_type').limit(100),
         // Reactions totals
-        supabase.from('material_reactions' as any).select('reaction_type').limit(1000),
+        supabase.from('material_reactions' as any).select('material_id, reaction_type').limit(1000),
         // Items needing review
         supabase.from('content_review_notes').select('id', { count: 'exact', head: true }).neq('review_status', 'resolved'),
         // Recent activity logs
@@ -87,7 +91,7 @@ export function useAdminOverviewStats() {
         supabase.from('modules').select('id, name, slug'),
       ]);
 
-      // Calculate reaction percentages
+      // Calculate reaction percentages and quality flags
       const reactions = (reactionsRes.data || []) as any[];
       const totalReactions = reactions.length;
       const helpful = reactions.filter((r: any) => r.reaction_type === 'up').length;
@@ -103,6 +107,31 @@ export function useAdminOverviewStats() {
         categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
       });
       const topCategory = Object.entries(categoryCounts).sort(([, a], [, b]) => b - a)[0]?.[0] || null;
+
+      // Compute quality flags per material_id
+      const perItem: Record<string, QualitySignals> = {};
+      for (const r of reactions) {
+        const mid = (r as any).material_id;
+        if (!mid) continue;
+        if (!perItem[mid]) perItem[mid] = { material_id: mid, helpful_count: 0, unhelpful_count: 0, feedback_count: 0, feedback_types: {} };
+        if (r.reaction_type === 'up') perItem[mid].helpful_count++;
+        else perItem[mid].unhelpful_count++;
+      }
+      for (const f of feedbackCategories) {
+        const mid = (f as any).material_id;
+        if (!mid) continue;
+        if (!perItem[mid]) perItem[mid] = { material_id: mid, helpful_count: 0, unhelpful_count: 0, feedback_count: 0, feedback_types: {} };
+        perItem[mid].feedback_count++;
+        const ft = f.feedback_type || 'unknown';
+        perItem[mid].feedback_types[ft] = (perItem[mid].feedback_types[ft] || 0) + 1;
+      }
+      let needsReviewCount = 0;
+      let highPriorityCount = 0;
+      for (const sig of Object.values(perItem)) {
+        const { flag } = computeContentQualityFlag(sig);
+        if (flag === 'needs_review') needsReviewCount++;
+        else if (flag === 'high_priority') highPriorityCount++;
+      }
 
       // Build recent activity feed
       const recentActivity: AdminOverviewStats['recentActivity'] = [];
@@ -154,6 +183,8 @@ export function useAdminOverviewStats() {
         unhelpfulPercent,
         flaggedItems: unhelpful,
         itemsNeedingReview: reviewNotesRes.count || 0,
+        needsReviewCount,
+        highPriorityCount,
         totalReactions,
         recentActivity: recentActivity.slice(0, 10),
         modules,

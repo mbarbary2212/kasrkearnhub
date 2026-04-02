@@ -113,6 +113,36 @@ export default function AdminOverview() {
                     <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">{stats.pendingFeedback}</Badge>
                   </button>
                 )}
+                {stats.highPriorityCount > 0 && (
+                  <button
+                    onClick={() => navigate('/admin?tab=content-analytics')}
+                    className="w-full flex items-center justify-between p-3 rounded-lg bg-destructive/10 hover:bg-destructive/15 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">High priority content</p>
+                        <p className="text-xs text-muted-foreground">Significant quality concerns</p>
+                      </div>
+                    </div>
+                    <Badge variant="destructive">{stats.highPriorityCount}</Badge>
+                  </button>
+                )}
+                {stats.needsReviewCount > 0 && (
+                  <button
+                    onClick={() => navigate('/admin?tab=content-analytics')}
+                    className="w-full flex items-center justify-between p-3 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/15 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Content needs review</p>
+                        <p className="text-xs text-muted-foreground">Quality signals detected</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30">{stats.needsReviewCount}</Badge>
+                  </button>
+                )}
                 {stats.itemsNeedingReview > 0 && (
                   <button
                     onClick={() => navigate('/admin?tab=content-analytics')}
@@ -128,7 +158,7 @@ export default function AdminOverview() {
                     <Badge variant="secondary">{stats.itemsNeedingReview}</Badge>
                   </button>
                 )}
-                {stats.unansweredQuestions === 0 && stats.pendingFeedback === 0 && stats.itemsNeedingReview === 0 && (
+                {stats.unansweredQuestions === 0 && stats.pendingFeedback === 0 && stats.itemsNeedingReview === 0 && stats.highPriorityCount === 0 && stats.needsReviewCount === 0 && (
                   <div className="text-center py-4 text-muted-foreground text-sm">
                     ✨ All clear — nothing needs immediate attention
                   </div>
@@ -166,8 +196,8 @@ export default function AdminOverview() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <StatCard label="Helpful" value={`${stats.helpfulPercent}%`} icon={ThumbsUp} variant="success" isText />
                   <StatCard label="Not helpful" value={`${stats.unhelpfulPercent}%`} icon={ThumbsDown} variant={stats.unhelpfulPercent > 20 ? 'danger' : 'default'} isText />
-                  <StatCard label="Flagged" value={stats.flaggedItems} icon={Flag} variant={stats.flaggedItems > 0 ? 'warning' : 'default'} />
-                  <StatCard label="Needs review" value={stats.itemsNeedingReview} icon={AlertTriangle} variant={stats.itemsNeedingReview > 0 ? 'warning' : 'default'} />
+                  <StatCard label="High Priority" value={stats.highPriorityCount} icon={AlertTriangle} variant={stats.highPriorityCount > 0 ? 'danger' : 'default'} />
+                  <StatCard label="Needs Review" value={stats.needsReviewCount} icon={Flag} variant={stats.needsReviewCount > 0 ? 'warning' : 'default'} />
                 </div>
               </CardContent>
             </Card>

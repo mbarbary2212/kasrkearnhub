@@ -11,9 +11,12 @@ import {
   CheckCircle, 
   Eye,
   Save,
-  Loader2
+  Loader2,
+  AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { computeContentQualityFlag, getQualityFlagLabel, getQualityFlagColor } from '@/lib/contentQualityScoring';
 import { 
   useMaterialFeedbackDetails, 
   useUpsertReviewNote 
@@ -109,6 +112,30 @@ export function ContentQualitySection({ materialType, materialId, chapterId }: C
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Quality flag banner */}
+        {(() => {
+          const qualityResult = computeContentQualityFlag({
+            material_id: materialId,
+            helpful_count: helpfulCount,
+            unhelpful_count: unhelpfulCount,
+            feedback_count: feedback.length,
+            feedback_types: feedbackByType,
+          });
+          if (qualityResult.flag === 'normal') return null;
+          const FlagIcon = qualityResult.flag === 'high_priority' ? AlertCircle : AlertTriangle;
+          return (
+            <div className={`rounded-lg border p-3 ${getQualityFlagColor(qualityResult.flag)}`}>
+              <div className="flex items-center gap-2 font-medium text-sm mb-1">
+                <FlagIcon className="h-4 w-4" />
+                This item is flagged: {getQualityFlagLabel(qualityResult.flag)}
+              </div>
+              <ul className="text-xs space-y-0.5 ml-6 list-disc">
+                {qualityResult.reasons.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          );
+        })()}
+
         {/* Reaction counts */}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex items-center gap-2 p-2 rounded-md bg-green-50 dark:bg-green-950/20">
