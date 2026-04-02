@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { computeContentQualityFlag } from '@/lib/contentQualityScoring';
+import type { QualitySignals } from '@/hooks/useContentQualitySignals';
 
 export interface AdminOverviewStats {
   unansweredQuestions: number;
