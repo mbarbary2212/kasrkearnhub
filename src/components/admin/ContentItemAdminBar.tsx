@@ -39,14 +39,10 @@ export function ContentItemAdminBar({
   const isFeedbackOpen = onToggleFeedback ? feedbackOpen : localFeedbackOpen;
   const toggleFeedback = onToggleFeedback ?? (() => setLocalFeedbackOpen(prev => !prev));
 
-  // Lazy-load reaction counts only when feedback button is visible (always for admin bar)
+  // Lazy-load reaction counts — pass undefined materialId until requested
   const [loadCounts, setLoadCounts] = useState(false);
-  const { data: feedbackData } = useMaterialFeedbackDetails(
-    materialType, 
-    materialId,
-    // Only fetch when explicitly requested or feedback is open
-    loadCounts || isFeedbackOpen
-  );
+  const effectiveId = (loadCounts || isFeedbackOpen) ? materialId : undefined;
+  const { data: feedbackData } = useMaterialFeedbackDetails(materialType, effectiveId);
 
   const helpfulCount = feedbackData?.reactions?.filter(r => r.reaction_type === 'up').length ?? 0;
   const unhelpfulCount = feedbackData?.reactions?.filter(r => r.reaction_type === 'down').length ?? 0;
