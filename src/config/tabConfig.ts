@@ -30,7 +30,7 @@ export type InteractiveTabId = 'cases' | 'pathways';
 // Practice tab types (formerly "Self-Assessment")
 // Note: "Learning Unit" is the internal term for Chapter/Lecture - never expose to users
 // clinical_cases moved to Interactive section
-export type PracticeTabId = 'mcqs' | 'sba' | 'true_false' | 'essays' | 'osce' | 'practical' | 'matching' | 'images';
+export type PracticeTabId = 'mcqs' | 'sba' | 'true_false' | 'essays' | 'osce' | 'practical' | 'matching' | 'images' | 'short_cases';
 
 export interface TabConfig {
   id: string;
