@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { ReactNode, useState, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
