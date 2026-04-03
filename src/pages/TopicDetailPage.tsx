@@ -1072,6 +1072,20 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
+                {/* Short Cases */}
+                {practiceTab === 'short_cases' && (
+                  <div>
+                    {caseScenariosLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <CaseScenarioList
+                        scenarios={topicCaseScenarios || []}
+                        isAdmin={canManageContent}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Image Questions (placeholder) */}
                 {practiceTab === 'images' && (
                   <div className="text-center py-12">
