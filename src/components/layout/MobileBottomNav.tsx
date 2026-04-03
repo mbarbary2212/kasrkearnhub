@@ -37,7 +37,7 @@ const studentTabs: NavTab[] = [
 
 const adminTabs: NavTab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-  { id: 'learning', label: 'Learning', icon: BookOpen, path: '/admin/learning' },
+  { id: 'learning', label: 'Learning', icon: BookOpen, path: '', action: 'learning' },
   { id: 'connect', label: 'Connect', icon: MessageCircle, path: '', action: 'connect' },
   { id: 'overview', label: 'Overview', icon: BarChart3, path: '/admin/overview', adminOnly: true },
   { id: 'more', label: 'More', icon: MoreHorizontal, path: '', action: 'more' },
@@ -137,7 +137,6 @@ export function MobileBottomNav() {
     }
     if (tab.id === 'overview') return location.pathname === '/admin/overview';
     if (tab.id === 'learning') {
-      if (isAdmin) return location.pathname === '/admin/learning';
       return activeSheet === 'learning' ||
         location.pathname.startsWith('/year/') ||
         location.pathname.startsWith('/module/') ||
