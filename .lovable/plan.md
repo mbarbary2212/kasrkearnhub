@@ -1,37 +1,30 @@
 
 
-# Fix: Filter & Search in Admin Assignment Dialogs
+# Add Admin Management Actions to All Admin Sub-tabs
 
 ## Problem
-Both the "Assign Topic Admin" and "Assign Module Admin" dialogs show ALL users (including students) in a flat dropdown, making it very hard to find the right person.
+The **Platform Admins** sub-tab (and similar role-specific tabs) only shows a flat list with names and badges — no way to change roles, edit, or remove users. All management actions currently require switching to the **Directory** tab and finding the user there.
+
+## Solution
+Add the same action controls (role dropdown + "..." menu) from the Directory tab to each admin-specific sub-tab (Platform Admins, Module Admins list items). This gives consistent inline management everywhere.
 
 ## Changes
 
-### 1. TopicAdminsTab.tsx — Filter out students + add search
+### File: `src/components/admin/UsersTab.tsx`
 
-**Current** (line 248-250): `eligibleUsers` includes `student`, `teacher`, `topic_admin` roles — students shouldn't be here.
+**Platform Admins sub-tab (lines 651-665):**
+- Replace the static badge-only row with the same layout used in Directory: Avatar + name/email on the left, role `<Select>` dropdown + `<DropdownMenu>` actions on the right
+- Include: change role, upload photo, edit email, set password, reset password, suspend, deactivate, delete — same as Directory
+- Add search input to filter platform admins by name/email
+- Use Avatar component (with `avatar_url`) instead of plain initials div
 
-**Fix**:
-- Change `eligibleUsers` to exclude `student` role — only show `teacher`, `topic_admin`, `department_admin`, `platform_admin`
-- Add a `userSearch` state for text filtering
-- Replace the `<Select>` for user with a searchable list: add an `<Input>` search box above the user `<SelectContent>`, filtering by name/email
-- Sort users alphabetically
+**Module Admins sub-tab rows (if similarly flat):**
+- Add the same "..." action menu to each module admin row for consistency
 
-### 2. UsersTab.tsx — Same improvements for Module Admin dialog
-
-**Current** (line 528): Filter includes `student` in the allowed roles list.
-
-**Fix**:
-- Remove `student` from the role filter (keep `teacher`, `topic_admin`, `department_admin`)
-- Add search input inside the user selection area
-- Sort alphabetically (already done)
-
-### Implementation Detail
-
-Since shadcn `<Select>` doesn't natively support search, we'll use a `Command` (combobox) pattern with `Popover` + `Command` + `CommandInput` + `CommandList` to provide searchable user selection. Both dialogs get the same treatment.
+### Approach
+Extract the per-user action row (role selector + dropdown menu) into a shared helper or inline it consistently across all sub-tabs. This avoids duplicating the action menu JSX — we'll create a small `renderUserActions(user, status)` helper function within `UsersTab` that returns the role select + dropdown menu, then call it from Directory, Platform Admins, and Module Admins tabs.
 
 | File | Change |
 |------|--------|
-| `src/components/admin/TopicAdminsTab.tsx` | Remove `student` from eligibleUsers, replace Select with searchable Command/Popover |
-| `src/components/admin/UsersTab.tsx` | Remove `student` from role filter, replace Select with searchable Command/Popover |
+| `src/components/admin/UsersTab.tsx` | Extract user action controls into reusable helper; apply to Platform Admins tab; add search to Platform Admins tab |
 
