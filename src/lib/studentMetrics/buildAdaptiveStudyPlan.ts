@@ -255,22 +255,25 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     }
 
     // ── progress slot: not started / early ──
+    // Phase 2.5: Always assign learning mode for new chapters
     if (state === 'not_started' || state === 'early') {
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       candidates.push({
         slot: 'progress',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
-        reason: 'Start here',
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        reason: state === 'not_started' ? 'Start with Socrates' : 'Continue learning',
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
+        tab: modeConfig.section,
         priority: multipliers.progressBasePriority,
         state,
         trend,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
       continue;
     }
