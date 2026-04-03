@@ -303,3 +303,10 @@ export default function ModulePage() {
     </MainLayout>
   );
 }
+
+function ModuleLeadRow({ moduleId }: { moduleId: string | undefined }) {
+  const { data: admins } = useModuleAdmins(moduleId);
+  if (!admins || admins.length === 0) return null;
+  const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
+  return <div className="mt-1"><ContentAdminCard admins={admins} label={label} /></div>;
+}
