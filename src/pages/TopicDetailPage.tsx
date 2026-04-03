@@ -38,6 +38,8 @@ import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
 import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
+import { useTopicCaseScenarios } from '@/hooks/useCaseScenarios';
+import { CaseScenarioList } from '@/components/content/CaseScenarioList';
 import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
@@ -186,6 +188,8 @@ export default function TopicDetailPage() {
   const { data: deletedTrueFalse } = useTopicTrueFalseQuestions(topicId, true);
   const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
   const { data: deletedOsce } = useTopicOsceQuestions(topicId, true);
+
+  const { data: topicCaseScenarios, isLoading: caseScenariosLoading } = useTopicCaseScenarios(topicId);
 
   // Filter clinical cases by topic
   const topicClinicalCases = (clinicalCases || []).filter(c => c.topic_id === topicId);
@@ -380,8 +384,9 @@ export default function TopicDetailPage() {
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
+      short_cases: topicCaseScenarios?.filter(s => !s.is_deleted)?.length || 0,
     });
-  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length, topicCaseScenarios?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -987,7 +992,7 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Essays / Short Answer */}
+                {/* Short Essays */}
                 {practiceTab === 'essays' && (
                   <div>
                     {showAddControls && topicId && moduleId && (
@@ -1062,6 +1067,20 @@ export default function TopicDetailPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMatching}
                         onShowDeletedChange={setShowDeletedMatching}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Short Cases */}
+                {practiceTab === 'short_cases' && (
+                  <div>
+                    {caseScenariosLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <CaseScenarioList
+                        scenarios={topicCaseScenarios || []}
+                        isAdmin={canManageContent}
                       />
                     )}
                   </div>

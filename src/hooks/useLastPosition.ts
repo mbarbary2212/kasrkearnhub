@@ -147,7 +147,7 @@ export function buildResumeLabel(pos: LastPosition): string {
         mcqs: 'MCQs',
         sba: 'SBA',
         true_false: 'True/False',
-        essays: 'Short Answer',
+        essays: 'Short Essay',
         osce: 'OSCE',
         practical: 'Practical',
         matching: 'Matching',

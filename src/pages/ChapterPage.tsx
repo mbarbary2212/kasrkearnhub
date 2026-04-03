@@ -28,6 +28,7 @@ import {
 } from "@/components/content/ResourcesDeleteManager";
 import { MobileSectionDropdown } from "@/components/content/MobileSectionDropdown";
 import { ClinicalCaseList, ClinicalCaseAdminList } from "@/components/clinical-cases";
+import { CaseScenarioList } from "@/components/content/CaseScenarioList";
 import { SectionFilter } from "@/components/sections";
 import { SectionsManager } from "@/components/sections";
 import { useChapterSectionsEnabled, useChapterSections } from "@/hooks/useSections";
@@ -39,6 +40,7 @@ import {
   useChapterClinicalCaseCount,
 } from "@/hooks/useChapterContent";
 import { useChapterOsceQuestions, useChapterOsceCount } from "@/hooks/useOsceQuestions";
+import { useChapterCaseScenarios, useChapterCaseScenarioCount } from "@/hooks/useCaseScenarios";
 import { useChapterProgress } from "@/hooks/useChapterProgress";
 import { useChapterMatchingQuestions, useChapterMatchingCount } from "@/hooks/useMatchingQuestions";
 import { useClinicalCases } from "@/hooks/useClinicalCases";
@@ -252,6 +254,7 @@ export default function ChapterPage() {
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
   const { data: essayCount = 0 } = useChapterEssayCount(chapterId);
   const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
+  const { data: caseScenarioCount = 0 } = useChapterCaseScenarioCount(chapterId);
 
   // Full practice data hooks - only fetch when Practice or Test section is active
   const isPracticeActive = activeSection === "practice" || activeSection === "test" || activeSection === "interactive";
@@ -282,6 +285,7 @@ export default function ChapterPage() {
   const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true, {
     enabled: isPracticeActive && canManageContent,
   });
+  const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(isPracticeActive ? chapterId : undefined);
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(contentModuleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
@@ -642,8 +646,9 @@ export default function ChapterPage() {
       practical: 0,
       matching: matchingCount,
       images: 0,
+      short_cases: caseScenarioCount,
     });
-  }, [mcqCount, sbaCount, trueFalseCount, essayCount, osceCount, matchingCount]);
+  }, [mcqCount, sbaCount, trueFalseCount, essayCount, osceCount, matchingCount, caseScenarioCount]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -1421,6 +1426,20 @@ export default function ChapterPage() {
                         showDeleted={showDeletedMatching}
                         onShowDeletedChange={setShowDeletedMatching}
                         onActiveItemChange={setActiveItem}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Short Cases Content */}
+                {practiceTab === "short_cases" && (
+                  <div>
+                    {caseScenariosLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <CaseScenarioList
+                        scenarios={caseScenarios || []}
+                        isAdmin={canManageContent}
                       />
                     )}
                   </div>
