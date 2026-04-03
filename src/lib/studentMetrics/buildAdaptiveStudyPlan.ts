@@ -278,6 +278,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       continue;
     }
 
+    // Phase 2.5: strong chapters get assessment mode tasks via review_due slot above
     if (state === 'strong') continue;
 
     // ── weakness slot: weak / unstable ──
