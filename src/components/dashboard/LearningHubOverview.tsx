@@ -131,11 +131,6 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         studyStreak={dashboard.studyStreak}
       />
 
-      {/* Learning Insights */}
-      <DashboardInsights 
-        insights={dashboard.insights} 
-        hasRealAccuracyData={dashboard.hasRealAccuracyData}
-      />
 
       {/* Course Progress Map */}
       <DashboardProgressMap 
