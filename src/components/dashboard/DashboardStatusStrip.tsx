@@ -14,6 +14,7 @@ import {
   READINESS_WEIGHTS,
 } from '@/lib/readinessCalculator';
 import { ReadinessTrendSparkline } from './ReadinessTrendSparkline';
+import type { ExamReadinessIndicator } from '@/lib/studentMetrics';
 
 interface DashboardStatusStripProps {
   examReadiness: number;
@@ -25,6 +26,7 @@ interface DashboardStatusStripProps {
   studyStreak: number;
   readinessResult?: ReadinessResult;
   readinessTrend?: number[];
+  examReadinessIndicator?: ExamReadinessIndicator;
 }
 
 export function DashboardStatusStrip({
@@ -37,6 +39,7 @@ export function DashboardStatusStrip({
   studyStreak,
   readinessResult,
   readinessTrend,
+  examReadinessIndicator,
 }: DashboardStatusStripProps) {
   const capMessage = readinessResult?.cap ? getCapMessage(readinessResult.cap) : null;
   const hasDetailedBreakdown = !!readinessResult;
@@ -103,7 +106,33 @@ export function DashboardStatusStrip({
             <p className="text-xs text-muted-foreground mt-0.5">
               Exam Readiness
             </p>
-            {capMessage ? (
+            {examReadinessIndicator ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className={cn(
+                      "text-xs font-medium inline-flex items-center gap-1 cursor-help",
+                      examReadinessIndicator.color === 'green' && "text-emerald-600 dark:text-emerald-400",
+                      examReadinessIndicator.color === 'yellow' && "text-yellow-600 dark:text-yellow-400",
+                      examReadinessIndicator.color === 'orange' && "text-orange-600 dark:text-orange-400",
+                      examReadinessIndicator.color === 'red' && "text-red-600 dark:text-red-400",
+                    )}>
+                      <span className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        examReadinessIndicator.color === 'green' && "bg-emerald-500",
+                        examReadinessIndicator.color === 'yellow' && "bg-yellow-500",
+                        examReadinessIndicator.color === 'orange' && "bg-orange-500",
+                        examReadinessIndicator.color === 'red' && "bg-red-500",
+                      )} />
+                      {examReadinessIndicator.label}
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs p-2">
+                    <p className="text-xs">{examReadinessIndicator.explanation}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : capMessage ? (
               <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
                 Capped

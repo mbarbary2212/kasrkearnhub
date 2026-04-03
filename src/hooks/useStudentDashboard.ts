@@ -15,8 +15,9 @@ import {
   calculateAggregateReadiness,
   buildCoachInsights,
   buildRiskAlerts,
+  buildExamReadinessIndicator,
 } from '@/lib/studentMetrics';
-import type { PlannedTask, AdaptiveStudyPlan, CoachInsight, RiskAlert } from '@/lib/studentMetrics';
+import type { PlannedTask, AdaptiveStudyPlan, CoachInsight, RiskAlert, ExamReadinessIndicator } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
@@ -117,6 +118,9 @@ export interface DashboardData {
 
   // Risk alerts
   riskAlerts: RiskAlert[];
+
+  // Exam readiness indicator
+  examReadinessIndicator: ExamReadinessIndicator;
 }
 
 interface DashboardFilters {
@@ -543,6 +547,22 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         coachChapterIds,
       });
 
+      // Build exam readiness indicator
+      const avgAccuracy = realMetrics.length > 0
+        ? realMetrics.reduce((s, m) => s + (m.mcq_accuracy ?? 0), 0) / realMetrics.length
+        : 0;
+      const overdueCount = realMetrics.filter(m => {
+        if (!m.next_review_at) return false;
+        return new Date(m.next_review_at) < new Date();
+      }).length;
+      const examReadinessIndicator = buildExamReadinessIndicator({
+        readinessScore: finalExamReadiness,
+        coveragePercent,
+        mcqAccuracy: Math.round(avgAccuracy),
+        weakChapterCount: weakChapters.length,
+        overdueReviewCount: overdueCount,
+      });
+
       return {
         examReadiness: finalExamReadiness,
         coveragePercent,
@@ -571,6 +591,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         activityDates,
         readinessTrend,
         riskAlerts,
+        examReadinessIndicator,
       };
     },
     enabled: !!user?.id,
@@ -605,6 +626,10 @@ function getEmptyDashboard(): DashboardData {
     activityDates: [],
     readinessTrend: [],
     riskAlerts: [],
+    examReadinessIndicator: buildExamReadinessIndicator({
+      readinessScore: 0, coveragePercent: 0, mcqAccuracy: 0,
+      weakChapterCount: 0, overdueReviewCount: 0,
+    }),
   };
 }
 

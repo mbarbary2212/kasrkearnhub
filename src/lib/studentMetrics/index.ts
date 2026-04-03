@@ -12,6 +12,8 @@ export { buildCoachInsights } from './buildCoachInsights';
 export type { CoachInsight, CoachInsightInput } from './buildCoachInsights';
 export { buildRiskAlerts, RISK_THRESHOLDS } from './buildRiskAlerts';
 export type { RiskAlert, RiskAlertInput } from './buildRiskAlerts';
+export { buildExamReadinessIndicator, INDICATOR_THRESHOLDS } from './examReadinessIndicator';
+export type { ExamReadinessIndicator, IndicatorInput, ReadinessLevel } from './examReadinessIndicator';
 
 // Planner thresholds & exam mode
 export {

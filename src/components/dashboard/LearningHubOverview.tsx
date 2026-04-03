@@ -73,6 +73,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         studyStreak={dashboard.studyStreak}
         readinessResult={dashboard.readinessResult}
         readinessTrend={dashboard.readinessTrend}
+        examReadinessIndicator={dashboard.examReadinessIndicator}
       />
 
       {/* Study Coach Insights — top placement for visibility */}
