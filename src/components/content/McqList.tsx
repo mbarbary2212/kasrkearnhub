@@ -283,6 +283,20 @@ export function McqList({
     return map;
   }, [allAttempts]);
 
+  // ─── Resurfacing: compute scores from attempt history ───
+  const resurfaceScores = useMemo(() => {
+    if (isAdmin) return new Map();
+    const mcqAttempts: AttemptRecord[] = allAttempts
+      .filter(a => a.question_type === 'mcq')
+      .map(a => ({
+        question_id: a.question_id,
+        is_correct: a.is_correct,
+        created_at: a.created_at,
+        attempt_number: a.attempt_number,
+      }));
+    return computeResurfaceScores(mcqAttempts);
+  }, [allAttempts, isAdmin]);
+
   const totalQuestions = mcqs.length;
 
   // Student filter state
