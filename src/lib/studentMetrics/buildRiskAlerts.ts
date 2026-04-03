@@ -40,6 +40,8 @@ export interface RiskAlertInput {
   moduleId?: string;
   /** Most recent activity date across all chapters */
   lastActivityDate?: string | null;
+  /** Chapter IDs already surfaced by coach insights — used to suppress overlapping alerts */
+  coachChapterIds?: Set<string>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
