@@ -48,6 +48,8 @@ import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, useBulkUpdateMcqs, type
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
+import { adaptiveReorder } from '@/lib/adaptiveDifficulty';
+import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
@@ -124,7 +126,26 @@ export function McqList({
     canManage: canManageContent,
     isCheckingPermission: permissionLoading,
   } = useAddPermissionGuard({ moduleId, chapterId });
-  
+
+  // ─── Adaptive difficulty: derive chapter state for question reordering ───
+  const { data: _chapterMetricsForDifficulty } = useStudentChapterMetrics(moduleId ?? undefined);
+  const chapterStateForDifficulty = useMemo(() => {
+    if (isAdmin || !_chapterMetricsForDifficulty || !chapterId) return undefined;
+    const metric = _chapterMetricsForDifficulty.find(m => m.chapter_id === chapterId);
+    if (!metric) return 'not_started' as const;
+    return classifyChapterState({
+      coverage_percent: metric.coverage_percent,
+      mcq_attempts: metric.mcq_attempts,
+      mcq_accuracy: metric.mcq_accuracy,
+      recent_mcq_accuracy: metric.recent_mcq_accuracy,
+      readiness_score: metric.readiness_score,
+      flashcards_due: metric.flashcards_due,
+      flashcards_overdue: metric.flashcards_overdue,
+      last_activity_at: metric.last_activity_at,
+      confidence_mismatch_rate: metric.confidence_mismatch_rate,
+    });
+  }, [isAdmin, _chapterMetricsForDifficulty, chapterId]);
+
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
   // Single-open-at-a-time feedback panel
   const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
@@ -401,9 +422,14 @@ export function McqList({
     } else {
       result = sortMcqs(result, searchFilters.sortBy);
     }
+
+    // Adaptive difficulty reordering for students (after all filters/sorts)
+    if (!isAdmin && !showDeleted && chapterStateForDifficulty) {
+      result = adaptiveReorder(result, chapterStateForDifficulty, auth.user?.id);
+    }
     
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id]);
 
   // selectAll defined after filteredMcqs is available
   const selectAll = useCallback(() => {
