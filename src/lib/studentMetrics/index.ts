@@ -9,7 +9,7 @@ export type { RevisionState } from './reviewScheduling';
 export { buildAdaptiveStudyPlan } from './buildAdaptiveStudyPlan';
 export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo, TaskStudyModeKey } from './buildAdaptiveStudyPlan';
 export { buildCoachInsights } from './buildCoachInsights';
-export type { CoachInsight } from './buildCoachInsights';
+export type { CoachInsight, CoachInsightInput } from './buildCoachInsights';
 
 // Planner thresholds & exam mode
 export {
