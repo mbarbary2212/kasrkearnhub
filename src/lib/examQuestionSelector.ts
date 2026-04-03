@@ -81,17 +81,17 @@ export async function fetchSeenQuestionIds(
 // ─── Selection logic ─────────────────────────────────────────────
 
 /**
- * Select `count` questions from `pool`, preferring unseen questions.
+ * Select `count` questions from `pool`, preferring unseen questions
+ * while preserving chapter balance.
  *
  * Steps:
- * 1. Split pool into unseen and seen
- * 2. Shuffle both groups independently
- * 3. Fill from unseen first, up to UNSEEN_TARGET_RATIO * count
+ * 1. Group pool by chapter_id
+ * 2. Compute per-chapter quotas proportional to pool distribution
+ * 3. Within each chapter, prefer unseen questions (up to UNSEEN_TARGET_RATIO)
  * 4. Fill remainder from seen (least-recently-seen first)
- * 5. If unseen pool is insufficient, relax and take more seen questions
+ * 5. Merge all chapter selections and final-shuffle
  *
- * Does NOT enforce chapter balance — that's the caller's responsibility.
- * This function only reorders within whatever pool it receives.
+ * This ensures blueprint chapter distribution is preserved.
  */
 export function selectWithUnseenPreference<T extends HasId>(
   pool: T[],
@@ -101,11 +101,57 @@ export function selectWithUnseenPreference<T extends HasId>(
   if (pool.length === 0) return [];
   const needed = Math.min(count, pool.length);
 
-  // Split into unseen and seen
+  // Group by chapter_id (null → '__none__')
+  const byChapter = new Map<string, T[]>();
+  for (const q of pool) {
+    const key = q.chapter_id ?? '__none__';
+    const arr = byChapter.get(key);
+    if (arr) arr.push(q);
+    else byChapter.set(key, [q]);
+  }
+
+  // Compute proportional quotas per chapter
+  const chapterKeys = [...byChapter.keys()];
+  const quotas = new Map<string, number>();
+  let assigned = 0;
+  for (let i = 0; i < chapterKeys.length; i++) {
+    const key = chapterKeys[i];
+    const chapterPool = byChapter.get(key)!;
+    if (i === chapterKeys.length - 1) {
+      // Last chapter gets the remainder to avoid rounding drift
+      quotas.set(key, needed - assigned);
+    } else {
+      const quota = Math.round((chapterPool.length / pool.length) * needed);
+      quotas.set(key, quota);
+      assigned += quota;
+    }
+  }
+
+  // Select within each chapter with unseen preference
+  const result: T[] = [];
+  for (const [key, chapterPool] of byChapter) {
+    const quota = Math.min(quotas.get(key) ?? 0, chapterPool.length);
+    if (quota <= 0) continue;
+    result.push(...selectFromSlice(chapterPool, quota, seenMap));
+  }
+
+  // Final shuffle so chapters aren't grouped together in the exam
+  shuffleInPlace(result);
+  return result;
+}
+
+/**
+ * Select `count` items from a single-chapter slice, preferring unseen.
+ */
+function selectFromSlice<T extends HasId>(
+  slice: T[],
+  count: number,
+  seenMap: Map<string, SeenQuestionInfo>,
+): T[] {
   const unseen: T[] = [];
   const seen: { q: T; info: SeenQuestionInfo }[] = [];
 
-  for (const q of pool) {
+  for (const q of slice) {
     const info = seenMap.get(q.id);
     if (info) {
       seen.push({ q, info });
@@ -114,42 +160,25 @@ export function selectWithUnseenPreference<T extends HasId>(
     }
   }
 
-  // Shuffle unseen randomly
   shuffleInPlace(unseen);
-
-  // Sort seen: least recently seen first (so if we must use seen questions,
-  // we prefer ones the student saw longest ago)
-  seen.sort((a, b) => {
-    const timeA = new Date(a.info.lastSeenAt).getTime();
-    const timeB = new Date(b.info.lastSeenAt).getTime();
-    return timeA - timeB; // oldest first
-  });
-
-  // Compute target unseen count
-  const targetUnseen = Math.min(
-    unseen.length,
-    Math.ceil(needed * UNSEEN_TARGET_RATIO),
+  // Least-recently-seen first for fallback
+  seen.sort((a, b) =>
+    new Date(a.info.lastSeenAt).getTime() - new Date(b.info.lastSeenAt).getTime()
   );
 
+  const targetUnseen = Math.min(unseen.length, Math.ceil(count * UNSEEN_TARGET_RATIO));
   const result: T[] = [];
-
-  // Take from unseen first
   result.push(...unseen.slice(0, targetUnseen));
 
-  // Fill remaining from seen
-  const remaining = needed - result.length;
+  const remaining = count - result.length;
   if (remaining > 0) {
     result.push(...seen.slice(0, remaining).map(s => s.q));
   }
 
-  // If we still need more (shouldn't happen but safety), take remaining unseen
-  if (result.length < needed) {
-    const extra = unseen.slice(targetUnseen, targetUnseen + (needed - result.length));
-    result.push(...extra);
+  // Safety: fill from remaining unseen if still short
+  if (result.length < count) {
+    result.push(...unseen.slice(targetUnseen, targetUnseen + (count - result.length)));
   }
-
-  // Final shuffle of the selected set so unseen aren't always first in the exam
-  shuffleInPlace(result);
 
   return result;
 }
