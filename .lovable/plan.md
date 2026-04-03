@@ -1,30 +1,61 @@
 
 
-# Add Admin Management Actions to All Admin Sub-tabs
+# Add Global "Credits" Footer
 
-## Problem
-The **Platform Admins** sub-tab (and similar role-specific tabs) only shows a flat list with names and badges — no way to change roles, edit, or remove users. All management actions currently require switching to the **Directory** tab and finding the user there.
+## Credits List (alphabetical by first name, polished role titles)
 
-## Solution
-Add the same action controls (role dropdown + "..." menu) from the Directory tab to each admin-specific sub-tab (Platform Admins, Module Admins list items). This gives consistent inline management everywhere.
+| Name | Role |
+|------|------|
+| Dr. Ahmed Mansour | Concept & Vision |
+| Dr. Basma | Content Management |
+| Dr. Marwa Mostafa | Interactive Cases |
+| Dr. Mohab Mohamed | UI Design |
+| Dr. Mohamed Amro | Design, Code Review & Security |
+| Dr. Mohamed Elbarbary | Concept & Design Lead |
+| Dr. Mohamed Khaled Maslouh | MCQ Development |
+| Dr. Mohamed Lotfy | Flashcards Development |
+| Dr. Omar | Testing & Concept Design |
+| Dr. Soha Elmorsy | Concept & Vision |
 
-## Changes
+## Implementation
 
-### File: `src/components/admin/UsersTab.tsx`
+### 1. New Component: `src/components/layout/AppCredits.tsx`
+- A small text line: **"Built with ❤️ by the KALM Hub Team"** with a clickable **"Credits"** link
+- Clicking "Credits" opens a **Popover** listing all contributors with names and roles in a clean two-column layout
+- Subtle styling: `text-xs text-muted-foreground`, centered, with slight top border
+- Positioned at the bottom of the main content area (not fixed/sticky — scrolls with content)
 
-**Platform Admins sub-tab (lines 651-665):**
-- Replace the static badge-only row with the same layout used in Directory: Avatar + name/email on the left, role `<Select>` dropdown + `<DropdownMenu>` actions on the right
-- Include: change role, upload photo, edit email, set password, reset password, suspend, deactivate, delete — same as Directory
-- Add search input to filter platform admins by name/email
-- Use Avatar component (with `avatar_url`) instead of plain initials div
+### 2. Modify: `src/components/layout/MainLayout.tsx`
+- Import `AppCredits` and render it inside `<main>` after `{children}`, so it appears at the bottom of every page's content
+- Only show for authenticated users (not on auth/splash pages)
 
-**Module Admins sub-tab rows (if similarly flat):**
-- Add the same "..." action menu to each module admin row for consistency
+### Design
+```text
+─────────────────────────────────
+  [page content ends here]
 
-### Approach
-Extract the per-user action row (role selector + dropdown menu) into a shared helper or inline it consistently across all sub-tabs. This avoids duplicating the action menu JSX — we'll create a small `renderUserActions(user, status)` helper function within `UsersTab` that returns the role select + dropdown menu, then call it from Directory, Platform Admins, and Module Admins tabs.
+  Built with ❤️ by the KALM Hub Team · Credits
+─────────────────────────────────
+```
+
+Clicking "Credits" opens a popover:
+```text
+┌─────────────────────────────┐
+│  The KALM Hub Team          │
+│                             │
+│  Dr. Ahmed Mansour          │
+│  Concept & Vision           │
+│                             │
+│  Dr. Mohamed Elbarbary      │
+│  Concept & Design Lead      │
+│  ...                        │
+└─────────────────────────────┘
+```
+
+## Files
 
 | File | Change |
 |------|--------|
-| `src/components/admin/UsersTab.tsx` | Extract user action controls into reusable helper; apply to Platform Admins tab; add search to Platform Admins tab |
+| `src/components/layout/AppCredits.tsx` | New — credit line + popover with team list |
+| `src/components/layout/MainLayout.tsx` | Render `<AppCredits />` after children inside main |
 
