@@ -7459,6 +7459,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_chapter_leads: {
+        Args: { _chapter_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       get_chapter_percentile: {
         Args: {
           p_chapter_id: string
@@ -7489,6 +7498,15 @@ export type Database = {
           resolved_at: string
           resolved_by: string
           status: string
+        }[]
+      }
+      get_module_leads: {
+        Args: { _module_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
         }[]
       }
       get_user_analytics: {
