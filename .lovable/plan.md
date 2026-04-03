@@ -1,65 +1,50 @@
 
 
-# Three Bug Fixes: MCQ State Reset, Visual Resources Count, Infographic Scaling
+# Unify Admin Learning Navigation with Student Behavior
 
-## Fix 1: MCQ answer state not resetting on question change
+## Problem
+Admin "Learning" tab navigates to `/admin/learning` (module browser) instead of showing the section submenu (Resources/Interactive/Practice/Test) like students. Admin has no way to reach chapter sections from the sidebar without manually editing the URL.
 
-**Problem**: `McqAnswerArea` initializes `selectedKey` from `previousSelectedKey` via `useState`, but React does not re-run `useState` initializers when props change. When navigating to a new question, the previous selection persists visually.
+## Changes
 
-**Solution**: Add a `key` prop to `McqAnswerArea` in `QuestionSessionShell.tsx` using the current question's ID. This forces React to remount the component and reset state cleanly.
+### 1. Admin "Learning" tab → same behavior as student
+**Files:** `StudentSidebar.tsx`, `MobileBottomNav.tsx`
 
-**File**: `src/components/question-session/QuestionSessionShell.tsx`
-- Add `key={currentQuestion.id}` to the `<McqAnswerArea>` element (~line 247)
+Remove the admin-specific overrides that short-circuit Learning to `/admin/learning`. Instead, let the existing student logic run for admins too:
+- On a chapter/topic page → show submenu (Resources, Interactive, Practice, Test)
+- Not on a chapter page → resume last position or go to dashboard
 
----
+**StudentSidebar.tsx (~lines 132-157):**
+- Remove the `if (isAdmin) return location.pathname === '/admin/learning'` active-state override for Learning
+- Remove the `if (item.id === 'learning' && isAdmin) navigate('/admin/learning')` click handler
+- Let the existing student Learning logic handle both roles
 
-## Fix 2: Visual Resources tab shows combined count instead of per-subtab counts
+**MobileBottomNav.tsx (~lines 38-41, 139-140):**
+- Change admin Learning tab from `path: '/admin/learning'` to `action: 'learning'` (same as student)
+- Remove admin-specific active-state check for Learning
 
-**Problem**: The "Visual Resources" tab in the section dropdown shows a single combined count (mind maps + infographics + AI maps). The user expects to see how many items are in each subtab.
+### 2. Admin Dashboard → 60/40 layout with modules + admin intel
+**File:** `AdminDashboard.tsx`
 
-**Solution**: Change the count format to show separate counts like "Mind Maps 1 · Infographics 11" or pass separate counts so the VisualResourcesSection subtab badges are the primary source of truth. The simplest fix: update the tab count in `ChapterPage.tsx` and `TopicDetailPage.tsx` to show the true total of individual items (sum of all), and within `VisualResourcesSection.tsx` the subtab badges already show per-type counts — those are correct.
+Restructure the admin dashboard to mirror the student home's split layout:
+- **Left 60%**: Module browser (year selector, module cards — pulled from AdminLearningPage logic)
+- **Right 40%**: Admin intelligence panel (Alerts & Attention, Content Health, Quick Actions — condensed from current accordion sections)
 
-Actually, looking again at the screenshot: "Visual Resources 1/2" — the "1/2" means the dropdown shows it as count from the section filter. The real issue is that the parent tab count lumps mind maps + infographics into one number, but the subtabs inside show their own counts. The user wants the parent tab count to reflect the actual total material count (sum of items inside both subtabs), not the number of subtab categories.
+This means importing the year/module data hooks (`useYears`, `useAllModulesWithPermissions`) into AdminDashboard and rendering the module grid on the left, while moving the existing alert/health/activity sections into a sticky right panel.
 
-**Revised approach**: The parent count in `createResourceTabs` for `mind_maps` should equal `mindMaps.length + publishedAIMaps.length + infographics.length` — which it already does in ChapterPage. The subtab badges inside `VisualResourcesSection` already show per-type counts. So the counts ARE correct but may be confusing because the parent shows total while subtabs show breakdowns. The user's request: "make the total count the material inside both tabs or better add separate counts in each." The subtab badges already exist. The fix is to make the parent tab badge show separate counts like `1 / 11` (mind maps / infographics).
+### 3. Update "Browse modules" link
+**File:** `AdminDashboard.tsx`
 
-**Files**:
-- `src/config/tabConfig.ts` — no change needed
-- `src/pages/ChapterPage.tsx` (~line 574-577) — split `mind_maps` count into `mind_maps_count` and `infographics_count`, pass both
-- `src/pages/TopicDetailPage.tsx` (~line 324) — same split
-- Wherever the section dropdown renders the "Visual Resources" tab badge — render as two separate counts like "1 · 11" or "Maps 1 | Infographics 11"
+The Quick Actions "Browse modules" button currently navigates to `/admin/learning`. Since the module browser will now be on the dashboard itself, either remove this button or scroll to the modules section.
 
-Alternatively, the simplest approach: keep the single parent count as a true total (it already is), but ensure the subtab badges within `VisualResourcesSection` are clearly visible. Since the user explicitly wants "separate counts in each 1/1, 2/5 for example" — update the parent tab badge to show the breakdown format.
+### 4. Keep `/admin/learning` route as fallback
+No route removal — `AdminLearningPage` stays accessible for direct URL access, but it's no longer the primary navigation target.
 
-**Implementation**: Extend `TabWithCount` to support an optional `subcounts` field, and render dual badges for the Visual Resources tab. Or simply change the badge rendering for `mind_maps` tab to show `"{mindMaps} / {infographics}"` format.
-
-**Files to modify**:
-- `src/pages/ChapterPage.tsx` — pass separate mind_maps and infographics counts
-- `src/pages/TopicDetailPage.tsx` — same
-- The component that renders section tabs/dropdown — update badge to show split count for visual resources
-
----
-
-## Fix 3: Infographics open at 100% zoom instead of fit-to-screen
-
-**Problem**: In `InfographicViewer.tsx`, the fullscreen dialog initializes `zoom` to `1` (100%) which may be too large for high-resolution infographics, causing them to overflow the viewport.
-
-**Solution**: Start at a "fit to screen" zoom level. Use `object-fit: contain` with `max-width: 100%` and `max-height: 75vh` (which already exists) but set initial zoom to a value that ensures the image fits. The simplest approach: set initial zoom to `1` but change the default rendering to use CSS `object-fit: contain` with `width: 100%` and `height: auto` constrained by the container, rather than applying a `transform: scale()`. Only apply scale transform when the user explicitly zooms.
-
-**File**: `src/components/study/InfographicViewer.tsx`
-- Change the default image rendering (~line 222-235): remove `transform: scale(1)` at default zoom, use `max-width: 100%; max-height: 75vh; object-fit: contain; width: auto; height: auto` as the base style
-- When zoom !== 1 (user has zoomed), apply `transform: scale(zoom)` 
-- Reset button label could say "Fit" instead of just being a reset icon
-
----
-
-## Summary of changes
+## Summary of file changes
 
 | File | Change |
 |------|--------|
-| `QuestionSessionShell.tsx` | Add `key={currentQuestion.id}` to `McqAnswerArea` |
-| `ChapterPage.tsx` | Pass separate mind_maps and infographics counts |
-| `TopicDetailPage.tsx` | Pass separate mind_maps and infographics counts |
-| `tabConfig.ts` or section dropdown component | Support dual count display for Visual Resources |
-| `InfographicViewer.tsx` | Default to fit-to-screen, only scale on explicit zoom |
+| `StudentSidebar.tsx` | Remove 3 admin-specific Learning overrides |
+| `MobileBottomNav.tsx` | Change admin Learning tab to use submenu sheet |
+| `AdminDashboard.tsx` | Add 60/40 layout: modules (left) + admin intel (right) |
 
