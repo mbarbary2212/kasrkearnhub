@@ -1514,3 +1514,14 @@ export default function ChapterPage() {
     </MainLayout>
   );
 }
+
+function ChapterLeadRow({ chapterId, moduleId }: { chapterId: string; moduleId?: string }) {
+  const { data } = useChapterAdmins(chapterId, moduleId);
+  if (!data || data.admins.length === 0) return null;
+  const isChapterLevel = data.source === 'chapter';
+  const label =
+    isChapterLevel
+      ? data.admins.length === 1 ? 'Your Topic Lead' : 'Your Topic Team'
+      : data.admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
+  return <ContentAdminCard admins={data.admins} label={label} />;
+}
