@@ -285,6 +285,7 @@ export default function ChapterPage() {
   const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true, {
     enabled: isPracticeActive && canManageContent,
   });
+  const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(isPracticeActive ? chapterId : undefined);
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(contentModuleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
