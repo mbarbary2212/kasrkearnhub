@@ -77,6 +77,8 @@ export interface PlannedTask {
   learningPattern?: string;
   revisionState?: RevisionState;
   prescribedStudyMode?: StudyMode;
+  /** Phase 2.5: Learning mode assigned based on chapter state */
+  learningMode?: LearningMode;
 }
 
 export interface AdaptiveStudyPlan {
