@@ -776,6 +776,14 @@ export function UsersTab() {
         }}
         isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
       />
+
+      {avatarUploadUser && (
+        <UserAvatarUploadDialog
+          open={!!avatarUploadUser}
+          onOpenChange={(open) => { if (!open) setAvatarUploadUser(null); }}
+          user={avatarUploadUser}
+        />
+      )}
     </>
   );
 }
