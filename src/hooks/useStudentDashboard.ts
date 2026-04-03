@@ -531,6 +531,14 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         ? realMetrics.slice(-14).map(m => m.readiness_score)
         : [];
 
+      // Build risk alerts from real metrics + exam weights
+      const riskAlerts = buildRiskAlerts({
+        metrics: realMetrics,
+        chapterTitleMap,
+        examWeightMap,
+        moduleId: filters?.moduleId,
+      });
+
       return {
         examReadiness: finalExamReadiness,
         coveragePercent,
@@ -558,6 +566,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         chapterTitleMap,
         activityDates,
         readinessTrend,
+        riskAlerts,
       };
     },
     enabled: !!user?.id,
