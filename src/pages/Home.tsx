@@ -31,6 +31,7 @@ import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
 import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
+import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
