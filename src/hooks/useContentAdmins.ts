@@ -57,7 +57,7 @@ export function useChapterAdmins(chapterId: string | undefined, moduleId: string
 
       const chapterAdmins = chapterError
         ? []
-        : normalizeAdmins(data as any[] | null | undefined);
+        : normalizeAdmins(chapterData as any[] | null | undefined);
 
       if (chapterAdmins.length > 0) {
         return { admins: chapterAdmins, source: 'chapter' };
