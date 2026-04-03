@@ -69,6 +69,7 @@ export function UsersTab() {
   const [moduleAdminAssignDialogOpen, setModuleAdminAssignDialogOpen] = useState(false);
   const [maSelectedUserId, setMaSelectedUserId] = useState('');
   const [maSelectedModules, setMaSelectedModules] = useState<string[]>([]);
+  const [maUserPopoverOpen, setMaUserPopoverOpen] = useState(false);
   const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
   const [deactivatedSearch, setDeactivatedSearch] = useState('');
   const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
