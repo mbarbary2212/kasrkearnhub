@@ -684,7 +684,6 @@ export function UsersTab() {
                       </div>
                     );
                   })()}
-                  )}
                 </div>
               </TabsContent>
             )}
