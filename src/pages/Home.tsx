@@ -465,8 +465,9 @@ function LoggedInHome() {
                         onClick={() => navigate(`/module/${module.id}`)}
                       >
                         <span className="text-xs font-mono font-semibold text-primary min-w-[4.5rem]">{module.slug?.toUpperCase()}</span>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-foreground truncate block">{module.name}</span>
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground truncate">{module.name}</span>
+                          <ModuleCardLeads moduleId={module.id} />
                         </div>
                         <div className="w-24 flex-shrink-0">
                           <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />
