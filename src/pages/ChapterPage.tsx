@@ -855,7 +855,14 @@ export default function ChapterPage() {
           })()}
         </div>
 
-        {/* Chapter Progress moved to header breadcrumb */}
+        {/* Recommended Study Path — students only */}
+        {isStudent && currentChapterState && (
+          <RecommendedPathBanner
+            chapterState={currentChapterState}
+            activeSection={activeSection}
+            onNavigateSection={(s) => setActiveSection(s as SectionMode)}
+          />
+        )}
 
         {/* Module/Topic Lead card — students only */}
         {!showAddControls && !auth.isTeacher && chapterId && (
