@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { ReactNode, useState, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, ChevronRight } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, ChevronRight, PenTool, Stethoscope, ClipboardCheck, LucideIcon } from 'lucide-react';
 import { usePresence } from '@/contexts/PresenceContext';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
+import { RESOURCES_TABS, INTERACTIVE_TABS, PRACTICE_TABS } from '@/config/tabConfig';
 import { AskCoachButton } from '@/components/coach/AskCoachButton';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -58,9 +59,23 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const isMobile = useIsMobile();
   const { activeYear } = useActiveYear();
+
+  // Section & subtab breadcrumb from URL params
+  const SECTION_ICONS: Record<string, { icon: LucideIcon; label: string }> = useMemo(() => ({
+    resources:   { icon: BookOpen,       label: 'Resources' },
+    interactive: { icon: Stethoscope,    label: 'Interactive' },
+    practice:    { icon: PenTool,        label: 'Practice' },
+    test:        { icon: ClipboardCheck, label: 'Test Yourself' },
+  }), []);
+  const currentSection = searchParams.get('section');
+  const currentSubtab = searchParams.get('subtab');
+  const sectionConfig = currentSection ? SECTION_ICONS[currentSection] : null;
+  const allTabs = useMemo(() => [...RESOURCES_TABS, ...INTERACTIVE_TABS, ...PRACTICE_TABS], []);
+  const subtabConfig = currentSubtab ? allTabs.find(t => t.id === currentSubtab) : null;
 
   // Extract moduleId and chapterId from URL for breadcrumb display
   const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
@@ -156,6 +171,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
         <div className="container mx-auto px-3 md:px-4 h-14 md:h-16 flex items-center justify-between">
+          <TooltipProvider delayDuration={300}>
           <div className="flex items-center gap-2">
             <button onClick={handleGoHome} className="flex items-center justify-center hover:opacity-80 transition-all duration-200 hover:scale-105">
               <img src={logo} alt="KALM Hub Logo" className="h-[16px] md:h-[18px] w-auto object-contain" />
@@ -205,7 +221,36 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </div>
               </>
             )}
+            {/* Section breadcrumb icon */}
+            {currentChapter && sectionConfig && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center">
+                      <sectionConfig.icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{sectionConfig.label}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            {/* Subtab breadcrumb icon */}
+            {currentChapter && subtabConfig && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center">
+                      <subtabConfig.icon className="h-4 w-4 text-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{subtabConfig.label}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
+          </TooltipProvider>
 
           {/* Chapter progress bar - between breadcrumb and right icons */}
           {!isAdmin && currentChapterId && currentChapter && !progressLoading && chapterProgress && (chapterProgress.practiceTotal > 0 || chapterProgress.videosTotal > 0) && (
