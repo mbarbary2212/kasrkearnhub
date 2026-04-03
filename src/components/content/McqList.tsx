@@ -440,9 +440,14 @@ export function McqList({
     if (!isAdmin && !showDeleted && chapterStateForDifficulty) {
       result = adaptiveReorder(result, chapterStateForDifficulty, auth.user?.id);
     }
+
+    // Resurface previously-incorrect questions toward the front
+    if (!isAdmin && !showDeleted && resurfaceScores.size > 0) {
+      result = applyResurfacing(result, resurfaceScores);
+    }
     
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id, resurfaceScores]);
 
   // selectAll defined after filteredMcqs is available
   const selectAll = useCallback(() => {
