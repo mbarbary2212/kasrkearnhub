@@ -220,6 +220,34 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 </div>
               </>
             )}
+            {/* Section breadcrumb icon */}
+            {currentChapter && sectionConfig && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center">
+                      <sectionConfig.icon className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{sectionConfig.label}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
+            {/* Subtab breadcrumb icon */}
+            {currentChapter && subtabConfig && (
+              <>
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 flex-shrink-0" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center justify-center">
+                      <subtabConfig.icon className="h-4 w-4 text-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">{subtabConfig.label}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
 
           {/* Chapter progress bar - between breadcrumb and right icons */}
