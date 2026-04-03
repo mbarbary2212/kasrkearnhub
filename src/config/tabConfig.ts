@@ -111,6 +111,7 @@ export function createPracticeTabs(counts: {
   practical?: number;
   matching?: number;
   images?: number;
+  short_cases?: number;
 }): TabWithCount[] {
   return PRACTICE_TABS.map(tab => ({
     ...tab,

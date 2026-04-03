@@ -63,7 +63,7 @@ const TAB_SHORT: Record<string, Record<string, string>> = {
     mcqs:       'MCQs',
     sba:        'SBA',
     true_false: 'True / False',
-    essays:     'Short Answer',
+    essays:     'Short Essay',
     osce:       'OSCE',
     practical:  'Practicals',
     matching:   'Matching',
