@@ -38,6 +38,8 @@ export interface DashboardInsight {
   type: 'strong' | 'attention' | 'missed';
   label: string;
   detail?: string;
+  action?: string;
+  actionRoute?: string;
 }
 
 export interface SuggestedItem {

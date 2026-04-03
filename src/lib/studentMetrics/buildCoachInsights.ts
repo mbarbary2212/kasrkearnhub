@@ -10,17 +10,22 @@ import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterEx
 // ─── Types ────────────────────────────────────────────────────
 
 export interface CoachInsight {
-  type: 'priority' | 'misallocation' | 'trend' | 'strength' | 'confidence';
+  type: 'priority' | 'misallocation' | 'trend' | 'strength' | 'confidence' | 'time_balance';
   message: string;
   /** Higher = more important, show first */
   priority: number;
   chapterId?: string;
+  /** Actionable suggestion text */
+  action?: string;
+  /** Route to navigate to */
+  actionRoute?: string;
 }
 
-interface CoachInsightInput {
+export interface CoachInsightInput {
   metrics: StudentChapterMetric[];
   chapterTitleMap: Map<string, string>;
   examWeightMap?: Map<string, ChapterExamWeight>;
+  moduleId?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -54,9 +59,17 @@ function classify(input: CoachInsightInput): ClassifiedChapter[] {
     });
 }
 
+function chapterRoute(moduleId: string | undefined, chapterId: string, tab?: string, subtab?: string): string | undefined {
+  if (!moduleId) return undefined;
+  let route = `/modules/${moduleId}/chapters/${chapterId}`;
+  if (tab) route += `?section=${tab}`;
+  if (subtab) route += `&subtab=${subtab}`;
+  return route;
+}
+
 // ─── Insight generators (each returns 0-1 insight) ────────────
 
-function priorityInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
+function priorityInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
   // Weak + high-yield = top priority
   const weakHighYield = chapters
     .filter(c => c.state === 'weak' && c.isHighYield)
@@ -69,6 +82,8 @@ function priorityInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
       message: `${ch.title} is a high-yield chapter where you're struggling. Focus here first.`,
       priority: 100,
       chapterId: ch.id,
+      action: `Try 10 MCQs in ${ch.title}`,
+      actionRoute: chapterRoute(moduleId, ch.id, 'practice', 'mcqs'),
     };
   }
 
@@ -84,19 +99,19 @@ function priorityInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
       message: `${ch.title} needs attention — your recent accuracy is ${Math.round(ch.metric.recent_mcq_accuracy)}%.`,
       priority: 85,
       chapterId: ch.id,
+      action: `Practice MCQs in ${ch.title}`,
+      actionRoute: chapterRoute(moduleId, ch.id, 'practice', 'mcqs'),
     };
   }
 
   return null;
 }
 
-function misallocationInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
-  // Find high-yield chapters that are weak or unstable with low attempts
+function misallocationInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
   const neglectedHighYield = chapters.filter(
     c => c.isHighYield && (c.state === 'weak' || c.state === 'unstable' || c.state === 'early') && c.metric.mcq_attempts < 10
   );
 
-  // Find low-yield chapters with many attempts
   const overStudied = chapters.filter(
     c => !c.isHighYield && c.examBoost < 1.0 && c.metric.mcq_attempts >= 15 && (c.state === 'strong' || c.metric.recent_mcq_accuracy >= 80)
   );
@@ -108,14 +123,16 @@ function misallocationInsight(chapters: ClassifiedChapter[]): CoachInsight | nul
       message: `Consider shifting time to ${neglected.title} — it carries more exam weight and needs work.`,
       priority: 80,
       chapterId: neglected.id,
+      action: `Start practicing ${neglected.title}`,
+      actionRoute: chapterRoute(moduleId, neglected.id, 'practice'),
     };
   }
 
   return null;
 }
 
-function trendInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
-  // Declining chapters that aren't already weak (weak is covered by priority)
+function trendInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
+  // Declining chapters
   const declining = chapters
     .filter(c => c.trend === 'declining' && c.state !== 'weak' && c.metric.mcq_attempts >= 5)
     .sort((a, b) => b.examBoost - a.examBoost);
@@ -127,10 +144,12 @@ function trendInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
       message: `Your performance in ${ch.title} is declining — revise before it worsens.`,
       priority: 75,
       chapterId: ch.id,
+      action: `Review ${ch.title} notes`,
+      actionRoute: chapterRoute(moduleId, ch.id, 'resources'),
     };
   }
 
-  // Improving chapters (positive reinforcement)
+  // Improving chapters
   const improving = chapters
     .filter(c => c.trend === 'improving' && c.state !== 'strong' && c.metric.mcq_attempts >= 5)
     .sort((a, b) => b.examBoost - a.examBoost);
@@ -142,6 +161,8 @@ function trendInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
       message: `${ch.title} is improving — keep up the momentum.`,
       priority: 50,
       chapterId: ch.id,
+      action: `Keep practicing ${ch.title}`,
+      actionRoute: chapterRoute(moduleId, ch.id, 'practice'),
     };
   }
 
@@ -158,6 +179,7 @@ function strengthInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
       type: 'strength',
       message: `You're strong in ${strong.length} chapters — maintain with light review.`,
       priority: 30,
+      action: 'Do a quick review of strong chapters',
     };
   }
 
@@ -167,10 +189,11 @@ function strengthInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
     message: `${ch.title} is a strength — maintain with light review.`,
     priority: 30,
     chapterId: ch.id,
+    action: 'Keep it up with occasional practice',
   };
 }
 
-function confidenceInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
+function confidenceInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
   const overconfident = chapters.filter(
     c => c.metric.mcq_attempts >= 5 && (c.metric.overconfident_error_rate ?? 0) >= 25
   );
@@ -184,6 +207,32 @@ function confidenceInsight(chapters: ClassifiedChapter[]): CoachInsight | null {
       message: `You may be overconfident in ${ch.title} — review carefully before practicing more.`,
       priority: 70,
       chapterId: ch.id,
+      action: `Re-read ${ch.title} before more MCQs`,
+      actionRoute: chapterRoute(moduleId, ch.id, 'resources'),
+    };
+  }
+
+  return null;
+}
+
+function timeBalanceInsight(metrics: StudentChapterMetric[]): CoachInsight | null {
+  let totalWatching = 0;
+  let totalPracticing = 0;
+
+  for (const m of metrics) {
+    totalWatching += m.minutes_watching ?? 0;
+    totalPracticing += m.minutes_practicing ?? 0;
+  }
+
+  // Only trigger if there's meaningful activity
+  if (totalWatching + totalPracticing < 10) return null;
+
+  if (totalWatching > totalPracticing * 2 && totalPracticing < 30) {
+    return {
+      type: 'time_balance',
+      message: "You're spending more time watching than practicing — active recall is key for retention.",
+      priority: 65,
+      action: 'Complete today\'s planner tasks',
     };
   }
 
@@ -199,12 +248,15 @@ export function buildCoachInsights(input: CoachInsightInput): CoachInsight[] {
 
   if (chapters.length === 0) return [];
 
+  const moduleId = input.moduleId;
+
   // Generate one insight per type
   const candidates: CoachInsight[] = [
-    priorityInsight(chapters),
-    misallocationInsight(chapters),
-    trendInsight(chapters),
-    confidenceInsight(chapters),
+    priorityInsight(chapters, moduleId),
+    misallocationInsight(chapters, moduleId),
+    trendInsight(chapters, moduleId),
+    confidenceInsight(chapters, moduleId),
+    timeBalanceInsight(input.metrics),
     strengthInsight(chapters),
   ].filter((i): i is CoachInsight => i !== null);
 
