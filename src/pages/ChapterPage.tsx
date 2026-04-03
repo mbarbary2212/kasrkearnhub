@@ -850,7 +850,17 @@ export default function ChapterPage() {
                             </span>
                           )}
                         </span>
-                        {tab.count > 0 ? (
+                        {tab.subcounts && tab.subcounts.length > 0 ? (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
+                            {tab.subcounts.map((sc, i) => (
+                              <Badge key={sc.label} variant="outline" className="h-5 px-1.5 text-[10px]" title={sc.label}>
+                                {sc.count}
+                              </Badge>
+                            )).reduce((prev, curr, i) => (
+                              <>{prev}<span className="text-muted-foreground/50">/</span>{curr}</>
+                            ) as any)}
+                          </span>
+                        ) : tab.count > 0 ? (
                           <div className="relative h-5 w-14 rounded-full bg-muted overflow-hidden text-[10px]">
                             <div
                               className={cn(

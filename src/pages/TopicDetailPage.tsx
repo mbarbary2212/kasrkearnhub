@@ -534,7 +534,19 @@ export default function TopicDetailPage() {
                           <Icon className="w-4 h-4" />
                         )}
                         <span>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        {tab.subcounts && tab.subcounts.length > 0 ? (
+                          <span className="flex items-center gap-0.5">
+                            {tab.subcounts.map((sc) => (
+                              <Badge key={sc.label} variant="outline" className="h-5 px-1.5 text-[10px]" title={sc.label}>
+                                {sc.count}
+                              </Badge>
+                            )).reduce((prev, curr) => (
+                              <>{prev}<span className="text-muted-foreground/50 text-[10px]">/</span>{curr}</>
+                            ) as any)}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        )}
                       </button>
                     );
                   })}
