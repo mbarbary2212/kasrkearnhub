@@ -73,6 +73,8 @@ export const PRACTICE_TABS: TabConfig[] = [
 // Helper to add counts to tabs
 export interface TabWithCount extends TabConfig {
   count: number;
+  /** Optional split counts for composite tabs like Visual Resources */
+  subcounts?: { label: string; count: number }[];
 }
 
 export function createResourceTabs(counts: {

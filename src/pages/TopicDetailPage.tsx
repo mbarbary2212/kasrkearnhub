@@ -317,16 +317,27 @@ export default function TopicDetailPage() {
   ];
 
   // Use unified tab configuration - create all tabs first
+  const topicInfographicsCount = studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0;
+  const topicMindMapsTotal = mindMaps.length;
+
   const allResourcesTabs = useMemo(() => {
-    return createResourceTabs({
+    const tabs = createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards?.length || 0,
-      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
+      mind_maps: topicMindMapsTotal + topicInfographicsCount,
       guided_explanations: guidedExplanations.length + socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
-  }, [lectures?.length, flashcards?.length, mindMaps.length, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources]);
+    const vmTab = tabs.find(t => t.id === 'mind_maps');
+    if (vmTab) {
+      vmTab.subcounts = [
+        { label: 'Maps', count: topicMindMapsTotal },
+        { label: 'Infographics', count: topicInfographicsCount },
+      ];
+    }
+    return tabs;
+  }, [lectures?.length, flashcards?.length, topicMindMapsTotal, topicInfographicsCount, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources, socraticTutorials.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
@@ -523,7 +534,19 @@ export default function TopicDetailPage() {
                           <Icon className="w-4 h-4" />
                         )}
                         <span>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        {tab.subcounts && tab.subcounts.length > 0 ? (
+                          <span className="flex items-center gap-0.5">
+                            {tab.subcounts.map((sc) => (
+                              <Badge key={sc.label} variant="outline" className="h-5 px-1.5 text-[10px]" title={sc.label}>
+                                {sc.count}
+                              </Badge>
+                            )).reduce((prev, curr) => (
+                              <>{prev}<span className="text-muted-foreground/50 text-[10px]">/</span>{curr}</>
+                            ) as any)}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        )}
                       </button>
                     );
                   })}

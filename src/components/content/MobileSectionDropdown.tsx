@@ -13,6 +13,7 @@ export interface TabOption {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   count: number;
+  subcounts?: { label: string; count: number }[];
 }
 
 interface MobileSectionDropdownProps {
@@ -77,9 +78,21 @@ export function MobileSectionDropdown({
                 <Icon className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
                 <span className={cn(isActive && "font-medium")}>{tab.label}</span>
               </div>
-              <Badge variant={isActive ? "default" : "secondary"} className="h-5 px-1.5 text-[10px]">
-                {tab.count}
-              </Badge>
+              {tab.subcounts && tab.subcounts.length > 0 ? (
+                <span className="flex items-center gap-0.5">
+                  {tab.subcounts.map((sc) => (
+                    <Badge key={sc.label} variant={isActive ? "default" : "secondary"} className="h-5 px-1.5 text-[10px]" title={sc.label}>
+                      {sc.count}
+                    </Badge>
+                  )).reduce((prev, curr) => (
+                    <>{prev}<span className="text-muted-foreground/50 text-[10px]">/</span>{curr}</>
+                  ) as any)}
+                </span>
+              ) : (
+                <Badge variant={isActive ? "default" : "secondary"} className="h-5 px-1.5 text-[10px]">
+                  {tab.count}
+                </Badge>
+              )}
             </DropdownMenuItem>
           );
         })}
