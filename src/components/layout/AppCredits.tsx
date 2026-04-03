@@ -11,6 +11,7 @@ const TEAM = [
   { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development' },
   { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development' },
   { name: 'Dr. Omar', role: 'Testing & Concept Design' },
+  { name: 'Dr. Omar', role: 'Role TBD' },
   { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision' },
 ];
 

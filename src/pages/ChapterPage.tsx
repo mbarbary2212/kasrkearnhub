@@ -901,13 +901,6 @@ export default function ChapterPage() {
           />
         )}
 
-        {/* Module/Topic Lead card — students only */}
-        {!showAddControls && !auth.isTeacher && chapterId && (
-          <div className="flex flex-col gap-1">
-            <ChapterLeadRow chapterId={chapterId} />
-            <ModuleLeadInChapter moduleId={moduleId} />
-          </div>
-        )}
 
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && <SectionsManager chapterId={chapterId} canManage={canManageContent} />}
