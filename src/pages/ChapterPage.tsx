@@ -835,6 +835,11 @@ export default function ChapterPage() {
 
         {/* Chapter Progress moved to header breadcrumb */}
 
+        {/* Module/Topic Lead card — students only */}
+        {!showAddControls && !auth.isTeacher && chapterId && (
+          <ChapterLeadRow chapterId={chapterId} moduleId={moduleId} />
+        )}
+
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && <SectionsManager chapterId={chapterId} canManage={canManageContent} />}
 
