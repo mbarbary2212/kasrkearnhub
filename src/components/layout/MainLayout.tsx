@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, ChevronRight } from 'lucide-react';
+import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, ChevronRight, PenTool, Stethoscope, ClipboardCheck, LucideIcon } from 'lucide-react';
 import { usePresence } from '@/contexts/PresenceContext';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
