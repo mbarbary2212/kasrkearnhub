@@ -291,6 +291,11 @@ export function UsersTab() {
                                     <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-52">
+                                    {isSuperAdmin && (
+                                      <DropdownMenuItem onClick={() => setAvatarUploadUser({ id: u.id, email: u.email, full_name: u.full_name, avatar_url: (u as any).avatar_url })}>
+                                        <Camera className="h-4 w-4 mr-2" />Upload Photo
+                                      </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem onClick={() => setEditEmailUser({ id: u.id, email: u.email, full_name: u.full_name })}>
                                       <Mail className="h-4 w-4 mr-2" />Edit Email
                                     </DropdownMenuItem>
