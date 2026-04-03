@@ -523,7 +523,7 @@ export function UsersTab() {
                           Select a user and the modules they should manage. Their role will automatically be set to Module Admin.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4 py-4">
+                      <div className="space-y-4 py-4 overflow-y-auto min-h-0">
                         <div className="space-y-2">
                           <label className="text-sm font-medium">User *</label>
                           <Popover open={maUserPopoverOpen} onOpenChange={setMaUserPopoverOpen}>
