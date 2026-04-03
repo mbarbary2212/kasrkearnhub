@@ -810,6 +810,9 @@ export default function ChapterPage() {
                     const isActive = currentSubTab === tab.id;
                     const counts = getTabCounts(tab.id, tab.count);
                     const progress = counts.total > 0 ? Math.round((counts.completed / counts.total) * 100) : 0;
+                    const isRecommended = isStudent && currentChapterState
+                      ? getRecommendedPath(currentChapterState).recommendedTabs.includes(tab.id)
+                      : false;
                     return (
                       <DropdownMenuItem
                         key={tab.id}
@@ -821,6 +824,7 @@ export default function ChapterPage() {
                         className={cn(
                           "flex items-center gap-2 py-3 cursor-pointer",
                           isActive && cn(colors.activeBg, colors.activeBgDark),
+                          isRecommended && !isActive && "bg-amber-50/50 dark:bg-amber-950/10",
                         )}
                       >
                         {tab.useImageIcon ? (
@@ -828,7 +832,14 @@ export default function ChapterPage() {
                         ) : (
                           <TabIcon className={cn("w-4 h-4", isActive ? colors.icon : "")} />
                         )}
-                        <span className={cn("flex-1", isActive && cn("font-medium", colors.text))}>{tab.label}</span>
+                        <span className={cn("flex-1", isActive && cn("font-medium", colors.text))}>
+                          {tab.label}
+                          {isRecommended && (
+                            <span className="ml-1.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                              ★
+                            </span>
+                          )}
+                        </span>
                         {tab.count > 0 ? (
                           <div className="relative h-5 w-14 rounded-full bg-muted overflow-hidden text-[10px]">
                             <div
