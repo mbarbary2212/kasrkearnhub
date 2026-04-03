@@ -73,6 +73,8 @@ export function UsersTab() {
   const [maSelectedModules, setMaSelectedModules] = useState<string[]>([]);
   const [maUserPopoverOpen, setMaUserPopoverOpen] = useState(false);
   const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [platformAdminSearch, setPlatformAdminSearch] = useState('');
+  const [moduleAdminSearch, setModuleAdminSearch] = useState('');
   const [deactivatedSearch, setDeactivatedSearch] = useState('');
   const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
@@ -84,6 +86,119 @@ export function UsersTab() {
     user: { id: string; full_name: string | null; email: string } | null;
   }>({ open: false, action: null, user: null });
   const [avatarUploadUser, setAvatarUploadUser] = useState<{ id: string; email: string; full_name: string | null; avatar_url?: string | null } | null>(null);
+
+  const renderUserActions = (u: UserWithRole) => {
+    const userStatus = (u as any).status || 'active';
+    if (u.id === user?.id) return <Badge variant="outline">You</Badge>;
+    return (
+      <div className="flex items-center gap-2">
+        <Select value={u.role} onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {getAvailableRoles().map(role => (
+              <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            {isSuperAdmin && (
+              <DropdownMenuItem onClick={() => setAvatarUploadUser({ id: u.id, email: u.email, full_name: u.full_name, avatar_url: (u as any).avatar_url })}>
+                <Camera className="h-4 w-4 mr-2" />Upload Photo
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setEditEmailUser({ id: u.id, email: u.email, full_name: u.full_name })}>
+              <Mail className="h-4 w-4 mr-2" />Edit Email
+            </DropdownMenuItem>
+            {isSuperAdmin && (
+              <DropdownMenuItem onClick={() => setPasswordDialogUser({ id: u.id, email: u.email, full_name: u.full_name })}>
+                <KeyRound className="h-4 w-4 mr-2" />Set Temporary Password
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => resetPassword.mutate({ email: u.email, fullName: u.full_name || undefined, userId: u.id })}>
+              <Send className="h-4 w-4 mr-2" />Reset Password
+              {resetPassword.isPending && <Loader2 className="h-3 w-3 ml-auto animate-spin" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {userStatus === 'active' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'ban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <Ban className="h-4 w-4 mr-2" />Suspend User
+              </DropdownMenuItem>
+            )}
+            {userStatus === 'banned' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'unban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <UserCheck className="h-4 w-4 mr-2" />Lift Suspension
+              </DropdownMenuItem>
+            )}
+            {userStatus !== 'removed' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'remove', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <UserX className="h-4 w-4 mr-2" />Deactivate Account
+              </DropdownMenuItem>
+            )}
+            {userStatus === 'removed' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'restore', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <RotateCcw className="h-4 w-4 mr-2" />Restore Account
+              </DropdownMenuItem>
+            )}
+            {isSuperAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setDeleteUserTarget({ id: u.id, email: u.email, full_name: u.full_name, status: userStatus })}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />Delete User
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  };
+
+  const renderUserRow = (u: UserWithRole, options?: { showModuleAssignments?: boolean; showStatusBadges?: boolean }) => {
+    const userStatus = (u as any).status || 'active';
+    const showStatus = options?.showStatusBadges !== false;
+    return (
+      <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            {(u as any).avatar_url && <AvatarImage src={(u as any).avatar_url} alt={u.full_name || ''} />}
+            <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
+              {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-medium">{u.full_name || 'No name'}</p>
+              {showStatus && userStatus === 'banned' && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-xs">Suspended</Badge>
+              )}
+              {showStatus && userStatus === 'removed' && (
+                <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">Deactivated</Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{u.email}</p>
+            {options?.showModuleAssignments && u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {u.moduleAssignments.map(a => (
+                  <Badge key={a.id} variant="outline" className="text-xs">{getModuleName(a.module_id)}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge className={ROLE_COLORS[u.role]}>{ROLE_LABELS[u.role]}</Badge>
+          {renderUserActions(u)}
+        </div>
+      </div>
+    );
+  };
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if ((newRole === 'super_admin' || newRole === 'platform_admin') && !isSuperAdmin) {
