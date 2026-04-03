@@ -15,6 +15,8 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { useModuleAdmins } from '@/hooks/useContentAdmins';
+import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
