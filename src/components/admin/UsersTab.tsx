@@ -247,11 +247,12 @@ export function UsersTab() {
                       return (
                         <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                              <span className="font-semibold text-secondary-foreground">
+                            <Avatar className="h-10 w-10">
+                              {(u as any).avatar_url && <AvatarImage src={(u as any).avatar_url} alt={u.full_name || ''} />}
+                              <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
                                 {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                              </span>
-                            </div>
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="font-medium">{u.full_name || 'No name'}</p>
