@@ -38,6 +38,8 @@ export interface DashboardInsight {
   type: 'strong' | 'attention' | 'missed';
   label: string;
   detail?: string;
+  action?: string;
+  actionRoute?: string;
 }
 
 export interface SuggestedItem {
@@ -477,6 +479,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         metrics: realMetrics,
         chapterTitleMap,
         examWeightMap,
+        moduleId: filters?.moduleId,
       });
 
       // Convert CoachInsight[] to DashboardInsight[] for existing UI
@@ -487,6 +490,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           trend: 'attention',
           strength: 'strong',
           confidence: 'missed',
+          time_balance: 'attention',
         };
         return {
           type: typeMap[ci.type] || 'attention',
@@ -494,8 +498,11 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
             : ci.type === 'misallocation' ? 'Study Allocation'
             : ci.type === 'trend' ? 'Trend Alert'
             : ci.type === 'strength' ? 'Strength'
+            : ci.type === 'time_balance' ? 'Time Balance'
             : 'Confidence',
           detail: ci.message,
+          action: ci.action,
+          actionRoute: ci.actionRoute,
         };
       });
 

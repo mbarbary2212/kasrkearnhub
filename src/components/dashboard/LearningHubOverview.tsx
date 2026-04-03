@@ -71,8 +71,11 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         readinessTrend={dashboard.readinessTrend}
       />
 
-
-
+      {/* Study Coach Insights — top placement for visibility */}
+      <DashboardInsights 
+        insights={dashboard.insights} 
+        hasRealAccuracyData={dashboard.hasRealAccuracyData}
+      />
 
       {/* Today's Adaptive Study Plan */}
       <DashboardTodayPlan 
@@ -128,11 +131,6 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         studyStreak={dashboard.studyStreak}
       />
 
-      {/* Learning Insights */}
-      <DashboardInsights 
-        insights={dashboard.insights} 
-        hasRealAccuracyData={dashboard.hasRealAccuracyData}
-      />
 
       {/* Course Progress Map */}
       <DashboardProgressMap 
