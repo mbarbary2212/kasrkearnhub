@@ -6,6 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Input } from '@/components/ui/input';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,6 +45,7 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<'topic' | 'chapter'>('chapter');
+  const [userPopoverOpen, setUserPopoverOpen] = useState(false);
 
   // Get module admins for the current user to filter available modules
   const { data: moduleAdmins } = useQuery({
@@ -244,10 +250,10 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
     return modules.find(m => m.id === moduleId)?.name || 'Unknown';
   };
 
-  // Users eligible to be Topic Admins
-  const eligibleUsers = users.filter(u => 
-    u.role === 'student' || u.role === 'teacher' || u.role === 'topic_admin'
-  );
+  // Users eligible to be Topic Admins (exclude students)
+  const eligibleUsers = users
+    .filter(u => ['teacher', 'topic_admin', 'department_admin', 'platform_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
+    .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email));
 
   // Users with topic_admin role (for showing in the list even without assignments)
   const topicAdminUsers = users.filter(u => u.role === 'topic_admin');
@@ -401,18 +407,42 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
             {/* User Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">User *</label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleUsers.map(u => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.full_name || u.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={userPopoverOpen} className="w-full justify-between font-normal">
+                    {selectedUserId
+                      ? (eligibleUsers.find(u => u.id === selectedUserId)?.full_name || eligibleUsers.find(u => u.id === selectedUserId)?.email || 'Selected')
+                      : 'Search and select a user...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search by name or email..." />
+                    <CommandList>
+                      <CommandEmpty>No user found.</CommandEmpty>
+                      <CommandGroup>
+                        {eligibleUsers.map(u => (
+                          <CommandItem
+                            key={u.id}
+                            value={`${u.full_name || ''} ${u.email}`}
+                            onSelect={() => {
+                              setSelectedUserId(u.id);
+                              setUserPopoverOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span>{u.full_name || u.email}</span>
+                              {u.full_name && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Module Selection */}
