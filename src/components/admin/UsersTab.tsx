@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Users, Trash2, Plus, BookOpen, Search, ArrowUpDown, RotateCcw, KeyRound, Mail, Ban, UserX, UserCheck, MoreHorizontal, Send } from 'lucide-react';
+import { Loader2, Users, Trash2, Plus, BookOpen, Search, ArrowUpDown, RotateCcw, KeyRound, Mail, Ban, UserX, UserCheck, MoreHorizontal, Send, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AppRole } from '@/types/database';
@@ -28,6 +29,7 @@ import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { EditEmailDialog } from '@/components/admin/EditEmailDialog';
 import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
+import { UserAvatarUploadDialog } from '@/components/admin/UserAvatarUploadDialog';
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
@@ -81,6 +83,7 @@ export function UsersTab() {
     action: 'ban' | 'unban' | 'remove' | 'restore' | null;
     user: { id: string; full_name: string | null; email: string } | null;
   }>({ open: false, action: null, user: null });
+  const [avatarUploadUser, setAvatarUploadUser] = useState<{ id: string; email: string; full_name: string | null; avatar_url?: string | null } | null>(null);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if ((newRole === 'super_admin' || newRole === 'platform_admin') && !isSuperAdmin) {
@@ -245,11 +248,12 @@ export function UsersTab() {
                       return (
                         <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                              <span className="font-semibold text-secondary-foreground">
+                            <Avatar className="h-10 w-10">
+                              {(u as any).avatar_url && <AvatarImage src={(u as any).avatar_url} alt={u.full_name || ''} />}
+                              <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
                                 {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                              </span>
-                            </div>
+                              </AvatarFallback>
+                            </Avatar>
                             <div>
                               <div className="flex items-center gap-2">
                                 <p className="font-medium">{u.full_name || 'No name'}</p>
@@ -289,6 +293,11 @@ export function UsersTab() {
                                     <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-52">
+                                    {isSuperAdmin && (
+                                      <DropdownMenuItem onClick={() => setAvatarUploadUser({ id: u.id, email: u.email, full_name: u.full_name, avatar_url: (u as any).avatar_url })}>
+                                        <Camera className="h-4 w-4 mr-2" />Upload Photo
+                                      </DropdownMenuItem>
+                                    )}
                                     <DropdownMenuItem onClick={() => setEditEmailUser({ id: u.id, email: u.email, full_name: u.full_name })}>
                                       <Mail className="h-4 w-4 mr-2" />Edit Email
                                     </DropdownMenuItem>
@@ -769,6 +778,14 @@ export function UsersTab() {
         }}
         isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
       />
+
+      {avatarUploadUser && (
+        <UserAvatarUploadDialog
+          open={!!avatarUploadUser}
+          onOpenChange={(open) => { if (!open) setAvatarUploadUser(null); }}
+          user={avatarUploadUser}
+        />
+      )}
     </>
   );
 }
