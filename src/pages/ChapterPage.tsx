@@ -253,7 +253,7 @@ export default function ChapterPage() {
   const { data: matchingCount = 0 } = useChapterMatchingCount(chapterId);
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
   const { data: essayCount = 0 } = useChapterEssayCount(chapterId);
-  const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
+  const { data: caseScenarioCount = 0 } = useChapterCaseScenarioCount(chapterId);
 
   // Full practice data hooks - only fetch when Practice or Test section is active
   const isPracticeActive = activeSection === "practice" || activeSection === "test" || activeSection === "interactive";
