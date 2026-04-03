@@ -59,6 +59,9 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
 
   return (
     <>
+      {/* Risk Alerts — urgent warnings above everything */}
+      <DashboardRiskAlerts alerts={dashboard.riskAlerts} />
+
       {/* Core Status Strip with Sparkline */}
       <DashboardStatusStrip
         examReadiness={dashboard.examReadiness}

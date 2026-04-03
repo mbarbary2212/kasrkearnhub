@@ -600,6 +600,7 @@ function getEmptyDashboard(): DashboardData {
     chapterTitleMap: new Map(),
     activityDates: [],
     readinessTrend: [],
+    riskAlerts: [],
   };
 }
 
