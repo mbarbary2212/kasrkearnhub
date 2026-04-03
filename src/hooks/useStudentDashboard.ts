@@ -531,12 +531,16 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         ? realMetrics.slice(-14).map(m => m.readiness_score)
         : [];
 
-      // Build risk alerts from real metrics + exam weights
+      // Build risk alerts from real metrics + exam weights, deduped against coach
+      const coachChapterIds = new Set(
+        coachInsights.filter(ci => ci.chapterId).map(ci => ci.chapterId!)
+      );
       const riskAlerts = buildRiskAlerts({
         metrics: realMetrics,
         chapterTitleMap,
         examWeightMap,
         moduleId: filters?.moduleId,
+        coachChapterIds,
       });
 
       return {
