@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { fetchSeenQuestionIds, selectWithUnseenPreference } from '@/lib/examQuestionSelector';
 
 interface MockTimedExamProps {
   moduleId: string;
