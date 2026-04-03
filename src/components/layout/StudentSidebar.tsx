@@ -82,14 +82,24 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const params = useParams();
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [submenuTop, setSubmenuTop] = useState(0);
   const sidebarRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const { isAdmin } = useAuthContext();
+  const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
+  const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
+
+  // Extract moduleId/chapterId from route for lead avatars
+  const routeModuleId = params.moduleId;
+  const routeChapterId = params.chapterId;
+
+  // Fetch leads for sidebar (only for students)
+  const { data: moduleAdmins } = useModuleAdmins(isStudent ? routeModuleId : undefined);
+  const { data: chapterAdmins } = useChapterAdmins(isStudent ? routeChapterId : undefined);
 
   // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
