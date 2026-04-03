@@ -47,11 +47,15 @@ export async function exportBlueprintToExcel(
   const chapterIds = chapters.map(ch => ch.id);
   const sectionsByChapter = new Map<string, { id: string; name: string; section_number: string | null }[]>();
   if (chapterIds.length > 0) {
-    const { data: sections } = await supabase
+    const { data: sections, error } = await supabase
       .from('sections')
       .select('id, name, section_number, chapter_id, display_order')
       .in('chapter_id', chapterIds)
-      .order('display_order', { ascending: true });
+      .order('display_order', { ascending: true })
+      .limit(5000);
+    if (error) {
+      console.error('Blueprint export: failed to fetch sections', error);
+    }
     if (sections) {
       for (const s of sections) {
         const list = sectionsByChapter.get(s.chapter_id) || [];
@@ -59,6 +63,7 @@ export async function exportBlueprintToExcel(
         sectionsByChapter.set(s.chapter_id, list);
       }
     }
+    console.log(`Blueprint export: ${sections?.length ?? 0} sections across ${sectionsByChapter.size} chapters`);
   }
 
   const wb = new ExcelJS.Workbook();
