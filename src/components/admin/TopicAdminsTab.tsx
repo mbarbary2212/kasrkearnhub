@@ -403,7 +403,7 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
               {!isSuperAdmin && !isPlatformAdmin && ' You can only assign within your modules.'}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto min-h-0">
             {/* User Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">User *</label>
