@@ -13,6 +13,7 @@ export interface TabOption {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   count: number;
+  subcounts?: { label: string; count: number }[];
 }
 
 interface MobileSectionDropdownProps {
