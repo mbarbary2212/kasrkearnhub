@@ -12,6 +12,7 @@ import { ChapterHealthHeatmap } from './ChapterHealthHeatmap';
 import { StudyStreakCalendar } from './StudyStreakCalendar';
 import { LearningPatternSummary } from './LearningPatternSummary';
 import { WeeklyProgressReport } from './WeeklyProgressReport';
+import { DashboardRiskAlerts } from './DashboardRiskAlerts';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
@@ -58,6 +59,9 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
 
   return (
     <>
+      {/* Risk Alerts — urgent warnings above everything */}
+      <DashboardRiskAlerts alerts={dashboard.riskAlerts} />
+
       {/* Core Status Strip with Sparkline */}
       <DashboardStatusStrip
         examReadiness={dashboard.examReadiness}

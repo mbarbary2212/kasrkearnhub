@@ -14,8 +14,9 @@ import {
   getWeakTopics,
   calculateAggregateReadiness,
   buildCoachInsights,
+  buildRiskAlerts,
 } from '@/lib/studentMetrics';
-import type { PlannedTask, AdaptiveStudyPlan, CoachInsight } from '@/lib/studentMetrics';
+import type { PlannedTask, AdaptiveStudyPlan, CoachInsight, RiskAlert } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
@@ -113,6 +114,9 @@ export interface DashboardData {
   chapterTitleMap: Map<string, string>;
   activityDates: string[];
   readinessTrend: number[];
+
+  // Risk alerts
+  riskAlerts: RiskAlert[];
 }
 
 interface DashboardFilters {
@@ -527,6 +531,14 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         ? realMetrics.slice(-14).map(m => m.readiness_score)
         : [];
 
+      // Build risk alerts from real metrics + exam weights
+      const riskAlerts = buildRiskAlerts({
+        metrics: realMetrics,
+        chapterTitleMap,
+        examWeightMap,
+        moduleId: filters?.moduleId,
+      });
+
       return {
         examReadiness: finalExamReadiness,
         coveragePercent,
@@ -554,6 +566,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         chapterTitleMap,
         activityDates,
         readinessTrend,
+        riskAlerts,
       };
     },
     enabled: !!user?.id,
@@ -587,6 +600,7 @@ function getEmptyDashboard(): DashboardData {
     chapterTitleMap: new Map(),
     activityDates: [],
     readinessTrend: [],
+    riskAlerts: [],
   };
 }
 

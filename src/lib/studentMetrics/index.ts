@@ -10,6 +10,8 @@ export { buildAdaptiveStudyPlan } from './buildAdaptiveStudyPlan';
 export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo, TaskStudyModeKey } from './buildAdaptiveStudyPlan';
 export { buildCoachInsights } from './buildCoachInsights';
 export type { CoachInsight, CoachInsightInput } from './buildCoachInsights';
+export { buildRiskAlerts, RISK_THRESHOLDS } from './buildRiskAlerts';
+export type { RiskAlert, RiskAlertInput } from './buildRiskAlerts';
 
 // Planner thresholds & exam mode
 export {
