@@ -111,14 +111,13 @@ export function selectWithUnseenPreference<T extends HasId>(
   }
 
   // Compute proportional quotas per chapter
-  const chapterKeys = [...byChapter.keys()];
+  const chapterKeys = Array.from(byChapter.keys());
   const quotas = new Map<string, number>();
   let assigned = 0;
   for (let i = 0; i < chapterKeys.length; i++) {
     const key = chapterKeys[i];
     const chapterPool = byChapter.get(key)!;
     if (i === chapterKeys.length - 1) {
-      // Last chapter gets the remainder to avoid rounding drift
       quotas.set(key, needed - assigned);
     } else {
       const quota = Math.round((chapterPool.length / pool.length) * needed);
@@ -129,10 +128,11 @@ export function selectWithUnseenPreference<T extends HasId>(
 
   // Select within each chapter with unseen preference
   const result: T[] = [];
-  for (const [key, chapterPool] of byChapter) {
+  const entries = Array.from(byChapter.entries());
+  for (const [key, chapterPool] of entries) {
     const quota = Math.min(quotas.get(key) ?? 0, chapterPool.length);
     if (quota <= 0) continue;
-    result.push(...selectFromSlice(chapterPool, quota, seenMap));
+    result.push(...selectFromSlice<T>(chapterPool, quota, seenMap));
   }
 
   // Final shuffle so chapters aren't grouped together in the exam
