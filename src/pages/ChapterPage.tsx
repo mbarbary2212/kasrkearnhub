@@ -646,8 +646,9 @@ export default function ChapterPage() {
       practical: 0,
       matching: matchingCount,
       images: 0,
+      short_cases: caseScenarioCount,
     });
-  }, [mcqCount, sbaCount, trueFalseCount, essayCount, osceCount, matchingCount]);
+  }, [mcqCount, sbaCount, trueFalseCount, essayCount, osceCount, matchingCount, caseScenarioCount]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
