@@ -250,10 +250,10 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
     return modules.find(m => m.id === moduleId)?.name || 'Unknown';
   };
 
-  // Users eligible to be Topic Admins
-  const eligibleUsers = users.filter(u => 
-    u.role === 'student' || u.role === 'teacher' || u.role === 'topic_admin'
-  );
+  // Users eligible to be Topic Admins (exclude students)
+  const eligibleUsers = users
+    .filter(u => ['teacher', 'topic_admin', 'department_admin', 'platform_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
+    .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email));
 
   // Users with topic_admin role (for showing in the list even without assignments)
   const topicAdminUsers = users.filter(u => u.role === 'topic_admin');
