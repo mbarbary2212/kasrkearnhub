@@ -149,12 +149,6 @@ export function StudentSidebar() {
       setActiveSubmenu(null);
       return;
     }
-    // Learning for admin goes to admin learning page
-    if (item.id === 'learning' && isAdmin) {
-      navigate('/admin/learning');
-      setActiveSubmenu(null);
-      return;
-    }
     // Direct path items
     if (item.path) {
       navigate(item.path);

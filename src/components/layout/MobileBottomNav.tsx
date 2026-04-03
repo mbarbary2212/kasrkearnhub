@@ -137,7 +137,6 @@ export function MobileBottomNav() {
     }
     if (tab.id === 'overview') return location.pathname === '/admin/overview';
     if (tab.id === 'learning') {
-      if (isAdmin) return location.pathname === '/admin/learning';
       return activeSheet === 'learning' ||
         location.pathname.startsWith('/year/') ||
         location.pathname.startsWith('/module/') ||
