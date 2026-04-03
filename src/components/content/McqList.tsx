@@ -126,7 +126,26 @@ export function McqList({
     canManage: canManageContent,
     isCheckingPermission: permissionLoading,
   } = useAddPermissionGuard({ moduleId, chapterId });
-  
+
+  // ─── Adaptive difficulty: derive chapter state for question reordering ───
+  const { data: _chapterMetricsForDifficulty } = useStudentChapterMetrics(moduleId ?? undefined);
+  const chapterStateForDifficulty = useMemo(() => {
+    if (isAdmin || !_chapterMetricsForDifficulty || !chapterId) return undefined;
+    const metric = _chapterMetricsForDifficulty.find(m => m.chapter_id === chapterId);
+    if (!metric) return 'not_started' as const;
+    return classifyChapterState({
+      coverage_percent: metric.coverage_percent,
+      mcq_attempts: metric.mcq_attempts,
+      mcq_accuracy: metric.mcq_accuracy,
+      recent_mcq_accuracy: metric.recent_mcq_accuracy,
+      readiness_score: metric.readiness_score,
+      flashcards_due: metric.flashcards_due,
+      flashcards_overdue: metric.flashcards_overdue,
+      last_activity_at: metric.last_activity_at,
+      confidence_mismatch_rate: metric.confidence_mismatch_rate,
+    });
+  }, [isAdmin, _chapterMetricsForDifficulty, chapterId]);
+
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
   // Single-open-at-a-time feedback panel
   const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
