@@ -39,6 +39,7 @@ import {
   useChapterClinicalCaseCount,
 } from "@/hooks/useChapterContent";
 import { useChapterOsceQuestions, useChapterOsceCount } from "@/hooks/useOsceQuestions";
+import { useChapterCaseScenarios, useChapterCaseScenarioCount } from "@/hooks/useCaseScenarios";
 import { useChapterProgress } from "@/hooks/useChapterProgress";
 import { useChapterMatchingQuestions, useChapterMatchingCount } from "@/hooks/useMatchingQuestions";
 import { useClinicalCases } from "@/hooks/useClinicalCases";
