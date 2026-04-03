@@ -15,8 +15,9 @@ import {
   calculateAggregateReadiness,
   buildCoachInsights,
   buildRiskAlerts,
+  buildExamReadinessIndicator,
 } from '@/lib/studentMetrics';
-import type { PlannedTask, AdaptiveStudyPlan, CoachInsight, RiskAlert } from '@/lib/studentMetrics';
+import type { PlannedTask, AdaptiveStudyPlan, CoachInsight, RiskAlert, ExamReadinessIndicator } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
