@@ -82,6 +82,7 @@ export function UsersTab() {
     action: 'ban' | 'unban' | 'remove' | 'restore' | null;
     user: { id: string; full_name: string | null; email: string } | null;
   }>({ open: false, action: null, user: null });
+  const [avatarUploadUser, setAvatarUploadUser] = useState<{ id: string; email: string; full_name: string | null; avatar_url?: string | null } | null>(null);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if ((newRole === 'super_admin' || newRole === 'platform_admin') && !isSuperAdmin) {
