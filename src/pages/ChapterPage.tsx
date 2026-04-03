@@ -122,6 +122,7 @@ import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
+import { getRecommendedPath } from '@/lib/recommendedPath';
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
 
