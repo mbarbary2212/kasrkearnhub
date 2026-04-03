@@ -34,7 +34,7 @@ const ACTIVITY_MAP: Record<string, Record<string, string>> = {
     mcqs:       'Practicing MCQs',
     sba:        'Practicing SBA',
     true_false: 'Practicing True/False',
-    essays:     'Practicing Short Answer',
+    essays:     'Practicing Short Essay',
     osce:       'Practicing OSCE',
     practical:  'Practicing Practicals',
     matching:   'Practicing Matching',
