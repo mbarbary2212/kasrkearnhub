@@ -120,6 +120,8 @@ import { cn } from "@/lib/utils";
 import { useChapterAdmins } from '@/hooks/useContentAdmins';
 import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
+import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
 
