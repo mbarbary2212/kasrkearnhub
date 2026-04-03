@@ -114,6 +114,9 @@ export interface DashboardData {
   chapterTitleMap: Map<string, string>;
   activityDates: string[];
   readinessTrend: number[];
+
+  // Risk alerts
+  riskAlerts: RiskAlert[];
 }
 
 interface DashboardFilters {
