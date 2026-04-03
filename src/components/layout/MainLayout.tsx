@@ -59,9 +59,23 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const isMobile = useIsMobile();
   const { activeYear } = useActiveYear();
+
+  // Section & subtab breadcrumb from URL params
+  const SECTION_ICONS: Record<string, { icon: LucideIcon; label: string }> = useMemo(() => ({
+    resources:   { icon: BookOpen,       label: 'Resources' },
+    interactive: { icon: Stethoscope,    label: 'Interactive' },
+    practice:    { icon: PenTool,        label: 'Practice' },
+    test:        { icon: ClipboardCheck, label: 'Test Yourself' },
+  }), []);
+  const currentSection = searchParams.get('section');
+  const currentSubtab = searchParams.get('subtab');
+  const sectionConfig = currentSection ? SECTION_ICONS[currentSection] : null;
+  const allTabs = useMemo(() => [...RESOURCES_TABS, ...INTERACTIVE_TABS, ...PRACTICE_TABS], []);
+  const subtabConfig = currentSubtab ? allTabs.find(t => t.id === currentSubtab) : null;
 
   // Extract moduleId and chapterId from URL for breadcrumb display
   const moduleIdMatch = location.pathname.match(/\/module\/([^/]+)/);
