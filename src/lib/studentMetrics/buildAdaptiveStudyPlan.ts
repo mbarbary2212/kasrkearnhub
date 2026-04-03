@@ -319,7 +319,9 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     }
 
     // ── weakness slot (light): in-progress chapters ──
+    // Phase 2.5: in_progress → mix of practice + assessment
     {
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       let reason = 'Continue where you left';
       if (patternResult?.pattern === 'hesitant') reason = 'Build confidence with quick practice';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -330,19 +332,20 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       candidates.push({
         slot: 'weakness',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
+        tab: modeConfig.section,
         priority: basePriority * multipliers.weakness,
         state,
         trend,
         learningPattern: patternLabel,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
     }
   }
