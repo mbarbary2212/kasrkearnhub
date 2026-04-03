@@ -645,39 +645,45 @@ export function UsersTab() {
             {isSuperAdmin && (
               <TabsContent value="platform-admins" className="mt-4">
                 <div className="space-y-4">
-                  <div className="flex justify-end">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input placeholder="Search platform admins..." value={platformAdminSearch} onChange={(e) => setPlatformAdminSearch(e.target.value)} className="pl-9" />
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => setPlatformAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="gap-2">
                       <ArrowUpDown className="w-4 h-4" />
                       {platformAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
                     </Button>
                   </div>
-                  {users.filter(u => u.role === 'platform_admin').length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No platform admins assigned. Change a user's role to "Platform Admin" in the Directory tab.
-                    </p>
-                  ) : (
-                    [...users.filter(u => u.role === 'platform_admin')]
+                  {(() => {
+                    const platformAdmins = users.filter(u => u.role === 'platform_admin');
+                    const filtered = platformAdmins
+                      .filter(u => {
+                        if (!platformAdminSearch.trim()) return true;
+                        const search = platformAdminSearch.toLowerCase();
+                        return u.full_name?.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+                      })
                       .sort((a, b) => {
                         const nameA = (a.full_name || a.email).toLowerCase();
                         const nameB = (b.full_name || b.email).toLowerCase();
                         return platformAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                      })
-                      .map(u => (
-                        <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                              <span className="font-semibold text-secondary-foreground">
-                                {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{u.full_name || 'No name'}</p>
-                              <p className="text-sm text-muted-foreground">{u.email}</p>
-                            </div>
-                          </div>
-                          <Badge className={ROLE_COLORS.platform_admin}>Platform Admin</Badge>
-                        </div>
-                      ))
+                      });
+                    if (platformAdmins.length === 0) {
+                      return (
+                        <p className="text-muted-foreground text-center py-8">
+                          No platform admins assigned. Change a user's role to "Platform Admin" in the Directory tab.
+                        </p>
+                      );
+                    }
+                    if (filtered.length === 0) {
+                      return <p className="text-muted-foreground text-center py-8">No platform admins matching your search.</p>;
+                    }
+                    return (
+                      <div className="space-y-3">
+                        {filtered.map(u => renderUserRow(u))}
+                      </div>
+                    );
+                  })()}
                   )}
                 </div>
               </TabsContent>
