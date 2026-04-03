@@ -45,6 +45,7 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<string[]>([]);
   const [assignmentType, setAssignmentType] = useState<'topic' | 'chapter'>('chapter');
+  const [userPopoverOpen, setUserPopoverOpen] = useState(false);
 
   // Get module admins for the current user to filter available modules
   const { data: moduleAdmins } = useQuery({
