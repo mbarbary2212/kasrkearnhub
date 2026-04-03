@@ -118,6 +118,9 @@ export interface DashboardData {
 
   // Risk alerts
   riskAlerts: RiskAlert[];
+
+  // Exam readiness indicator
+  examReadinessIndicator: ExamReadinessIndicator;
 }
 
 interface DashboardFilters {
