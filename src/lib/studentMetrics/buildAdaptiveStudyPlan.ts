@@ -281,8 +281,11 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     if (state === 'strong') continue;
 
     // ── weakness slot: weak / unstable ──
+    // Phase 2.5: weak → learning mode; unstable → practice mode
     if (state === 'weak' || state === 'unstable') {
-      let reason = state === 'weak' ? 'Low recent accuracy' : 'Needs reinforcement';
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
+
+      let reason = state === 'weak' ? 'Review with Socrates first' : 'Needs more practice';
       if (patternResult?.pattern === 'misconception') reason = 'Confident mistakes detected';
       else if (patternResult?.pattern === 'hesitant') reason = 'You know this, but hesitate';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -296,19 +299,20 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       candidates.push({
         slot: 'weakness',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
+        tab: modeConfig.section,
         priority: basePriority * multipliers.weakness,
         state,
         trend,
         learningPattern: patternLabel,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
       continue;
     }
