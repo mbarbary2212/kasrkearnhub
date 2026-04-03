@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Mcq } from '@/hooks/useMcqs';
 import { 
   MockExamSettings, 
@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { fetchSeenQuestionIds, selectWithUnseenPreference } from '@/lib/examQuestionSelector';
 
 interface MockTimedExamProps {
   moduleId: string;
@@ -133,15 +134,33 @@ export function MockTimedExam({
     }
   };
 
-  // Shuffle and select questions
-  const selectQuestions = useCallback((count: number) => {
-    const shuffled = [...examMcqs].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, count);
+  // Seen-question cache: fetched once when exam pool is ready
+  const seenMapRef = useRef<Map<string, import('@/lib/examQuestionSelector').SeenQuestionInfo> | null>(null);
+  const seenFetchedRef = useRef(false);
+
+  // Pre-fetch seen questions when the component mounts with a valid pool
+  useEffect(() => {
+    if (!user?.id || examMcqs.length === 0 || seenFetchedRef.current) return;
+    seenFetchedRef.current = true;
+    fetchSeenQuestionIds(user.id, moduleId).then(map => {
+      seenMapRef.current = map;
+    });
+  }, [user?.id, moduleId, examMcqs.length]);
+
+  // Select questions with unseen preference
+  const selectQuestionsUnseen = useCallback((count: number) => {
+    const seenMap = seenMapRef.current ?? new Map();
+    return selectWithUnseenPreference(examMcqs, count, seenMap);
   }, [examMcqs]);
 
   // Start the exam with selected mode and question count
   const handleStartExam = async (mode: TestMode, questionCount: number) => {
-    const selected = selectQuestions(questionCount);
+    // Ensure seen data is loaded; if not, fetch synchronously
+    if (!seenMapRef.current && user?.id) {
+      seenMapRef.current = await fetchSeenQuestionIds(user.id, moduleId);
+    }
+
+    const selected = selectQuestionsUnseen(questionCount);
     setExamQuestions(selected);
     setTestMode(mode);
     setTimeRemaining(questionCount * effectiveSecondsPerQuestion);
