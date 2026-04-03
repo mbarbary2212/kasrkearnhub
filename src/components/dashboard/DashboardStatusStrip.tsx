@@ -26,6 +26,7 @@ interface DashboardStatusStripProps {
   studyStreak: number;
   readinessResult?: ReadinessResult;
   readinessTrend?: number[];
+  examReadinessIndicator?: ExamReadinessIndicator;
 }
 
 export function DashboardStatusStrip({
@@ -38,6 +39,7 @@ export function DashboardStatusStrip({
   studyStreak,
   readinessResult,
   readinessTrend,
+  examReadinessIndicator,
 }: DashboardStatusStripProps) {
   const capMessage = readinessResult?.cap ? getCapMessage(readinessResult.cap) : null;
   const hasDetailedBreakdown = !!readinessResult;
