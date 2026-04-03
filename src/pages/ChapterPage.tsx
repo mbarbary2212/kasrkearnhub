@@ -287,6 +287,26 @@ export default function ChapterPage() {
   const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
   const { data: interactiveAlgorithms } = useChapterAlgorithms(chapterId);
 
+  // ─── Recommended Path: derive chapter state from metrics ───
+  const isStudent = !showAddControls && !auth.isTeacher;
+  const { data: chapterMetrics } = useStudentChapterMetrics(contentModuleId ?? undefined);
+  const currentChapterState = useMemo(() => {
+    if (!isStudent || !chapterMetrics || !chapterId) return undefined;
+    const metric = chapterMetrics.find(m => m.chapter_id === chapterId);
+    if (!metric) return 'not_started' as const;
+    return classifyChapterState({
+      coverage_percent: metric.coverage_percent,
+      mcq_attempts: metric.mcq_attempts,
+      mcq_accuracy: metric.mcq_accuracy,
+      recent_mcq_accuracy: metric.recent_mcq_accuracy,
+      readiness_score: metric.readiness_score,
+      flashcards_due: metric.flashcards_due,
+      flashcards_overdue: metric.flashcards_overdue,
+      last_activity_at: metric.last_activity_at,
+      confidence_mismatch_rate: metric.confidence_mismatch_rate,
+    });
+  }, [isStudent, chapterMetrics, chapterId]);
+
   // Build a map of section_id → display_order for sorting
   const sectionOrderMap = useMemo(() => {
     const map = new Map<string, number>();
