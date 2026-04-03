@@ -422,9 +422,14 @@ export function McqList({
     } else {
       result = sortMcqs(result, searchFilters.sortBy);
     }
+
+    // Adaptive difficulty reordering for students (after all filters/sorts)
+    if (!isAdmin && !showDeleted && chapterStateForDifficulty) {
+      result = adaptiveReorder(result, chapterStateForDifficulty, auth.user?.id);
+    }
     
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id]);
 
   // selectAll defined after filteredMcqs is available
   const selectAll = useCallback(() => {
