@@ -435,6 +435,7 @@ function LoggedInHome() {
                             <div className="min-w-0 flex-1">
                               <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
                               <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />
+                              <ModuleCardLeads moduleId={module.id} />
                             </div>
                             <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                           </div>

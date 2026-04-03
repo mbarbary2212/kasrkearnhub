@@ -357,6 +357,18 @@ export function StudentSidebar() {
         </div>
       </nav>
 
+      {/* Your Team — module/topic leads for students */}
+      {isStudent && (moduleAdmins?.length || chapterAdmins?.length) ? (
+        <div className="px-2 pb-2 mt-auto border-t border-border/50 pt-2 space-y-1.5">
+          {moduleAdmins && moduleAdmins.length > 0 && (
+            <LeadAvatarStack admins={moduleAdmins} maxVisible={3} avatarSize="h-7 w-7" label="Module" />
+          )}
+          {chapterAdmins && chapterAdmins.length > 0 && (
+            <LeadAvatarStack admins={chapterAdmins} maxVisible={3} avatarSize="h-7 w-7" label="Topic" />
+          )}
+        </div>
+      ) : null}
+
       {renderSubmenu()}
     </aside>
   );
