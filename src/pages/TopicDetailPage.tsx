@@ -992,7 +992,7 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Essays / Short Answer */}
+                {/* Short Essays */}
                 {practiceTab === 'essays' && (
                   <div>
                     {showAddControls && topicId && moduleId && (
