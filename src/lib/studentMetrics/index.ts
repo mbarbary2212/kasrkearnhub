@@ -10,3 +10,14 @@ export { buildAdaptiveStudyPlan } from './buildAdaptiveStudyPlan';
 export type { PlannedTask, AdaptiveStudyPlan, AdaptivePlanInput, ChapterInfo, TaskStudyModeKey } from './buildAdaptiveStudyPlan';
 export { buildCoachInsights } from './buildCoachInsights';
 export type { CoachInsight } from './buildCoachInsights';
+
+// Planner thresholds & exam mode
+export {
+  classifyExamMode,
+  getDaysUntilExam,
+  PRIORITY_CAP,
+  MCQ_COMPLETION_THRESHOLD,
+  COVERAGE_COMPLETION_THRESHOLD,
+  READINESS_COMPLETION_THRESHOLD,
+} from './plannerThresholds';
+export type { ExamMode } from './plannerThresholds';

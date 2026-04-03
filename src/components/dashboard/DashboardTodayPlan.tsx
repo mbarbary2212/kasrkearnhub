@@ -1,13 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain } from 'lucide-react';
+import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
+import type { DailyPlan } from '@/hooks/useDailyStudyPlan';
 
 interface DashboardTodayPlanProps {
   suggestions: SuggestedItem[];
   studyPlan?: AdaptiveStudyPlan | null;
   onNavigate: (moduleId?: string, chapterId?: string, tab?: string, subtab?: string) => void;
   confidenceInsight?: string | null;
+  dailyPlan?: DailyPlan | null;
+  yesterdayAdherence?: { completed: number; total: number } | null;
 }
 
 /** Maps study mode keys to icons */
@@ -30,7 +33,6 @@ const legacyIconMap: Record<string, React.ElementType> = {
 };
 
 function getTaskIcon(item: SuggestedItem): React.ElementType {
-  // Prefer prescribed study mode icon
   if (item.prescribedStudyMode?.key) {
     return studyModeIconMap[item.prescribedStudyMode.key] ?? BookOpen;
   }
@@ -43,7 +45,38 @@ const trendIndicator: Record<string, { icon: string; className: string }> = {
   stable: { icon: '', className: '' },
 };
 
-export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight }: DashboardTodayPlanProps) {
+/** Status indicator component */
+function TaskStatusDot({ status }: { status?: string }) {
+  if (status === 'completed') {
+    return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />;
+  }
+  if (status === 'partial') {
+    return (
+      <div className="relative w-3.5 h-3.5 flex-shrink-0">
+        <Circle className="w-3.5 h-3.5 text-amber-400" />
+        <div className="absolute inset-0 overflow-hidden rounded-full" style={{ clipPath: 'inset(50% 0 0 0)' }}>
+          <Circle className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+        </div>
+      </div>
+    );
+  }
+  return <Circle className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />;
+}
+
+/** Find task status from dailyPlan by chapter ID */
+function getTaskStatus(dailyPlan: DailyPlan | null | undefined, chapterId?: string): string | undefined {
+  if (!dailyPlan || !chapterId) return undefined;
+  const task = dailyPlan.tasks.find(t => t.chapter_id === chapterId);
+  return task?.status;
+}
+
+function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: string): boolean {
+  if (!dailyPlan || !chapterId) return false;
+  const task = dailyPlan.tasks.find(t => t.chapter_id === chapterId);
+  return task?.is_carried_over ?? false;
+}
+
+export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
       <Card>
@@ -65,6 +98,8 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
   const rationale = studyPlan?.rationale;
   const totalMinutes = studyPlan?.totalEstimatedMinutes ?? suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
   const insight = studyPlan?.confidenceInsight ?? confidenceInsight;
+  const examMode = studyPlan?.examMode;
+  const daysUntilExam = studyPlan?.daysUntilExam;
 
   return (
     <Card>
@@ -72,10 +107,21 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg font-heading">Today's Study Plan</CardTitle>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               {planLabel && (
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                   {planLabel}
+                </span>
+              )}
+              {/* Exam mode badge */}
+              {examMode && examMode !== 'normal' && daysUntilExam !== null && daysUntilExam !== undefined && (
+                <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  examMode === 'intensive'
+                    ? 'text-destructive bg-destructive/10'
+                    : 'text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                }`}>
+                  <CalendarClock className="w-3 h-3" />
+                  Exam in {daysUntilExam}d
                 </span>
               )}
               {totalMinutes > 0 && (
@@ -88,6 +134,12 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
         </div>
         {rationale && (
           <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{rationale}</p>
+        )}
+        {/* Yesterday adherence */}
+        {yesterdayAdherence && yesterdayAdherence.total > 0 && (
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Yesterday: {yesterdayAdherence.completed}/{yesterdayAdherence.total} completed
+          </p>
         )}
       </CardHeader>
       <CardContent className="space-y-3">
@@ -104,7 +156,15 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
               {(() => { const Icon = getTaskIcon(primarySuggestion); return <Icon className="w-5 h-5 text-primary" />; })()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">▶ Start Here</p>
+              <div className="flex items-center gap-1.5">
+                <TaskStatusDot status={getTaskStatus(dailyPlan, primarySuggestion.chapterId)} />
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-wider">▶ Start Here</p>
+                {isCarriedOver(dailyPlan, primarySuggestion.chapterId) && (
+                  <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                    <RotateCcw className="w-2.5 h-2.5" />carried
+                  </span>
+                )}
+              </div>
               <p className="font-medium truncate text-foreground">{primarySuggestion.title}</p>
               {primarySuggestion.reason && (
                 <p className="text-xs text-muted-foreground">
@@ -125,10 +185,14 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           <div className="space-y-1.5">
             {otherSuggestions.map((item, idx) => {
               const Icon = getTaskIcon(item);
+              const taskStatus = getTaskStatus(dailyPlan, item.chapterId);
+              const carried = isCarriedOver(dailyPlan, item.chapterId);
               return (
                 <div
                   key={idx}
-                  className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors bg-muted/50 hover:bg-muted group"
+                  className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors group ${
+                    taskStatus === 'completed' ? 'bg-muted/30 opacity-60' : 'bg-muted/50 hover:bg-muted'
+                  }`}
                   onClick={() => {
                     const tab = item.prescribedStudyMode?.tab || item.tab || 'resources';
                     onNavigate(item.moduleId, item.chapterId, tab, item.subtab);
@@ -138,7 +202,15 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                     <Icon className="w-4 h-4 text-secondary-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate text-foreground">{item.title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <TaskStatusDot status={taskStatus} />
+                      <p className="text-sm font-medium truncate text-foreground">{item.title}</p>
+                      {carried && (
+                        <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0">
+                          <RotateCcw className="w-2.5 h-2.5" />carried
+                        </span>
+                      )}
+                    </div>
                     {item.reason && (
                       <p className="text-xs text-muted-foreground truncate">
                         {item.trend && item.trend !== 'stable' && (
