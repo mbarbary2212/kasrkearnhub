@@ -547,6 +547,22 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         coachChapterIds,
       });
 
+      // Build exam readiness indicator
+      const avgAccuracy = realMetrics.length > 0
+        ? realMetrics.reduce((s, m) => s + (m.mcq_accuracy ?? 0), 0) / realMetrics.length
+        : 0;
+      const overdueCount = realMetrics.filter(m => {
+        if (!m.next_review_at) return false;
+        return new Date(m.next_review_at) < new Date();
+      }).length;
+      const examReadinessIndicator = buildExamReadinessIndicator({
+        readinessScore: finalExamReadiness,
+        coveragePercent,
+        mcqAccuracy: Math.round(avgAccuracy),
+        weakChapterCount: weakChapters.length,
+        overdueReviewCount: overdueCount,
+      });
+
       return {
         examReadiness: finalExamReadiness,
         coveragePercent,
@@ -575,6 +591,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         activityDates,
         readinessTrend,
         riskAlerts,
+        examReadinessIndicator,
       };
     },
     enabled: !!user?.id,
