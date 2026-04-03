@@ -187,8 +187,26 @@ export function buildRiskAlerts(input: RiskAlertInput): RiskAlert[] {
     decliningPerformanceAlert(input),
   ].filter((a): a is RiskAlert => a !== null);
 
+  // Suppress alerts that overlap with coach insights already visible
+  const coachIds = input.coachChapterIds;
+  const filtered = coachIds && coachIds.size > 0
+    ? candidates.filter(a => {
+        // high-yield-low-readiness targets a single chapter the coach likely covers
+        if (a.id === 'high-yield-low-readiness') {
+          const risky = input.metrics
+            .filter(m => {
+              const boost = getExamWeightBoost(m.chapter_id, input.examWeightMap);
+              return boost >= RISK_THRESHOLDS.highYieldBoost
+                && m.readiness_score < RISK_THRESHOLDS.lowReadinessThreshold;
+            });
+          return !risky.every(m => coachIds.has(m.chapter_id));
+        }
+        return true;
+      })
+    : candidates;
+
   // Sort by priority descending, take max
-  return candidates
+  return filtered
     .sort((a, b) => b.priority - a.priority)
     .slice(0, RISK_THRESHOLDS.maxAlerts);
 }
