@@ -1,50 +1,63 @@
 
 
-# Unify Admin Learning Navigation with Student Behavior
+# Add Section & Subtab Breadcrumb to Header
 
 ## Problem
-Admin "Learning" tab navigates to `/admin/learning` (module browser) instead of showing the section submenu (Resources/Interactive/Practice/Test) like students. Admin has no way to reach chapter sections from the sidebar without manually editing the URL.
+When a user (student or admin) is inside a chapter viewing e.g. Practice > MCQs, the header breadcrumb stops at the chapter name. There's no indication of the current section or subtab.
+
+## Solution
+Extend the existing breadcrumb in `MainLayout.tsx` to append the active **section** and **subtab** as icon-only breadcrumb segments (with tooltips for labels). Read `section` and `subtab` from URL search params since both `ChapterPage` and `TopicDetailPage` already use `?section=practice&subtab=mcqs`.
 
 ## Changes
 
-### 1. Admin "Learning" tab → same behavior as student
-**Files:** `StudentSidebar.tsx`, `MobileBottomNav.tsx`
+### 1. `src/components/layout/MainLayout.tsx`
 
-Remove the admin-specific overrides that short-circuit Learning to `/admin/learning`. Instead, let the existing student logic run for admins too:
-- On a chapter/topic page → show submenu (Resources, Interactive, Practice, Test)
-- Not on a chapter page → resume last position or go to dashboard
+After the chapter breadcrumb (line ~207), add two more breadcrumb segments:
 
-**StudentSidebar.tsx (~lines 132-157):**
-- Remove the `if (isAdmin) return location.pathname === '/admin/learning'` active-state override for Learning
-- Remove the `if (item.id === 'learning' && isAdmin) navigate('/admin/learning')` click handler
-- Let the existing student Learning logic handle both roles
+**Section segment** — read `searchParams.get('section')`, map to icon:
+- `resources` → `BookOpen`
+- `interactive` → `Sparkles` (or `Stethoscope`)
+- `practice` → `PenTool`
+- `test` → `ClipboardCheck`
 
-**MobileBottomNav.tsx (~lines 38-41, 139-140):**
-- Change admin Learning tab from `path: '/admin/learning'` to `action: 'learning'` (same as student)
-- Remove admin-specific active-state check for Learning
+**Subtab segment** — read `searchParams.get('subtab')`, map to icon using existing `RESOURCES_TABS`, `INTERACTIVE_TABS`, `PRACTICE_TABS` from `tabConfig.ts` (each already has an `icon` field and `id` matching the subtab value).
 
-### 2. Admin Dashboard → 60/40 layout with modules + admin intel
-**File:** `AdminDashboard.tsx`
+Both rendered as icon-only with `Tooltip` showing the label. Only shown when on a chapter/topic page (i.e., when `currentChapter` exists and `section` param is present).
 
-Restructure the admin dashboard to mirror the student home's split layout:
-- **Left 60%**: Module browser (year selector, module cards — pulled from AdminLearningPage logic)
-- **Right 40%**: Admin intelligence panel (Alerts & Attention, Content Health, Quick Actions — condensed from current accordion sections)
+```text
+Logo > Year 5 > SUR-523 > Wound Healing > 🔄 Practice > ❓ MCQs
+                                            (icon)        (icon)
+```
 
-This means importing the year/module data hooks (`useYears`, `useAllModulesWithPermissions`) into AdminDashboard and rendering the module grid on the left, while moving the existing alert/health/activity sections into a sticky right panel.
+### Implementation detail
+- Import `useSearchParams` (already available via react-router-dom)
+- Import tab configs from `@/config/tabConfig` to look up icon by subtab ID
+- Use `TooltipProvider` + `Tooltip` (already imported in this file) for hover labels
+- Icons render at `h-4 w-4` with `text-muted-foreground`, active subtab in `text-foreground`
+- Section icon is clickable (navigates to `?section=X`), subtab is not (already there)
 
-### 3. Update "Browse modules" link
-**File:** `AdminDashboard.tsx`
+### Section icon map (hardcoded, 4 entries)
+```ts
+const SECTION_ICONS: Record<string, { icon: LucideIcon; label: string }> = {
+  resources:   { icon: BookOpen,       label: 'Resources' },
+  interactive: { icon: Stethoscope,    label: 'Interactive' },
+  practice:    { icon: PenTool,        label: 'Practice' },
+  test:        { icon: ClipboardCheck, label: 'Test Yourself' },
+};
+```
 
-The Quick Actions "Browse modules" button currently navigates to `/admin/learning`. Since the module browser will now be on the dashboard itself, either remove this button or scroll to the modules section.
+### Subtab icon lookup
+```ts
+const allTabs = [...RESOURCES_TABS, ...INTERACTIVE_TABS, ...PRACTICE_TABS];
+const subtabConfig = allTabs.find(t => t.id === subtab);
+// Use subtabConfig.icon and subtabConfig.label
+```
 
-### 4. Keep `/admin/learning` route as fallback
-No route removal — `AdminLearningPage` stays accessible for direct URL access, but it's no longer the primary navigation target.
-
-## Summary of file changes
+## Files
 
 | File | Change |
 |------|--------|
-| `StudentSidebar.tsx` | Remove 3 admin-specific Learning overrides |
-| `MobileBottomNav.tsx` | Change admin Learning tab to use submenu sheet |
-| `AdminDashboard.tsx` | Add 60/40 layout: modules (left) + admin intel (right) |
+| `MainLayout.tsx` | Add section + subtab icon breadcrumbs after chapter, ~20 lines |
+
+No other files modified. Purely additive.
 
