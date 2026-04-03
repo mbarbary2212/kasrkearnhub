@@ -49,6 +49,7 @@ import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvPa
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptiveReorder } from '@/lib/adaptiveDifficulty';
+import { computeResurfaceScores, applyResurfacing } from '@/lib/mcqResurfacing';
 import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
@@ -282,6 +283,18 @@ export function McqList({
     return map;
   }, [allAttempts]);
 
+  // ─── Resurfacing: compute scores from attempt history ───
+  const resurfaceScores = useMemo(() => {
+    if (isAdmin) return new Map();
+    const mcqAttempts = allAttempts
+      .filter(a => a.question_type === 'mcq')
+      .map(a => ({
+        question_id: a.question_id,
+        is_correct: a.is_correct,
+      }));
+    return computeResurfaceScores(mcqAttempts);
+  }, [allAttempts, isAdmin]);
+
   const totalQuestions = mcqs.length;
 
   // Student filter state
@@ -427,9 +440,14 @@ export function McqList({
     if (!isAdmin && !showDeleted && chapterStateForDifficulty) {
       result = adaptiveReorder(result, chapterStateForDifficulty, auth.user?.id);
     }
+
+    // Resurface previously-incorrect questions toward the front
+    if (!isAdmin && !showDeleted && resurfaceScores.size > 0) {
+      result = applyResurfacing(result, resurfaceScores);
+    }
     
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id, resurfaceScores]);
 
   // selectAll defined after filteredMcqs is available
   const selectAll = useCallback(() => {
