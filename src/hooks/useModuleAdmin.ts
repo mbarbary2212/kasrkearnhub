@@ -33,6 +33,47 @@ export function useIsModuleAdmin(moduleId: string | undefined) {
   };
 }
 
+export function useAllModulesWithPermissions() {
+  const { user, isSuperAdmin, isPlatformAdmin } = useAuthContext();
+
+  return useQuery({
+    queryKey: ['all-modules-with-permissions', user?.id, isSuperAdmin, isPlatformAdmin],
+    queryFn: async () => {
+      if (!user?.id) return { modules: [], editableIds: new Set<string>() };
+
+      // Fetch all modules
+      const { data: modules } = await supabase
+        .from('modules')
+        .select('id, name, slug, year_id, display_order, is_published, image_url')
+        .order('display_order', { ascending: true });
+
+      const allModules = (modules || []) as Array<{
+        id: string; name: string; slug: string; year_id: string;
+        display_order: number | null; is_published: boolean | null; image_url: string | null;
+      }>;
+
+      // Super/platform admins can edit everything
+      if (isSuperAdmin || isPlatformAdmin) {
+        return {
+          modules: allModules,
+          editableIds: new Set(allModules.map(m => m.id)),
+        };
+      }
+
+      // Fetch user's module_admins entries
+      const { data: adminEntries } = await supabase
+        .from('module_admins')
+        .select('module_id')
+        .eq('user_id', user.id);
+
+      const editableIds = new Set((adminEntries || []).map(e => e.module_id));
+
+      return { modules: allModules, editableIds };
+    },
+    enabled: !!user?.id,
+  });
+}
+
 export function useUserManagedModules() {
   const { user, isSuperAdmin, isPlatformAdmin } = useAuthContext();
 
