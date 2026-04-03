@@ -1,79 +1,86 @@
+# Admin Learning Page — Card View with Year Tabs & Edit Permissions
 
+## What Changes
 
-# Content Quality Scoring & Flagging System
+Redesign `AdminLearningPage.tsx` from a flat list into a visually rich, card-based layout with clear year separation and edit/view-only distinction.
 
-## Overview
-Add a transparent, client-side scoring system that classifies content as **Normal**, **Needs Review** (yellow), or **High Priority** (red) using existing signals. Surface these flags in Content Analytics, Admin Overview, and inline content view.
+## Key Behaviors
 
----
+1. **All years visible** — fetch ALL modules (not just managed ones) so admins can browse everything for comparison. use the same layout like the student ui. 
+2. **Visual edit permission** — modules the admin can edit get full-color cards with an "Edit" action; modules they can only view get a muted/dimmed card with a "View Only" label and a lock icon
+3. **Super/Platform admins** — all modules shown as editable (no lock icons)
+4. **Year grouping** — each year is a visually distinct section with its `color` used as an accent (e.g., colored left border or header bar), year name prominent
+5. **Module cards** — grid of cards (2-3 columns on desktop, 1 on mobile) showing slug badge, module name, and edit/view status. use the same layout like the student ui. including the tabs and list choice.
+6. dont change the student uo 
 
-## New Files
+## Data Changes
 
-### 1. `src/lib/contentQualityScoring.ts` — Scoring Engine
-Pure utility with named threshold constants:
+### `useModuleAdmin.ts` — new hook `useAllModulesWithPermissions`
+
+- Fetches ALL modules from `modules` table (all years)
+- Also fetches the user's `module_admins` entries to build a `Set<moduleId>` of editable IDs
+- For super/platform admins, marks everything editable
+- Returns `{ modules, editableIds: Set<string>, isLoading }`
+
+No other hooks or DB changes needed.
+
+## UI Structure (AdminLearningPage.tsx)
 
 ```text
-THRESHOLDS:
-  MIN_REACTIONS = 5
-  NEGATIVE_RATIO_REVIEW = 0.3
-  NEGATIVE_RATIO_HIGH = 0.5
-  FEEDBACK_COUNT_REVIEW = 3
-  INCORRECT_COUNT_REVIEW = 1
-  INCORRECT_COUNT_HIGH = 2
-
-LOGIC:
-  HIGH PRIORITY if ANY of:
-    - negative ratio > 0.5 with >= 5 reactions
-    - incorrect_content feedback >= 2
-  
-  NEEDS REVIEW if ANY of:
-    - negative ratio > 0.3 with >= 5 reactions
-    - total feedback >= 3
-    - incorrect_content feedback >= 1
-  
-  Otherwise: NORMAL
+┌─────────────────────────────────────────────┐
+│  📖 Content Management                      │
+│  Browse all modules. Your modules are       │
+│  highlighted.                               │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─ Year 1 (blue accent) ──── 9 modules ─┐ │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────┐ │ │
+│  │  │ BMS-103  │  │ CPS-104  │  │ ...  │ │ │
+│  │  │ Biomed.. │  │ Cardio.. │  │      │ │ │
+│  │  │ [Edit]   │  │ 🔒 View │  │      │ │ │
+│  │  └──────────┘  └──────────┘  └──────┘ │ │
+│  └───────────────────────────────────────-┘ │
+│                                             │
+│  ┌─ Year 2 (green accent) ── 10 modules ─┐ │
+│  │  ...                                   │ │
+│  └───────────────────────────────────────-┘ │
+└─────────────────────────────────────────────┘
 ```
 
-Exports:
-- `ContentQualityFlag` type (`'normal' | 'needs_review' | 'high_priority'`)
-- `computeContentQualityFlag(signals): { flag, reasons: string[] }` -- reasons array provides explainability
-- `getQualityFlagLabel(flag)` / `getQualityFlagColor(flag)` helpers
+### Editable module card
 
-### 2. `src/components/analytics/ContentQualityFlagBadge.tsx` — Reusable Badge
-Takes `QualitySignals`, computes flag, renders yellow/red Badge or nothing for normal. Used everywhere.
+- Full opacity, normal background
+- Slug as a small badge
+- Module name (truncated)
+- Clickable — navigates to `/module/{id}`
+- Subtle arrow or "Manage" indicator
 
----
+### View-only module card
 
-## Modified Files
+- Reduced opacity (~60%) or muted border
+- Lock icon + "View Only" text
+- Still clickable for browsing (navigates to module page, which already guards editing via `useIsModuleAdmin`)
+- Visually distinct from editable cards
 
-### 3. `McqAnalyticsDashboard.tsx` — Analytics Table
-- Add `'needs-review' | 'high-priority'` filter options
-- Compute flag per item using `qualitySignals` map in filter logic
-- Replace `QualitySignalBadges` column with `ContentQualityFlagBadge`
-- Update summary cards with computed "Needs Review" and "High Priority" counts
+### Year section
 
-### 4. `ContentItemAdminBar.tsx` — Inline Badge
-- Render `ContentQualityFlagBadge` after "Admin" badge using already-fetched `feedbackData`
-- Static, visible immediately after data loads
+- Uses the year's `color` field (e.g. `bg-blue-500`) as a left-border accent or header background strip
+- Year name + module count badge
+- Collapsible (optional, nice-to-have) — default expanded
 
-### 5. `ContentQualitySection.tsx` — Explain the Flag
-- At top of card, show alert banner when flagged: "This item is flagged: **High Priority**"
-- Bullet list of reasons (e.g. "High negative ratio (45%)", "2 incorrect content reports")
-- Uses same data already loaded
+## Files
 
-### 6. `useAdminOverviewStats.ts` — Aggregate Counts
-- Group reactions/feedback by `material_id`, compute flag per item
-- Add `needsReviewCount` and `highPriorityCount` to stats
 
-### 7. `AdminOverview.tsx` — Needs Attention Section
-- Add "High priority content" (red) and "Content needs review" (yellow) rows
-- Both navigate to `/admin?tab=content-analytics`
+| File                              | Action                                                              |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `src/hooks/useModuleAdmin.ts`     | Add `useAllModulesWithPermissions` hook                             |
+| `src/pages/AdminLearningPage.tsx` | Full rewrite — card grid grouped by year with permission indicators |
 
----
 
-## Design Principles
-- No new DB tables -- all client-side from existing `material_reactions` + `material_feedback`
-- Reuses existing `useQualitySignals` batch hook -- no per-item queries
-- Thresholds as named constants -- easy to adjust
-- Reasons array makes every flag explainable to admins
+## What Does NOT Change
 
+- Student UI — untouched
+- Module/Chapter/Topic pages — untouched
+- Database schema — no changes
+- Admin Panel tools — untouched
+- Existing `useUserManagedModules` hook — kept (used elsewhere)
