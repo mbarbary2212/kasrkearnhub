@@ -11,6 +11,12 @@ import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
 import { getStudyMode, type StudyMode } from '@/lib/studyModes';
 import {
+  getPrimaryMode,
+  getModeConfigForState,
+  type LearningMode,
+  type ModeConfig,
+} from '@/lib/learningModes';
+import {
   PRIORITY_CAP,
   MIN_PROGRESS_TASKS_UNLESS_EXAM_CRITICAL,
   EXAM_CRITICAL_DAYS,
@@ -40,6 +46,14 @@ function getTaskConfig(mode: StudyMode): StudyModeTaskConfig {
   return STUDY_MODE_TASK_CONFIG[mode.key] ?? STUDY_MODE_TASK_CONFIG.review;
 }
 
+// ─── Mode-aware task config ──────────────────────────────────
+
+function getModeAwareTaskConfig(state: ChapterState): { modeConfig: ModeConfig; primaryMode: LearningMode } {
+  const primaryMode = getPrimaryMode(state);
+  const modeConfig = getModeConfigForState(state);
+  return { modeConfig, primaryMode };
+}
+
 // ─── Public Types ─────────────────────────────────────────────
 
 export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'clinical_practice' | 'visual_practice' | 'review';
@@ -63,6 +77,8 @@ export interface PlannedTask {
   learningPattern?: string;
   revisionState?: RevisionState;
   prescribedStudyMode?: StudyMode;
+  /** Phase 2.5: Learning mode assigned based on chapter state */
+  learningMode?: LearningMode;
 }
 
 export interface AdaptiveStudyPlan {
@@ -239,31 +255,38 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     }
 
     // ── progress slot: not started / early ──
+    // Phase 2.5: Always assign learning mode for new chapters
     if (state === 'not_started' || state === 'early') {
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       candidates.push({
         slot: 'progress',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
-        reason: 'Start here',
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        reason: state === 'not_started' ? 'Start with Socrates' : 'Continue learning',
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
+        tab: modeConfig.section,
         priority: multipliers.progressBasePriority,
         state,
         trend,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
       continue;
     }
 
+    // Phase 2.5: strong chapters get assessment mode tasks via review_due slot above
     if (state === 'strong') continue;
 
     // ── weakness slot: weak / unstable ──
+    // Phase 2.5: weak → learning mode; unstable → practice mode
     if (state === 'weak' || state === 'unstable') {
-      let reason = state === 'weak' ? 'Low recent accuracy' : 'Needs reinforcement';
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
+
+      let reason = state === 'weak' ? 'Review with Socrates first' : 'Needs more practice';
       if (patternResult?.pattern === 'misconception') reason = 'Confident mistakes detected';
       else if (patternResult?.pattern === 'hesitant') reason = 'You know this, but hesitate';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -277,25 +300,28 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       candidates.push({
         slot: 'weakness',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
+        tab: modeConfig.section,
         priority: basePriority * multipliers.weakness,
         state,
         trend,
         learningPattern: patternLabel,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
       continue;
     }
 
     // ── weakness slot (light): in-progress chapters ──
+    // Phase 2.5: in_progress → mix of practice + assessment
     {
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       let reason = 'Continue where you left';
       if (patternResult?.pattern === 'hesitant') reason = 'Build confidence with quick practice';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -306,19 +332,20 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       candidates.push({
         slot: 'weakness',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
+        tab: modeConfig.section,
         priority: basePriority * multipliers.weakness,
         state,
         trend,
         learningPattern: patternLabel,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
     }
   }
