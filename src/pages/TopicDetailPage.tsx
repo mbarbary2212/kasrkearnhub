@@ -384,8 +384,9 @@ export default function TopicDetailPage() {
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
+      short_cases: topicCaseScenarios?.filter(s => !s.is_deleted)?.length || 0,
     });
-  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length, topicCaseScenarios?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
