@@ -49,13 +49,15 @@ export async function fetchSeenQuestionIds(
   userId: string,
   moduleId: string,
 ): Promise<Map<string, SeenQuestionInfo>> {
+  // Fetch most-recent attempts per question. Limit to 5000 rows to bound payload.
   const { data, error } = await supabase
     .from('question_attempts')
     .select('question_id, is_correct, created_at')
     .eq('user_id', userId)
     .eq('module_id', moduleId)
     .eq('question_type', 'mcq')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(5000);
 
   if (error) {
     console.error('Failed to fetch seen questions:', error);
