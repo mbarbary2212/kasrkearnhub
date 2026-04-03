@@ -1431,6 +1431,20 @@ export default function ChapterPage() {
                   </div>
                 )}
 
+                {/* Short Cases Content */}
+                {practiceTab === "short_cases" && (
+                  <div>
+                    {caseScenariosLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <CaseScenarioList
+                        scenarios={caseScenarios || []}
+                        isAdmin={canManageContent}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Image Questions Content (placeholder) */}
                 {practiceTab === "images" && (
                   <div className="text-center py-12">
