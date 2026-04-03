@@ -525,19 +525,45 @@ export function UsersTab() {
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium">User *</label>
-                          <Select value={maSelectedUserId} onValueChange={setMaSelectedUserId}>
-                            <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
-                            <SelectContent>
-                              {users
-                                .filter(u => ['student', 'teacher', 'topic_admin', 'department_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
-                                .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
-                                .map(u => (
-                                  <SelectItem key={u.id} value={u.id}>
-                                    {u.full_name || u.email}{u.role === 'department_admin' ? ' (Module Admin)' : ''}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={maUserPopoverOpen} onOpenChange={setMaUserPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" role="combobox" aria-expanded={maUserPopoverOpen} className="w-full justify-between font-normal">
+                                {maSelectedUserId
+                                  ? (() => { const u = users.find(u => u.id === maSelectedUserId); return u?.full_name || u?.email || 'Selected'; })()
+                                  : 'Search and select a user...'}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search by name or email..." />
+                                <CommandList>
+                                  <CommandEmpty>No user found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {users
+                                      .filter(u => ['teacher', 'topic_admin', 'department_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
+                                      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
+                                      .map(u => (
+                                        <CommandItem
+                                          key={u.id}
+                                          value={`${u.full_name || ''} ${u.email}`}
+                                          onSelect={() => {
+                                            setMaSelectedUserId(u.id);
+                                            setMaUserPopoverOpen(false);
+                                          }}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", maSelectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                                          <div className="flex flex-col">
+                                            <span>{u.full_name || u.email}{u.role === 'department_admin' ? ' (Module Admin)' : ''}</span>
+                                            {u.full_name && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Select Modules *</label>
