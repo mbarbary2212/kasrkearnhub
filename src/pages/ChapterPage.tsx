@@ -119,7 +119,7 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from "@/hooks/useCustomizeView";
 
 import { cn } from "@/lib/utils";
-import { useChapterAdmins } from '@/hooks/useContentAdmins';
+import { useChapterAdmins, useModuleAdmins } from '@/hooks/useContentAdmins';
 import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
@@ -903,7 +903,10 @@ export default function ChapterPage() {
 
         {/* Module/Topic Lead card — students only */}
         {!showAddControls && !auth.isTeacher && chapterId && (
-          <ChapterLeadRow chapterId={chapterId} moduleId={moduleId} />
+          <div className="flex flex-col gap-1">
+            <ChapterLeadRow chapterId={chapterId} />
+            <ModuleLeadInChapter moduleId={moduleId} />
+          </div>
         )}
 
         {/* Inline Sections Manager - Admin only */}
@@ -1595,13 +1598,16 @@ export default function ChapterPage() {
   );
 }
 
-function ChapterLeadRow({ chapterId, moduleId }: { chapterId: string; moduleId?: string }) {
-  const { data } = useChapterAdmins(chapterId, moduleId);
-  if (!data || data.admins.length === 0) return null;
-  const isChapterLevel = data.source === 'chapter';
-  const label =
-    isChapterLevel
-      ? data.admins.length === 1 ? 'Your Topic Lead' : 'Your Topic Team'
-      : data.admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
-  return <ContentAdminCard admins={data.admins} label={label} />;
+function ChapterLeadRow({ chapterId }: { chapterId: string }) {
+  const { data: admins } = useChapterAdmins(chapterId);
+  if (!admins || admins.length === 0) return null;
+  const label = admins.length === 1 ? 'Your Topic Lead' : 'Your Topic Team';
+  return <ContentAdminCard admins={admins} label={label} size="md" />;
+}
+
+function ModuleLeadInChapter({ moduleId }: { moduleId?: string }) {
+  const { data: admins } = useModuleAdmins(moduleId);
+  if (!admins || admins.length === 0) return null;
+  const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
+  return <ContentAdminCard admins={admins} label={label} size="md" />;
 }

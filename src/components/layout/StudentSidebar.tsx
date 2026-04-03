@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
@@ -10,6 +10,8 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
+import { useModuleAdmins, useChapterAdmins } from '@/hooks/useContentAdmins';
+import { LeadAvatarStack } from '@/components/content/ContentAdminCard';
 
 // ── Types ──────────────────────────────────────────────
 interface SubItem {
@@ -80,14 +82,24 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const params = useParams();
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [submenuTop, setSubmenuTop] = useState(0);
   const sidebarRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const { isAdmin } = useAuthContext();
+  const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
+  const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
+
+  // Extract moduleId/chapterId from route for lead avatars
+  const routeModuleId = params.moduleId;
+  const routeChapterId = params.chapterId;
+
+  // Fetch leads for sidebar (only for students)
+  const { data: moduleAdmins } = useModuleAdmins(isStudent ? routeModuleId : undefined);
+  const { data: chapterAdmins } = useChapterAdmins(isStudent ? routeChapterId : undefined);
 
   // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
@@ -344,6 +356,18 @@ export function StudentSidebar() {
           {bottomItems.map((item) => renderNavButton(item))}
         </div>
       </nav>
+
+      {/* Your Team — module/topic leads for students */}
+      {isStudent && (moduleAdmins?.length || chapterAdmins?.length) ? (
+        <div className="px-2 pb-2 mt-auto border-t border-border/50 pt-2 space-y-1.5">
+          {moduleAdmins && moduleAdmins.length > 0 && (
+            <LeadAvatarStack admins={moduleAdmins} maxVisible={3} avatarSize="h-7 w-7" label="Module" />
+          )}
+          {chapterAdmins && chapterAdmins.length > 0 && (
+            <LeadAvatarStack admins={chapterAdmins} maxVisible={3} avatarSize="h-7 w-7" label="Topic" />
+          )}
+        </div>
+      ) : null}
 
       {renderSubmenu()}
     </aside>
