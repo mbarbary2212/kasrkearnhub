@@ -48,6 +48,8 @@ import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, useBulkUpdateMcqs, type
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
+import { adaptiveReorder } from '@/lib/adaptiveDifficulty';
+import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
