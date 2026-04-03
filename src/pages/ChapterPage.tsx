@@ -28,6 +28,7 @@ import {
 } from "@/components/content/ResourcesDeleteManager";
 import { MobileSectionDropdown } from "@/components/content/MobileSectionDropdown";
 import { ClinicalCaseList, ClinicalCaseAdminList } from "@/components/clinical-cases";
+import { CaseScenarioList } from "@/components/content/CaseScenarioList";
 import { SectionFilter } from "@/components/sections";
 import { SectionsManager } from "@/components/sections";
 import { useChapterSectionsEnabled, useChapterSections } from "@/hooks/useSections";
