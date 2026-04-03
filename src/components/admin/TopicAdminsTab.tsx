@@ -407,18 +407,42 @@ export function TopicAdminsTab({ users, modules, years }: TopicAdminsTabProps) {
             {/* User Selection */}
             <div className="space-y-2">
               <label className="text-sm font-medium">User *</label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {eligibleUsers.map(u => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.full_name || u.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={userPopoverOpen} onOpenChange={setUserPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={userPopoverOpen} className="w-full justify-between font-normal">
+                    {selectedUserId
+                      ? (eligibleUsers.find(u => u.id === selectedUserId)?.full_name || eligibleUsers.find(u => u.id === selectedUserId)?.email || 'Selected')
+                      : 'Search and select a user...'}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search by name or email..." />
+                    <CommandList>
+                      <CommandEmpty>No user found.</CommandEmpty>
+                      <CommandGroup>
+                        {eligibleUsers.map(u => (
+                          <CommandItem
+                            key={u.id}
+                            value={`${u.full_name || ''} ${u.email}`}
+                            onSelect={() => {
+                              setSelectedUserId(u.id);
+                              setUserPopoverOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span>{u.full_name || u.email}</span>
+                              {u.full_name && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Module Selection */}
