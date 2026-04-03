@@ -8,28 +8,34 @@ export interface ContentAdmin {
   email: string | null;
 }
 
-async function fetchModuleAdmins(moduleId: string): Promise<ContentAdmin[]> {
-  const { data, error } = await supabase
-    .from('module_admins')
-    .select('user_id, profiles!module_admins_user_id_fkey(id, full_name, avatar_url, email)')
-    .eq('module_id', moduleId);
-
-  if (error || !data) return [];
+function normalizeAdmins(data: any[] | null | undefined): ContentAdmin[] {
+  if (!data) return [];
 
   const seen = new Set<string>();
   const admins: ContentAdmin[] = [];
+
   for (const row of data) {
-    const p = row.profiles as any;
-    if (!p || seen.has(p.id)) continue;
-    seen.add(p.id);
+    if (!row?.id || seen.has(row.id)) continue;
+    seen.add(row.id);
     admins.push({
-      id: p.id,
-      full_name: p.full_name,
-      avatar_url: p.avatar_url,
-      email: p.email,
+      id: row.id,
+      full_name: row.full_name ?? null,
+      avatar_url: row.avatar_url ?? null,
+      email: row.email ?? null,
     });
   }
+
   return admins;
+}
+
+async function fetchModuleAdmins(moduleId: string): Promise<ContentAdmin[]> {
+  const { data, error } = await supabase.rpc('get_module_leads' as any, {
+    _module_id: moduleId,
+  });
+
+  if (error) return [];
+
+  return normalizeAdmins(data as any[] | null | undefined);
 }
 
 export function useModuleAdmins(moduleId: string | undefined) {
@@ -45,27 +51,13 @@ export function useChapterAdmins(chapterId: string | undefined, moduleId: string
   return useQuery({
     queryKey: ['content-admins', 'chapter', chapterId, moduleId],
     queryFn: async (): Promise<{ admins: ContentAdmin[]; source: 'chapter' | 'module' }> => {
-      // Try chapter-level topic_admins first
-      const { data: topicData } = await supabase
-        .from('topic_admins')
-        .select('user_id, profiles!topic_admins_user_id_fkey(id, full_name, avatar_url, email)')
-        .eq('chapter_id', chapterId!);
+      const { data: chapterData, error: chapterError } = await supabase.rpc('get_chapter_leads' as any, {
+        _chapter_id: chapterId!,
+      });
 
-      const seen = new Set<string>();
-      const chapterAdmins: ContentAdmin[] = [];
-      if (topicData) {
-        for (const row of topicData) {
-          const p = row.profiles as any;
-          if (!p || seen.has(p.id)) continue;
-          seen.add(p.id);
-          chapterAdmins.push({
-            id: p.id,
-            full_name: p.full_name,
-            avatar_url: p.avatar_url,
-            email: p.email,
-          });
-        }
-      }
+      const chapterAdmins = chapterError
+        ? []
+        : normalizeAdmins(data as any[] | null | undefined);
 
       if (chapterAdmins.length > 0) {
         return { admins: chapterAdmins, source: 'chapter' };
