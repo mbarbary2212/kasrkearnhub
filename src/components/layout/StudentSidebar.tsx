@@ -130,7 +130,6 @@ export function StudentSidebar() {
     if (item.id === 'overview') return location.pathname === '/admin/overview';
     if (item.id === 'admin-panel') return location.pathname === '/admin';
     if (item.id === 'learning') {
-      if (isAdmin) return location.pathname === '/admin/learning';
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
     }
