@@ -420,7 +420,7 @@ export function UsersTab() {
             {isSuperAdmin && (
               <TabsContent value="module-admins" className="mt-4">
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
                       <h3 className="text-lg font-semibold flex items-center gap-2">
                         <BookOpen className="w-5 h-5" />
@@ -441,78 +441,100 @@ export function UsersTab() {
                       </Button>
                     </div>
                   </div>
-                  {users.filter(u => u.role === 'department_admin').length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No module admins assigned yet. Click "Assign Module Admin" to get started.
-                    </p>
-                  ) : (
-                    [...users.filter(u => u.role === 'department_admin')]
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search module admins..." value={moduleAdminSearch} onChange={(e) => setModuleAdminSearch(e.target.value)} className="pl-9" />
+                  </div>
+                  {(() => {
+                    const moduleAdmins = users.filter(u => u.role === 'department_admin');
+                    const filtered = moduleAdmins
+                      .filter(u => {
+                        if (!moduleAdminSearch.trim()) return true;
+                        const search = moduleAdminSearch.toLowerCase();
+                        return u.full_name?.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+                      })
                       .sort((a, b) => {
                         const nameA = (a.full_name || a.email).toLowerCase();
                         const nameB = (b.full_name || b.email).toLowerCase();
                         return moduleAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                      })
-                      .map(u => (
-                        <div key={u.id} className="border rounded-lg p-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{u.full_name || 'No name'}</p>
-                                <p className="text-sm text-muted-foreground">{u.email}</p>
-                              </div>
+                      });
+                    if (moduleAdmins.length === 0) {
+                      return (
+                        <p className="text-muted-foreground text-center py-8">
+                          No module admins assigned yet. Click "Assign Module Admin" to get started.
+                        </p>
+                      );
+                    }
+                    if (filtered.length === 0) {
+                      return <p className="text-muted-foreground text-center py-8">No module admins matching your search.</p>;
+                    }
+                    return filtered.map(u => (
+                      <div key={u.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              {(u as any).avatar_url && <AvatarImage src={(u as any).avatar_url} alt={u.full_name || ''} />}
+                              <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
+                                {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{u.full_name || 'No name'}</p>
+                              <p className="text-sm text-muted-foreground">{u.email}</p>
                             </div>
-                            <Badge variant="secondary">Module Admin</Badge>
                           </div>
-                          {u.moduleAssignments && u.moduleAssignments.length > 0 && (
-                            <div className="flex flex-wrap gap-1 pl-13">
-                              {u.moduleAssignments.map(a => (
-                                <Badge key={a.id} variant="outline" className="text-xs gap-1 py-1.5">
-                                  {getModuleName(a.module_id)}
-                                  <button onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)} className="ml-1 hover:text-destructive">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          <div className="flex gap-2 pl-13">
-                            <Select
-                              value={selectedUser === u.id ? selectedModule : ''}
-                              onValueChange={(value) => { setSelectedUser(u.id); setSelectedModule(value); }}
-                            >
-                              <SelectTrigger className="w-72"><SelectValue placeholder="Add another module..." /></SelectTrigger>
-                              <SelectContent>
-                                {years.map(year => {
-                                  const yearModules = modules
-                                    .filter(m => m.year_id === year.id)
-                                    .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
-                                    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-                                  if (yearModules.length === 0) return null;
-                                  return (
-                                    <div key={year.id}>
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">{year.name}</div>
-                                      {yearModules.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                      ))}
-                                    </div>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              onClick={() => { if (selectedUser === u.id && selectedModule) handleAssignModule(u.id, selectedModule); }}
-                              disabled={selectedUser !== u.id || !selectedModule}
-                            >
-                              Assign
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            <Badge className={ROLE_COLORS.department_admin}>Module Admin</Badge>
+                            {renderUserActions(u)}
                           </div>
                         </div>
-                      ))
-                  )}
+                        {u.moduleAssignments && u.moduleAssignments.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pl-13">
+                            {u.moduleAssignments.map(a => (
+                              <Badge key={a.id} variant="outline" className="text-xs gap-1 py-1.5">
+                                {getModuleName(a.module_id)}
+                                <button onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)} className="ml-1 hover:text-destructive">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2 pl-13">
+                          <Select
+                            value={selectedUser === u.id ? selectedModule : ''}
+                            onValueChange={(value) => { setSelectedUser(u.id); setSelectedModule(value); }}
+                          >
+                            <SelectTrigger className="w-72"><SelectValue placeholder="Add another module..." /></SelectTrigger>
+                            <SelectContent>
+                              {years.map(year => {
+                                const yearModules = modules
+                                  .filter(m => m.year_id === year.id)
+                                  .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
+                                  .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                                if (yearModules.length === 0) return null;
+                                return (
+                                  <div key={year.id}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">{year.name}</div>
+                                    {yearModules.map(m => (
+                                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            onClick={() => { if (selectedUser === u.id && selectedModule) handleAssignModule(u.id, selectedModule); }}
+                            disabled={selectedUser !== u.id || !selectedModule}
+                          >
+                            Assign
+                          </Button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
 
                   <Dialog open={moduleAdminAssignDialogOpen} onOpenChange={(open) => {
                     if (!open) { setModuleAdminAssignDialogOpen(false); setMaSelectedUserId(''); setMaSelectedModules([]); }
