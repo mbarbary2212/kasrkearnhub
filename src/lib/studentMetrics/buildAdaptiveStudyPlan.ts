@@ -11,6 +11,12 @@ import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
 import { getStudyMode, type StudyMode } from '@/lib/studyModes';
 import {
+  getPrimaryMode,
+  getModeConfigForState,
+  type LearningMode,
+  type ModeConfig,
+} from '@/lib/learningModes';
+import {
   PRIORITY_CAP,
   MIN_PROGRESS_TASKS_UNLESS_EXAM_CRITICAL,
   EXAM_CRITICAL_DAYS,
@@ -38,6 +44,14 @@ const STUDY_MODE_TASK_CONFIG: Record<string, StudyModeTaskConfig> = {
 
 function getTaskConfig(mode: StudyMode): StudyModeTaskConfig {
   return STUDY_MODE_TASK_CONFIG[mode.key] ?? STUDY_MODE_TASK_CONFIG.review;
+}
+
+// ─── Mode-aware task config ──────────────────────────────────
+
+function getModeAwareTaskConfig(state: ChapterState): { modeConfig: ModeConfig; primaryMode: LearningMode } {
+  const primaryMode = getPrimaryMode(state);
+  const modeConfig = getModeConfigForState(state);
+  return { modeConfig, primaryMode };
 }
 
 // ─── Public Types ─────────────────────────────────────────────
