@@ -16,6 +16,7 @@ import { Home, LogOut, Shield, Settings, GraduationCap, BookOpen, Users, Chevron
 import { usePresence } from '@/contexts/PresenceContext';
 import logo from '@/assets/kalm-hub-logo-transparent.png';
 import InquiryModal from '@/components/feedback/InquiryModal';
+import { RESOURCES_TABS, INTERACTIVE_TABS, PRACTICE_TABS } from '@/config/tabConfig';
 import { AskCoachButton } from '@/components/coach/AskCoachButton';
 import { AdminNotificationsPopover } from '@/components/admin/AdminNotificationsPopover';
 import { ThemeToggle } from '@/components/ThemeToggle';
