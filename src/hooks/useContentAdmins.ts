@@ -47,29 +47,17 @@ export function useModuleAdmins(moduleId: string | undefined) {
   });
 }
 
-export function useChapterAdmins(chapterId: string | undefined, moduleId: string | undefined) {
+export function useChapterAdmins(chapterId: string | undefined) {
   return useQuery({
-    queryKey: ['content-admins', 'chapter', chapterId, moduleId],
-    queryFn: async (): Promise<{ admins: ContentAdmin[]; source: 'chapter' | 'module' }> => {
+    queryKey: ['content-admins', 'chapter', chapterId],
+    queryFn: async (): Promise<ContentAdmin[]> => {
       const { data: chapterData, error: chapterError } = await supabase.rpc('get_chapter_leads' as any, {
         _chapter_id: chapterId!,
       });
 
-      const chapterAdmins = chapterError
+      return chapterError
         ? []
         : normalizeAdmins(chapterData as any[] | null | undefined);
-
-      if (chapterAdmins.length > 0) {
-        return { admins: chapterAdmins, source: 'chapter' };
-      }
-
-      // Fallback to module admins
-      if (moduleId) {
-        const moduleAdmins = await fetchModuleAdmins(moduleId);
-        return { admins: moduleAdmins, source: 'module' };
-      }
-
-      return { admins: [], source: 'module' };
     },
     enabled: !!chapterId,
     staleTime: 5 * 60 * 1000,
