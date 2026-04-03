@@ -25,6 +25,7 @@ import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { AppCredits } from '@/components/layout/AppCredits';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 import { useModule } from '@/hooks/useModules';
@@ -380,6 +381,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
           <div className={showSharedNav ? 'container mx-auto' : ''}>
             {children}
+            {user && <AppCredits />}
           </div>
         </main>
       </div>
