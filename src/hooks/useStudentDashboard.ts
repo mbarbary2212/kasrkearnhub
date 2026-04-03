@@ -626,6 +626,10 @@ function getEmptyDashboard(): DashboardData {
     activityDates: [],
     readinessTrend: [],
     riskAlerts: [],
+    examReadinessIndicator: buildExamReadinessIndicator({
+      readinessScore: 0, coveragePercent: 0, mcqAccuracy: 0,
+      weakChapterCount: 0, overdueReviewCount: 0,
+    }),
   };
 }
 
