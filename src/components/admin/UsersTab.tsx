@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Users, Trash2, Plus, BookOpen, Search, ArrowUpDown, RotateCcw, KeyRound, Mail, Ban, UserX, UserCheck, MoreHorizontal, Send } from 'lucide-react';
+import { Loader2, Users, Trash2, Plus, BookOpen, Search, ArrowUpDown, RotateCcw, KeyRound, Mail, Ban, UserX, UserCheck, MoreHorizontal, Send, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AppRole } from '@/types/database';
@@ -28,6 +28,7 @@ import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { EditEmailDialog } from '@/components/admin/EditEmailDialog';
 import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
+import { UserAvatarUploadDialog } from '@/components/admin/UserAvatarUploadDialog';
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
