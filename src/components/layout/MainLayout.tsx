@@ -25,6 +25,7 @@ import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { AppCredits } from '@/components/layout/AppCredits';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 import { useModule } from '@/hooks/useModules';
