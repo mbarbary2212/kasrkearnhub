@@ -567,29 +567,39 @@ export default function ChapterPage() {
   };
 
   // Use unified tab configuration - create all tabs first
+  const infographicsCount = studyResources?.filter((r) => r.resource_type === "infographic")?.length || 0;
+  const mindMapsTotal = mindMaps.length + publishedAIMaps.length;
+
   const allResourcesTabs = useMemo(() => {
-    return createResourceTabs({
+    const tabs = createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
-      mind_maps:
-        mindMaps.length +
-        (studyResources?.filter((r) => r.resource_type === "infographic")?.length || 0) +
-        publishedAIMaps.length,
+      mind_maps: mindMapsTotal + infographicsCount,
       guided_explanations:
         (studyResources?.filter((r) => r.resource_type === "guided_explanation")?.length || 0) +
         socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
+    // Attach subcounts to mind_maps tab for split badge display
+    const vmTab = tabs.find(t => t.id === 'mind_maps');
+    if (vmTab) {
+      vmTab.subcounts = [
+        { label: 'Maps', count: mindMapsTotal },
+        { label: 'Infographics', count: infographicsCount },
+      ];
+    }
+    return tabs;
   }, [
     lectures?.length,
     flashcards.length,
-    mindMaps.length,
+    mindMapsTotal,
+    infographicsCount,
     studyResources,
     documentsCount,
-    interactiveAlgorithms?.length,
     workedCases.length,
     publishedAIMaps.length,
+    socraticTutorials.length,
   ]);
 
   // Admin sees all tabs; students see filtered based on setting
