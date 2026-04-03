@@ -43,17 +43,20 @@ export async function exportBlueprintToExcel(
     cfgMap.set(configKey(c.chapter_id, c.section_id, c.component_type), c);
   }
 
-  // Fetch section names for all chapters that have section configs
-  const chapterIdsWithSections = [...new Set(configs.filter(c => c.section_id).map(c => c.chapter_id))];
-  const sectionNameMap = new Map<string, { name: string; section_number: string | null }>();
-  if (chapterIdsWithSections.length > 0) {
+  // Fetch ALL sections for all chapters (not just those with configs)
+  const chapterIds = chapters.map(ch => ch.id);
+  const sectionsByChapter = new Map<string, { id: string; name: string; section_number: string | null }[]>();
+  if (chapterIds.length > 0) {
     const { data: sections } = await supabase
       .from('sections')
-      .select('id, name, section_number')
-      .in('chapter_id', chapterIdsWithSections);
+      .select('id, name, section_number, chapter_id, display_order')
+      .in('chapter_id', chapterIds)
+      .order('display_order', { ascending: true });
     if (sections) {
       for (const s of sections) {
-        sectionNameMap.set(s.id, { name: s.name, section_number: s.section_number });
+        const list = sectionsByChapter.get(s.chapter_id) || [];
+        list.push({ id: s.id, name: s.name, section_number: s.section_number });
+        sectionsByChapter.set(s.chapter_id, list);
       }
     }
   }
@@ -94,18 +97,14 @@ export async function exportBlueprintToExcel(
       }
     });
 
-    // Section rows from configs
-    const sectionConfigs = configs.filter(c => c.chapter_id === ch.id && c.section_id);
-    const sectionIds = [...new Set(sectionConfigs.map(c => c.section_id!))];
-    for (const secId of sectionIds) {
-      const secInfo = sectionNameMap.get(secId);
-      const secLabel = secInfo
-        ? `  → ${secInfo.section_number ? secInfo.section_number + '. ' : ''}${secInfo.name}`
-        : `  → Section`;
+    // Section rows — show ALL sections for this chapter
+    const chapterSections = sectionsByChapter.get(ch.id) || [];
+    for (const sec of chapterSections) {
+      const secLabel = `  → ${sec.section_number ? sec.section_number + '. ' : ''}${sec.name}`;
       const secRowData = [secLabel];
       const secLevels: (string | undefined)[] = [];
       for (const col of COMPONENT_COLUMNS) {
-        const cfg = cfgMap.get(configKey(ch.id, secId, col.key));
+        const cfg = cfgMap.get(configKey(ch.id, sec.id, col.key));
         const lv = cfg?.inclusion_level;
         secRowData.push(lv ? levelText(lv, cfg?.question_types) : '');
         secLevels.push(lv);
