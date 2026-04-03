@@ -189,6 +189,8 @@ export default function TopicDetailPage() {
   const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
   const { data: deletedOsce } = useTopicOsceQuestions(topicId, true);
 
+  const { data: topicCaseScenarios, isLoading: caseScenariosLoading } = useTopicCaseScenarios(topicId);
+
   // Filter clinical cases by topic
   const topicClinicalCases = (clinicalCases || []).filter(c => c.topic_id === topicId);
 
