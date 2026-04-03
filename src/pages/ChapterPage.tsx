@@ -117,6 +117,8 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from "@/hooks/useCustomizeView";
 
 import { cn } from "@/lib/utils";
+import { useChapterAdmins } from '@/hooks/useContentAdmins';
+import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
@@ -833,6 +835,11 @@ export default function ChapterPage() {
 
         {/* Chapter Progress moved to header breadcrumb */}
 
+        {/* Module/Topic Lead card — students only */}
+        {!showAddControls && !auth.isTeacher && chapterId && (
+          <ChapterLeadRow chapterId={chapterId} moduleId={moduleId} />
+        )}
+
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && <SectionsManager chapterId={chapterId} canManage={canManageContent} />}
 
@@ -1506,4 +1513,15 @@ export default function ChapterPage() {
       </div>
     </MainLayout>
   );
+}
+
+function ChapterLeadRow({ chapterId, moduleId }: { chapterId: string; moduleId?: string }) {
+  const { data } = useChapterAdmins(chapterId, moduleId);
+  if (!data || data.admins.length === 0) return null;
+  const isChapterLevel = data.source === 'chapter';
+  const label =
+    isChapterLevel
+      ? data.admins.length === 1 ? 'Your Topic Lead' : 'Your Topic Team'
+      : data.admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
+  return <ContentAdminCard admins={data.admins} label={label} />;
 }

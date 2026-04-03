@@ -15,6 +15,8 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { useModuleAdmins } from '@/hooks/useContentAdmins';
+import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
@@ -216,6 +218,7 @@ export default function ModulePage() {
                 {module?.description && (
                   <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
                 )}
+                {isStudent && <ModuleLeadRow moduleId={actualModuleId} />}
               </>
             )}
           </div>
@@ -299,4 +302,11 @@ export default function ModulePage() {
       </div>
     </MainLayout>
   );
+}
+
+function ModuleLeadRow({ moduleId }: { moduleId: string | undefined }) {
+  const { data: admins } = useModuleAdmins(moduleId);
+  if (!admins || admins.length === 0) return null;
+  const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
+  return <div className="mt-1"><ContentAdminCard admins={admins} label={label} /></div>;
 }
