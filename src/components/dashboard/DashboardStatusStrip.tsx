@@ -14,6 +14,7 @@ import {
   READINESS_WEIGHTS,
 } from '@/lib/readinessCalculator';
 import { ReadinessTrendSparkline } from './ReadinessTrendSparkline';
+import type { ExamReadinessIndicator } from '@/lib/studentMetrics';
 
 interface DashboardStatusStripProps {
   examReadiness: number;
