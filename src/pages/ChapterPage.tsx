@@ -117,6 +117,8 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from "@/hooks/useCustomizeView";
 
 import { cn } from "@/lib/utils";
+import { useChapterAdmins } from '@/hooks/useContentAdmins';
+import { ContentAdminCard } from '@/components/content/ContentAdminCard';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
