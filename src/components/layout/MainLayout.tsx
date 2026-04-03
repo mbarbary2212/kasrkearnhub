@@ -250,6 +250,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
               </>
             )}
           </div>
+          </TooltipProvider>
 
           {/* Chapter progress bar - between breadcrumb and right icons */}
           {!isAdmin && currentChapterId && currentChapter && !progressLoading && chapterProgress && (chapterProgress.practiceTotal > 0 || chapterProgress.videosTotal > 0) && (
