@@ -18,6 +18,7 @@ import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLa
 import { useModuleAdmins } from '@/hooks/useContentAdmins';
 import type { ContentAdmin } from '@/hooks/useContentAdmins';
 import { ContentAdminCard } from '@/components/content/ContentAdminCard';
+import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
