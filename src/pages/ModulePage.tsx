@@ -220,7 +220,7 @@ export default function ModulePage() {
                 {module?.description && (
                   <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
                 )}
-                {isStudent && <ModuleLeadRow moduleId={actualModuleId} />}
+                {isStudent && <ModuleLeadRow moduleId={actualModuleId} moduleName={module?.name} />}
               </>
             )}
           </div>
