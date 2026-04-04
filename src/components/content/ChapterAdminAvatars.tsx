@@ -43,7 +43,7 @@ export function ChapterAdminAvatars({
   if (adminsToShow.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 ml-auto shrink-0">
+    <div className="flex items-center gap-2 ml-auto shrink-0">
       {adminsToShow.map(({ admin, role, label }) => (
         <TooltipProvider key={admin.id} delayDuration={200}>
           <Tooltip>
@@ -55,14 +55,14 @@ export function ChapterAdminAvatars({
                   'rounded-full transition-transform duration-200',
                   'hover:scale-[1.15] focus-visible:scale-[1.15]',
                   'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1',
-                  'active:scale-[1.15]', // tap state for mobile
+                  'active:scale-[1.15]',
                 )}
               >
-                <Avatar className="h-8 w-8 ring-2 ring-background text-[10px] cursor-pointer">
+                <Avatar className="h-10 w-10 ring-2 ring-background text-xs cursor-pointer">
                   {admin.avatar_url && (
                     <AvatarImage src={admin.avatar_url} alt={admin.full_name || ''} />
                   )}
-                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
                     {getInitials(admin.full_name)}
                   </AvatarFallback>
                 </Avatar>
