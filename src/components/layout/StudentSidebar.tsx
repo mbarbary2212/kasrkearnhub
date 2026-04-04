@@ -91,13 +91,7 @@ export function StudentSidebar() {
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
 
-  // Extract moduleId/chapterId from route for lead avatars
-  const routeModuleId = params.moduleId;
-  const routeChapterId = params.chapterId;
-
-  // Fetch leads for sidebar (only for students)
-  const { data: moduleAdmins } = useModuleAdmins(isStudent ? routeModuleId : undefined);
-  const { data: chapterAdmins } = useChapterAdmins(isStudent ? routeChapterId : undefined);
+  // Route context
 
   // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
