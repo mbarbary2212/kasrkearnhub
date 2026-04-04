@@ -558,6 +558,7 @@ function LoggedInHome() {
           {isStudent && yearClassification && (
             <Card data-tour="today-plan">
               <CardContent className="py-4 px-4">
+                <p className="text-[10px] text-muted-foreground/70 mb-2">Your daily priorities</p>
                 <ClassificationDashboard
                   classification={yearClassification.classification}
                   chapterTitleMap={yearClassification.chapterTitleMap}
