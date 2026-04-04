@@ -148,6 +148,18 @@ export function StudentSidebar() {
 
   // ── Handle primary nav click ─────────────────────────
   const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
+    // Tour/workflow triggers
+    if (item.id === 'take-tour') {
+      const role = isAdmin ? 'admin' : 'student';
+      window.dispatchEvent(new CustomEvent('kalm:start-tour', { detail: { role } }));
+      setActiveSubmenu(null);
+      return;
+    }
+    if (item.id === 'how-to-use') {
+      window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
+      setActiveSubmenu(null);
+      return;
+    }
     // Dashboard for admin goes to admin dashboard
     if (item.id === 'dashboard' && isAdmin) {
       navigate('/admin/dashboard');
