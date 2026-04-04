@@ -33,6 +33,12 @@ import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
 
+import { useTour } from '@/hooks/useTour';
+import { studentTourSteps } from '@/components/tour/studentTourSteps';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
+import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
+import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
+
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
