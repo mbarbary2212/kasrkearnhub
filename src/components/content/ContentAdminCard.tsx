@@ -8,6 +8,7 @@ interface ContentAdminCardProps {
   admins: ContentAdmin[];
   label?: string;
   size?: 'sm' | 'md';
+  onContact?: (admin: ContentAdmin) => void;
 }
 
 function getInitials(name: string | null): string {
