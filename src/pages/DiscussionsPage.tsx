@@ -3,6 +3,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import { DiscussionSection } from '@/components/discussion';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
 
 export default function DiscussionsPage() {
   const navigate = useNavigate();
@@ -16,6 +17,11 @@ export default function DiscussionsPage() {
           </Button>
           <h1 className="text-xl font-semibold text-foreground">Open Discussions</h1>
         </div>
+        <ContextGuide
+          title="Need help?"
+          description="Ask questions or contact your module/topic lead here."
+          storageKey="kalm_guide_connect_dismissed"
+        />
         <DiscussionSection />
       </div>
     </MainLayout>

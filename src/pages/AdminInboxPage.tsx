@@ -309,6 +309,11 @@ export default function AdminInboxPage() {
   return (
     <MainLayout>
       <div className="space-y-4 animate-fade-in">
+        <ContextGuide
+          title="Student support"
+          description="Student questions will appear here. Respond promptly."
+          storageKey="kalm_guide_admin_inbox_dismissed"
+        />
         <div>
           <h1 className="text-2xl font-heading font-semibold">Admin Inbox</h1>
           <p className="text-sm text-muted-foreground">Triage and respond to student questions and feedback</p>
