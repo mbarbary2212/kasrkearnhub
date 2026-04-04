@@ -139,6 +139,11 @@ export default function ChapterPage() {
   const { setStudyContext } = useCoachContext();
   const { updatePresence } = usePresence();
 
+  // Inquiry modal state for admin contact
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
+  const [selectedAdminRole, setSelectedAdminRole] = useState<'module' | 'topic'>('module');
+
   const showAddControls = !!(
     auth.isAdmin ||
     auth.isModuleAdmin ||
