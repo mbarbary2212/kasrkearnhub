@@ -1608,6 +1608,18 @@ export default function ChapterPage() {
           <ResourcesDeleteManager deleteResource={handleDeleteFlashcard} refetchResources={refetchFlashcards} />
         )}
       </div>
+
+      {/* Inquiry Modal for admin contact */}
+      <InquiryModal
+        isOpen={inquiryOpen}
+        onClose={() => { setInquiryOpen(false); setSelectedAdmin(null); }}
+        moduleId={moduleId}
+        moduleName={module?.name}
+        chapterId={chapterId}
+        targetAdminId={selectedAdmin?.id}
+        targetAdminName={selectedAdmin?.full_name || undefined}
+        targetRole={selectedAdminRole}
+      />
     </MainLayout>
   );
 }
