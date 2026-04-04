@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BookOpen, GraduationCap, RefreshCw, Stethoscope, BarChart3, HelpCircle, Upload, MessageSquare, Flag, Inbox } from 'lucide-react';
+import { BookOpen, GalleryHorizontal, CalendarCheck, FlaskConical, Compass, HelpCircle, Upload, BarChart3, MessageSquare, Flag, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface WorkflowGuideProps {
@@ -9,12 +9,12 @@ interface WorkflowGuideProps {
 }
 
 const studentSteps = [
-  { icon: BookOpen, title: 'Start with Learning', description: 'Understand the chapter first.' },
-  { icon: GraduationCap, title: 'Practice', description: 'Test your understanding with questions.' },
-  { icon: RefreshCw, title: 'Review mistakes', description: 'Focus on weak areas.' },
-  { icon: Stethoscope, title: 'Interactive cases', description: 'Apply knowledge clinically.' },
-  { icon: BarChart3, title: 'Track Progress', description: 'Monitor readiness.' },
-  { icon: HelpCircle, title: 'Ask for help', description: 'Use Connect when needed.' },
+  { icon: BookOpen, title: 'Start here', description: 'Resume from where you left off using the continue card.' },
+  { icon: GalleryHorizontal, title: 'Complete your reviews', description: 'Do your flashcards first to maintain retention.' },
+  { icon: CalendarCheck, title: "Follow today's priorities", description: 'Use the suggested tasks instead of choosing randomly.' },
+  { icon: FlaskConical, title: 'Practice', description: 'Test your understanding and identify weak areas.' },
+  { icon: Compass, title: 'Go deeper when needed', description: 'Use modules to explore topics more thoroughly.' },
+  { icon: HelpCircle, title: 'Ask for help', description: 'Use Connect when something is unclear.' },
 ];
 
 const adminSteps = [
@@ -27,7 +27,7 @@ const adminSteps = [
 
 export function WorkflowGuide({ open, onOpenChange, mode }: WorkflowGuideProps) {
   const steps = mode === 'student' ? studentSteps : adminSteps;
-  const title = mode === 'student' ? 'How to use KALM effectively' : 'Admin workflow';
+  const title = mode === 'student' ? 'How to use KALM daily' : 'Admin workflow';
 
   const handleOpen = (isOpen: boolean) => {
     if (!isOpen) {

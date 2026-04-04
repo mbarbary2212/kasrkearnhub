@@ -618,9 +618,12 @@ function LoggedInHome() {
 
           {/* Today's Study Plan */}
           {isStudent && suggestions.length > 0 && (
-            <div className="space-y-2">
+            <div data-tour="study-plan" className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
+                  <p className="text-[10px] text-muted-foreground/70">Follow this step by step to stay organized</p>
+                </div>
                 {totalEstimatedMinutes > 0 && (
                   <span className="text-xs text-muted-foreground">~{totalEstimatedMinutes} min total</span>
                 )}

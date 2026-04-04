@@ -14,8 +14,8 @@ export default function ProgressPage() {
   return (
     <MainLayout>
       <ContextGuide
-        title="Your performance overview"
-        description="Focus on weak chapters and maintain strong ones."
+        title="Track your performance"
+        description="Focus on weak areas and maintain your strengths."
         alwaysShow
         variant="info"
       />
