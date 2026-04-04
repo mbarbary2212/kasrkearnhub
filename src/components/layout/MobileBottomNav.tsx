@@ -195,8 +195,17 @@ export function MobileBottomNav() {
 
   const handleMoreItem = useCallback((item: SubItem) => {
     setActiveSheet(null);
+    if (item.id === 'take-tour') {
+      const role = isAdmin ? 'admin' : 'student';
+      window.dispatchEvent(new CustomEvent('kalm:start-tour', { detail: { role } }));
+      return;
+    }
+    if (item.id === 'how-to-use') {
+      window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
+      return;
+    }
     if (item.path) navigate(item.path);
-  }, [navigate]);
+  }, [navigate, isAdmin]);
 
   const dueCount = dueCards?.length ?? 0;
 
