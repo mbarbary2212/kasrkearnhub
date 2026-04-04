@@ -381,10 +381,13 @@ function LoggedInHome() {
           )}
 
           {/* Module Section with Year Selector + Cards/List Toggle */}
-          <section>
+          <section data-tour="modules">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
+                <div>
+                  <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
+                  <p className="text-[10px] text-muted-foreground/70">Explore topics or revise specific areas</p>
+                </div>
                 <Select value={selectedYearId} onValueChange={setSelectedYearId}>
                   <SelectTrigger className="h-7 w-[130px] bg-background text-xs">
                     <SelectValue placeholder="Year" />
