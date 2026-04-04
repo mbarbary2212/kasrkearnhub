@@ -51,6 +51,13 @@ export default function AdminOverview() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+        {/* Context Guide */}
+        <ContextGuide
+          title="Data insights"
+          description="Use this data to identify weak content and improve quality."
+          storageKey="kalm_guide_admin_analytics_dismissed"
+        />
+
         {/* Greeting */}
         <h1 className="text-xl md:text-2xl font-heading font-bold">
           {greeting}, <span className="text-primary">{firstName}</span> 👋
