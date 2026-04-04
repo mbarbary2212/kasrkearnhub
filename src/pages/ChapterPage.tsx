@@ -896,6 +896,21 @@ export default function ChapterPage() {
               </DropdownMenu>
             );
           })()}
+
+          {/* Admin avatars for student contact */}
+          {isStudent && (
+            <ChapterAdminAvatars
+              moduleId={moduleId}
+              moduleName={module?.name}
+              chapterId={chapterId}
+              chapterTitle={chapter?.title}
+              onContactAdmin={(admin, role) => {
+                setSelectedAdmin(admin);
+                setSelectedAdminRole(role);
+                setInquiryOpen(true);
+              }}
+            />
+          )}
         </div>
 
         {/* Recommended Study Path — students only */}
