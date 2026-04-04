@@ -29,6 +29,9 @@ interface InquiryModalProps {
   moduleCode?: string;
   chapterId?: string;
   topicId?: string;
+  targetAdminId?: string;
+  targetAdminName?: string;
+  targetRole?: string;
 }
 
 const CATEGORY_OPTIONS: { value: InquiryCategory; label: string; helper: string }[] = [
