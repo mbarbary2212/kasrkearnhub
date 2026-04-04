@@ -306,9 +306,33 @@ export default function ModulePage() {
   );
 }
 
-function ModuleLeadRow({ moduleId }: { moduleId: string | undefined }) {
+function ModuleLeadRow({ moduleId, moduleName }: { moduleId: string | undefined; moduleName?: string }) {
   const { data: admins } = useModuleAdmins(moduleId);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
+
   if (!admins || admins.length === 0) return null;
   const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
-  return <div className="mt-1"><ContentAdminCard admins={admins} label={label} size="md" /></div>;
+  return (
+    <div className="mt-1">
+      <ContentAdminCard
+        admins={admins}
+        label={label}
+        size="md"
+        onContact={(admin) => {
+          setSelectedAdmin(admin);
+          setInquiryOpen(true);
+        }}
+      />
+      <InquiryModal
+        isOpen={inquiryOpen}
+        onClose={() => { setInquiryOpen(false); setSelectedAdmin(null); }}
+        moduleId={moduleId}
+        moduleName={moduleName}
+        targetAdminId={selectedAdmin?.id}
+        targetAdminName={selectedAdmin?.full_name || undefined}
+        targetRole="module"
+      />
+    </div>
+  );
 }
