@@ -165,6 +165,24 @@ function LoggedInHome() {
   const dueCount = dueCards?.length ?? 0;
   const { earned, total } = useBadgeStats();
   const { data: lastPos } = useLastPosition();
+
+  // Tour + Guidance
+  const { startTour } = useTour('student', studentTourSteps);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+
+  // Listen for workflow open event
+  useEffect(() => {
+    const handler = () => setWorkflowOpen(true);
+    window.addEventListener('kalm:open-workflow', handler);
+    return () => window.removeEventListener('kalm:open-workflow', handler);
+  }, []);
+
+  // Visit counter for context guide
+  const [showHomeGuide] = useState(() => {
+    const count = parseInt(localStorage.getItem('kalm_home_visit_count') || '0', 10);
+    localStorage.setItem('kalm_home_visit_count', String(count + 1));
+    return count < 3;
+  });
   
   const { setActiveYear } = useActiveYear();
 
