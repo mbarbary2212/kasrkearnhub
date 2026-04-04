@@ -81,6 +81,17 @@ export default function AdminDashboard() {
   return (
     <MainLayout>
       <div className="max-w-6xl mx-auto space-y-4 animate-fade-in">
+        {/* Context Guide */}
+        <ContextGuide
+          title="Your command center"
+          description="Monitor activity, identify issues, and act where needed."
+          storageKey="kalm_guide_admin_dashboard_dismissed"
+        />
+
+        {/* First login modal + workflow guide */}
+        <FirstLoginModal role="admin" onStartTour={startTour} onOpenWorkflow={() => setWorkflowOpen(true)} />
+        <WorkflowGuide open={workflowOpen} onOpenChange={setWorkflowOpen} mode="admin" />
+
         <h1 className="text-xl md:text-2xl font-heading font-bold">
           {greeting}, <span className="text-primary">{firstName}</span> 👋
         </h1>
