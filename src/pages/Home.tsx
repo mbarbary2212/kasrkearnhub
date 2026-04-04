@@ -261,6 +261,26 @@ function LoggedInHome() {
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
+      {/* Context Guide for new users */}
+      {showHomeGuide && (
+        <ContextGuide
+          title="Start your study journey"
+          description="Start with Learning, then practice questions, and track your progress here."
+          primaryAction={{
+            label: 'Go to Learning',
+            onClick: () => {
+              if (lastPos) navigate(buildResumeUrl(lastPos));
+              else navigate('/', { state: { fromLearning: true } });
+            },
+          }}
+          storageKey="kalm_guide_home_dismissed"
+        />
+      )}
+
+      {/* First login modal + workflow guide */}
+      <FirstLoginModal role="student" onStartTour={startTour} onOpenWorkflow={() => setWorkflowOpen(true)} />
+      <WorkflowGuide open={workflowOpen} onOpenChange={setWorkflowOpen} mode="student" />
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}
         <div className="md:col-span-3 space-y-5">
