@@ -936,6 +936,11 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === "resources" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Start with understanding"
+                  description="Study the material first before moving to practice."
+                  storageKey="kalm_guide_learning_dismissed"
+                />
                 {/* Lectures Content */}
                 {resourcesTab === "lectures" && (
                   <div>
