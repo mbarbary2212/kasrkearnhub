@@ -105,6 +105,16 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
 
   const content = (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Target admin context */}
+      {targetAdminName && (
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <p className="text-sm text-foreground">
+            To: <span className="font-medium">{targetAdminName}</span>
+            {targetRole && <span className="text-muted-foreground"> ({targetRole === 'module' ? 'Module Lead' : 'Topic Lead'})</span>}
+          </p>
+        </div>
+      )}
+
       {/* Module context */}
       {moduleName && (
         <div className="p-3 rounded-lg bg-muted border">
