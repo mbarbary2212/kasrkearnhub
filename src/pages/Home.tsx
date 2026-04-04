@@ -33,6 +33,12 @@ import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
 
+import { useTour } from '@/hooks/useTour';
+import { studentTourSteps } from '@/components/tour/studentTourSteps';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
+import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
+import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
+
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
@@ -159,6 +165,24 @@ function LoggedInHome() {
   const dueCount = dueCards?.length ?? 0;
   const { earned, total } = useBadgeStats();
   const { data: lastPos } = useLastPosition();
+
+  // Tour + Guidance
+  const { startTour } = useTour('student', studentTourSteps);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+
+  // Listen for workflow open event
+  useEffect(() => {
+    const handler = () => setWorkflowOpen(true);
+    window.addEventListener('kalm:open-workflow', handler);
+    return () => window.removeEventListener('kalm:open-workflow', handler);
+  }, []);
+
+  // Visit counter for context guide
+  const [showHomeGuide] = useState(() => {
+    const count = parseInt(localStorage.getItem('kalm_home_visit_count') || '0', 10);
+    localStorage.setItem('kalm_home_visit_count', String(count + 1));
+    return count < 3;
+  });
   
   const { setActiveYear } = useActiveYear();
 
@@ -237,6 +261,26 @@ function LoggedInHome() {
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
+      {/* Context Guide for new users */}
+      {showHomeGuide && (
+        <ContextGuide
+          title="Start your study journey"
+          description="Start with Learning, then practice questions, and track your progress here."
+          primaryAction={{
+            label: 'Go to Learning',
+            onClick: () => {
+              if (lastPos) navigate(buildResumeUrl(lastPos));
+              else navigate('/', { state: { fromLearning: true } });
+            },
+          }}
+          storageKey="kalm_guide_home_dismissed"
+        />
+      )}
+
+      {/* First login modal + workflow guide */}
+      <FirstLoginModal role="student" onStartTour={startTour} onOpenWorkflow={() => setWorkflowOpen(true)} />
+      <WorkflowGuide open={workflowOpen} onOpenChange={setWorkflowOpen} mode="student" />
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}
         <div className="md:col-span-3 space-y-5">

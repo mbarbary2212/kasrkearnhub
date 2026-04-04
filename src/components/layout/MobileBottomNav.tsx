@@ -7,6 +7,7 @@ import {
   MessageCircle, ClipboardCheck, SlidersHorizontal, Settings,
   HelpCircle, MessageSquare, MessagesSquare, Users,
   FileText, Gamepad2, PenLine, ListChecks, BarChart3, Shield,
+  Compass, BookOpenCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
@@ -70,12 +71,16 @@ const studentMoreItems: SubItem[] = [
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+  { id: 'take-tour', label: 'Take a Tour', icon: Compass },
+  { id: 'how-to-use', label: 'How to Use', icon: BookOpenCheck },
 ];
 
 const adminMoreItems: SubItem[] = [
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
   { id: 'admin-panel', label: 'Admin Panel', icon: Shield, path: '/admin' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+  { id: 'take-tour', label: 'Take a Tour', icon: Compass },
+  { id: 'how-to-use', label: 'How to Use', icon: BookOpenCheck },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -190,8 +195,17 @@ export function MobileBottomNav() {
 
   const handleMoreItem = useCallback((item: SubItem) => {
     setActiveSheet(null);
+    if (item.id === 'take-tour') {
+      const role = isAdmin ? 'admin' : 'student';
+      window.dispatchEvent(new CustomEvent('kalm:start-tour', { detail: { role } }));
+      return;
+    }
+    if (item.id === 'how-to-use') {
+      window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
+      return;
+    }
     if (item.path) navigate(item.path);
-  }, [navigate]);
+  }, [navigate, isAdmin]);
 
   const dueCount = dueCards?.length ?? 0;
 
@@ -296,6 +310,7 @@ export function MobileBottomNav() {
             return (
               <button
                 key={tab.id}
+                data-tour={tab.id}
                 onClick={() => handleTap(tab)}
                 className={cn(
                   'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-all duration-200 relative',

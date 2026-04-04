@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { ContextGuide } from "@/components/guidance/ContextGuide";
 import { useTrackPosition } from "@/hooks/useTrackPosition";
 import * as Sentry from "@sentry/react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -935,6 +936,11 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === "resources" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Start with understanding"
+                  description="Study the material first before moving to practice."
+                  storageKey="kalm_guide_learning_dismissed"
+                />
                 {/* Lectures Content */}
                 {resourcesTab === "lectures" && (
                   <div>
@@ -1204,6 +1210,11 @@ export default function ChapterPage() {
             {/* Interactive Section (Cases + Pathways) */}
             {activeSection === "interactive" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Apply your knowledge"
+                  description="Work through clinical cases to simulate real decisions."
+                  storageKey="kalm_guide_interactive_dismissed"
+                />
                 {/* Cases Content */}
                 {interactiveTab === "cases" && contentModuleId && chapterId && (
                   <div>
@@ -1304,6 +1315,11 @@ export default function ChapterPage() {
 
             {activeSection === "practice" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Practice before moving on"
+                  description="Use questions here to uncover weak points before progressing."
+                  storageKey="kalm_guide_practice_dismissed"
+                />
                 {/* MCQs Content */}
                 {practiceTab === "mcqs" && (
                   <div>
