@@ -1,4 +1,4 @@
-import { Mail } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import type { ContentAdmin } from '@/hooks/useContentAdmins';
@@ -21,7 +21,7 @@ function getInitials(name: string | null): string {
     .slice(0, 2);
 }
 
-export function ContentAdminCard({ admins, label, size = 'sm' }: ContentAdminCardProps) {
+export function ContentAdminCard({ admins, label, size = 'sm', onContact }: ContentAdminCardProps) {
   if (!admins || admins.length === 0) return null;
 
   const displayLabel =
@@ -41,10 +41,10 @@ export function ContentAdminCard({ admins, label, size = 'sm' }: ContentAdminCar
           <TooltipProvider key={admin.id} delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <a
-                  href={admin.email ? `mailto:${admin.email}` : undefined}
+                <button
+                  type="button"
                   className="flex items-center gap-1.5 rounded-full bg-muted/50 hover:bg-muted pl-0.5 pr-2.5 py-0.5 transition-colors cursor-pointer group"
-                  onClick={(e) => !admin.email && e.preventDefault()}
+                  onClick={() => onContact?.(admin)}
                 >
                   <Avatar className={cn(avatarSize, textSize)}>
                     {admin.avatar_url && <AvatarImage src={admin.avatar_url} alt={admin.full_name || ''} />}
@@ -55,13 +55,13 @@ export function ContentAdminCard({ admins, label, size = 'sm' }: ContentAdminCar
                   <span className={cn('font-medium text-foreground/80 group-hover:text-foreground truncate', nameSize)}>
                     {admin.full_name || 'Instructor'}
                   </span>
-                  {admin.email && (
-                    <Mail className="h-3 w-3 text-muted-foreground/50 group-hover:text-primary flex-shrink-0" />
+                  {onContact && (
+                    <MessageCircle className="h-3 w-3 text-muted-foreground/50 group-hover:text-primary flex-shrink-0" />
                   )}
-                </a>
+                </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
-                {admin.email ? 'Contact by email' : admin.full_name || 'Instructor'}
+                {onContact ? 'Message via platform' : (admin.full_name || 'Instructor')}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -108,7 +108,6 @@ export function LeadAvatarStack({ admins, maxVisible = 4, avatarSize = 'h-7 w-7'
               </TooltipTrigger>
               <TooltipContent side="bottom" className="text-xs">
                 {admin.full_name || 'Instructor'}
-                {admin.email && <span className="block text-muted-foreground">{admin.email}</span>}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
