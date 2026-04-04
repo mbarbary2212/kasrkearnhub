@@ -44,7 +44,7 @@ const CATEGORY_OPTIONS: { value: InquiryCategory; label: string; helper: string 
   { value: 'other', label: 'Other', helper: 'Anything not listed above' },
 ];
 
-export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, chapterId, topicId }: InquiryModalProps) {
+export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, chapterId, topicId, targetAdminId, targetAdminName, targetRole }: InquiryModalProps) {
   const isMobile = useIsMobile();
   const { profile } = useAuthContext();
   const submitInquiry = useSubmitInquiry();
