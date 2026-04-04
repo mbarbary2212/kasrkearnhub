@@ -264,8 +264,8 @@ function LoggedInHome() {
       {/* Context Guide for new users */}
       {showHomeGuide && (
         <ContextGuide
-          title="Start your study journey"
-          description="Start with Learning, then practice questions, and track your progress here."
+          title="Start here"
+          description="Resume where you left off, then follow today's plan to stay on track."
           primaryAction={{
             label: 'Go to Learning',
             onClick: () => {
