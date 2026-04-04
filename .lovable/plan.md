@@ -1,84 +1,50 @@
 
+# Onboarding & Guidance System — IMPLEMENTED
 
-# In-App Student-to-Admin Contact Flow
+## Three Layers
 
-## Overview
-Remove all mailto behavior, show exactly one module admin + one topic admin in the chapter header, remove sidebar admin duplication, and wire clicks to open InquiryModal targeting the specific admin.
+### 1. Contextual Guides (ContextGuide.tsx)
+Reusable banner component placed on 9 pages:
+- **Student**: Home (first 3 visits), ChapterPage Learning/Practice/Interactive sections, Progress (always), Discussions
+- **Admin**: Dashboard, Inbox, Analytics/Overview
 
-**No database changes needed** — `inquiries.assigned_to_user_id` and `assigned_team` columns already exist.
+### 2. Spotlight Tour (driver.js)
+- `useTour` hook with auto-start on first visit, manual replay via events
+- Student tour: 6 steps (dashboard → learning → connect → coach → settings → final)
+- Admin tour: 5 steps (dashboard → learning → overview → admin-panel → final)
+- Uses `data-tour` attributes on sidebar and mobile nav buttons
 
-## Files to change (7 files)
+### 3. Workflow Guide + First Login Modal
+- `WorkflowGuide.tsx`: Modal with step-by-step usage guide (student: 6 steps, admin: 5 steps)
+- `FirstLoginModal.tsx`: One-time welcome with "Take tour" / "Learn how to use" / "Skip"
 
-### 1. CREATE `src/components/content/ChapterAdminAvatars.tsx`
-New component that:
-- Fetches admins via existing `useModuleAdmins` and `useChapterAdmins` hooks
-- Picks exactly one topic admin (`chapterAdmins[0]`) and one module admin (`moduleAdmins[0]`, skipping if same person as topic admin)
-- Renders compact circular avatars (`h-8 w-8`) with `ring-2 ring-background`
-- Hover/focus: `scale-[1.15]` with `transition-transform duration-200`
-- Tooltip: admin name + role label ("Topic Lead" / "Module Lead") + "Tap to message" — no email shown
-- Click calls `onContactAdmin(admin, 'module' | 'topic')` callback
-- Uses `<button>` elements, not `<a>` tags
+## Entry Points
+- Sidebar: "Tour" and "Guide" buttons in bottom items
+- Mobile: "Take a Tour" and "How to Use" in More sheet
+- Events: `kalm:start-tour` and `kalm:open-workflow` custom events
 
-### 2. EDIT `src/components/feedback/InquiryModal.tsx`
-- Add optional props: `targetAdminId?: string`, `targetAdminName?: string`, `targetRole?: string`
-- When `targetAdminId` is provided, show a context line: "To: [Name] ([Role])" above the form
-- Pass `assignedToUserId: targetAdminId` to the `submitInquiry` mutation
-- Pass `assignedTeam: targetRole === 'module' ? 'module' : 'chapter'`
+## localStorage Keys
+- `kalm_tour_student_done` / `kalm_tour_admin_done`
+- `kalm_first_login_student_shown` / `kalm_first_login_admin_shown`
+- `kalm_workflow_student_seen` / `kalm_workflow_admin_seen`
+- `kalm_home_visit_count`
+- `kalm_guide_{page}_dismissed` (home, learning, practice, interactive, connect, admin_dashboard, admin_inbox, admin_analytics)
 
-### 3. EDIT `src/hooks/useInquiries.ts`
-- Add `assignedToUserId?: string` and `assignedTeam?: AssignedTeam` to the mutation data type
-- Include in the insert: `assigned_to_user_id: data.assignedToUserId || null` and `assigned_team: data.assignedTeam || null`
+## Files Created
+- `src/components/guidance/ContextGuide.tsx`
+- `src/components/guidance/WorkflowGuide.tsx`
+- `src/components/guidance/FirstLoginModal.tsx`
+- `src/hooks/useTour.ts`
+- `src/components/tour/studentTourSteps.ts`
+- `src/components/tour/adminTourSteps.ts`
 
-### 4. EDIT `src/components/content/ContentAdminCard.tsx`
-- Replace `<a href="mailto:...">` with `<button>` or `<div role="button">`
-- Add optional prop: `onContact?: (admin: ContentAdmin) => void`
-- Click calls `onContact(admin)` if provided, otherwise no-op
-- Remove `Mail` icon import; use `MessageCircle` from lucide-react
-- Tooltip: "Message via platform" instead of "Contact by email"
-- Never render email addresses in the UI
-
-### 5. EDIT `src/pages/ChapterPage.tsx`
-- Import `ChapterAdminAvatars` and `InquiryModal`
-- In the header row (around line 698, the `flex items-center gap-2` div), add `ChapterAdminAvatars` pushed right with `ml-auto`
-- Add local state: `inquiryOpen`, `selectedAdmin`, `selectedAdminRole`
-- `onContactAdmin` callback sets state and opens InquiryModal prefilled with moduleId, moduleName, chapterId, targetAdminId, targetAdminName, targetRole
-- Render `<InquiryModal>` with these props
-- Delete dead `ChapterLeadRow` function (line 1594-1599)
-- Delete dead `ModuleLeadInChapter` function (line 1601-1606)
-
-### 6. EDIT `src/pages/ModulePage.tsx`
-- Add local state for InquiryModal open/close and selected admin
-- Update `ModuleLeadRow` to pass `onContact` callback to `ContentAdminCard`
-- On admin click, open InquiryModal prefilled with module context and `targetAdminId`
-- Render `<InquiryModal>` in the component
-
-### 7. EDIT `src/components/layout/StudentSidebar.tsx`
-- Remove imports: `useModuleAdmins`, `useChapterAdmins`, `LeadAvatarStack`
-- Remove the hook calls for `moduleAdmins` and `chapterAdmins`
-- Remove the entire "Your Team" avatar block (lines 357-366)
-- No replacement needed — admins now appear only in page headers
-
-## Data flow
-```text
-Student clicks avatar → InquiryModal opens (prefilled with admin + context)
-  → Student writes message → Submit
-  → Insert into inquiries table with assigned_to_user_id = clicked admin
-  → Edge function notifies admin
-  → Admin replies via admin panel
-  → Student sees reply in Connect → Messages → Questions tab (existing flow)
-```
-
-## Design
-```text
-Chapter header row:
-┌──────────────────────────────────────────────────────┐
-│ ← [Section Filter] [Content Dropdown]    (●)(●)     │
-│                                          ↑    ↑     │
-│                                     topic  module   │
-│                                      lead   lead    │
-└──────────────────────────────────────────────────────┘
-
-Hover on avatar → 1.15x scale, tooltip shows name + role
-Click → InquiryModal opens with "To: Dr. [Name] (Topic Lead)"
-```
-
+## Files Edited
+- `src/pages/Home.tsx` — tour + context guide + first login modal + workflow
+- `src/pages/AdminDashboard.tsx` — tour + context guide + first login modal + workflow
+- `src/pages/ChapterPage.tsx` — context guides for learning/practice/interactive
+- `src/pages/ProgressPage.tsx` — always-visible context guide
+- `src/pages/DiscussionsPage.tsx` — context guide for connect
+- `src/pages/AdminInboxPage.tsx` — context guide
+- `src/pages/AdminOverview.tsx` — context guide
+- `src/components/layout/StudentSidebar.tsx` — data-tour attrs + Tour/Guide buttons
+- `src/components/layout/MobileBottomNav.tsx` — data-tour attrs + Tour/Guide in More
