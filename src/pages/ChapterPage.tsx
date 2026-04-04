@@ -119,8 +119,9 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from "@/hooks/useCustomizeView";
 
 import { cn } from "@/lib/utils";
-import { useChapterAdmins, useModuleAdmins } from '@/hooks/useContentAdmins';
-import { ContentAdminCard } from '@/components/content/ContentAdminCard';
+import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
+import type { ContentAdmin } from '@/hooks/useContentAdmins';
+import InquiryModal from '@/components/feedback/InquiryModal';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
