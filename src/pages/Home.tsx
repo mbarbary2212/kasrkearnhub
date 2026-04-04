@@ -597,7 +597,7 @@ function LoggedInHome() {
           )}
 
           {isStudent && dueCount === 0 && dueCards && (
-            <Card className="border-green-200 dark:border-green-800">
+            <Card data-tour="flashcards-due" className="border-green-200 dark:border-green-800">
               <CardContent className="py-2 px-4">
                 <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5">
                   ✓ Flashcards all caught up
