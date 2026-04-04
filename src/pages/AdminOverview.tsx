@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
 import { useAdminOverviewStats } from '@/hooks/useAdminOverviewStats';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
