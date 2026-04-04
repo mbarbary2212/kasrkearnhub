@@ -1,61 +1,65 @@
+# In-App Student-to-Admin Contact Flow
 
+## What changes
 
-# Add Global "Credits" Footer
+### 1. New: `src/components/content/ChapterAdminAvatars.tsx`
+- Fetches admins via `useModuleAdmins(moduleId)` and `useChapterAdmins(chapterId)`
+- Picks exactly **one** module admin (`admins[0]`) and **one** topic admin (`admins[0]`) — deterministic, first returned by RPC
+- Renders two compact circular avatars (`h-8 w-8`, shrinks to `h-6 w-6` on small screens)
+- Hover: `scale-[1.15]` with `transition-transform duration-200`; mobile uses focus/active state
+- Tooltip: admin name + "Module Lead" / "Topic Lead" — no email shown
+- Click calls `onContactAdmin(admin, 'module'|'topic')` callback
+- Props: `moduleId`, `moduleName`, `chapterId`, `chapterTitle`, `onContactAdmin`
 
-## Credits List (alphabetical by first name, polished role titles)
+### 2. Update: `src/pages/ChapterPage.tsx`
+- Import `ChapterAdminAvatars` and `InquiryModal`
+- Add `ChapterAdminAvatars` to the header row (line ~698), pushed right with `ml-auto`
+- Add state: `inquiryOpen`, `selectedAdmin`, `selectedAdminRole`
+- `onContactAdmin` sets state and opens `InquiryModal` prefilled with moduleId/moduleName/chapterId
+- Pass `assigned_to_user_id` context so the inquiry targets the clicked admin
+- Delete dead `ChapterLeadRow` and `ModuleLeadInChapter` functions (lines 1594-1606)
 
-| Name | Role |
-|------|------|
-| Dr. Ahmed Mansour | Concept & Vision |
-| Dr. Basma | Content Management |
-| Dr. Marwa Mostafa | Interactive Cases |
-| Dr. Mohab Mohamed | UI Design |
-| Dr. Mohamed Amro | Design, Code Review & Security |
-| Dr. Mohamed Elbarbary | Concept & Design Lead |
-| Dr. Mohamed Khaled Maslouh | MCQ Development |
-| Dr. Mohamed Lotfy | Flashcards Development |
-| Dr. Omar | Testing & Concept Design |
-| Dr. Soha Elmorsy | Concept & Vision |
+### 3. Update: `src/components/content/ContentAdminCard.tsx`
+- Replace `<a href="mailto:...">` with `<button>` / `<div role="button">`
+- Add optional prop: `onContact?: (admin: ContentAdmin) => void`
+- Remove `Mail` import; use `MessageCircle` icon instead
+- Tooltip: "Message via platform" (not "Contact by email")
+- Never expose email in rendered UI
 
-## Implementation
+### 4. Update: `src/pages/ModulePage.tsx`
+- Add local state for `InquiryModal` open/close
+- Wire `ModuleLeadRow` → `ContentAdminCard` with `onContact` callback that opens `InquiryModal` prefilled with module context
+- Render `InquiryModal` with moduleId/moduleName
 
-### 1. New Component: `src/components/layout/AppCredits.tsx`
-- A small text line: **"Built with ❤️ by the KALM Hub Team"** with a clickable **"Credits"** link
-- Clicking "Credits" opens a **Popover** listing all contributors with names and roles in a clean two-column layout
-- Subtle styling: `text-xs text-muted-foreground`, centered, with slight top border
-- Positioned at the bottom of the main content area (not fixed/sticky — scrolls with content)
+### 5. Update: `src/components/layout/StudentSidebar.tsx`
+- Remove `useModuleAdmins`, `useChapterAdmins` imports and hook calls
+- Remove `LeadAvatarStack` import
+- Remove the entire "Your Team" avatar block (lines 357-366)
+- No replacement — admins are now shown in page headers only
 
-### 2. Modify: `src/components/layout/MainLayout.tsx`
-- Import `AppCredits` and render it inside `<main>` after `{children}`, so it appears at the bottom of every page's content
-- Only show for authenticated users (not on auth/splash pages)
+### 6. Update: `src/components/feedback/InquiryModal.tsx`
+- Add optional prop: `targetAdminId?: string`, `targetAdminName?: string`, `targetRole?: string`
+- When `targetAdminId` is provided, include it as `assigned_to_user_id` in the inquiry insert
+- Show a small context line: "To: Dr. [Name] (Module Lead)" when a specific admin is targeted
+- The `assigned_to_user_id` column already exists in the `inquiries` table — no DB migration needed
 
-### Design
-```text
-─────────────────────────────────
-  [page content ends here]
+### 7. Update: `src/hooks/useInquiries.ts`
+- Accept optional `assignedToUserId` in the mutation data
+- Pass it through to the insert: `assigned_to_user_id: data.assignedToUserId || null`
 
-  Built with ❤️ by the KALM Hub Team · Credits
-─────────────────────────────────
-```
+## No database changes needed
+- `inquiries.assigned_to_user_id` already exists
+- `inquiries.assigned_team` already exists
+- Existing Connect reply flow (admin_replies → MessagesPanel → Questions tab) works unchanged
 
-Clicking "Credits" opens a popover:
-```text
-┌─────────────────────────────┐
-│  The KALM Hub Team          │
-│                             │
-│  Dr. Ahmed Mansour          │
-│  Concept & Vision           │
-│                             │
-│  Dr. Mohamed Elbarbary      │
-│  Concept & Design Lead      │
-│  ...                        │
-└─────────────────────────────┘
-```
+## Files summary
 
-## Files
-
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/components/layout/AppCredits.tsx` | New — credit line + popover with team list |
-| `src/components/layout/MainLayout.tsx` | Render `<AppCredits />` after children inside main |
-
+| `src/components/content/ChapterAdminAvatars.tsx` | Create |
+| `src/pages/ChapterPage.tsx` | Edit — add avatars to header, remove dead code |
+| `src/components/content/ContentAdminCard.tsx` | Edit — replace mailto with callback |
+| `src/pages/ModulePage.tsx` | Edit — wire InquiryModal |
+| `src/components/layout/StudentSidebar.tsx` | Edit — remove admin avatars |
+| `src/components/feedback/InquiryModal.tsx` | Edit — add targeted admin support |
+| `src/hooks/useInquiries.ts` | Edit — pass assignedToUserId |
