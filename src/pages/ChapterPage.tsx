@@ -1316,8 +1316,8 @@ export default function ChapterPage() {
             {activeSection === "practice" && (
               <div className="space-y-4">
                 <ContextGuide
-                  title="Practice before moving on"
-                  description="Use questions here to uncover weak points before progressing."
+                  title="Test your understanding"
+                  description="Use questions here to identify weak areas before moving forward."
                   storageKey="kalm_guide_practice_dismissed"
                 />
                 {/* MCQs Content */}
