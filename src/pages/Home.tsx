@@ -575,6 +575,7 @@ function LoggedInHome() {
           {/* Flashcards Widget */}
           {isStudent && dueCount > 0 && (
             <Card
+              data-tour="flashcards-due"
               className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
               onClick={() => navigate('/review/flashcards')}
             >
