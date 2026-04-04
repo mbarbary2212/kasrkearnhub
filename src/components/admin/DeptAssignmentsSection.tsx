@@ -155,7 +155,7 @@ export function DeptAssignmentsSection({ modules, years, selectedYearFilter }: D
               Select departments for "{assigningModule?.name}". Click the star to set as primary.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-4 max-h-[50vh] overflow-y-auto">
+          <div className="space-y-3 py-4 overflow-y-auto min-h-0">
             {departments.map(dept => {
               const isSelected = selectedDeptIds.includes(dept.id);
               const isPrimary = dept.id === primaryDeptId;

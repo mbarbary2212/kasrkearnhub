@@ -38,6 +38,8 @@ import { AskCoachButton } from '@/components/coach';
 import { useCoachContext } from '@/contexts/CoachContext';
 import { useLectures, useResources, useEssays } from '@/hooks/useContent';
 import { useClinicalCases } from '@/hooks/useClinicalCases';
+import { useTopicCaseScenarios } from '@/hooks/useCaseScenarios';
+import { CaseScenarioList } from '@/components/content/CaseScenarioList';
 import { useTopicMcqs, useTopicSbas } from '@/hooks/useMcqs';
 import { useTopicTrueFalseQuestions } from '@/hooks/useTrueFalseQuestions';
 import { useTopicOsceQuestions } from '@/hooks/useOsceQuestions';
@@ -187,6 +189,8 @@ export default function TopicDetailPage() {
   const { data: osceQuestions, isLoading: osceLoading } = useTopicOsceQuestions(topicId, false);
   const { data: deletedOsce } = useTopicOsceQuestions(topicId, true);
 
+  const { data: topicCaseScenarios, isLoading: caseScenariosLoading } = useTopicCaseScenarios(topicId);
+
   // Filter clinical cases by topic
   const topicClinicalCases = (clinicalCases || []).filter(c => c.topic_id === topicId);
 
@@ -317,16 +321,27 @@ export default function TopicDetailPage() {
   ];
 
   // Use unified tab configuration - create all tabs first
+  const topicInfographicsCount = studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0;
+  const topicMindMapsTotal = mindMaps.length;
+
   const allResourcesTabs = useMemo(() => {
-    return createResourceTabs({
+    const tabs = createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards?.length || 0,
-      mind_maps: mindMaps.length + (studyResources?.filter(r => r.resource_type === 'infographic')?.length || 0),
+      mind_maps: topicMindMapsTotal + topicInfographicsCount,
       guided_explanations: guidedExplanations.length + socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
-  }, [lectures?.length, flashcards?.length, mindMaps.length, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources]);
+    const vmTab = tabs.find(t => t.id === 'mind_maps');
+    if (vmTab) {
+      vmTab.subcounts = [
+        { label: 'Maps', count: topicMindMapsTotal },
+        { label: 'Infographics', count: topicInfographicsCount },
+      ];
+    }
+    return tabs;
+  }, [lectures?.length, flashcards?.length, topicMindMapsTotal, topicInfographicsCount, guidedExplanations.length, documentsCount, interactiveAlgorithms?.length, workedCases.length, studyResources, socraticTutorials.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const { data: pinSettings } = useModulePinSettings();
@@ -369,8 +384,9 @@ export default function TopicDetailPage() {
       practical: 0,
       matching: matchingQuestions?.length || 0,
       images: 0,
+      short_cases: topicCaseScenarios?.filter(s => !s.is_deleted)?.length || 0,
     });
-  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length]);
+  }, [mcqs?.length, sbaQuestions?.length, trueFalseQuestions?.length, essays?.length, osceQuestions?.length, matchingQuestions?.length, topicCaseScenarios?.length]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -523,7 +539,19 @@ export default function TopicDetailPage() {
                           <Icon className="w-4 h-4" />
                         )}
                         <span>{tab.label}</span>
-                        <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        {tab.subcounts && tab.subcounts.length > 0 ? (
+                          <span className="flex items-center gap-0.5">
+                            {tab.subcounts.map((sc) => (
+                              <Badge key={sc.label} variant="outline" className="h-5 px-1.5 text-[10px]" title={sc.label}>
+                                {sc.count}
+                              </Badge>
+                            )).reduce((prev, curr) => (
+                              <>{prev}<span className="text-muted-foreground/50 text-[10px]">/</span>{curr}</>
+                            ) as any)}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{tab.count}</Badge>
+                        )}
                       </button>
                     );
                   })}
@@ -964,7 +992,7 @@ export default function TopicDetailPage() {
                   </div>
                 )}
 
-                {/* Essays / Short Answer */}
+                {/* Short Essays */}
                 {practiceTab === 'essays' && (
                   <div>
                     {showAddControls && topicId && moduleId && (
@@ -1039,6 +1067,20 @@ export default function TopicDetailPage() {
                         showDeletedToggle={canManageContent}
                         showDeleted={showDeletedMatching}
                         onShowDeletedChange={setShowDeletedMatching}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Short Cases */}
+                {practiceTab === 'short_cases' && (
+                  <div>
+                    {caseScenariosLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <CaseScenarioList
+                        scenarios={topicCaseScenarios || []}
+                        isAdmin={canManageContent}
                       />
                     )}
                   </div>

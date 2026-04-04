@@ -219,17 +219,23 @@ export function InfographicViewer({
                 title={fullscreenResource?.title}
               />
             ) : fullscreenFileUrl ? (
-              <div className="flex items-center justify-center p-4" style={{ minHeight: '60vh' }}>
+              <div className="flex items-center justify-center p-4 overflow-auto" style={{ minHeight: '60vh' }}>
                 <img
                   src={fullscreenFileUrl}
                   alt={fullscreenResource?.title}
                   style={{
-                    transform: `scale(${zoom})`,
-                    transformOrigin: 'center center',
+                    ...(zoom !== 1
+                      ? {
+                          transform: `scale(${zoom})`,
+                          transformOrigin: 'center center',
+                        }
+                      : {}),
                     transition: 'transform 0.2s ease-out',
                     maxWidth: '100%',
-                    maxHeight: '75vh',
-                    objectFit: 'contain',
+                    maxHeight: '80vh',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain' as const,
                   }}
                 />
               </div>

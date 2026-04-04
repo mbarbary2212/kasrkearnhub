@@ -15,6 +15,11 @@ import { useIsModuleAdmin } from '@/hooks/useModuleAdmin';
 import { useModules } from '@/hooks/useModules';
 import { LearningHubTabs } from '@/components/dashboard/LearningHubTabs';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { useModuleAdmins } from '@/hooks/useContentAdmins';
+import type { ContentAdmin } from '@/hooks/useContentAdmins';
+import { ContentAdminCard } from '@/components/content/ContentAdminCard';
+import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
+import InquiryModal from '@/components/feedback/InquiryModal';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
 import { ModuleFormativeTab } from '@/components/module/ModuleFormativeTab';
@@ -212,6 +217,7 @@ export default function ModulePage() {
                       ))}
                     </div>
                   )}
+                  {isStudent && <ModuleLeadRow moduleId={actualModuleId} moduleName={module?.name} />}
                 </div>
                 {module?.description && (
                   <p className="text-muted-foreground text-xs md:text-sm line-clamp-1">{module.description}</p>
@@ -298,5 +304,35 @@ export default function ModulePage() {
         </div>
       </div>
     </MainLayout>
+  );
+}
+
+function ModuleLeadRow({ moduleId, moduleName }: { moduleId: string | undefined; moduleName?: string }) {
+  const { data: admins } = useModuleAdmins(moduleId);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
+
+  if (!admins || admins.length === 0) return null;
+
+  return (
+    <>
+      <ChapterAdminAvatars
+        moduleId={moduleId}
+        moduleName={moduleName}
+        onContactAdmin={(admin, role) => {
+          setSelectedAdmin(admin);
+          setInquiryOpen(true);
+        }}
+      />
+      <InquiryModal
+        isOpen={inquiryOpen}
+        onClose={() => { setInquiryOpen(false); setSelectedAdmin(null); }}
+        moduleId={moduleId}
+        moduleName={moduleName}
+        targetAdminId={selectedAdmin?.id}
+        targetAdminName={selectedAdmin?.full_name || undefined}
+        targetRole="module"
+      />
+    </>
   );
 }

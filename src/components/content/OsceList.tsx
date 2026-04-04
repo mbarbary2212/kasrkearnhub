@@ -27,6 +27,7 @@ import {
 import { isOsceDuplicate } from '@/lib/duplicateDetection';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
+import { ContentItemAdminBar } from '@/components/admin/ContentItemAdminBar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +81,8 @@ export function OsceList({
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<OsceQuestion | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  // Single-open-at-a-time feedback panel
+  const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
   
   // Admin view toggle
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
@@ -471,7 +474,7 @@ export function OsceList({
           {displayQuestions.map((question, index) => {
             const previousAttempt = !isAdmin ? fullAttemptMap.get(question.id) : undefined;
             return (
-              <div key={question.id} className="flex gap-2">
+              <div key={question.id} data-content-id={question.id} className="flex gap-2">
                 {/* Admin multi-select checkbox */}
                 {isAdmin && !showDeleted && (
                   <div className="pt-4 flex-shrink-0">
@@ -496,6 +499,16 @@ export function OsceList({
                     isStarred={starredIds.has(question.id)}
                     onToggleStar={toggleStar}
                   />
+                  {isAdmin && !showDeleted && (
+                    <ContentItemAdminBar
+                      materialType="osce"
+                      materialId={question.id}
+                      chapterId={chapterId}
+                      onEdit={() => handleEdit(question)}
+                      feedbackOpen={feedbackOpenId === question.id}
+                      onToggleFeedback={() => setFeedbackOpenId(prev => prev === question.id ? null : question.id)}
+                    />
+                  )}
                 </div>
               </div>
             );

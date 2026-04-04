@@ -28,6 +28,7 @@ import {
 } from "@/components/content/ResourcesDeleteManager";
 import { MobileSectionDropdown } from "@/components/content/MobileSectionDropdown";
 import { ClinicalCaseList, ClinicalCaseAdminList } from "@/components/clinical-cases";
+import { CaseScenarioList } from "@/components/content/CaseScenarioList";
 import { SectionFilter } from "@/components/sections";
 import { SectionsManager } from "@/components/sections";
 import { useChapterSectionsEnabled, useChapterSections } from "@/hooks/useSections";
@@ -39,6 +40,7 @@ import {
   useChapterClinicalCaseCount,
 } from "@/hooks/useChapterContent";
 import { useChapterOsceQuestions, useChapterOsceCount } from "@/hooks/useOsceQuestions";
+import { useChapterCaseScenarios, useChapterCaseScenarioCount } from "@/hooks/useCaseScenarios";
 import { useChapterProgress } from "@/hooks/useChapterProgress";
 import { useChapterMatchingQuestions, useChapterMatchingCount } from "@/hooks/useMatchingQuestions";
 import { useClinicalCases } from "@/hooks/useClinicalCases";
@@ -117,7 +119,13 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from "@/hooks/useCustomizeView";
 
 import { cn } from "@/lib/utils";
+import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
+import type { ContentAdmin } from '@/hooks/useContentAdmins';
+import InquiryModal from '@/components/feedback/InquiryModal';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
+import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
+import { getRecommendedPath } from '@/lib/recommendedPath';
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
 
@@ -130,6 +138,11 @@ export default function ChapterPage() {
   const deleteStudyResource = useDeleteStudyResource();
   const { setStudyContext } = useCoachContext();
   const { updatePresence } = usePresence();
+
+  // Inquiry modal state for admin contact
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
+  const [selectedAdminRole, setSelectedAdminRole] = useState<'module' | 'topic'>('module');
 
   const showAddControls = !!(
     auth.isAdmin ||
@@ -247,6 +260,7 @@ export default function ChapterPage() {
   const { data: trueFalseCount = 0 } = useChapterTrueFalseCount(chapterId);
   const { data: essayCount = 0 } = useChapterEssayCount(chapterId);
   const { data: clinicalCaseCount = 0 } = useChapterClinicalCaseCount(chapterId);
+  const { data: caseScenarioCount = 0 } = useChapterCaseScenarioCount(chapterId);
 
   // Full practice data hooks - only fetch when Practice or Test section is active
   const isPracticeActive = activeSection === "practice" || activeSection === "test" || activeSection === "interactive";
@@ -277,11 +291,32 @@ export default function ChapterPage() {
   const { data: deletedTrueFalseQuestions } = useChapterTrueFalseQuestions(chapterId, true, {
     enabled: isPracticeActive && canManageContent,
   });
+  const { data: caseScenarios, isLoading: caseScenariosLoading } = useChapterCaseScenarios(isPracticeActive ? chapterId : undefined);
   const { data: clinicalCases, isLoading: clinicalCasesLoading } = useClinicalCases(contentModuleId, canManageContent);
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
   const { data: interactiveAlgorithms } = useChapterAlgorithms(chapterId);
+
+  // ─── Recommended Path: derive chapter state from metrics ───
+  const isStudent = !showAddControls && !auth.isTeacher;
+  const { data: chapterMetrics } = useStudentChapterMetrics(contentModuleId ?? undefined);
+  const currentChapterState = useMemo(() => {
+    if (!isStudent || !chapterMetrics || !chapterId) return undefined;
+    const metric = chapterMetrics.find(m => m.chapter_id === chapterId);
+    if (!metric) return 'not_started' as const;
+    return classifyChapterState({
+      coverage_percent: metric.coverage_percent,
+      mcq_attempts: metric.mcq_attempts,
+      mcq_accuracy: metric.mcq_accuracy,
+      recent_mcq_accuracy: metric.recent_mcq_accuracy,
+      readiness_score: metric.readiness_score,
+      flashcards_due: metric.flashcards_due,
+      flashcards_overdue: metric.flashcards_overdue,
+      last_activity_at: metric.last_activity_at,
+      confidence_mismatch_rate: metric.confidence_mismatch_rate,
+    });
+  }, [isStudent, chapterMetrics, chapterId]);
 
   // Build a map of section_id → display_order for sorting
   const sectionOrderMap = useMemo(() => {
@@ -460,6 +495,27 @@ export default function ChapterPage() {
     });
   }, [module, chapter, activeSection, resourcesTab, interactiveTab, practiceTab, updatePresence]);
 
+  // ─── Content highlight + context banner ───
+  const highlightId = searchParams.get('highlight');
+  const fromSource = searchParams.get('from');
+  const [showContextBanner, setShowContextBanner] = useState(!!fromSource);
+
+  // Scroll to highlighted element after content loads
+  useEffect(() => {
+    if (!highlightId) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector(`[data-content-id="${highlightId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        setTimeout(() => {
+          el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'animate-pulse');
+        }, 3000);
+      }
+    }, 800); // wait for content to render
+    return () => clearTimeout(timer);
+  }, [highlightId, activeSection, practiceTab, resourcesTab, interactiveTab]);
+
   if (!chapterLoading && !chapter) {
     return (
       <MainLayout>
@@ -521,29 +577,39 @@ export default function ChapterPage() {
   };
 
   // Use unified tab configuration - create all tabs first
+  const infographicsCount = studyResources?.filter((r) => r.resource_type === "infographic")?.length || 0;
+  const mindMapsTotal = mindMaps.length + publishedAIMaps.length;
+
   const allResourcesTabs = useMemo(() => {
-    return createResourceTabs({
+    const tabs = createResourceTabs({
       lectures: lectures?.length || 0,
       flashcards: flashcards.length,
-      mind_maps:
-        mindMaps.length +
-        (studyResources?.filter((r) => r.resource_type === "infographic")?.length || 0) +
-        publishedAIMaps.length,
+      mind_maps: mindMapsTotal + infographicsCount,
       guided_explanations:
         (studyResources?.filter((r) => r.resource_type === "guided_explanation")?.length || 0) +
         socraticTutorials.length,
       reference_materials: documentsCount,
       clinical_tools: workedCases.length,
     });
+    // Attach subcounts to mind_maps tab for split badge display
+    const vmTab = tabs.find(t => t.id === 'mind_maps');
+    if (vmTab) {
+      vmTab.subcounts = [
+        { label: 'Maps', count: mindMapsTotal },
+        { label: 'Infographics', count: infographicsCount },
+      ];
+    }
+    return tabs;
   }, [
     lectures?.length,
     flashcards.length,
-    mindMaps.length,
+    mindMapsTotal,
+    infographicsCount,
     studyResources,
     documentsCount,
-    interactiveAlgorithms?.length,
     workedCases.length,
     publishedAIMaps.length,
+    socraticTutorials.length,
   ]);
 
   // Admin sees all tabs; students see filtered based on setting
@@ -586,8 +652,9 @@ export default function ChapterPage() {
       practical: 0,
       matching: matchingCount,
       images: 0,
+      short_cases: caseScenarioCount,
     });
-  }, [mcqCount, sbaCount, trueFalseCount, essayCount, osceCount, matchingCount]);
+  }, [mcqCount, sbaCount, trueFalseCount, essayCount, osceCount, matchingCount, caseScenarioCount]);
 
   // Admin sees all tabs; students see filtered based on setting
   const practiceTabs = useMemo(() => {
@@ -606,6 +673,33 @@ export default function ChapterPage() {
   return (
     <MainLayout>
       <div className="space-y-3 md:space-y-4 animate-fade-in min-h-[60vh] bg-gradient-to-br from-blue-50/80 via-white to-blue-100/60 dark:from-blue-950/20 dark:via-background dark:to-blue-900/10 -mx-2 md:-mx-4 -mt-4 px-2 md:px-4 pt-3 md:pt-4 rounded-xl">
+        {/* Context banner when opened from Inbox, Analytics, or Feedback */}
+        {showContextBanner && fromSource && (
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border bg-primary/5 border-primary/20 text-sm">
+            <span className="text-primary font-medium">
+              {fromSource === 'inbox' ? 'Opened from Inbox' : fromSource === 'analytics' ? 'Opened from Analytics' : fromSource === 'feedback' ? 'Opened from Feedback' : 'Opened from Admin'}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  if (fromSource === 'inbox') navigate('/admin/inbox');
+                  else if (fromSource === 'analytics') navigate('/admin?tab=analytics');
+                  else if (fromSource === 'feedback') navigate('/admin/inbox?tab=feedback');
+                  else navigate('/admin');
+                }}
+              >
+                <ArrowLeft className="h-3 w-3 mr-1" />
+                {fromSource === 'inbox' ? 'Back to Inbox' : fromSource === 'analytics' ? 'Back to Analytics' : fromSource === 'feedback' ? 'Back to Feedback' : 'Back'}
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowContextBanner(false)}>
+                ✕
+              </Button>
+            </div>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center gap-2 md:gap-3 flex-wrap">
           <Button
@@ -737,6 +831,9 @@ export default function ChapterPage() {
                     const isActive = currentSubTab === tab.id;
                     const counts = getTabCounts(tab.id, tab.count);
                     const progress = counts.total > 0 ? Math.round((counts.completed / counts.total) * 100) : 0;
+                    const isRecommended = isStudent && currentChapterState
+                      ? getRecommendedPath(currentChapterState).recommendedTabs.includes(tab.id)
+                      : false;
                     return (
                       <DropdownMenuItem
                         key={tab.id}
@@ -748,6 +845,7 @@ export default function ChapterPage() {
                         className={cn(
                           "flex items-center gap-2 py-3 cursor-pointer",
                           isActive && cn(colors.activeBg, colors.activeBgDark),
+                          isRecommended && !isActive && "bg-amber-50/50 dark:bg-amber-950/10",
                         )}
                       >
                         {tab.useImageIcon ? (
@@ -755,8 +853,25 @@ export default function ChapterPage() {
                         ) : (
                           <TabIcon className={cn("w-4 h-4", isActive ? colors.icon : "")} />
                         )}
-                        <span className={cn("flex-1", isActive && cn("font-medium", colors.text))}>{tab.label}</span>
-                        {tab.count > 0 ? (
+                        <span className={cn("flex-1", isActive && cn("font-medium", colors.text))}>
+                          {tab.label}
+                          {isRecommended && (
+                            <span className="ml-1.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                              ★
+                            </span>
+                          )}
+                        </span>
+                        {tab.subcounts && tab.subcounts.length > 0 ? (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
+                            {tab.subcounts.map((sc, i) => (
+                              <Badge key={sc.label} variant="outline" className="h-5 px-1.5 text-[10px]" title={sc.label}>
+                                {sc.count}
+                              </Badge>
+                            )).reduce((prev, curr, i) => (
+                              <>{prev}<span className="text-muted-foreground/50">/</span>{curr}</>
+                            ) as any)}
+                          </span>
+                        ) : tab.count > 0 ? (
                           <div className="relative h-5 w-14 rounded-full bg-muted overflow-hidden text-[10px]">
                             <div
                               className={cn(
@@ -781,9 +896,32 @@ export default function ChapterPage() {
               </DropdownMenu>
             );
           })()}
+
+          {/* Admin avatars for student contact */}
+          {isStudent && (
+            <ChapterAdminAvatars
+              moduleId={moduleId}
+              moduleName={module?.name}
+              chapterId={chapterId}
+              chapterTitle={chapter?.title}
+              onContactAdmin={(admin, role) => {
+                setSelectedAdmin(admin);
+                setSelectedAdminRole(role);
+                setInquiryOpen(true);
+              }}
+            />
+          )}
         </div>
 
-        {/* Chapter Progress moved to header breadcrumb */}
+        {/* Recommended Study Path — students only */}
+        {isStudent && currentChapterState && (
+          <RecommendedPathBanner
+            chapterState={currentChapterState}
+            activeSection={activeSection}
+            onNavigateSection={(s) => setActiveSection(s as SectionMode)}
+          />
+        )}
+
 
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && <SectionsManager chapterId={chapterId} canManage={canManageContent} />}
@@ -1310,6 +1448,20 @@ export default function ChapterPage() {
                   </div>
                 )}
 
+                {/* Short Cases Content */}
+                {practiceTab === "short_cases" && (
+                  <div>
+                    {caseScenariosLoading ? (
+                      <QuestionListSkeleton count={2} type="mcq" />
+                    ) : (
+                      <CaseScenarioList
+                        scenarios={caseScenarios || []}
+                        isAdmin={canManageContent}
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Image Questions Content (placeholder) */}
                 {practiceTab === "images" && (
                   <div className="text-center py-12">
@@ -1456,6 +1608,20 @@ export default function ChapterPage() {
           <ResourcesDeleteManager deleteResource={handleDeleteFlashcard} refetchResources={refetchFlashcards} />
         )}
       </div>
+
+      {/* Inquiry Modal for admin contact */}
+      <InquiryModal
+        isOpen={inquiryOpen}
+        onClose={() => { setInquiryOpen(false); setSelectedAdmin(null); }}
+        moduleId={moduleId}
+        moduleName={module?.name}
+        chapterId={chapterId}
+        targetAdminId={selectedAdmin?.id}
+        targetAdminName={selectedAdmin?.full_name || undefined}
+        targetRole={selectedAdminRole}
+      />
     </MainLayout>
   );
 }
+
+// Dead code removed: ChapterLeadRow and ModuleLeadInChapter replaced by ChapterAdminAvatars

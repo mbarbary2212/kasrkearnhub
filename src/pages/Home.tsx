@@ -31,15 +31,23 @@ import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
 import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
+import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
 
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
+  // Redirect admins to overview dashboard
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [user, authLoading, isAdmin, navigate]);
+
   // Handle resume last path (but NO auto-redirect to year page anymore)
   useEffect(() => {
-    if (!user || authLoading || hasCheckedAutoLogin) return;
+    if (!user || authLoading || hasCheckedAutoLogin || isAdmin) return;
 
     const skipAutoLogin = sessionStorage.getItem('skipAutoLogin');
     if (skipAutoLogin) {
@@ -77,6 +85,17 @@ export default function Home() {
   if (!user && !authLoading) {
     navigate('/auth', { replace: true });
     return null;
+  }
+
+  // Admin redirect in progress
+  if (user && isAdmin) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Skeleton className="h-8 w-64 mx-auto" />
+        </div>
+      </MainLayout>
+    );
   }
 
   if (user) {
@@ -417,6 +436,7 @@ function LoggedInHome() {
                             <div className="min-w-0 flex-1">
                               <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
                               <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />
+                              <ModuleCardLeads moduleId={module.id} />
                             </div>
                             <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0 mt-0.5" />
                           </div>
@@ -445,8 +465,9 @@ function LoggedInHome() {
                         onClick={() => navigate(`/module/${module.id}`)}
                       >
                         <span className="text-xs font-mono font-semibold text-primary min-w-[4.5rem]">{module.slug?.toUpperCase()}</span>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-sm font-medium text-foreground truncate block">{module.name}</span>
+                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground truncate">{module.name}</span>
+                          <ModuleCardLeads moduleId={module.id} />
                         </div>
                         <div className="w-24 flex-shrink-0">
                           <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />

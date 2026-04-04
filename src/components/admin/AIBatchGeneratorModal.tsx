@@ -29,7 +29,7 @@ const CONTENT_TYPES = [
   { value: 'sba', label: 'SBA', description: 'Single Best Answer questions' },
   { value: 'flashcard', label: 'Flashcards', description: 'Study flashcards' },
   { value: 'osce', label: 'OSCE Questions', description: 'Clinical examination questions' },
-  { value: 'essay', label: 'Essays', description: 'Short answer questions' },
+  { value: 'essay', label: 'Short Essay', description: 'Short essay questions' },
   { value: 'matching', label: 'Matching Questions', description: 'Match items questions' },
   { value: 'clinical_case', label: 'Clinical Cases', description: 'Patient case studies' },
   { value: 'mind_map', label: 'Mind Maps', description: 'Concept mind maps' },

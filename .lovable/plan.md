@@ -1,76 +1,84 @@
 
 
-# Blueprint-Aware AI Content Generation — Final Implementation Plan
+# In-App Student-to-Admin Contact Flow
 
-## Steps
+## Overview
+Remove all mailto behavior, show exactly one module admin + one topic admin in the chapter header, remove sidebar admin duplication, and wire clicks to open InquiryModal targeting the specific admin.
 
-### Step 1 — Database Migration
-Add `question_types text[] DEFAULT '{}'` column to `chapter_blueprint_config`.
+**No database changes needed** — `inquiries.assigned_to_user_id` and `assigned_team` columns already exist.
 
-### Step 2 — Update `useChapterBlueprintConfig.ts`
-- Add `question_types: string[]` to `ChapterBlueprintConfig` type
-- Include in upsert payload (default `[]`)
-- Add `QUESTION_TYPE_OPTIONS` constant with 14 formats: SBA, True/False, EMQ, Cross-matching, Cloze, Short Essay, Long Essay, Clinical Scenario, OSCE Station, Spot Diagnosis, Paraclinical Interpretation, Flashcard, Mind Map, Pathway
+## Files to change (7 files)
 
-### Step 3 — Update `BlueprintCellPopover.tsx`
-Add compact scrollable multi-select checklist of 14 question types below existing H/A/L buttons. Saved in same upsert call. Cell shows "3 types" badge when types are set. No changes to H/A/L logic or cell colors.
+### 1. CREATE `src/components/content/ChapterAdminAvatars.tsx`
+New component that:
+- Fetches admins via existing `useModuleAdmins` and `useChapterAdmins` hooks
+- Picks exactly one topic admin (`chapterAdmins[0]`) and one module admin (`moduleAdmins[0]`, skipping if same person as topic admin)
+- Renders compact circular avatars (`h-8 w-8`) with `ring-2 ring-background`
+- Hover/focus: `scale-[1.15]` with `transition-transform duration-200`
+- Tooltip: admin name + role label ("Topic Lead" / "Module Lead") + "Tap to message" — no email shown
+- Click calls `onContactAdmin(admin, 'module' | 'topic')` callback
+- Uses `<button>` elements, not `<a>` tags
 
-### Step 4 — Create `supabase/functions/_shared/blueprint.ts`
-Shared utility: accepts Supabase client + `chapter_id`, queries `chapter_blueprint_config` joined with `sections`, returns `{ configs, distribution_instruction }`. Weighting: high=3, average=2, low=1, untagged=1 → percentage per section. Returns empty string if no configs exist.
+### 2. EDIT `src/components/feedback/InquiryModal.tsx`
+- Add optional props: `targetAdminId?: string`, `targetAdminName?: string`, `targetRole?: string`
+- When `targetAdminId` is provided, show a context line: "To: [Name] ([Role])" above the form
+- Pass `assignedToUserId: targetAdminId` to the `submitInquiry` mutation
+- Pass `assignedTeam: targetRole === 'module' ? 'module' : 'chapter'`
 
-### Step 5 — Inject into `generate-content-from-pdf/index.ts`
-After section fetching, before `baseSystemPrompt` construction: import `getBlueprintContext`, query, prepend `distribution_instruction`. No other changes.
+### 3. EDIT `src/hooks/useInquiries.ts`
+- Add `assignedToUserId?: string` and `assignedTeam?: AssignedTeam` to the mutation data type
+- Include in the insert: `assigned_to_user_id: data.assignedToUserId || null` and `assigned_team: data.assignedTeam || null`
 
-### Step 6 — Inject into `generate-mind-map/index.ts`
-Has `chapter_id` available. Import, query, prepend to `fullSystemPrompt`. No other changes.
+### 4. EDIT `src/components/content/ContentAdminCard.tsx`
+- Replace `<a href="mailto:...">` with `<button>` or `<div role="button">`
+- Add optional prop: `onContact?: (admin: ContentAdmin) => void`
+- Click calls `onContact(admin)` if provided, otherwise no-op
+- Remove `Mail` icon import; use `MessageCircle` from lucide-react
+- Tooltip: "Message via platform" instead of "Contact by email"
+- Never render email addresses in the UI
 
-### Step 7 — Inject into `generate-pathway/index.ts` (with guard)
-- Accept optional `chapterId` in request body
-- **Guard**: only call `getBlueprintContext` when `chapterId` is a non-empty string. If missing/empty/undefined, skip blueprint query entirely and proceed without injecting distribution instruction
-- Frontend (`PathwayAIGenerateModal.tsx`): pass `chapterId` in invoke body
+### 5. EDIT `src/pages/ChapterPage.tsx`
+- Import `ChapterAdminAvatars` and `InquiryModal`
+- In the header row (around line 698, the `flex items-center gap-2` div), add `ChapterAdminAvatars` pushed right with `ml-auto`
+- Add local state: `inquiryOpen`, `selectedAdmin`, `selectedAdminRole`
+- `onContactAdmin` callback sets state and opens InquiryModal prefilled with moduleId, moduleName, chapterId, targetAdminId, targetAdminName, targetRole
+- Render `<InquiryModal>` with these props
+- Delete dead `ChapterLeadRow` function (line 1594-1599)
+- Delete dead `ModuleLeadInChapter` function (line 1601-1606)
 
-### Step 8 — Inject into `generate-vp-case/index.ts`
-Accept optional `chapter_id`, same null guard as pathway — only query blueprint if non-empty string provided. Future-ready.
+### 6. EDIT `src/pages/ModulePage.tsx`
+- Add local state for InquiryModal open/close and selected admin
+- Update `ModuleLeadRow` to pass `onContact` callback to `ContentAdminCard`
+- On admin click, open InquiryModal prefilled with module context and `targetAdminId`
+- Render `<InquiryModal>` in the component
 
-### Step 9 — Inject into `generate-structured-case/index.ts`
-Already has `chapter_id` from `vpCase.chapter_id`. Same guard pattern — only inject if chapter_id is truthy. Import, query, prepend to system prompt.
+### 7. EDIT `src/components/layout/StudentSidebar.tsx`
+- Remove imports: `useModuleAdmins`, `useChapterAdmins`, `LeadAvatarStack`
+- Remove the hook calls for `moduleAdmins` and `chapterAdmins`
+- Remove the entire "Your Team" avatar block (lines 357-366)
+- No replacement needed — admins now appear only in page headers
 
-### Step 10 — Update `blueprintExcelExport.ts`
-Append question types in parentheses when set: `High (SBA, True/False)`.
-
-### Step 11 — Update Supabase types
-Add `question_types: string[] | null` to `chapter_blueprint_config` row type in `src/integrations/supabase/types.ts`.
-
-## Guard Pattern (applied to Steps 7-9)
-```typescript
-let blueprintInstruction = '';
-if (chapterId && typeof chapterId === 'string' && chapterId.trim().length > 0) {
-  const blueprint = await getBlueprintContext(serviceClient, chapterId);
-  blueprintInstruction = blueprint.distribution_instruction;
-}
+## Data flow
+```text
+Student clicks avatar → InquiryModal opens (prefilled with admin + context)
+  → Student writes message → Submit
+  → Insert into inquiries table with assigned_to_user_id = clicked admin
+  → Edge function notifies admin
+  → Admin replies via admin panel
+  → Student sees reply in Connect → Messages → Questions tab (existing flow)
 ```
 
-## Files Changed
+## Design
+```text
+Chapter header row:
+┌──────────────────────────────────────────────────────┐
+│ ← [Section Filter] [Content Dropdown]    (●)(●)     │
+│                                          ↑    ↑     │
+│                                     topic  module   │
+│                                      lead   lead    │
+└──────────────────────────────────────────────────────┘
 
-| File | Change |
-|------|--------|
-| Migration (new) | Add `question_types` column |
-| `supabase/functions/_shared/blueprint.ts` (new) | Shared blueprint query + prompt builder |
-| `supabase/functions/generate-content-from-pdf/index.ts` | Import + inject blueprint prompt |
-| `supabase/functions/generate-mind-map/index.ts` | Import + inject blueprint prompt |
-| `supabase/functions/generate-pathway/index.ts` | Accept `chapterId` with null guard, import + inject |
-| `supabase/functions/generate-vp-case/index.ts` | Accept optional `chapter_id` with null guard, import + inject |
-| `supabase/functions/generate-structured-case/index.ts` | Import + inject with null guard |
-| `src/components/algorithms/PathwayAIGenerateModal.tsx` | Add `chapterId` to invoke body |
-| `src/hooks/useChapterBlueprintConfig.ts` | Add `question_types` to type + upsert + constants |
-| `src/components/admin/blueprint/BlueprintCellPopover.tsx` | Add question type checkboxes |
-| `src/components/admin/blueprint/blueprintExcelExport.ts` | Append types to cell text |
-| `src/integrations/supabase/types.ts` | Add `question_types` field |
-
-## Not Modified
-- Student-facing components
-- H/A/L weighting display in `useChapterExamWeights`
-- Auth or RLS policies
-- Section fetching logic in generators
-- Content type routing or response parsing
+Hover on avatar → 1.15x scale, tooltip shows name + role
+Click → InquiryModal opens with "To: Dr. [Name] (Topic Lead)"
+```
 

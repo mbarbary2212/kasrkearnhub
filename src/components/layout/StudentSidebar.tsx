@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
   Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
-  HelpCircle, MessageSquare, MessagesSquare, Users,
+  HelpCircle, MessageSquare, MessagesSquare, Users, BarChart3, Shield,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,8 @@ interface NavItem {
   icon: React.ElementType;
   path?: string;
   children?: SubItem[];
+  hideForAdmin?: boolean;
+  adminOnly?: boolean;
 }
 
 // ── Submenu definitions ────────────────────────────────
@@ -57,11 +60,18 @@ const navItems: NavItem[] = [
   { id: 'learning', label: 'Learning', icon: BookOpen, children: learningSubItems },
   { id: 'connect', label: 'Connect', icon: MessageCircle, children: connectSubItems },
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
-  { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, path: '/progress' },
+  { id: 'coach', label: 'Coach', shortLabel: 'Coach', icon: GraduationCap, path: '/progress', hideForAdmin: true },
 ];
 
-const bottomItems: NavItem[] = [
-  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
+// Bottom items with role-based visibility
+const studentBottomItems: NavItem[] = [
+  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content', hideForAdmin: true },
+  { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+];
+
+const adminBottomItems: NavItem[] = [
+  { id: 'overview', label: 'Overview', icon: BarChart3, path: '/admin/overview', adminOnly: true },
+  { id: 'admin-panel', label: 'Admin', icon: Shield, path: '/admin', adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
 ];
 
@@ -70,19 +80,33 @@ export function StudentSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const params = useParams();
   const [activeSubmenu, setActiveSubmenu] = useState<string | null>(null);
   const [submenuTop, setSubmenuTop] = useState(0);
   const sidebarRef = useRef<HTMLElement>(null);
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const { isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin } = useAuthContext();
+  const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
 
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
+
+  // Route context
 
   // Route context
   const chapterMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)/);
   const topicMatch = location.pathname.match(/^\/module\/([^/]+)\/chapter\/([^/]+)\/topic\/([^/]+)/);
   const isChapterOrTopicPage = !!chapterMatch || !!topicMatch;
   const currentSection = searchParams.get('section') || '';
+
+  // Determine which items to show based on role
+  const filteredNavItems = navItems.filter(item => {
+    if (item.hideForAdmin && isAdmin) return false;
+    if (item.adminOnly && !isAdmin) return false;
+    return true;
+  });
+
+  const bottomItems = isAdmin ? adminBottomItems : studentBottomItems;
 
   // Close submenu on route change
   useEffect(() => {
@@ -103,7 +127,12 @@ export function StudentSidebar() {
 
   // ── Active state detection ───────────────────────────
   const isItemActive = useCallback((item: NavItem) => {
-    if (item.id === 'dashboard') return location.pathname === '/';
+    if (item.id === 'dashboard') {
+      if (isAdmin) return location.pathname === '/admin/dashboard';
+      return location.pathname === '/';
+    }
+    if (item.id === 'overview') return location.pathname === '/admin/overview';
+    if (item.id === 'admin-panel') return location.pathname === '/admin';
     if (item.id === 'learning') {
       if (isChapterOrTopicPage) return ['resources', 'interactive', 'practice', 'test', 'learning', ''].includes(currentSection);
       return location.pathname.startsWith('/year/') || location.pathname.startsWith('/module/');
@@ -114,11 +143,17 @@ export function StudentSidebar() {
     if (item.id === 'customize') return location.pathname === '/customize-content';
     if (item.id === 'settings') return location.pathname === '/student-settings';
     return false;
-  }, [location.pathname, isChapterOrTopicPage, currentSection]);
+  }, [location.pathname, isChapterOrTopicPage, currentSection, isAdmin]);
 
   // ── Handle primary nav click ─────────────────────────
   const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
-    // Direct path items (Dashboard, Formative, Coach, Settings, Customize)
+    // Dashboard for admin goes to admin dashboard
+    if (item.id === 'dashboard' && isAdmin) {
+      navigate('/admin/dashboard');
+      setActiveSubmenu(null);
+      return;
+    }
+    // Direct path items
     if (item.path) {
       navigate(item.path);
       setActiveSubmenu(null);
@@ -147,7 +182,7 @@ export function StudentSidebar() {
         }
       }
     }
-  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition]);
+  }, [navigate, activeSubmenu, isChapterOrTopicPage, lastPosition, isAdmin]);
 
   // ── Handle submenu item click ────────────────────────
   const handleSubClick = useCallback((parentId: string, sub: SubItem) => {
@@ -212,7 +247,8 @@ export function StudentSidebar() {
   // ── Render floating submenu panel ────────────────────
   const renderSubmenu = () => {
     if (!activeSubmenu) return null;
-    const parentItem = [...navItems, ...bottomItems].find(i => i.id === activeSubmenu);
+    const allItems = [...filteredNavItems, ...bottomItems];
+    const parentItem = allItems.find(i => i.id === activeSubmenu);
     if (!parentItem?.children?.length) return null;
 
     const isLearning = activeSubmenu === 'learning';
@@ -307,7 +343,7 @@ export function StudentSidebar() {
       )}
     >
       <nav className="flex flex-col gap-0.5 px-2 pt-3 pb-2 overflow-y-auto">
-        {navItems.map((item) => renderNavButton(item))}
+        {filteredNavItems.map((item) => renderNavButton(item))}
         <div className="mt-1 flex flex-col gap-0.5">
           {bottomItems.map((item) => renderNavButton(item))}
         </div>

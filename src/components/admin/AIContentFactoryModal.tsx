@@ -78,7 +78,7 @@ const CONTENT_TYPES: ContentTypeOption[] = [
   { value: 'osce', label: 'OSCE Questions', icon: Image, description: 'Clinical stations with 5 true/false statements', category: 'practice', requiresChapter: true },
   { value: 'clinical_case', label: 'Interactive Cases', icon: Stethoscope, description: 'Interactive clinical case scenarios with multiple stages', category: 'practice' },
   { value: 'matching', label: 'Matching Questions', icon: ArrowLeftRight, description: 'Match Column A to Column B', category: 'practice' },
-  { value: 'essay', label: 'Essay / Short Answer', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
+  { value: 'essay', label: 'Short Essay', icon: BookOpen, description: 'Open questions with model answers', category: 'practice' },
   { value: 'flashcard', label: 'Flashcards', icon: Layers, description: 'Study flashcards (front/back)', category: 'resources', requiresChapter: true },
   { value: 'cloze_flashcard', label: 'Cloze Flashcards', icon: Layers, description: 'Fill-in-the-blank cloze cards from PDF', category: 'resources', requiresChapter: true },
   { value: 'mind_map', label: 'Mind Map', icon: Network, description: 'Visual concept hierarchy', category: 'resources', requiresChapter: true },

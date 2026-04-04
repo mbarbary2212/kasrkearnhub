@@ -1838,6 +1838,50 @@ export type Database = {
           },
         ]
       }
+      content_review_notes: {
+        Row: {
+          admin_note: string | null
+          chapter_id: string | null
+          created_at: string
+          id: string
+          material_id: string
+          material_type: string
+          review_status: string
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          material_id: string
+          material_type: string
+          review_status?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          chapter_id?: string | null
+          created_at?: string
+          id?: string
+          material_id?: string
+          material_type?: string
+          review_status?: string
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_review_notes_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_views: {
         Row: {
           chapter_id: string | null
@@ -1867,6 +1911,119 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      daily_study_plan_tasks: {
+        Row: {
+          carry_count: number
+          chapter_id: string | null
+          completion_percent: number | null
+          created_at: string
+          estimated_minutes: number | null
+          id: string
+          is_carried_over: boolean
+          plan_id: string
+          prescribed_study_mode: string | null
+          priority: number
+          reason: string | null
+          status: string
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          carry_count?: number
+          chapter_id?: string | null
+          completion_percent?: number | null
+          created_at?: string
+          estimated_minutes?: number | null
+          id?: string
+          is_carried_over?: boolean
+          plan_id: string
+          prescribed_study_mode?: string | null
+          priority?: number
+          reason?: string | null
+          status?: string
+          task_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          carry_count?: number
+          chapter_id?: string | null
+          completion_percent?: number | null
+          created_at?: string
+          estimated_minutes?: number | null
+          id?: string
+          is_carried_over?: boolean
+          plan_id?: string
+          prescribed_study_mode?: string | null
+          priority?: number
+          reason?: string | null
+          status?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_study_plan_tasks_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_study_plan_tasks_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "daily_study_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_study_plans: {
+        Row: {
+          created_at: string
+          exam_mode: string | null
+          id: string
+          module_id: string | null
+          plan_date: string
+          plan_label: string | null
+          tasks_completed: number | null
+          tasks_total: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exam_mode?: string | null
+          id?: string
+          module_id?: string | null
+          plan_date?: string
+          plan_label?: string | null
+          tasks_completed?: number | null
+          tasks_total?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exam_mode?: string | null
+          id?: string
+          module_id?: string | null
+          plan_date?: string
+          plan_label?: string | null
+          tasks_completed?: number | null
+          tasks_total?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_study_plans_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       department_admins: {
         Row: {
@@ -5857,6 +6014,7 @@ export type Database = {
           created_at: string
           days_per_week: number
           end_date: string
+          exam_date: string | null
           hours_per_day: number
           id: string
           revision_rounds: number
@@ -5869,6 +6027,7 @@ export type Database = {
           created_at?: string
           days_per_week: number
           end_date: string
+          exam_date?: string | null
           hours_per_day: number
           id?: string
           revision_rounds?: number
@@ -5881,6 +6040,7 @@ export type Database = {
           created_at?: string
           days_per_week?: number
           end_date?: string
+          exam_date?: string | null
           hours_per_day?: number
           id?: string
           revision_rounds?: number
@@ -6027,6 +6187,57 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      study_time_events: {
+        Row: {
+          activity_type: string
+          chapter_id: string
+          created_at: string
+          duration_seconds: number
+          first_active_at: string | null
+          id: string
+          module_id: string
+          session_date: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          chapter_id: string
+          created_at?: string
+          duration_seconds?: number
+          first_active_at?: string | null
+          id?: string
+          module_id: string
+          session_date?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          chapter_id?: string
+          created_at?: string
+          duration_seconds?: number
+          first_active_at?: string | null
+          id?: string
+          module_id?: string
+          session_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_time_events_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_time_events_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tf_analytics: {
         Row: {
@@ -7248,6 +7459,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_chapter_leads: {
+        Args: { _chapter_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
+        }[]
+      }
       get_chapter_percentile: {
         Args: {
           p_chapter_id: string
@@ -7278,6 +7498,15 @@ export type Database = {
           resolved_at: string
           resolved_by: string
           status: string
+        }[]
+      }
+      get_module_leads: {
+        Args: { _module_id: string }
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+          id: string
         }[]
       }
       get_user_analytics: {

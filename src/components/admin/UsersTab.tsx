@@ -1,10 +1,15 @@
 import { useState } from 'react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Loader2, Users, Trash2, Plus, BookOpen, Search, ArrowUpDown, RotateCcw, KeyRound, Mail, Ban, UserX, UserCheck, MoreHorizontal, Send } from 'lucide-react';
+import { Loader2, Users, Trash2, Plus, BookOpen, Search, ArrowUpDown, RotateCcw, KeyRound, Mail, Ban, UserX, UserCheck, MoreHorizontal, Send, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { AppRole } from '@/types/database';
@@ -24,6 +29,7 @@ import { SetPasswordDialog } from '@/components/admin/SetPasswordDialog';
 import { EditEmailDialog } from '@/components/admin/EditEmailDialog';
 import { DeleteUserDialog } from '@/components/admin/DeleteUserDialog';
 import { UserActionModal } from '@/components/admin/UserActionModal';
+import { UserAvatarUploadDialog } from '@/components/admin/UserAvatarUploadDialog';
 
 const ROLE_LABELS: Record<AppRole, string> = {
   student: 'Student',
@@ -65,7 +71,10 @@ export function UsersTab() {
   const [moduleAdminAssignDialogOpen, setModuleAdminAssignDialogOpen] = useState(false);
   const [maSelectedUserId, setMaSelectedUserId] = useState('');
   const [maSelectedModules, setMaSelectedModules] = useState<string[]>([]);
+  const [maUserPopoverOpen, setMaUserPopoverOpen] = useState(false);
   const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [platformAdminSearch, setPlatformAdminSearch] = useState('');
+  const [moduleAdminSearch, setModuleAdminSearch] = useState('');
   const [deactivatedSearch, setDeactivatedSearch] = useState('');
   const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
@@ -76,6 +85,120 @@ export function UsersTab() {
     action: 'ban' | 'unban' | 'remove' | 'restore' | null;
     user: { id: string; full_name: string | null; email: string } | null;
   }>({ open: false, action: null, user: null });
+  const [avatarUploadUser, setAvatarUploadUser] = useState<{ id: string; email: string; full_name: string | null; avatar_url?: string | null } | null>(null);
+
+  const renderUserActions = (u: UserWithRole) => {
+    const userStatus = (u as any).status || 'active';
+    if (u.id === user?.id) return <Badge variant="outline">You</Badge>;
+    return (
+      <div className="flex items-center gap-2">
+        <Select value={u.role} onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {getAvailableRoles().map(role => (
+              <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            {isSuperAdmin && (
+              <DropdownMenuItem onClick={() => setAvatarUploadUser({ id: u.id, email: u.email, full_name: u.full_name, avatar_url: (u as any).avatar_url })}>
+                <Camera className="h-4 w-4 mr-2" />Upload Photo
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setEditEmailUser({ id: u.id, email: u.email, full_name: u.full_name })}>
+              <Mail className="h-4 w-4 mr-2" />Edit Email
+            </DropdownMenuItem>
+            {isSuperAdmin && (
+              <DropdownMenuItem onClick={() => setPasswordDialogUser({ id: u.id, email: u.email, full_name: u.full_name })}>
+                <KeyRound className="h-4 w-4 mr-2" />Set Temporary Password
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => resetPassword.mutate({ email: u.email, fullName: u.full_name || undefined, userId: u.id })}>
+              <Send className="h-4 w-4 mr-2" />Reset Password
+              {resetPassword.isPending && <Loader2 className="h-3 w-3 ml-auto animate-spin" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {userStatus === 'active' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'ban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <Ban className="h-4 w-4 mr-2" />Suspend User
+              </DropdownMenuItem>
+            )}
+            {userStatus === 'banned' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'unban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <UserCheck className="h-4 w-4 mr-2" />Lift Suspension
+              </DropdownMenuItem>
+            )}
+            {userStatus !== 'removed' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'remove', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <UserX className="h-4 w-4 mr-2" />Deactivate Account
+              </DropdownMenuItem>
+            )}
+            {userStatus === 'removed' && (
+              <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'restore', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
+                <RotateCcw className="h-4 w-4 mr-2" />Restore Account
+              </DropdownMenuItem>
+            )}
+            {isSuperAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setDeleteUserTarget({ id: u.id, email: u.email, full_name: u.full_name, status: userStatus })}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />Delete User
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  };
+
+  const renderUserRow = (u: UserWithRole, options?: { showModuleAssignments?: boolean; showStatusBadges?: boolean }) => {
+    const userStatus = (u as any).status || 'active';
+    const showStatus = options?.showStatusBadges !== false;
+    return (
+      <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10">
+            {(u as any).avatar_url && <AvatarImage src={(u as any).avatar_url} alt={u.full_name || ''} />}
+            <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
+              {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-medium">{u.full_name || 'No name'}</p>
+              {showStatus && userStatus === 'banned' && (
+                <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-xs">Suspended</Badge>
+              )}
+              {showStatus && userStatus === 'removed' && (
+                <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">Deactivated</Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">{u.email}</p>
+            {options?.showModuleAssignments && u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {u.moduleAssignments.map(a => (
+                  <Badge key={a.id} variant="outline" className="text-xs">{getModuleName(a.module_id)}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge className={ROLE_COLORS[u.role]}>{ROLE_LABELS[u.role]}</Badge>
+          {renderUserActions(u)}
+        </div>
+      </div>
+    );
+  };
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     if ((newRole === 'super_admin' || newRole === 'platform_admin') && !isSuperAdmin) {
@@ -235,107 +358,7 @@ export function UsersTab() {
                       const nameB = (b.full_name || b.email).toLowerCase();
                       return userSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
                     })
-                    .map((u) => {
-                      const userStatus = (u as any).status || 'active';
-                      return (
-                        <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                              <span className="font-semibold text-secondary-foreground">
-                                {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">{u.full_name || 'No name'}</p>
-                                {userStatus === 'banned' && (
-                                  <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 text-xs">Suspended</Badge>
-                                )}
-                                {userStatus === 'removed' && (
-                                  <Badge variant="secondary" className="bg-muted text-muted-foreground text-xs">Deactivated</Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">{u.email}</p>
-                              {u.role === 'department_admin' && u.moduleAssignments && u.moduleAssignments.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {u.moduleAssignments.map(a => (
-                                    <Badge key={a.id} variant="outline" className="text-xs">{getModuleName(a.module_id)}</Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={ROLE_COLORS[u.role]}>{ROLE_LABELS[u.role]}</Badge>
-                            {u.id === user?.id ? (
-                              <Badge variant="outline">You</Badge>
-                            ) : (
-                              <>
-                                <Select value={u.role} onValueChange={(value: AppRole) => handleRoleChange(u.id, value)}>
-                                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {getAvailableRoles().map(role => (
-                                      <SelectItem key={role} value={role}>{ROLE_LABELS[role]}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-52">
-                                    <DropdownMenuItem onClick={() => setEditEmailUser({ id: u.id, email: u.email, full_name: u.full_name })}>
-                                      <Mail className="h-4 w-4 mr-2" />Edit Email
-                                    </DropdownMenuItem>
-                                    {isSuperAdmin && (
-                                      <DropdownMenuItem onClick={() => setPasswordDialogUser({ id: u.id, email: u.email, full_name: u.full_name })}>
-                                        <KeyRound className="h-4 w-4 mr-2" />Set Temporary Password
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuItem onClick={() => resetPassword.mutate({ email: u.email, fullName: u.full_name || undefined, userId: u.id })}>
-                                      <Send className="h-4 w-4 mr-2" />Reset Password
-                                      {resetPassword.isPending && <Loader2 className="h-3 w-3 ml-auto animate-spin" />}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    {userStatus === 'active' && (
-                                      <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'ban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
-                                        <Ban className="h-4 w-4 mr-2" />Suspend User
-                                      </DropdownMenuItem>
-                                    )}
-                                    {userStatus === 'banned' && (
-                                      <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'unban', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
-                                        <UserCheck className="h-4 w-4 mr-2" />Lift Suspension
-                                      </DropdownMenuItem>
-                                    )}
-                                    {userStatus !== 'removed' && (
-                                      <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'remove', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
-                                        <UserX className="h-4 w-4 mr-2" />Deactivate Account
-                                      </DropdownMenuItem>
-                                    )}
-                                    {userStatus === 'removed' && (
-                                      <DropdownMenuItem onClick={() => setActionModalState({ open: true, action: 'restore', user: { id: u.id, full_name: u.full_name, email: u.email } })}>
-                                        <RotateCcw className="h-4 w-4 mr-2" />Restore Account
-                                      </DropdownMenuItem>
-                                    )}
-                                    {isSuperAdmin && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          className="text-destructive focus:text-destructive"
-                                          onClick={() => setDeleteUserTarget({ id: u.id, email: u.email, full_name: u.full_name, status: userStatus })}
-                                        >
-                                          <Trash2 className="h-4 w-4 mr-2" />Delete User
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                    .map((u) => renderUserRow(u, { showModuleAssignments: true }))}
                 </div>
               )}
             </TabsContent>
@@ -376,24 +399,7 @@ export function UsersTab() {
                       <p className="text-sm text-muted-foreground mb-2">
                         Showing {filteredStudents.length} of {studentUsers.length} students
                       </p>
-                      {filteredStudents.slice(0, 50).map((u) => (
-                        <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                              <span className="font-semibold text-secondary-foreground">
-                                {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{u.full_name || 'No name'}</p>
-                              <p className="text-sm text-muted-foreground">{u.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={ROLE_COLORS.student}>{ROLE_LABELS.student}</Badge>
-                          </div>
-                        </div>
-                      ))}
+                      {filteredStudents.slice(0, 50).map((u) => renderUserRow(u))}
                       {filteredStudents.length > 50 && (
                         <p className="text-sm text-muted-foreground text-center py-2">
                           Showing first 50 results. Refine your search to see more.
@@ -414,7 +420,7 @@ export function UsersTab() {
             {isSuperAdmin && (
               <TabsContent value="module-admins" className="mt-4">
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
                       <h3 className="text-lg font-semibold flex items-center gap-2">
                         <BookOpen className="w-5 h-5" />
@@ -435,78 +441,100 @@ export function UsersTab() {
                       </Button>
                     </div>
                   </div>
-                  {users.filter(u => u.role === 'department_admin').length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No module admins assigned yet. Click "Assign Module Admin" to get started.
-                    </p>
-                  ) : (
-                    [...users.filter(u => u.role === 'department_admin')]
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input placeholder="Search module admins..." value={moduleAdminSearch} onChange={(e) => setModuleAdminSearch(e.target.value)} className="pl-9" />
+                  </div>
+                  {(() => {
+                    const moduleAdmins = users.filter(u => u.role === 'department_admin');
+                    const filtered = moduleAdmins
+                      .filter(u => {
+                        if (!moduleAdminSearch.trim()) return true;
+                        const search = moduleAdminSearch.toLowerCase();
+                        return u.full_name?.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+                      })
                       .sort((a, b) => {
                         const nameA = (a.full_name || a.email).toLowerCase();
                         const nameB = (b.full_name || b.email).toLowerCase();
                         return moduleAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                      })
-                      .map(u => (
-                        <div key={u.id} className="border rounded-lg p-4 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium">{u.full_name || 'No name'}</p>
-                                <p className="text-sm text-muted-foreground">{u.email}</p>
-                              </div>
+                      });
+                    if (moduleAdmins.length === 0) {
+                      return (
+                        <p className="text-muted-foreground text-center py-8">
+                          No module admins assigned yet. Click "Assign Module Admin" to get started.
+                        </p>
+                      );
+                    }
+                    if (filtered.length === 0) {
+                      return <p className="text-muted-foreground text-center py-8">No module admins matching your search.</p>;
+                    }
+                    return filtered.map(u => (
+                      <div key={u.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              {(u as any).avatar_url && <AvatarImage src={(u as any).avatar_url} alt={u.full_name || ''} />}
+                              <AvatarFallback className="bg-secondary text-secondary-foreground font-semibold">
+                                {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{u.full_name || 'No name'}</p>
+                              <p className="text-sm text-muted-foreground">{u.email}</p>
                             </div>
-                            <Badge variant="secondary">Module Admin</Badge>
                           </div>
-                          {u.moduleAssignments && u.moduleAssignments.length > 0 && (
-                            <div className="flex flex-wrap gap-1 pl-13">
-                              {u.moduleAssignments.map(a => (
-                                <Badge key={a.id} variant="outline" className="text-xs gap-1 py-1.5">
-                                  {getModuleName(a.module_id)}
-                                  <button onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)} className="ml-1 hover:text-destructive">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          <div className="flex gap-2 pl-13">
-                            <Select
-                              value={selectedUser === u.id ? selectedModule : ''}
-                              onValueChange={(value) => { setSelectedUser(u.id); setSelectedModule(value); }}
-                            >
-                              <SelectTrigger className="w-72"><SelectValue placeholder="Add another module..." /></SelectTrigger>
-                              <SelectContent>
-                                {years.map(year => {
-                                  const yearModules = modules
-                                    .filter(m => m.year_id === year.id)
-                                    .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
-                                    .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-                                  if (yearModules.length === 0) return null;
-                                  return (
-                                    <div key={year.id}>
-                                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">{year.name}</div>
-                                      {yearModules.map(m => (
-                                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                                      ))}
-                                    </div>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              onClick={() => { if (selectedUser === u.id && selectedModule) handleAssignModule(u.id, selectedModule); }}
-                              disabled={selectedUser !== u.id || !selectedModule}
-                            >
-                              Assign
-                            </Button>
+                          <div className="flex items-center gap-2">
+                            <Badge className={ROLE_COLORS.department_admin}>Module Admin</Badge>
+                            {renderUserActions(u)}
                           </div>
                         </div>
-                      ))
-                  )}
+                        {u.moduleAssignments && u.moduleAssignments.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pl-13">
+                            {u.moduleAssignments.map(a => (
+                              <Badge key={a.id} variant="outline" className="text-xs gap-1 py-1.5">
+                                {getModuleName(a.module_id)}
+                                <button onClick={() => handleRemoveModuleAssignment(u.id, a.module_id)} className="ml-1 hover:text-destructive">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex gap-2 pl-13">
+                          <Select
+                            value={selectedUser === u.id ? selectedModule : ''}
+                            onValueChange={(value) => { setSelectedUser(u.id); setSelectedModule(value); }}
+                          >
+                            <SelectTrigger className="w-72"><SelectValue placeholder="Add another module..." /></SelectTrigger>
+                            <SelectContent>
+                              {years.map(year => {
+                                const yearModules = modules
+                                  .filter(m => m.year_id === year.id)
+                                  .filter(m => !u.moduleAssignments?.some(a => a.module_id === m.id))
+                                  .sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+                                if (yearModules.length === 0) return null;
+                                return (
+                                  <div key={year.id}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">{year.name}</div>
+                                    {yearModules.map(m => (
+                                      <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                    ))}
+                                  </div>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            size="sm"
+                            onClick={() => { if (selectedUser === u.id && selectedModule) handleAssignModule(u.id, selectedModule); }}
+                            disabled={selectedUser !== u.id || !selectedModule}
+                          >
+                            Assign
+                          </Button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
 
                   <Dialog open={moduleAdminAssignDialogOpen} onOpenChange={(open) => {
                     if (!open) { setModuleAdminAssignDialogOpen(false); setMaSelectedUserId(''); setMaSelectedModules([]); }
@@ -518,22 +546,48 @@ export function UsersTab() {
                           Select a user and the modules they should manage. Their role will automatically be set to Module Admin.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4 py-4">
+                      <div className="space-y-4 py-4 overflow-y-auto min-h-0">
                         <div className="space-y-2">
                           <label className="text-sm font-medium">User *</label>
-                          <Select value={maSelectedUserId} onValueChange={setMaSelectedUserId}>
-                            <SelectTrigger><SelectValue placeholder="Select a user" /></SelectTrigger>
-                            <SelectContent>
-                              {users
-                                .filter(u => ['student', 'teacher', 'topic_admin', 'department_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
-                                .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
-                                .map(u => (
-                                  <SelectItem key={u.id} value={u.id}>
-                                    {u.full_name || u.email}{u.role === 'department_admin' ? ' (Module Admin)' : ''}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
+                          <Popover open={maUserPopoverOpen} onOpenChange={setMaUserPopoverOpen}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" role="combobox" aria-expanded={maUserPopoverOpen} className="w-full justify-between font-normal">
+                                {maSelectedUserId
+                                  ? (() => { const u = users.find(u => u.id === maSelectedUserId); return u?.full_name || u?.email || 'Selected'; })()
+                                  : 'Search and select a user...'}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search by name or email..." />
+                                <CommandList>
+                                  <CommandEmpty>No user found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {users
+                                      .filter(u => ['teacher', 'topic_admin', 'department_admin'].includes(u.role) && u.status !== 'removed' && u.status !== 'banned')
+                                      .sort((a, b) => (a.full_name || a.email).localeCompare(b.full_name || b.email))
+                                      .map(u => (
+                                        <CommandItem
+                                          key={u.id}
+                                          value={`${u.full_name || ''} ${u.email}`}
+                                          onSelect={() => {
+                                            setMaSelectedUserId(u.id);
+                                            setMaUserPopoverOpen(false);
+                                          }}
+                                        >
+                                          <Check className={cn("mr-2 h-4 w-4", maSelectedUserId === u.id ? "opacity-100" : "opacity-0")} />
+                                          <div className="flex flex-col">
+                                            <span>{u.full_name || u.email}{u.role === 'department_admin' ? ' (Module Admin)' : ''}</span>
+                                            {u.full_name && <span className="text-xs text-muted-foreground">{u.email}</span>}
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium">Select Modules *</label>
@@ -591,40 +645,45 @@ export function UsersTab() {
             {isSuperAdmin && (
               <TabsContent value="platform-admins" className="mt-4">
                 <div className="space-y-4">
-                  <div className="flex justify-end">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input placeholder="Search platform admins..." value={platformAdminSearch} onChange={(e) => setPlatformAdminSearch(e.target.value)} className="pl-9" />
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => setPlatformAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')} className="gap-2">
                       <ArrowUpDown className="w-4 h-4" />
                       {platformAdminSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
                     </Button>
                   </div>
-                  {users.filter(u => u.role === 'platform_admin').length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No platform admins assigned. Change a user's role to "Platform Admin" in the Directory tab.
-                    </p>
-                  ) : (
-                    [...users.filter(u => u.role === 'platform_admin')]
+                  {(() => {
+                    const platformAdmins = users.filter(u => u.role === 'platform_admin');
+                    const filtered = platformAdmins
+                      .filter(u => {
+                        if (!platformAdminSearch.trim()) return true;
+                        const search = platformAdminSearch.toLowerCase();
+                        return u.full_name?.toLowerCase().includes(search) || u.email.toLowerCase().includes(search);
+                      })
                       .sort((a, b) => {
                         const nameA = (a.full_name || a.email).toLowerCase();
                         const nameB = (b.full_name || b.email).toLowerCase();
                         return platformAdminSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                      })
-                      .map(u => (
-                        <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-secondary rounded-full flex items-center justify-center">
-                              <span className="font-semibold text-secondary-foreground">
-                                {u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{u.full_name || 'No name'}</p>
-                              <p className="text-sm text-muted-foreground">{u.email}</p>
-                            </div>
-                          </div>
-                          <Badge className={ROLE_COLORS.platform_admin}>Platform Admin</Badge>
-                        </div>
-                      ))
-                  )}
+                      });
+                    if (platformAdmins.length === 0) {
+                      return (
+                        <p className="text-muted-foreground text-center py-8">
+                          No platform admins assigned. Change a user's role to "Platform Admin" in the Directory tab.
+                        </p>
+                      );
+                    }
+                    if (filtered.length === 0) {
+                      return <p className="text-muted-foreground text-center py-8">No platform admins matching your search.</p>;
+                    }
+                    return (
+                      <div className="space-y-3">
+                        {filtered.map(u => renderUserRow(u))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </TabsContent>
             )}
@@ -738,6 +797,14 @@ export function UsersTab() {
         }}
         isLoading={banUser.isPending || unbanUser.isPending || removeUser.isPending || restoreUser.isPending}
       />
+
+      {avatarUploadUser && (
+        <UserAvatarUploadDialog
+          open={!!avatarUploadUser}
+          onOpenChange={(open) => { if (!open) setAvatarUploadUser(null); }}
+          user={avatarUploadUser}
+        />
+      )}
     </>
   );
 }

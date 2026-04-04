@@ -35,7 +35,11 @@ import {
   ChevronDown,
   ChevronRight,
   List,
-  Layers
+  Layers,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquare,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -51,6 +55,10 @@ import { useModuleBooks } from "@/hooks/useModuleBooks";
 import { useModuleChapters } from "@/hooks/useChapters";
 import { McqAnalyticsDetailModal } from "./McqAnalyticsDetailModal";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useQualitySignals, useModuleQualitySummary } from "@/hooks/useContentQualitySignals";
+import { QualitySignalBadges } from "./QualitySignalBadges";
+import { ContentQualityFlagBadge } from "./ContentQualityFlagBadge";
+import { computeContentQualityFlag } from "@/lib/contentQualityScoring";
 
 interface Module {
   id: string;
@@ -64,7 +72,7 @@ export interface McqAnalyticsDashboardProps {
   questionFormat?: 'mcq' | 'sba';
 }
 
-type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data';
+type FilterType = 'all' | 'flagged' | 'critical' | 'needs-data' | 'needs-review' | 'high-priority';
 type ViewMode = 'flat' | 'grouped';
 
 export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionFormat = 'mcq' }: McqAnalyticsDashboardProps) {
@@ -103,6 +111,12 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
   const { data: analytics, isLoading } = useModuleMcqAnalytics(selectedModuleId || '');
   const { data: summary, isLoading: summaryLoading } = useModuleAnalyticsSummary(selectedModuleId || '');
   const calculateMutation = useCalculateMcqAnalytics();
+  const materialType = questionFormat === 'sba' ? 'sba' : 'mcq';
+  const { data: qualitySummary } = useModuleQualitySummary(selectedModuleId || undefined, materialType);
+
+  // Get material IDs for quality signals
+  const materialIds = useMemo(() => (analytics || []).map(a => a.mcq_id), [analytics]);
+  const { data: qualitySignals } = useQualitySignals(materialType, materialIds);
 
   // Reset book/chapter when module changes
   const handleModuleChange = (moduleId: string) => {
@@ -157,10 +171,22 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
       case 'needs-data': 
         result = result.filter(a => a.total_attempts < 10);
         break;
+      case 'needs-review':
+        result = result.filter(a => {
+          const sig = qualitySignals?.[a.mcq_id];
+          return sig && computeContentQualityFlag(sig).flag === 'needs_review';
+        });
+        break;
+      case 'high-priority':
+        result = result.filter(a => {
+          const sig = qualitySignals?.[a.mcq_id];
+          return sig && computeContentQualityFlag(sig).flag === 'high_priority';
+        });
+        break;
     }
     
     return result;
-  }, [analytics, selectedBookLabel, selectedChapterId, filteredChapters, filter]);
+  }, [analytics, selectedBookLabel, selectedChapterId, filteredChapters, filter, qualitySignals]);
 
   // Group analytics by chapter for grouped view
   const groupedAnalytics = useMemo(() => {
@@ -279,6 +305,12 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
             </Badge>
           )}
         </TableCell>
+        <TableCell className="text-center">
+          <div className="flex items-center justify-center gap-1">
+            <ContentQualityFlagBadge signals={qualitySignals?.[item.mcq_id]} />
+            <QualitySignalBadges signals={qualitySignals?.[item.mcq_id]} />
+          </div>
+        </TableCell>
       </TableRow>
     );
   };
@@ -374,7 +406,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -458,6 +490,67 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                 )}
               </CardContent>
             </Card>
+
+            {/* Quality Summary Cards */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Helpful Rate
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <ThumbsUp className="h-5 w-5 text-green-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.helpfulRate || 0}%</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Negative Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <ThumbsDown className="h-5 w-5 text-red-500" />
+                  <span className="text-2xl font-bold">{qualitySummary?.negativeFeedback || 0}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Needs Review
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <span className="text-2xl font-bold">
+                    {qualitySignals ? Object.values(qualitySignals).filter(s => computeContentQualityFlag(s).flag === 'needs_review').length : 0}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  High Priority
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <span className="text-2xl font-bold">
+                    {qualitySignals ? Object.values(qualitySignals).filter(s => computeContentQualityFlag(s).flag === 'high_priority').length : 0}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Filter, View Toggle, and Table */}
@@ -500,6 +593,8 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                         <SelectItem value="flagged">Flagged Only</SelectItem>
                         <SelectItem value="critical">Critical/High</SelectItem>
                         <SelectItem value="needs-data">Needs More Data</SelectItem>
+                        <SelectItem value="needs-review">Needs Review</SelectItem>
+                        <SelectItem value="high-priority">High Priority</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -530,6 +625,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                         <TableHead className="text-center">Discrimination</TableHead>
                         <TableHead className="text-center">Avg Time</TableHead>
                         <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-center">Quality</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -587,6 +683,7 @@ export function McqAnalyticsDashboard({ modules, moduleAdminModuleIds, questionF
                                   <TableHead className="text-center">Discrimination</TableHead>
                                   <TableHead className="text-center">Avg Time</TableHead>
                                   <TableHead className="text-center">Status</TableHead>
+                                  <TableHead className="text-center">Quality</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>

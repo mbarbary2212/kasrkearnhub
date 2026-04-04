@@ -4,6 +4,7 @@ import {
   configKey,
   type ChapterBlueprintConfig,
 } from '@/hooks/useChapterBlueprintConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 function levelText(level: string, questionTypes?: string[]) {
   let text = '';
@@ -42,6 +43,29 @@ export async function exportBlueprintToExcel(
     cfgMap.set(configKey(c.chapter_id, c.section_id, c.component_type), c);
   }
 
+  // Fetch ALL sections for all chapters (not just those with configs)
+  const chapterIds = chapters.map(ch => ch.id);
+  const sectionsByChapter = new Map<string, { id: string; name: string; section_number: string | null }[]>();
+  if (chapterIds.length > 0) {
+    const { data: sections, error } = await supabase
+      .from('sections')
+      .select('id, name, section_number, chapter_id, display_order')
+      .in('chapter_id', chapterIds)
+      .order('display_order', { ascending: true })
+      .limit(5000);
+    if (error) {
+      console.error('Blueprint export: failed to fetch sections', error);
+    }
+    if (sections) {
+      for (const s of sections) {
+        const list = sectionsByChapter.get(s.chapter_id) || [];
+        list.push({ id: s.id, name: s.name, section_number: s.section_number });
+        sectionsByChapter.set(s.chapter_id, list);
+      }
+    }
+    console.log(`Blueprint export: ${sections?.length ?? 0} sections across ${sectionsByChapter.size} chapters`);
+  }
+
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Blueprint');
 
@@ -56,7 +80,7 @@ export async function exportBlueprintToExcel(
   });
   headerRow.getCell(1).alignment = { horizontal: 'left' };
 
-  // Data rows (chapters only — sections require async fetch per chapter, so we include what's in configs)
+  // Data rows
   for (const ch of chapters) {
     const rowData = [`Ch ${ch.chapter_number}: ${ch.title}`];
     const levels: (string | undefined)[] = [];
@@ -78,14 +102,14 @@ export async function exportBlueprintToExcel(
       }
     });
 
-    // Section rows from configs
-    const sectionConfigs = configs.filter(c => c.chapter_id === ch.id && c.section_id);
-    const sectionIds = [...new Set(sectionConfigs.map(c => c.section_id!))];
-    for (const secId of sectionIds) {
-      const secRowData = [`  → Section`];
+    // Section rows — show ALL sections for this chapter
+    const chapterSections = sectionsByChapter.get(ch.id) || [];
+    for (const sec of chapterSections) {
+      const secLabel = `  → ${sec.section_number ? sec.section_number + '. ' : ''}${sec.name}`;
+      const secRowData = [secLabel];
       const secLevels: (string | undefined)[] = [];
       for (const col of COMPONENT_COLUMNS) {
-        const cfg = cfgMap.get(configKey(ch.id, secId, col.key));
+        const cfg = cfgMap.get(configKey(ch.id, sec.id, col.key));
         const lv = cfg?.inclusion_level;
         secRowData.push(lv ? levelText(lv, cfg?.question_types) : '');
         secLevels.push(lv);

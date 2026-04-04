@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, AlertCircle, HelpCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, TrendingUp, Clock, ShieldAlert, Target, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 import type { DashboardInsight } from '@/hooks/useStudentDashboard';
 
 interface DashboardInsightsProps {
@@ -7,118 +9,83 @@ interface DashboardInsightsProps {
   hasRealAccuracyData?: boolean;
 }
 
-const insightConfig = {
-  strong: {
-    icon: CheckCircle2,
-    label: 'Strong Areas',
-    className: 'bg-accent/10 text-accent border-accent/20',
-    iconClass: 'text-accent',
-  },
-  attention: {
-    icon: AlertCircle,
-    label: 'Needs Attention',
-    // Using amber/warm colors instead of red for non-judgmental feel
-    className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
-    iconClass: 'text-amber-600 dark:text-amber-400',
-  },
-  missed: {
-    icon: HelpCircle,
-    label: 'Frequently Missed',
-    className: 'bg-muted text-muted-foreground border-border',
-    iconClass: 'text-muted-foreground',
-  },
+const insightIconMap: Record<string, typeof AlertCircle> = {
+  'Priority': Target,
+  'Study Allocation': TrendingUp,
+  'Trend Alert': TrendingUp,
+  'Strength': CheckCircle2,
+  'Confidence': ShieldAlert,
+  'Time Balance': Clock,
+};
+
+const insightStyleMap: Record<DashboardInsight['type'], string> = {
+  attention: 'border-amber-500/20 bg-amber-500/5',
+  strong: 'border-accent/20 bg-accent/5',
+  missed: 'border-border bg-muted/30',
+};
+
+const insightIconStyleMap: Record<DashboardInsight['type'], string> = {
+  attention: 'text-amber-600 dark:text-amber-400',
+  strong: 'text-accent',
+  missed: 'text-muted-foreground',
 };
 
 export function DashboardInsights({ insights, hasRealAccuracyData = false }: DashboardInsightsProps) {
-  // Group insights by type
-  const strongAreas = insights.filter(i => i.type === 'strong');
-  const needsAttention = insights.filter(i => i.type === 'attention');
-  const missedConcepts = insights.filter(i => i.type === 'missed');
+  const navigate = useNavigate();
 
-  // Only show columns with content, and hide "missed" if no real accuracy data
-  const showMissedColumn = hasRealAccuracyData && missedConcepts.length > 0;
-  const hasAnyInsights = strongAreas.length > 0 || needsAttention.length > 0;
-
-  if (!hasAnyInsights && !showMissedColumn) {
+  if (insights.length === 0) {
     return null;
   }
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-heading">Learning Insights</CardTitle>
+        <CardTitle className="text-lg font-heading">Study Coach</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className={`grid gap-4 ${showMissedColumn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-          {/* Strong Areas */}
-          <InsightColumn
-            type="strong"
-            items={strongAreas}
-            emptyMessage="Complete chapters to build strong areas"
-          />
+      <CardContent className="space-y-3">
+        {insights.map((insight, idx) => {
+          const Icon = insightIconMap[insight.label] || AlertCircle;
+          const cardStyle = insightStyleMap[insight.type];
+          const iconStyle = insightIconStyleMap[insight.type];
 
-          {/* Needs Attention */}
-          <InsightColumn
-            type="attention"
-            items={needsAttention}
-            emptyMessage="All areas are progressing well"
-          />
+          return (
+            <div
+              key={idx}
+              className={`flex items-start gap-3 p-3 rounded-lg border ${cardStyle}`}
+            >
+              <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${iconStyle}`} />
+              <div className="flex-1 min-w-0 space-y-1">
+                <p className="text-sm text-foreground">{insight.detail}</p>
+                {insight.action && (
+                  <div className="flex items-center gap-1">
+                    {insight.actionRoute ? (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs font-medium"
+                        onClick={() => navigate(insight.actionRoute!)}
+                      >
+                        {insight.action}
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground font-medium">
+                        💡 {insight.action}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
 
-          {/* Frequently Missed - only show if real accuracy data exists */}
-          {showMissedColumn && (
-            <InsightColumn
-              type="missed"
-              items={missedConcepts}
-              emptyMessage="No patterns identified yet"
-            />
-          )}
-        </div>
-
-        {/* Note about accuracy tracking */}
         {!hasRealAccuracyData && (
-          <p className="text-xs text-muted-foreground/70 mt-4 text-center italic">
-            Frequently missed concepts will appear once MCQ attempt tracking is enabled.
+          <p className="text-xs text-muted-foreground/70 text-center italic">
+            More insights will appear as you practice.
           </p>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-interface InsightColumnProps {
-  type: 'strong' | 'attention' | 'missed';
-  items: DashboardInsight[];
-  emptyMessage: string;
-}
-
-function InsightColumn({ type, items, emptyMessage }: InsightColumnProps) {
-  const config = insightConfig[type];
-  const Icon = config.icon;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className={`w-4 h-4 ${config.iconClass}`} />
-        <span className="text-sm font-medium text-foreground">{config.label}</span>
-      </div>
-      
-      {items.length > 0 ? (
-        <div className="space-y-2">
-          {items.map((item, idx) => (
-            <div
-              key={idx}
-              className={`p-2.5 rounded-lg border ${config.className}`}
-            >
-              <p className="text-sm font-medium">{item.label}</p>
-              {item.detail && (
-                <p className="text-xs opacity-80 mt-0.5">{item.detail}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground italic">{emptyMessage}</p>
-      )}
-    </div>
   );
 }

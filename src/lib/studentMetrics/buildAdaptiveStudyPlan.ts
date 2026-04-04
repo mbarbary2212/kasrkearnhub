@@ -10,6 +10,21 @@ import { generateConfidenceInsight } from './classifyLearningPattern';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
 import { getStudyMode, type StudyMode } from '@/lib/studyModes';
+import {
+  getPrimaryMode,
+  getModeConfigForState,
+  type LearningMode,
+  type ModeConfig,
+} from '@/lib/learningModes';
+import {
+  PRIORITY_CAP,
+  MIN_PROGRESS_TASKS_UNLESS_EXAM_CRITICAL,
+  EXAM_CRITICAL_DAYS,
+  EXAM_MODE_MULTIPLIERS,
+  classifyExamMode,
+  getDaysUntilExam,
+  type ExamMode,
+} from './plannerThresholds';
 
 // ─── Study mode task details ──────────────────────────────────
 
@@ -29,6 +44,14 @@ const STUDY_MODE_TASK_CONFIG: Record<string, StudyModeTaskConfig> = {
 
 function getTaskConfig(mode: StudyMode): StudyModeTaskConfig {
   return STUDY_MODE_TASK_CONFIG[mode.key] ?? STUDY_MODE_TASK_CONFIG.review;
+}
+
+// ─── Mode-aware task config ──────────────────────────────────
+
+function getModeAwareTaskConfig(state: ChapterState): { modeConfig: ModeConfig; primaryMode: LearningMode } {
+  const primaryMode = getPrimaryMode(state);
+  const modeConfig = getModeConfigForState(state);
+  return { modeConfig, primaryMode };
 }
 
 // ─── Public Types ─────────────────────────────────────────────
@@ -54,6 +77,8 @@ export interface PlannedTask {
   learningPattern?: string;
   revisionState?: RevisionState;
   prescribedStudyMode?: StudyMode;
+  /** Phase 2.5: Learning mode assigned based on chapter state */
+  learningMode?: LearningMode;
 }
 
 export interface AdaptiveStudyPlan {
@@ -63,6 +88,8 @@ export interface AdaptiveStudyPlan {
   planLabel: string;
   rationale: string;
   confidenceInsight?: string | null;
+  examMode?: ExamMode;
+  daysUntilExam?: number | null;
 }
 
 export interface ChapterInfo {
@@ -79,6 +106,8 @@ export interface AdaptivePlanInput {
   chapters: ChapterInfo[];
   availableMinutes?: number;
   examWeightMap?: Map<string, ChapterExamWeight>;
+  /** Exam date from study_plans configuration */
+  examDate?: Date;
 }
 
 // ─── Slot types for balanced daily plan ───────────────────────
@@ -91,8 +120,15 @@ interface SlottedTask extends PlannedTask {
 
 // ─── Plan Labels ──────────────────────────────────────────────
 
-function derivePlanLabel(tasks: SlottedTask[]): string {
-  const slots = new Set(tasks.map(t => t.slot));
+function derivePlanLabel(tasks: SlottedTask[], examMode: ExamMode, daysUntilExam: number | null): string {
+  // Exam mode label takes precedence
+  if (examMode === 'intensive' && daysUntilExam !== null) {
+    return `Exam prep — ${daysUntilExam} day${daysUntilExam !== 1 ? 's' : ''} left`;
+  }
+  if (examMode === 'moderate' && daysUntilExam !== null) {
+    return `Exam focus — ${daysUntilExam} days left`;
+  }
+
   const weakCount = tasks.filter(t => t.slot === 'weakness').length;
   const reviewCount = tasks.filter(t => t.slot === 'review_due').length;
   const progressCount = tasks.filter(t => t.slot === 'progress').length;
@@ -100,11 +136,13 @@ function derivePlanLabel(tasks: SlottedTask[]): string {
   if (weakCount >= 2) return 'Recovery plan';
   if (reviewCount >= 2) return 'Revision-focused plan';
   if (progressCount >= 2) return 'New topic plan';
-  if (slots.has('weakness') && slots.has('review_due')) return 'Reinforcement plan';
+  if (tasks.some(t => t.slot === 'weakness') && tasks.some(t => t.slot === 'review_due')) return 'Reinforcement plan';
   return 'Mixed momentum plan';
 }
 
-function deriveRationale(tasks: SlottedTask[], planLabel: string): string {
+function deriveRationale(tasks: SlottedTask[], planLabel: string, examMode: ExamMode): string {
+  if (examMode === 'intensive') return 'Exam is imminent — focusing on weak spots and high-weight chapters.';
+  if (examMode === 'moderate') return 'Exam approaching — prioritising revision and weak areas.';
   if (planLabel === 'Recovery plan') return 'Today focuses on weak areas that need attention.';
   if (planLabel === 'Revision-focused plan') return 'Several topics are due for review to maintain retention.';
   if (planLabel === 'New topic plan') return 'You are starting new topics while maintaining progress.';
@@ -136,9 +174,14 @@ function getMaxTasks(availableMinutes: number | undefined): number {
 // ─── Main Builder ─────────────────────────────────────────────
 
 export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyPlan {
-  const { metrics, chapters, availableMinutes, examWeightMap } = input;
+  const { metrics, chapters, availableMinutes, examWeightMap, examDate } = input;
   const maxTasks = getMaxTasks(availableMinutes);
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
+
+  // ── Exam mode ──
+  const daysUntilExam = getDaysUntilExam(examDate ?? null);
+  const examMode = classifyExamMode(daysUntilExam);
+  const multipliers = EXAM_MODE_MULTIPLIERS[examMode];
 
   // Collect candidates into slots
   const candidates: SlottedTask[] = [];
@@ -167,6 +210,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       if (state === 'strong') reason = 'Quick refresh';
 
       const mins = state === 'strong' ? 5 : taskConfig.estimatedMinutes;
+      const basePriority = (isOverdue ? 95 : 85) + weakBoost + (trend === 'declining' ? 15 : 0);
 
       candidates.push({
         slot: 'review_due',
@@ -179,7 +223,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
         tab: studyMode.tab,
-        priority: (isOverdue ? 95 : 85) + weakBoost + (trend === 'declining' ? 15 : 0),
+        priority: basePriority * multipliers.review,
         state,
         trend,
         learningPattern: patternLabel,
@@ -190,7 +234,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
 
     // ── review_due slot: FSRS flashcards due ──
     if (m && (m.flashcards_overdue > 0 || m.flashcards_due > 0) && revState !== 'overdue' && revState !== 'due') {
-      const reviewMode = getStudyMode(null); // Review mode for flashcards
+      const reviewMode = getStudyMode(null);
       candidates.push({
         slot: 'review_due',
         type: 'review',
@@ -202,7 +246,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
         tab: 'resources',
-        priority: (m.flashcards_overdue > 0 ? 93 : 83),
+        priority: (m.flashcards_overdue > 0 ? 93 : 83) * multipliers.review,
         state,
         trend,
         learningPattern: patternLabel,
@@ -211,31 +255,38 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     }
 
     // ── progress slot: not started / early ──
+    // Phase 2.5: Always assign learning mode for new chapters
     if (state === 'not_started' || state === 'early') {
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       candidates.push({
         slot: 'progress',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
-        reason: 'Start here',
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        reason: state === 'not_started' ? 'Start with Socrates' : 'Continue learning',
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
-        priority: 75,
+        tab: modeConfig.section,
+        priority: multipliers.progressBasePriority,
         state,
         trend,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
       continue;
     }
 
+    // Phase 2.5: strong chapters get assessment mode tasks via review_due slot above
     if (state === 'strong') continue;
 
     // ── weakness slot: weak / unstable ──
+    // Phase 2.5: weak → learning mode; unstable → practice mode
     if (state === 'weak' || state === 'unstable') {
-      let reason = state === 'weak' ? 'Low recent accuracy' : 'Needs reinforcement';
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
+
+      let reason = state === 'weak' ? 'Review with Socrates first' : 'Needs more practice';
       if (patternResult?.pattern === 'misconception') reason = 'Confident mistakes detected';
       else if (patternResult?.pattern === 'hesitant') reason = 'You know this, but hesitate';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -244,49 +295,57 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       const pBoost = patternResult?.pattern === 'misconception' ? 20
         : patternResult?.pattern === 'hesitant' ? 10 : 0;
 
+      const basePriority = (state === 'weak' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost;
+
       candidates.push({
         slot: 'weakness',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
-        priority: (state === 'weak' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost,
+        tab: modeConfig.section,
+        priority: basePriority * multipliers.weakness,
         state,
         trend,
         learningPattern: patternLabel,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
       continue;
     }
 
     // ── weakness slot (light): in-progress chapters ──
+    // Phase 2.5: in_progress → mix of practice + assessment
     {
+      const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       let reason = 'Continue where you left';
       if (patternResult?.pattern === 'hesitant') reason = 'Build confidence with quick practice';
       else if (trend === 'declining') reason = 'Performance dropping';
       else if (trend === 'improving') reason = 'Keep momentum';
 
+      const basePriority = 65 + (trend === 'declining' ? 15 : trend === 'improving' ? 5 : 0);
+
       candidates.push({
         slot: 'weakness',
         type: studyMode.key,
-        title: `${chapter.title} — ${studyMode.label} (${taskConfig.detail})`,
+        title: `${chapter.title} — ${modeConfig.label} (${modeConfig.taskDetail})`,
         chapterTitle: chapter.moduleName,
         reason,
-        detail: taskConfig.detail,
-        estimatedMinutes: taskConfig.estimatedMinutes,
+        detail: modeConfig.taskDetail,
+        estimatedMinutes: modeConfig.estimatedMinutes,
         moduleId: chapter.moduleId,
         chapterId: chapter.id,
-        tab: studyMode.tab,
-        priority: 65 + (trend === 'declining' ? 15 : trend === 'improving' ? 5 : 0),
+        tab: modeConfig.section,
+        priority: basePriority * multipliers.weakness,
         state,
         trend,
         learningPattern: patternLabel,
         prescribedStudyMode: studyMode,
+        learningMode: primaryMode,
       });
     }
   }
@@ -296,7 +355,11 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     const examBoost = getExamWeightBoost(c.chapterId || '', examWeightMap);
     const m = c.chapterId ? metricsMap.get(c.chapterId) : undefined;
     const engagementFactor = (m && (m.mcq_attempts ?? 0) < 3) ? 1.15 : 1.0;
-    c.priority = c.priority * examBoost * engagementFactor;
+
+    // Cap exam weight boost based on exam mode
+    const cappedExamBoost = Math.min(examBoost, multipliers.weightCap);
+
+    c.priority = Math.min(PRIORITY_CAP, c.priority * cappedExamBoost * engagementFactor);
   }
 
   // ── Sort strictly by priority ──
@@ -305,7 +368,6 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   // ── Assemble balanced plan: 1 review_due, 1 weakness, 1 progress ──
   const plan: SlottedTask[] = [];
   const usedChapters = new Set<string>();
-  const filledSlots = new Set<Slot>();
 
   // Pass 1: Fill each slot with highest-priority candidate
   const slotOrder: Slot[] = ['review_due', 'weakness', 'progress'];
@@ -317,7 +379,6 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     if (candidate) {
       plan.push(candidate);
       usedChapters.add(candidate.chapterId || '');
-      filledSlots.add(slot);
     }
   }
 
@@ -329,6 +390,22 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     usedChapters.add(c.chapterId || '');
   }
 
+  // ── Safety rail: ensure at least 1 progress task unless exam-critical ──
+  const hasProgressTask = plan.some(t => t.slot === 'progress');
+  if (!hasProgressTask && (daysUntilExam === null || daysUntilExam >= EXAM_CRITICAL_DAYS)) {
+    const progressCandidate = candidates.find(
+      c => c.slot === 'progress' && !usedChapters.has(c.chapterId || '')
+    );
+    if (progressCandidate && plan.length > 0) {
+      // Replace lowest-priority task if we have room concern
+      if (plan.length >= maxTasks) {
+        plan[plan.length - 1] = progressCandidate;
+      } else {
+        plan.push(progressCandidate);
+      }
+    }
+  }
+
   // Mark highest-priority as primary
   if (plan.length > 0) {
     plan.sort((a, b) => b.priority - a.priority);
@@ -336,8 +413,8 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   }
 
   // ── Derive plan metadata ──
-  const planLabel = derivePlanLabel(plan);
-  const rationale = deriveRationale(plan, planLabel);
+  const planLabel = derivePlanLabel(plan, examMode, daysUntilExam);
+  const rationale = deriveRationale(plan, planLabel, examMode);
   const totalEstimatedMinutes = plan.reduce((sum, t) => sum + t.estimatedMinutes, 0);
 
   // ── Confidence insight ──
@@ -355,5 +432,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     planLabel,
     rationale,
     confidenceInsight,
+    examMode,
+    daysUntilExam,
   };
 }

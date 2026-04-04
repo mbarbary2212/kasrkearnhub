@@ -39,6 +39,8 @@ export interface Inquiry {
   seen_by_admin: boolean;
   first_viewed_at: string | null;
   first_viewed_by: string | null;
+  // Computed
+  reply_count: number;
   // Joined profile data
   user_profile?: {
     full_name: string | null;
@@ -59,6 +61,8 @@ export function useSubmitInquiry() {
       chapterId?: string;
       topicId?: string;
       isAnonymous?: boolean;
+      assignedToUserId?: string;
+      assignedTeam?: AssignedTeam;
     }) => {
       if (!user?.id) throw new Error('Must be logged in to submit inquiry');
 
@@ -85,6 +89,8 @@ export function useSubmitInquiry() {
         subject: data.subject,
         message: data.message,
         is_anonymous: data.isAnonymous ?? false,
+        assigned_to_user_id: data.assignedToUserId || null,
+        assigned_team: data.assignedTeam || null,
       }).select('id').single();
 
       if (error) throw error;
@@ -236,8 +242,26 @@ export function useAllInquiries(filters?: {
         }, {} as Record<string, { full_name: string | null; email: string }>);
       }
 
+      // Fetch reply counts from admin_replies
+      const inquiryIds = (data || []).map(i => i.id);
+      let replyCountMap: Record<string, number> = {};
+
+      if (inquiryIds.length > 0) {
+        const { data: replies } = await supabase
+          .from('admin_replies')
+          .select('thread_id')
+          .eq('thread_type', 'inquiry')
+          .in('thread_id', inquiryIds);
+
+        replyCountMap = (replies || []).reduce((acc, r) => {
+          acc[r.thread_id] = (acc[r.thread_id] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+      }
+
       return (data || []).map(inquiry => ({
         ...inquiry,
+        reply_count: replyCountMap[inquiry.id] || 0,
         user_profile: inquiry.user_id ? profilesMap[inquiry.user_id] || null : null,
       })) as Inquiry[];
     },

@@ -245,6 +245,7 @@ export function QuestionSessionShell({
             />
           ) : (
             <McqAnswerArea
+              key={currentQuestion.id}
               question={currentQuestion as Mcq}
               isSubmitted={isSubmitted}
               previousSelectedKey={

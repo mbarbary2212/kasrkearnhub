@@ -14,8 +14,10 @@ import {
   getWeakTopics,
   calculateAggregateReadiness,
   buildCoachInsights,
+  buildRiskAlerts,
+  buildExamReadinessIndicator,
 } from '@/lib/studentMetrics';
-import type { PlannedTask, AdaptiveStudyPlan, CoachInsight } from '@/lib/studentMetrics';
+import type { PlannedTask, AdaptiveStudyPlan, CoachInsight, RiskAlert, ExamReadinessIndicator } from '@/lib/studentMetrics';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import type { TestProgressData } from '@/hooks/useTestProgress';
 import { type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
@@ -38,6 +40,8 @@ export interface DashboardInsight {
   type: 'strong' | 'attention' | 'missed';
   label: string;
   detail?: string;
+  action?: string;
+  actionRoute?: string;
 }
 
 export interface SuggestedItem {
@@ -111,6 +115,12 @@ export interface DashboardData {
   chapterTitleMap: Map<string, string>;
   activityDates: string[];
   readinessTrend: number[];
+
+  // Risk alerts
+  riskAlerts: RiskAlert[];
+
+  // Exam readiness indicator
+  examReadinessIndicator: ExamReadinessIndicator;
 }
 
 interface DashboardFilters {
@@ -477,6 +487,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         metrics: realMetrics,
         chapterTitleMap,
         examWeightMap,
+        moduleId: filters?.moduleId,
       });
 
       // Convert CoachInsight[] to DashboardInsight[] for existing UI
@@ -487,6 +498,7 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           trend: 'attention',
           strength: 'strong',
           confidence: 'missed',
+          time_balance: 'attention',
         };
         return {
           type: typeMap[ci.type] || 'attention',
@@ -494,8 +506,11 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
             : ci.type === 'misallocation' ? 'Study Allocation'
             : ci.type === 'trend' ? 'Trend Alert'
             : ci.type === 'strength' ? 'Strength'
+            : ci.type === 'time_balance' ? 'Time Balance'
             : 'Confidence',
           detail: ci.message,
+          action: ci.action,
+          actionRoute: ci.actionRoute,
         };
       });
 
@@ -519,6 +534,34 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const readinessTrend = realMetrics.length > 0
         ? realMetrics.slice(-14).map(m => m.readiness_score)
         : [];
+
+      // Build risk alerts from real metrics + exam weights, deduped against coach
+      const coachChapterIds = new Set(
+        coachInsights.filter(ci => ci.chapterId).map(ci => ci.chapterId!)
+      );
+      const riskAlerts = buildRiskAlerts({
+        metrics: realMetrics,
+        chapterTitleMap,
+        examWeightMap,
+        moduleId: filters?.moduleId,
+        coachChapterIds,
+      });
+
+      // Build exam readiness indicator
+      const avgAccuracy = realMetrics.length > 0
+        ? realMetrics.reduce((s, m) => s + (m.mcq_accuracy ?? 0), 0) / realMetrics.length
+        : 0;
+      const overdueCount = realMetrics.filter(m => {
+        if (!m.next_review_at) return false;
+        return new Date(m.next_review_at) < new Date();
+      }).length;
+      const examReadinessIndicator = buildExamReadinessIndicator({
+        readinessScore: finalExamReadiness,
+        coveragePercent,
+        mcqAccuracy: Math.round(avgAccuracy),
+        weakChapterCount: weakChapters.length,
+        overdueReviewCount: overdueCount,
+      });
 
       return {
         examReadiness: finalExamReadiness,
@@ -547,6 +590,8 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
         chapterTitleMap,
         activityDates,
         readinessTrend,
+        riskAlerts,
+        examReadinessIndicator,
       };
     },
     enabled: !!user?.id,
@@ -580,6 +625,11 @@ function getEmptyDashboard(): DashboardData {
     chapterTitleMap: new Map(),
     activityDates: [],
     readinessTrend: [],
+    riskAlerts: [],
+    examReadinessIndicator: buildExamReadinessIndicator({
+      readinessScore: 0, coveragePercent: 0, mcqAccuracy: 0,
+      weakChapterCount: 0, overdueReviewCount: 0,
+    }),
   };
 }
 

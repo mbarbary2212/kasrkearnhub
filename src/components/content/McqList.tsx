@@ -48,6 +48,9 @@ import { useDeleteMcq, useRestoreMcq, useBulkCreateMcqs, useBulkUpdateMcqs, type
 import { parseSmartMcqCsv, type ParseCorrection, sanitizeMcq } from '@/lib/csvParser';
 import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
+import { adaptiveReorder } from '@/lib/adaptiveDifficulty';
+import { computeResurfaceScores, applyResurfacing } from '@/lib/mcqResurfacing';
+import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
@@ -71,6 +74,7 @@ import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewTogg
 import { McqAdminTable } from './McqAdminTable';
 import { useChapterSections, useTopicSections } from '@/hooks/useSections';
 import { QuestionSessionShell } from '@/components/question-session/QuestionSessionShell';
+import { ContentItemAdminBar } from '@/components/admin/ContentItemAdminBar';
 
 interface McqListProps {
   mcqs: Mcq[];
@@ -123,8 +127,29 @@ export function McqList({
     canManage: canManageContent,
     isCheckingPermission: permissionLoading,
   } = useAddPermissionGuard({ moduleId, chapterId });
-  
+
+  // ─── Adaptive difficulty: derive chapter state for question reordering ───
+  const { data: _chapterMetricsForDifficulty } = useStudentChapterMetrics(moduleId ?? undefined);
+  const chapterStateForDifficulty = useMemo(() => {
+    if (isAdmin || !_chapterMetricsForDifficulty || !chapterId) return undefined;
+    const metric = _chapterMetricsForDifficulty.find(m => m.chapter_id === chapterId);
+    if (!metric) return 'not_started' as const;
+    return classifyChapterState({
+      coverage_percent: metric.coverage_percent,
+      mcq_attempts: metric.mcq_attempts,
+      mcq_accuracy: metric.mcq_accuracy,
+      recent_mcq_accuracy: metric.recent_mcq_accuracy,
+      readiness_score: metric.readiness_score,
+      flashcards_due: metric.flashcards_due,
+      flashcards_overdue: metric.flashcards_overdue,
+      last_activity_at: metric.last_activity_at,
+      confidence_mismatch_rate: metric.confidence_mismatch_rate,
+    });
+  }, [isAdmin, _chapterMetricsForDifficulty, chapterId]);
+
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
+  // Single-open-at-a-time feedback panel
+  const [feedbackOpenId, setFeedbackOpenId] = useState<string | null>(null);
   const [deletingMcq, setDeletingMcq] = useState<Mcq | null>(null);
   const [restoringMcq, setRestoringMcq] = useState<Mcq | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -257,6 +282,18 @@ export function McqList({
       }));
     return map;
   }, [allAttempts]);
+
+  // ─── Resurfacing: compute scores from attempt history ───
+  const resurfaceScores = useMemo(() => {
+    if (isAdmin) return new Map();
+    const mcqAttempts = allAttempts
+      .filter(a => a.question_type === 'mcq')
+      .map(a => ({
+        question_id: a.question_id,
+        is_correct: a.is_correct,
+      }));
+    return computeResurfaceScores(mcqAttempts);
+  }, [allAttempts, isAdmin]);
 
   const totalQuestions = mcqs.length;
 
@@ -398,9 +435,19 @@ export function McqList({
     } else {
       result = sortMcqs(result, searchFilters.sortBy);
     }
+
+    // Adaptive difficulty reordering for students (after all filters/sorts)
+    if (!isAdmin && !showDeleted && chapterStateForDifficulty) {
+      result = adaptiveReorder(result, chapterStateForDifficulty, auth.user?.id);
+    }
+
+    // Resurface previously-incorrect questions toward the front
+    if (!isAdmin && !showDeleted && resurfaceScores.size > 0) {
+      result = applyResurfacing(result, resurfaceScores);
+    }
     
     return result;
-  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters]);
+  }, [displayMcqs, showDuplicatesOnly, duplicateIds, duplicateGroupMap, showMarkedOnly, markedIds, showDeleted, isAdmin, practiceFilters, attemptMap, searchFilters, chapterStateForDifficulty, auth.user?.id, resurfaceScores]);
 
   // selectAll defined after filteredMcqs is available
   const selectAll = useCallback(() => {
@@ -866,7 +913,7 @@ export function McqList({
             } : undefined;
             
             return (
-              <div key={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
+              <div key={mcq.id} data-content-id={mcq.id} className={`relative flex gap-2 ${showDeleted ? 'opacity-75' : ''}`}>
                 {/* Admin multi-select checkbox */}
                 {isAdmin && !showDeleted && (
                   <div className="pt-4 flex-shrink-0">
@@ -911,6 +958,16 @@ export function McqList({
                     previousAttempt={previousAttempt}
                     questionFormat={questionFormat}
                   />
+                  {isAdmin && !showDeleted && (
+                    <ContentItemAdminBar
+                      materialType={questionFormat === 'sba' ? 'sba' : 'mcq'}
+                      materialId={mcq.id}
+                      chapterId={chapterId ?? undefined}
+                      onEdit={() => setEditingMcq(mcq)}
+                      feedbackOpen={feedbackOpenId === mcq.id}
+                      onToggleFeedback={() => setFeedbackOpenId(prev => prev === mcq.id ? null : mcq.id)}
+                    />
+                  )}
                 </div>
               </div>
             );
