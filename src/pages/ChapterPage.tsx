@@ -1211,8 +1211,8 @@ export default function ChapterPage() {
             {activeSection === "interactive" && (
               <div className="space-y-4">
                 <ContextGuide
-                  title="Apply your knowledge"
-                  description="Work through clinical cases to simulate real decisions."
+                  title="Apply what you learned"
+                  description="Work through clinical cases to practice real decision-making."
                   storageKey="kalm_guide_interactive_dismissed"
                 />
                 {/* Cases Content */}
