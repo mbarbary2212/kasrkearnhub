@@ -61,6 +61,8 @@ export function useSubmitInquiry() {
       chapterId?: string;
       topicId?: string;
       isAnonymous?: boolean;
+      assignedToUserId?: string;
+      assignedTeam?: AssignedTeam;
     }) => {
       if (!user?.id) throw new Error('Must be logged in to submit inquiry');
 
