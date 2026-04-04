@@ -21,7 +21,13 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+import { useTour } from '@/hooks/useTour';
+import { adminTourSteps } from '@/components/tour/adminTourSteps';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
+import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
+import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
