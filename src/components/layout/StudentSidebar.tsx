@@ -224,6 +224,7 @@ export function StudentSidebar() {
       <button
         key={item.id}
         ref={(el) => { itemRefs.current[item.id] = el; }}
+        data-tour={item.id}
         onClick={(e) => handleNavClick(item, e.currentTarget)}
         className={cn(
           'relative flex flex-col items-center justify-center gap-1.5 w-full py-3 px-1 rounded-xl transition-all duration-200 group',

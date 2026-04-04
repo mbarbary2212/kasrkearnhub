@@ -296,6 +296,7 @@ export function MobileBottomNav() {
             return (
               <button
                 key={tab.id}
+                data-tour={tab.id}
                 onClick={() => handleTap(tab)}
                 className={cn(
                   'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-all duration-200 relative',
