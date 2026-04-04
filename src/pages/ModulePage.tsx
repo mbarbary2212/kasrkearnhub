@@ -18,6 +18,7 @@ import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLa
 import { useModuleAdmins } from '@/hooks/useContentAdmins';
 import type { ContentAdmin } from '@/hooks/useContentAdmins';
 import { ContentAdminCard } from '@/components/content/ContentAdminCard';
+import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { ModuleLearningTab } from '@/components/module/ModuleLearningTab';
@@ -312,14 +313,13 @@ function ModuleLeadRow({ moduleId, moduleName }: { moduleId: string | undefined;
   const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
 
   if (!admins || admins.length === 0) return null;
-  const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
+
   return (
-    <div className="mt-1">
-      <ContentAdminCard
-        admins={admins}
-        label={label}
-        size="md"
-        onContact={(admin) => {
+    <>
+      <ChapterAdminAvatars
+        moduleId={moduleId}
+        moduleName={moduleName}
+        onContactAdmin={(admin, role) => {
           setSelectedAdmin(admin);
           setInquiryOpen(true);
         }}
@@ -333,6 +333,6 @@ function ModuleLeadRow({ moduleId, moduleName }: { moduleId: string | undefined;
         targetAdminName={selectedAdmin?.full_name || undefined}
         targetRole="module"
       />
-    </div>
+    </>
   );
 }
