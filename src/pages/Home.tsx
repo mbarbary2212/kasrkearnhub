@@ -588,7 +588,7 @@ function LoggedInHome() {
                     <p className="text-sm font-medium text-foreground">
                       {dueCount} card{dueCount === 1 ? '' : 's'} due today
                     </p>
-                    <p className="text-xs text-muted-foreground">Tap to review</p>
+                    <p className="text-xs text-muted-foreground">Daily review to keep knowledge fresh</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </div>
