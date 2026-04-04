@@ -369,6 +369,7 @@ function LoggedInHome() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">Continue where you left off</p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{buildResumeLabel(lastPos)}</p>
+                    <p className="text-[10px] text-muted-foreground/70">Pick up exactly where you left off</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
                     </p>
