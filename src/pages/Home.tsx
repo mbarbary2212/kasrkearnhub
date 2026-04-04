@@ -556,7 +556,7 @@ function LoggedInHome() {
 
           {/* Classification Dashboard — Year-level intelligence */}
           {isStudent && yearClassification && (
-            <Card>
+            <Card data-tour="today-plan">
               <CardContent className="py-4 px-4">
                 <ClassificationDashboard
                   classification={yearClassification.classification}
