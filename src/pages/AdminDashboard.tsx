@@ -34,6 +34,16 @@ export default function AdminDashboard() {
   const { profile } = useAuthContext();
   const { data: stats, isLoading } = useAdminOverviewStats();
 
+  // Tour + Guidance
+  const { startTour } = useTour('admin', adminTourSteps);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setWorkflowOpen(true);
+    window.addEventListener('kalm:open-workflow', handler);
+    return () => window.removeEventListener('kalm:open-workflow', handler);
+  }, []);
+
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
