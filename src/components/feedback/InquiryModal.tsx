@@ -89,7 +89,9 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
         moduleId,
         chapterId,
         topicId,
-        isAnonymous: false, // Inquiries are not anonymous
+        isAnonymous: false,
+        assignedToUserId: targetAdminId,
+        assignedTeam: targetRole === 'module' ? 'module' : targetRole === 'topic' ? 'chapter' : undefined,
       });
 
       toast.success('Thank you for your feedback.');
