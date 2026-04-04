@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 const TEAM = [
   { name: 'Dr. Ahmed Mansour', role: 'Concept & Vision' },
-  { name: 'Dr. Basma', role: 'Content Management' },
+  { name: 'Dr. Basma Bahgat', role: 'Content Management' },
   { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases' },
   { name: 'Dr. Mohab Mohamed', role: 'UI Design' },
   { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security' },
