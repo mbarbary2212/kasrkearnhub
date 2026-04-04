@@ -1210,6 +1210,11 @@ export default function ChapterPage() {
             {/* Interactive Section (Cases + Pathways) */}
             {activeSection === "interactive" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Apply your knowledge"
+                  description="Work through clinical cases to simulate real decisions."
+                  storageKey="kalm_guide_interactive_dismissed"
+                />
                 {/* Cases Content */}
                 {interactiveTab === "cases" && contentModuleId && chapterId && (
                   <div>
