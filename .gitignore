@@ -32,3 +32,5 @@ dist-ssr
 # Wrangler
 .wrangler/
 wrangler.toml
+
+.mcp.json
