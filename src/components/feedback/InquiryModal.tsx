@@ -29,6 +29,9 @@ interface InquiryModalProps {
   moduleCode?: string;
   chapterId?: string;
   topicId?: string;
+  targetAdminId?: string;
+  targetAdminName?: string;
+  targetRole?: string;
 }
 
 const CATEGORY_OPTIONS: { value: InquiryCategory; label: string; helper: string }[] = [
@@ -41,7 +44,7 @@ const CATEGORY_OPTIONS: { value: InquiryCategory; label: string; helper: string 
   { value: 'other', label: 'Other', helper: 'Anything not listed above' },
 ];
 
-export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, chapterId, topicId }: InquiryModalProps) {
+export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, chapterId, topicId, targetAdminId, targetAdminName, targetRole }: InquiryModalProps) {
   const isMobile = useIsMobile();
   const { profile } = useAuthContext();
   const submitInquiry = useSubmitInquiry();
@@ -86,7 +89,9 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
         moduleId,
         chapterId,
         topicId,
-        isAnonymous: false, // Inquiries are not anonymous
+        isAnonymous: false,
+        assignedToUserId: targetAdminId,
+        assignedTeam: targetRole === 'module' ? 'module' : targetRole === 'topic' ? 'chapter' : undefined,
       });
 
       toast.success('Thank you for your feedback.');
@@ -100,6 +105,16 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
 
   const content = (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Target admin context */}
+      {targetAdminName && (
+        <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <p className="text-sm text-foreground">
+            To: <span className="font-medium">{targetAdminName}</span>
+            {targetRole && <span className="text-muted-foreground"> ({targetRole === 'module' ? 'Module Lead' : 'Topic Lead'})</span>}
+          </p>
+        </div>
+      )}
+
       {/* Module context */}
       {moduleName && (
         <div className="p-3 rounded-lg bg-muted border">

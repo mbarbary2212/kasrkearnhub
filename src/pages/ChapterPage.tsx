@@ -119,8 +119,9 @@ import {
 import { useModulePinSettings, useStudentModulePreferences, filterByCustomPrefs } from "@/hooks/useCustomizeView";
 
 import { cn } from "@/lib/utils";
-import { useChapterAdmins, useModuleAdmins } from '@/hooks/useContentAdmins';
-import { ContentAdminCard } from '@/components/content/ContentAdminCard';
+import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
+import type { ContentAdmin } from '@/hooks/useContentAdmins';
+import InquiryModal from '@/components/feedback/InquiryModal';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
 import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
@@ -137,6 +138,11 @@ export default function ChapterPage() {
   const deleteStudyResource = useDeleteStudyResource();
   const { setStudyContext } = useCoachContext();
   const { updatePresence } = usePresence();
+
+  // Inquiry modal state for admin contact
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
+  const [selectedAdminRole, setSelectedAdminRole] = useState<'module' | 'topic'>('module');
 
   const showAddControls = !!(
     auth.isAdmin ||
@@ -890,6 +896,21 @@ export default function ChapterPage() {
               </DropdownMenu>
             );
           })()}
+
+          {/* Admin avatars for student contact */}
+          {isStudent && (
+            <ChapterAdminAvatars
+              moduleId={moduleId}
+              moduleName={module?.name}
+              chapterId={chapterId}
+              chapterTitle={chapter?.title}
+              onContactAdmin={(admin, role) => {
+                setSelectedAdmin(admin);
+                setSelectedAdminRole(role);
+                setInquiryOpen(true);
+              }}
+            />
+          )}
         </div>
 
         {/* Recommended Study Path — students only */}
@@ -1587,20 +1608,20 @@ export default function ChapterPage() {
           <ResourcesDeleteManager deleteResource={handleDeleteFlashcard} refetchResources={refetchFlashcards} />
         )}
       </div>
+
+      {/* Inquiry Modal for admin contact */}
+      <InquiryModal
+        isOpen={inquiryOpen}
+        onClose={() => { setInquiryOpen(false); setSelectedAdmin(null); }}
+        moduleId={moduleId}
+        moduleName={module?.name}
+        chapterId={chapterId}
+        targetAdminId={selectedAdmin?.id}
+        targetAdminName={selectedAdmin?.full_name || undefined}
+        targetRole={selectedAdminRole}
+      />
     </MainLayout>
   );
 }
 
-function ChapterLeadRow({ chapterId }: { chapterId: string }) {
-  const { data: admins } = useChapterAdmins(chapterId);
-  if (!admins || admins.length === 0) return null;
-  const label = admins.length === 1 ? 'Your Topic Lead' : 'Your Topic Team';
-  return <ContentAdminCard admins={admins} label={label} size="md" />;
-}
-
-function ModuleLeadInChapter({ moduleId }: { moduleId?: string }) {
-  const { data: admins } = useModuleAdmins(moduleId);
-  if (!admins || admins.length === 0) return null;
-  const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
-  return <ContentAdminCard admins={admins} label={label} size="md" />;
-}
+// Dead code removed: ChapterLeadRow and ModuleLeadInChapter replaced by ChapterAdminAvatars
