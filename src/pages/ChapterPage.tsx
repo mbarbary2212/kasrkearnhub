@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { ContextGuide } from "@/components/guidance/ContextGuide";
 import { useTrackPosition } from "@/hooks/useTrackPosition";
 import * as Sentry from "@sentry/react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
