@@ -54,7 +54,7 @@ export default function AdminOverview() {
         {/* Context Guide */}
         <ContextGuide
           title="Data insights"
-          description="Use this data to identify weak content and improve quality."
+          description="Use insights to improve content quality."
           storageKey="kalm_guide_admin_analytics_dismissed"
         />
 

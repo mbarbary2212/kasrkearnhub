@@ -2,54 +2,54 @@ import type { DriveStep } from 'driver.js';
 
 export const studentTourSteps: DriveStep[] = [
   {
-    element: '[data-tour="dashboard"]',
+    element: '[data-tour="continue-card"]',
     popover: {
-      title: 'Dashboard',
-      description: 'Start here. Continue where you stopped and see today\'s focus.',
-      side: 'right',
+      title: 'Continue',
+      description: 'Start here. This takes you back to exactly where you left off.',
+      side: 'bottom',
       align: 'center',
     },
   },
   {
-    element: '[data-tour="learning"]',
+    element: '[data-tour="flashcards-due"]',
     popover: {
-      title: 'Learning',
-      description: 'Study the material before testing yourself.',
-      side: 'right',
+      title: 'Daily reviews',
+      description: 'Complete these first to keep knowledge fresh and maintain retention.',
+      side: 'bottom',
       align: 'center',
     },
   },
   {
-    element: '[data-tour="connect"]',
+    element: '[data-tour="today-plan"]',
     popover: {
-      title: 'Connect',
-      description: 'Ask questions or contact your module lead.',
-      side: 'right',
+      title: "Today's priorities",
+      description: 'This shows what deserves your attention today.',
+      side: 'bottom',
       align: 'center',
     },
   },
   {
-    element: '[data-tour="coach"]',
+    element: '[data-tour="study-plan"]',
     popover: {
-      title: 'Coach',
-      description: 'Track your readiness and weak points.',
-      side: 'right',
+      title: 'Study path',
+      description: 'Follow this step by step to stay organized.',
+      side: 'bottom',
       align: 'center',
     },
   },
   {
-    element: '[data-tour="settings"]',
+    element: '[data-tour="modules"]',
     popover: {
-      title: 'Settings',
-      description: 'Customize your experience and access additional tools.',
-      side: 'right',
+      title: 'Modules',
+      description: 'Use this to explore topics or revise specific areas.',
+      side: 'bottom',
       align: 'center',
     },
   },
   {
     popover: {
-      title: 'You\'re ready! 🎉',
-      description: 'Use "Take a Tour" anytime from Settings to replay this guide.',
+      title: "You're ready! 🎉",
+      description: 'Start with your reviews, then follow today\'s plan.',
     },
   },
 ];

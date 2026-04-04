@@ -18,8 +18,8 @@ export default function DiscussionsPage() {
           <h1 className="text-xl font-semibold text-foreground">Open Discussions</h1>
         </div>
         <ContextGuide
-          title="Need help?"
-          description="Ask questions or contact your module/topic lead here."
+          title="Get help when needed"
+          description="Ask questions or contact your module lead if you're stuck."
           storageKey="kalm_guide_connect_dismissed"
         />
         <DiscussionSection />

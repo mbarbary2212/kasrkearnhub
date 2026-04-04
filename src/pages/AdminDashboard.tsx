@@ -84,7 +84,7 @@ export default function AdminDashboard() {
         {/* Context Guide */}
         <ContextGuide
           title="Your command center"
-          description="Monitor activity, identify issues, and act where needed."
+          description="Monitor activity and act where needed."
           storageKey="kalm_guide_admin_dashboard_dismissed"
         />
 

@@ -312,7 +312,7 @@ export default function AdminInboxPage() {
       <div className="space-y-4 animate-fade-in">
         <ContextGuide
           title="Student support"
-          description="Student questions will appear here. Respond promptly."
+          description="Respond to student questions promptly."
           storageKey="kalm_guide_admin_inbox_dismissed"
         />
         <div>
