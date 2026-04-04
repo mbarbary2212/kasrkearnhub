@@ -1592,16 +1592,4 @@ export default function ChapterPage() {
   );
 }
 
-function ChapterLeadRow({ chapterId }: { chapterId: string }) {
-  const { data: admins } = useChapterAdmins(chapterId);
-  if (!admins || admins.length === 0) return null;
-  const label = admins.length === 1 ? 'Your Topic Lead' : 'Your Topic Team';
-  return <ContentAdminCard admins={admins} label={label} size="md" />;
-}
-
-function ModuleLeadInChapter({ moduleId }: { moduleId?: string }) {
-  const { data: admins } = useModuleAdmins(moduleId);
-  if (!admins || admins.length === 0) return null;
-  const label = admins.length === 1 ? 'Your Module Lead' : 'Your Module Team';
-  return <ContentAdminCard admins={admins} label={label} size="md" />;
-}
+// Dead code removed: ChapterLeadRow and ModuleLeadInChapter replaced by ChapterAdminAvatars

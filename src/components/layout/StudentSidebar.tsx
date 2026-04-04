@@ -10,8 +10,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
-import { useModuleAdmins, useChapterAdmins } from '@/hooks/useContentAdmins';
-import { LeadAvatarStack } from '@/components/content/ContentAdminCard';
+import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────
 interface SubItem {
