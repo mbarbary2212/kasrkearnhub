@@ -356,6 +356,7 @@ function LoggedInHome() {
           {isStudent && lastPos && lastPos.module_id && (
             <section>
               <div
+                data-tour="continue-card"
                 className="relative rounded-xl border border-primary/20 bg-primary/5 p-4 cursor-pointer
                            hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
                 onClick={() => navigate(buildResumeUrl(lastPos))}
