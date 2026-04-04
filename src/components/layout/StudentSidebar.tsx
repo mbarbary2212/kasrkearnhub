@@ -345,17 +345,6 @@ export function StudentSidebar() {
       <nav className="flex flex-col gap-0.5 px-2 pt-3 pb-2 overflow-y-auto">
         {filteredNavItems.map((item) => renderNavButton(item))}
         <div className="mt-1 flex flex-col gap-0.5">
-          {/* Your Team — module/topic leads for students, right above settings */}
-          {isStudent && (moduleAdmins?.length || chapterAdmins?.length) ? (
-            <div className="px-1.5 py-1.5 space-y-1.5 border-t border-border/50 mt-1 mb-1">
-              {moduleAdmins && moduleAdmins.length > 0 && (
-                <LeadAvatarStack admins={moduleAdmins} maxVisible={3} avatarSize="h-7 w-7" label="Module" />
-              )}
-              {chapterAdmins && chapterAdmins.length > 0 && (
-                <LeadAvatarStack admins={chapterAdmins} maxVisible={3} avatarSize="h-7 w-7" label="Topic" />
-              )}
-            </div>
-          ) : null}
           {bottomItems.map((item) => renderNavButton(item))}
         </div>
       </nav>
