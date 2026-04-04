@@ -7,6 +7,7 @@ import {
   MessageCircle, ClipboardCheck, SlidersHorizontal, Settings,
   HelpCircle, MessageSquare, MessagesSquare, Users,
   FileText, Gamepad2, PenLine, ListChecks, BarChart3, Shield,
+  Compass, BookOpenCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDueCards } from '@/hooks/useFSRS';
