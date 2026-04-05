@@ -10,6 +10,7 @@ const TEAM = [
   { name: 'Dr. Mohamed Elbarbary', role: 'Concept & Design Lead' },
   { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development' },
   { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development' },
+  { name: 'Dr. Mohamed Osama', role: 'Video Sorting' },
   { name: 'Dr. Omar Mohamed Mahmoud', role: 'Testing & Concept Design' },
   { name: 'Dr. Omar Mofreh', role: 'Logo Design' },
   { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision' },
