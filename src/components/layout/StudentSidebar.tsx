@@ -6,6 +6,7 @@ import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
   Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
   HelpCircle, MessageSquare, MessagesSquare, Users, BarChart3, Shield,
+  Compass, BookOpenCheck,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -67,12 +68,16 @@ const navItems: NavItem[] = [
 const studentBottomItems: NavItem[] = [
   { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content', hideForAdmin: true },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+  { id: 'take-tour', label: 'Tour', icon: Compass },
+  { id: 'how-to-use', label: 'Guide', icon: BookOpenCheck },
 ];
 
 const adminBottomItems: NavItem[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3, path: '/admin/overview', adminOnly: true },
   { id: 'admin-panel', label: 'Admin', icon: Shield, path: '/admin', adminOnly: true },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
+  { id: 'take-tour', label: 'Tour', icon: Compass },
+  { id: 'how-to-use', label: 'Guide', icon: BookOpenCheck },
 ];
 
 // ── Component ──────────────────────────────────────────
@@ -147,6 +152,18 @@ export function StudentSidebar() {
 
   // ── Handle primary nav click ─────────────────────────
   const handleNavClick = useCallback((item: NavItem, el: HTMLButtonElement | null) => {
+    // Tour/workflow triggers
+    if (item.id === 'take-tour') {
+      const role = isAdmin ? 'admin' : 'student';
+      window.dispatchEvent(new CustomEvent('kalm:start-tour', { detail: { role } }));
+      setActiveSubmenu(null);
+      return;
+    }
+    if (item.id === 'how-to-use') {
+      window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
+      setActiveSubmenu(null);
+      return;
+    }
     // Dashboard for admin goes to admin dashboard
     if (item.id === 'dashboard' && isAdmin) {
       navigate('/admin/dashboard');
@@ -224,6 +241,7 @@ export function StudentSidebar() {
       <button
         key={item.id}
         ref={(el) => { itemRefs.current[item.id] = el; }}
+        data-tour={item.id}
         onClick={(e) => handleNavClick(item, e.currentTarget)}
         className={cn(
           'relative flex flex-col items-center justify-center gap-1.5 w-full py-3 px-1 rounded-xl transition-all duration-200 group',

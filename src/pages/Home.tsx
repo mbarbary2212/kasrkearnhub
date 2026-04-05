@@ -33,6 +33,12 @@ import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
 
+import { useTour } from '@/hooks/useTour';
+import { studentTourSteps } from '@/components/tour/studentTourSteps';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
+import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
+import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
+
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
@@ -159,6 +165,24 @@ function LoggedInHome() {
   const dueCount = dueCards?.length ?? 0;
   const { earned, total } = useBadgeStats();
   const { data: lastPos } = useLastPosition();
+
+  // Tour + Guidance
+  const { startTour } = useTour('student', studentTourSteps);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+
+  // Listen for workflow open event
+  useEffect(() => {
+    const handler = () => setWorkflowOpen(true);
+    window.addEventListener('kalm:open-workflow', handler);
+    return () => window.removeEventListener('kalm:open-workflow', handler);
+  }, []);
+
+  // Visit counter for context guide
+  const [showHomeGuide] = useState(() => {
+    const count = parseInt(localStorage.getItem('kalm_home_visit_count') || '0', 10);
+    localStorage.setItem('kalm_home_visit_count', String(count + 1));
+    return count < 3;
+  });
   
   const { setActiveYear } = useActiveYear();
 
@@ -237,6 +261,26 @@ function LoggedInHome() {
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
+      {/* Context Guide for new users */}
+      {showHomeGuide && (
+        <ContextGuide
+          title="Start here"
+          description="Resume where you left off, then follow today's plan to stay on track."
+          primaryAction={{
+            label: 'Go to Learning',
+            onClick: () => {
+              if (lastPos) navigate(buildResumeUrl(lastPos));
+              else navigate('/', { state: { fromLearning: true } });
+            },
+          }}
+          storageKey="kalm_guide_home_dismissed"
+        />
+      )}
+
+      {/* First login modal + workflow guide */}
+      <FirstLoginModal role="student" onStartTour={startTour} onOpenWorkflow={() => setWorkflowOpen(true)} />
+      <WorkflowGuide open={workflowOpen} onOpenChange={setWorkflowOpen} mode="student" />
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}
         <div className="md:col-span-3 space-y-5">
@@ -312,6 +356,7 @@ function LoggedInHome() {
           {isStudent && lastPos && lastPos.module_id && (
             <section>
               <div
+                data-tour="continue-card"
                 className="relative rounded-xl border border-primary/20 bg-primary/5 p-4 cursor-pointer
                            hover:border-primary/40 hover:bg-primary/10 transition-all duration-300 group"
                 onClick={() => navigate(buildResumeUrl(lastPos))}
@@ -324,6 +369,7 @@ function LoggedInHome() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">Continue where you left off</p>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{buildResumeLabel(lastPos)}</p>
+                    <p className="text-[10px] text-muted-foreground/70">Pick up exactly where you left off</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">
                       {formatDistanceToNow(new Date(lastPos.updated_at), { addSuffix: true })}
                     </p>
@@ -335,10 +381,13 @@ function LoggedInHome() {
           )}
 
           {/* Module Section with Year Selector + Cards/List Toggle */}
-          <section>
+          <section data-tour="modules">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
+                <div>
+                  <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
+                  <p className="text-[10px] text-muted-foreground/70">Explore topics or revise specific areas</p>
+                </div>
                 <Select value={selectedYearId} onValueChange={setSelectedYearId}>
                   <SelectTrigger className="h-7 w-[130px] bg-background text-xs">
                     <SelectValue placeholder="Year" />
@@ -507,8 +556,9 @@ function LoggedInHome() {
 
           {/* Classification Dashboard — Year-level intelligence */}
           {isStudent && yearClassification && (
-            <Card>
+            <Card data-tour="today-plan">
               <CardContent className="py-4 px-4">
+                <p className="text-[10px] text-muted-foreground/70 mb-2">Your daily priorities</p>
                 <ClassificationDashboard
                   classification={yearClassification.classification}
                   chapterTitleMap={yearClassification.chapterTitleMap}
@@ -525,6 +575,7 @@ function LoggedInHome() {
           {/* Flashcards Widget */}
           {isStudent && dueCount > 0 && (
             <Card
+              data-tour="flashcards-due"
               className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
               onClick={() => navigate('/review/flashcards')}
             >
@@ -537,7 +588,7 @@ function LoggedInHome() {
                     <p className="text-sm font-medium text-foreground">
                       {dueCount} card{dueCount === 1 ? '' : 's'} due today
                     </p>
-                    <p className="text-xs text-muted-foreground">Tap to review</p>
+                    <p className="text-xs text-muted-foreground">Daily review to keep knowledge fresh</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
                 </div>
@@ -546,7 +597,7 @@ function LoggedInHome() {
           )}
 
           {isStudent && dueCount === 0 && dueCards && (
-            <Card className="border-green-200 dark:border-green-800">
+            <Card data-tour="flashcards-due" className="border-green-200 dark:border-green-800">
               <CardContent className="py-2 px-4">
                 <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5">
                   ✓ Flashcards all caught up
@@ -567,9 +618,12 @@ function LoggedInHome() {
 
           {/* Today's Study Plan */}
           {isStudent && suggestions.length > 0 && (
-            <div className="space-y-2">
+            <div data-tour="study-plan" className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
+                  <p className="text-[10px] text-muted-foreground/70">Follow this step by step to stay organized</p>
+                </div>
                 {totalEstimatedMinutes > 0 && (
                   <span className="text-xs text-muted-foreground">~{totalEstimatedMinutes} min total</span>
                 )}

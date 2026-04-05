@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
 import { useAdminOverviewStats } from '@/hooks/useAdminOverviewStats';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +51,13 @@ export default function AdminOverview() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto space-y-5 animate-fade-in">
+        {/* Context Guide */}
+        <ContextGuide
+          title="Data insights"
+          description="Use insights to improve content quality."
+          storageKey="kalm_guide_admin_analytics_dismissed"
+        />
+
         {/* Greeting */}
         <h1 className="text-xl md:text-2xl font-heading font-bold">
           {greeting}, <span className="text-primary">{firstName}</span> 👋

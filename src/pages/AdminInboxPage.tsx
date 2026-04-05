@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
+import { ContextGuide } from '@/components/guidance/ContextGuide';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -309,6 +310,11 @@ export default function AdminInboxPage() {
   return (
     <MainLayout>
       <div className="space-y-4 animate-fade-in">
+        <ContextGuide
+          title="Student support"
+          description="Respond to student questions promptly."
+          storageKey="kalm_guide_admin_inbox_dismissed"
+        />
         <div>
           <h1 className="text-2xl font-heading font-semibold">Admin Inbox</h1>
           <p className="text-sm text-muted-foreground">Triage and respond to student questions and feedback</p>

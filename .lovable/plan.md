@@ -1,84 +1,135 @@
 
 
-# In-App Student-to-Admin Contact Flow
+# Onboarding Upgrade — Content-Focused Tour & Micro-Guidance
 
-## Overview
-Remove all mailto behavior, show exactly one module admin + one topic admin in the chapter header, remove sidebar admin duplication, and wire clicks to open InquiryModal targeting the specific admin.
+## What's Changing
 
-**No database changes needed** — `inquiries.assigned_to_user_id` and `assigned_team` columns already exist.
+The student tour currently highlights **sidebar navigation items**. This upgrade shifts it to highlight **dashboard content areas** — the actual working elements students interact with. Additionally, micro-guidance helper text is added inline, context guide copy is made more actionable, and the workflow guide is rewritten for daily use.
 
-## Files to change (7 files)
+---
 
-### 1. CREATE `src/components/content/ChapterAdminAvatars.tsx`
-New component that:
-- Fetches admins via existing `useModuleAdmins` and `useChapterAdmins` hooks
-- Picks exactly one topic admin (`chapterAdmins[0]`) and one module admin (`moduleAdmins[0]`, skipping if same person as topic admin)
-- Renders compact circular avatars (`h-8 w-8`) with `ring-2 ring-background`
-- Hover/focus: `scale-[1.15]` with `transition-transform duration-200`
-- Tooltip: admin name + role label ("Topic Lead" / "Module Lead") + "Tap to message" — no email shown
-- Click calls `onContactAdmin(admin, 'module' | 'topic')` callback
-- Uses `<button>` elements, not `<a>` tags
+## Part 1 — Rewrite Student Tour Steps
 
-### 2. EDIT `src/components/feedback/InquiryModal.tsx`
-- Add optional props: `targetAdminId?: string`, `targetAdminName?: string`, `targetRole?: string`
-- When `targetAdminId` is provided, show a context line: "To: [Name] ([Role])" above the form
-- Pass `assignedToUserId: targetAdminId` to the `submitInquiry` mutation
-- Pass `assignedTeam: targetRole === 'module' ? 'module' : 'chapter'`
+**File: `src/components/tour/studentTourSteps.ts`**
 
-### 3. EDIT `src/hooks/useInquiries.ts`
-- Add `assignedToUserId?: string` and `assignedTeam?: AssignedTeam` to the mutation data type
-- Include in the insert: `assigned_to_user_id: data.assignedToUserId || null` and `assigned_team: data.assignedTeam || null`
+Replace all sidebar-targeting steps with 5 content-focused steps in behavioral order (Resume → Review → Prioritize → Follow path → Explore):
 
-### 4. EDIT `src/components/content/ContentAdminCard.tsx`
-- Replace `<a href="mailto:...">` with `<button>` or `<div role="button">`
-- Add optional prop: `onContact?: (admin: ContentAdmin) => void`
-- Click calls `onContact(admin)` if provided, otherwise no-op
-- Remove `Mail` icon import; use `MessageCircle` from lucide-react
-- Tooltip: "Message via platform" instead of "Contact by email"
-- Never render email addresses in the UI
+| Step | Selector | Title | Description |
+|------|----------|-------|-------------|
+| 1 | `[data-tour="continue-card"]` | Continue | "Start here. This takes you back to exactly where you left off." |
+| 2 | `[data-tour="flashcards-due"]` | Daily reviews | "Complete these first to keep knowledge fresh and maintain retention." |
+| 3 | `[data-tour="today-plan"]` | Today's priorities | "This shows what deserves your attention today." |
+| 4 | `[data-tour="study-plan"]` | Study path | "Follow this step by step to stay organized." |
+| 5 | `[data-tour="modules"]` | Modules | "Use this to explore topics or revise specific areas." |
+| 6 | (no element) | You're ready | "Start with your reviews, then follow today's plan." |
 
-### 5. EDIT `src/pages/ChapterPage.tsx`
-- Import `ChapterAdminAvatars` and `InquiryModal`
-- In the header row (around line 698, the `flex items-center gap-2` div), add `ChapterAdminAvatars` pushed right with `ml-auto`
-- Add local state: `inquiryOpen`, `selectedAdmin`, `selectedAdminRole`
-- `onContactAdmin` callback sets state and opens InquiryModal prefilled with moduleId, moduleName, chapterId, targetAdminId, targetAdminName, targetRole
-- Render `<InquiryModal>` with these props
-- Delete dead `ChapterLeadRow` function (line 1594-1599)
-- Delete dead `ModuleLeadInChapter` function (line 1601-1606)
+All steps use `side: 'bottom'` for content elements. Missing elements are skipped; minimum 2 valid steps required to run (already handled by `useTour.ts`).
 
-### 6. EDIT `src/pages/ModulePage.tsx`
-- Add local state for InquiryModal open/close and selected admin
-- Update `ModuleLeadRow` to pass `onContact` callback to `ContentAdminCard`
-- On admin click, open InquiryModal prefilled with module context and `targetAdminId`
-- Render `<InquiryModal>` in the component
+---
 
-### 7. EDIT `src/components/layout/StudentSidebar.tsx`
-- Remove imports: `useModuleAdmins`, `useChapterAdmins`, `LeadAvatarStack`
-- Remove the hook calls for `moduleAdmins` and `chapterAdmins`
-- Remove the entire "Your Team" avatar block (lines 357-366)
-- No replacement needed — admins now appear only in page headers
+## Part 2 — Add `data-tour` Selectors to Home.tsx
 
-## Data flow
-```text
-Student clicks avatar → InquiryModal opens (prefilled with admin + context)
-  → Student writes message → Submit
-  → Insert into inquiries table with assigned_to_user_id = clicked admin
-  → Edge function notifies admin
-  → Admin replies via admin panel
-  → Student sees reply in Connect → Messages → Questions tab (existing flow)
-```
+**File: `src/pages/Home.tsx`**
 
-## Design
-```text
-Chapter header row:
-┌──────────────────────────────────────────────────────┐
-│ ← [Section Filter] [Content Dropdown]    (●)(●)     │
-│                                          ↑    ↑     │
-│                                     topic  module   │
-│                                      lead   lead    │
-└──────────────────────────────────────────────────────┘
+Add attributes to these existing elements:
 
-Hover on avatar → 1.15x scale, tooltip shows name + role
-Click → InquiryModal opens with "To: Dr. [Name] (Topic Lead)"
-```
+| Element | Line area | Attribute | Notes |
+|---------|-----------|-----------|-------|
+| Continue card wrapper `<div>` | ~358 | `data-tour="continue-card"` | The rounded-xl border div |
+| Flashcards Card | ~571 (due) / ~593 (caught up) | `data-tour="flashcards-due"` | On the Card element |
+| ClassificationDashboard Card | ~554 | `data-tour="today-plan"` | **This is the Intelligence panel** containing "Today's Plan", "Needs Attention", "Improve" — the actual daily priorities area |
+| Today's Study Plan wrapper `<div>` | ~614 | `data-tour="study-plan"` | The `space-y-2` div containing suggestions |
+| Modules `<section>` | ~382 | `data-tour="modules"` | The section containing year selector + module grid |
+
+**`data-tour="today-plan"` target**: The `ClassificationDashboard` Card (line 554) — this is the panel users see as their daily priorities dashboard. It contains "Today's Plan", "Needs Attention", and "Improve" sections, making it the most intuitive "daily priorities" element.
+
+---
+
+## Part 3 — Add Micro-Guidance Helper Text
+
+**File: `src/pages/Home.tsx`**
+
+Add subtle `<p className="text-[10px] text-muted-foreground">` lines near key elements:
+
+| Element | Helper text | Placement |
+|---------|------------|-----------|
+| Continue card | "Pick up exactly where you left off" | Below the "Continue where you left off" label (line ~369) |
+| Flashcards widget | "Daily review to keep knowledge fresh" | Below "X cards due today" text (line ~583) |
+| ClassificationDashboard | "Your daily priorities" | As a subtle subtitle above the component |
+| Today's Study Plan heading | "Follow this step by step to stay organized" | Below the "Today's Study Plan" heading (line ~616) |
+| Modules heading | "Explore topics or revise specific areas" | Below "Your Modules" heading (line ~385) |
+
+These use existing muted styling — no new components.
+
+---
+
+## Part 4 — Update Context Guide Copy
+
+**File: `src/pages/Home.tsx`** (line ~266)
+- Title: `"Start here"`
+- Description: `"Resume where you left off, then follow today's plan to stay on track."`
+
+**File: `src/pages/ChapterPage.tsx`** — update existing ContextGuide instances:
+- Practice: Description → `"Use questions here to identify weak areas before moving forward."`
+- Interactive: Description → `"Work through clinical cases to practice real decision-making."`
+
+**File: `src/pages/ProgressPage.tsx`**
+- Title: `"Track your performance"`
+- Description: `"Focus on weak areas and maintain your strengths."`
+
+**File: `src/pages/DiscussionsPage.tsx`**
+- Title: `"Get help when needed"`
+- Description: `"Ask questions or contact your module lead if you're stuck."`
+
+**Admin pages** — tighten copy:
+- AdminDashboard: `"Monitor activity and act where needed."`
+- AdminInboxPage: `"Respond to student questions promptly."`
+- AdminOverview: `"Use insights to improve content quality."`
+
+---
+
+## Part 5 — Rewrite Workflow Guide
+
+**File: `src/components/guidance/WorkflowGuide.tsx`**
+
+Student title: `"How to use KALM daily"`
+
+| # | Title | Description |
+|---|-------|-------------|
+| 1 | Start here | "Resume from where you left off using the continue card." |
+| 2 | Complete your reviews | "Do your flashcards first to maintain retention." |
+| 3 | Follow today's priorities | "Use the suggested tasks instead of choosing randomly." |
+| 4 | Practice | "Test your understanding and identify weak areas." |
+| 5 | Go deeper when needed | "Use modules to explore topics more thoroughly." |
+| 6 | Ask for help | "Use Connect when something is unclear." |
+
+Admin steps: keep current content (already good).
+
+---
+
+## Part 6 — "Today's Plan" vs "Study Plan" Distinction
+
+Consistent language everywhere:
+- **ClassificationDashboard** = "Your daily priorities" (what needs attention)
+- **Today's Study Plan** = "Your step-by-step learning path" (actionable tasks)
+
+No overlapping wording like "structured" or "your plan" used for both.
+
+---
+
+## Files Summary
+
+| Action | File |
+|--------|------|
+| Rewrite | `src/components/tour/studentTourSteps.ts` |
+| Edit | `src/pages/Home.tsx` (selectors + micro-guidance + context guide copy) |
+| Edit | `src/components/guidance/WorkflowGuide.tsx` (student steps) |
+| Edit | `src/pages/ChapterPage.tsx` (context guide copy) |
+| Edit | `src/pages/ProgressPage.tsx` (context guide copy) |
+| Edit | `src/pages/DiscussionsPage.tsx` (context guide copy) |
+| Edit | `src/pages/AdminDashboard.tsx` (context guide copy) |
+| Edit | `src/pages/AdminInboxPage.tsx` (context guide copy) |
+| Edit | `src/pages/AdminOverview.tsx` (context guide copy) |
+
+Admin tour (`adminTourSteps.ts`) unchanged. No new dependencies. No new components.
 

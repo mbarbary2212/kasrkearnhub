@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { ContextGuide } from "@/components/guidance/ContextGuide";
 import { useTrackPosition } from "@/hooks/useTrackPosition";
 import * as Sentry from "@sentry/react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -31,7 +32,7 @@ import { ClinicalCaseList, ClinicalCaseAdminList } from "@/components/clinical-c
 import { CaseScenarioList } from "@/components/content/CaseScenarioList";
 import { SectionFilter } from "@/components/sections";
 import { SectionsManager } from "@/components/sections";
-import { useChapterSectionsEnabled, useChapterSections } from "@/hooks/useSections";
+import { useChapterSectionsEnabled, useChapterSections, useChapterLectureSectionsMap } from "@/hooks/useSections";
 import {
   useChapterLectures,
   useChapterResources,
@@ -296,6 +297,7 @@ export default function ChapterPage() {
   const { data: hideEmptyTabs } = useHideEmptySelfAssessmentTabs();
   const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
   const { data: chapterSections } = useChapterSections(sectionsEnabled ? chapterId : undefined);
+  const { data: lectureSectionsMap } = useChapterLectureSectionsMap(sectionsEnabled ? chapterId : undefined);
   const { data: interactiveAlgorithms } = useChapterAlgorithms(chapterId);
 
   // ─── Recommended Path: derive chapter state from metrics ───
@@ -378,10 +380,14 @@ export default function ChapterPage() {
 
   // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(
-    <T,>(items: T[]): T[] => {
+    <T,>(items: T[], isLectures = false): T[] => {
       if (!sectionsEnabled) return items;
       if (selectedSectionId) {
         return items.filter((item) => {
+          if (isLectures && lectureSectionsMap) {
+            const lectureId = (item as unknown as { id: string }).id;
+            return lectureSectionsMap.get(selectedSectionId)?.has(lectureId) ?? false;
+          }
           const sectionable = item as unknown as { section_id?: string | null };
           return sectionable.section_id === selectedSectionId;
         });
@@ -396,7 +402,7 @@ export default function ChapterPage() {
         return aOrder - bOrder;
       });
     },
-    [selectedSectionId, sectionsEnabled, sectionOrderMap],
+    [selectedSectionId, sectionsEnabled, sectionOrderMap, lectureSectionsMap],
   );
 
   // Filter deleted MCQs only (exclude active ones)
@@ -935,6 +941,11 @@ export default function ChapterPage() {
             {/* Resources Section */}
             {activeSection === "resources" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Start with understanding"
+                  description="Study the material first before moving to practice."
+                  storageKey="kalm_guide_learning_dismissed"
+                />
                 {/* Lectures Content */}
                 {resourcesTab === "lectures" && (
                   <div>
@@ -948,7 +959,7 @@ export default function ChapterPage() {
                     ) : (
                       <LectureList
                         key={lecturesResetKey}
-                        lectures={filterBySection(lectures || [])}
+                        lectures={filterBySection(lectures || [], true)}
                         moduleId={moduleId}
                         chapterId={chapterId}
                         canEdit={canManageContent}
@@ -1204,6 +1215,11 @@ export default function ChapterPage() {
             {/* Interactive Section (Cases + Pathways) */}
             {activeSection === "interactive" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Apply what you learned"
+                  description="Work through clinical cases to practice real decision-making."
+                  storageKey="kalm_guide_interactive_dismissed"
+                />
                 {/* Cases Content */}
                 {interactiveTab === "cases" && contentModuleId && chapterId && (
                   <div>
@@ -1304,6 +1320,11 @@ export default function ChapterPage() {
 
             {activeSection === "practice" && (
               <div className="space-y-4">
+                <ContextGuide
+                  title="Test your understanding"
+                  description="Use questions here to identify weak areas before moving forward."
+                  storageKey="kalm_guide_practice_dismissed"
+                />
                 {/* MCQs Content */}
                 {practiceTab === "mcqs" && (
                   <div>

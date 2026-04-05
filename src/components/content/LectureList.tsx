@@ -1,7 +1,7 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle, X, CheckCircle, Bookmark, ThumbsUp, ThumbsDown, FileText, Sparkles } from 'lucide-react';
+import { Clock, Video, Settings2, Pencil, Trash2, MessageSquare, AlertCircle, X, CheckCircle, Bookmark, ThumbsUp, ThumbsDown, FileText, Sparkles, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ import {
 import { getVideoInfo, isValidVideoUrl, normalizeVideoInput, extractYouTubeId } from '@/lib/video';
 import { useVideoDelete } from '@/hooks/useVideoDelete';
 import { useUpdateContent } from '@/hooks/useContentCrud';
+import { useChapterSections, useChapterSectionsEnabled, useLectureSectionIds, useSetLectureSections } from '@/hooks/useSections';
 import { useVideoBookmarks } from '@/hooks/useVideoBookmarks';
 import { useManualVideoComplete } from '@/hooks/useManualVideoComplete';
 import { useVideoRatings } from '@/hooks/useVideoRatings';
@@ -45,6 +46,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { BulkSectionAssignment } from '@/components/sections';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
@@ -112,6 +114,7 @@ export function LectureList({
   const [editVideoUrl, setEditVideoUrl] = useState('');
   const [editDoctor, setEditDoctor] = useState('');
   const [editDoctorSelectVal, setEditDoctorSelectVal] = useState('');
+  const [editSectionIds, setEditSectionIds] = useState<string[]>([]);
 
   // Fetch existing doctors for this module
   const { data: existingDoctors = [] } = useQuery({
@@ -129,6 +132,16 @@ export function LectureList({
     },
     enabled: !!moduleId,
   });
+  const { data: chapterSections = [] } = useChapterSections(chapterId);
+  const { data: sectionsEnabled } = useChapterSectionsEnabled(chapterId);
+  const { data: fetchedSectionIds = [] } = useLectureSectionIds(editLecture?.id);
+  const setLectureSections = useSetLectureSections();
+
+  // Sync fetched section IDs into edit state whenever the dialog opens or data loads
+  useEffect(() => {
+    if (editLecture) setEditSectionIds(fetchedSectionIds);
+  }, [editLecture?.id, fetchedSectionIds.join(',')]);
+
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
@@ -306,6 +319,7 @@ export function LectureList({
           video_url: normalizedUrl || null,
         },
       });
+      await setLectureSections.mutateAsync({ lectureId: editLecture.id, sectionIds: editSectionIds });
       toast.success('Lecture updated successfully');
       setEditLecture(null);
     } catch (error) {
@@ -379,6 +393,42 @@ export function LectureList({
                 )}
               </div>
               <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
+              {sectionsEnabled && chapterSections.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="mt-1 w-full justify-between font-normal">
+                        <span className="truncate text-sm">
+                          {editSectionIds.length === 0
+                            ? 'No sections selected'
+                            : editSectionIds.length === 1
+                              ? (chapterSections.find(s => s.id === editSectionIds[0])?.name ?? '1 selected')
+                              : `${editSectionIds.length} sections selected`}
+                        </span>
+                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-2 z-[99999]" align="start">
+                      <div className="max-h-52 overflow-y-auto space-y-1">
+                        {chapterSections.map((s) => (
+                          <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-muted">
+                            <Checkbox
+                              checked={editSectionIds.includes(s.id)}
+                              onCheckedChange={(checked) =>
+                                setEditSectionIds(prev =>
+                                  checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                                )
+                              }
+                            />
+                            <span className="text-sm">{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>Cancel</Button>
@@ -814,6 +864,42 @@ export function LectureList({
               )}
             </div>
             <div><Label htmlFor="edit-video-url">Video URL</Label><Input id="edit-video-url" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} placeholder="YouTube or Google Drive link (or paste iframe code)" className="mt-1" /><p className="text-xs text-muted-foreground mt-1">Supports YouTube and Google Drive. Vimeo support coming soon.</p></div>
+            {sectionsEnabled && chapterSections.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Sections <span className="text-muted-foreground font-normal text-xs">(optional, select all that apply)</span></Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="mt-1 w-full justify-between font-normal">
+                      <span className="truncate text-sm">
+                        {editSectionIds.length === 0
+                          ? 'No sections selected'
+                          : editSectionIds.length === 1
+                            ? (chapterSections.find(s => s.id === editSectionIds[0])?.name ?? '1 selected')
+                            : `${editSectionIds.length} sections selected`}
+                      </span>
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-2 z-[99999]" align="start">
+                    <div className="max-h-52 overflow-y-auto space-y-1">
+                      {chapterSections.map((s) => (
+                        <label key={s.id} className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-muted">
+                          <Checkbox
+                            checked={editSectionIds.includes(s.id)}
+                            onCheckedChange={(checked) =>
+                              setEditSectionIds(prev =>
+                                checked ? [...prev, s.id] : prev.filter(id => id !== s.id)
+                              )
+                            }
+                          />
+                          <span className="text-sm">{s.section_number ? `${s.section_number}. ${s.name}` : s.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditLecture(null)} disabled={isEditSaving}>Cancel</Button>
