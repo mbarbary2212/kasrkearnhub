@@ -187,7 +187,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
 
   for (const chapter of chapters) {
     const m = metricsMap.get(chapter.id);
-    const state: ChapterState = m ? classifyChapterState(m) : 'not_started';
+    const state: ChapterStatus = m ? classifyFromMetrics(m) : 'not_started';
     const trend: PerformanceTrend = m ? getPerformanceTrend(m) : 'stable';
     const patternResult = m ? classifyLearningPattern(m) : null;
     const patternLabel = patternResult?.pattern;
