@@ -151,3 +151,70 @@ export interface ReviewUrgencyResult {
   reason: string;
   suggestedAction: string;
 }
+
+// ============================================================================
+// Observability / Debug (Session 8)
+// ============================================================================
+
+/** Full debug snapshot of a single chapter readiness calculation */
+export interface ReadinessDebugSnapshot {
+  version: string;
+  chapterId: string;
+  moduleId: string;
+  timestamp: string;
+
+  input: {
+    engagementPercent: number | null;
+    recentAccuracy: number | null;
+    totalAttempts: number;
+    retentionScore: number | null;
+    consistencyScore: number | null;
+    confidenceScore: number | null;
+    daysSinceLastActivity: number | null;
+    hasOverdueFlashcards: boolean;
+    overconfidentErrorRate: number | null;
+  };
+
+  scoring: {
+    componentScores: ComponentScores;
+    baseWeights: Record<ComponentName, number>;
+    effectiveWeights: Record<ComponentName, number>;
+    activeComponents: ComponentName[];
+    missingComponents: ComponentName[];
+    rawWeightedSum: number;
+    evidenceLevel: EvidenceLevel;
+    evidenceCap: number;
+    finalScore: number;
+  };
+
+  classification: {
+    chapterStatus: ChapterStatus;
+    reviewUrgency: ReviewUrgency;
+    reviewReason: string;
+    riskFlags: Array<{ flag: string; severity: string; description: string }>;
+  };
+
+  narratives: {
+    insightMessage: string;
+    secondaryHint: string | null;
+    nextBestAction: string;
+  };
+
+  diagnostics: {
+    activeComponentCount: number;
+    totalComponentCount: number;
+    dataCompleteness: number;
+    cappedByEvidence: boolean;
+    limitingFactors: string[];
+  };
+}
+
+/** Diagnostic for a single data gap or weak signal */
+export interface DataGapDiagnostic {
+  component: ComponentName | null;
+  severity: 'critical' | 'moderate' | 'minor';
+  issue: string;
+  dataSource: string;
+  impact: string;
+  suggestion: string;
+}
