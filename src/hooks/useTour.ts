@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { driver, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
 
@@ -12,16 +12,14 @@ const TOUR_KEYS: Record<TourRole, string> = {
 export function useTour(role: TourRole, steps: DriveStep[]) {
   const hasSeen = localStorage.getItem(TOUR_KEYS[role]) === 'true';
   const driverRef = useRef<ReturnType<typeof driver> | null>(null);
-  const [tourReady, setTourReady] = useState(false);
 
   const markDone = useCallback(() => {
     localStorage.setItem(TOUR_KEYS[role], 'true');
   }, [role]);
 
   const startTour = useCallback(() => {
-    // Filter steps to only include those with existing elements
     const validSteps = steps.filter((step) => {
-      if (!step.element) return true; // final step with no element
+      if (!step.element) return true;
       return document.querySelector(step.element as string);
     });
 
@@ -31,10 +29,11 @@ export function useTour(role: TourRole, steps: DriveStep[]) {
       showProgress: true,
       animate: true,
       allowClose: true,
-      overlayColor: 'rgba(0, 0, 0, 0.6)',
-      stagePadding: 8,
+      overlayColor: 'rgba(0, 0, 0, 0.3)',
+      stagePadding: 12,
       stageRadius: 12,
       popoverClass: 'kalm-tour-popover',
+      doneBtnText: 'Finish',
       steps: validSteps,
       onDestroyStarted: () => {
         markDone();
@@ -53,32 +52,7 @@ export function useTour(role: TourRole, steps: DriveStep[]) {
     localStorage.removeItem(TOUR_KEYS[role]);
   }, [role]);
 
-  // Auto-start on first visit
-  useEffect(() => {
-    if (hasSeen) return;
-    const timer = setTimeout(() => {
-      setTourReady(true);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [hasSeen]);
-
-  useEffect(() => {
-    if (tourReady && !hasSeen) {
-      startTour();
-    }
-  }, [tourReady, hasSeen, startTour]);
-
-  // Listen for manual trigger
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail || detail.role === role) {
-        startTour();
-      }
-    };
-    window.addEventListener('kalm:start-tour', handler);
-    return () => window.removeEventListener('kalm:start-tour', handler);
-  }, [role, startTour]);
-
+  // Listen for manual trigger only
+  // No auto-start — FirstLoginModal or sidebar menu controls this
   return { startTour, hasSeen, resetTour };
 }

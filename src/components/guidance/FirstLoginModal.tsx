@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Compass, BookOpen } from 'lucide-react';
 
 interface FirstLoginModalProps {
@@ -14,14 +15,19 @@ const KEYS = {
   admin: 'kalm_first_login_admin_shown',
 };
 
+const TOUR_KEYS = {
+  student: 'kalm_tour_student_done',
+  admin: 'kalm_tour_admin_done',
+};
+
 export function FirstLoginModal({ role, onStartTour, onOpenWorkflow }: FirstLoginModalProps) {
   const [open, setOpen] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   useEffect(() => {
     const key = KEYS[role];
     const shown = localStorage.getItem(key);
     if (!shown) {
-      // Delay so the page renders first
       const t = setTimeout(() => setOpen(true), 800);
       return () => clearTimeout(t);
     }
@@ -29,12 +35,14 @@ export function FirstLoginModal({ role, onStartTour, onOpenWorkflow }: FirstLogi
 
   const handleClose = () => {
     localStorage.setItem(KEYS[role], 'true');
+    if (dontShowAgain) {
+      localStorage.setItem(TOUR_KEYS[role], 'true');
+    }
     setOpen(false);
   };
 
   const handleTour = () => {
     handleClose();
-    // Small delay so modal closes first
     setTimeout(() => onStartTour(), 300);
   };
 
@@ -63,8 +71,18 @@ export function FirstLoginModal({ role, onStartTour, onOpenWorkflow }: FirstLogi
             <BookOpen className="h-4 w-4" />
             Learn how to use the app
           </Button>
+          <div className="flex items-center gap-2 mt-1 px-1">
+            <Checkbox
+              id="dont-show"
+              checked={dontShowAgain}
+              onCheckedChange={(checked) => setDontShowAgain(checked === true)}
+            />
+            <label htmlFor="dont-show" className="text-xs text-muted-foreground cursor-pointer">
+              Don't show this again
+            </label>
+          </div>
           <Button variant="ghost" onClick={handleClose} className="text-xs text-muted-foreground">
-            Skip for now
+            {dontShowAgain ? 'Skip' : 'Skip for now'}
           </Button>
         </div>
       </DialogContent>

@@ -1,135 +1,56 @@
 
 
-# Onboarding Upgrade — Content-Focused Tour & Micro-Guidance
+# Fix Guided Tour UX Issues
 
-## What's Changing
+## Problems Identified
 
-The student tour currently highlights **sidebar navigation items**. This upgrade shifts it to highlight **dashboard content areas** — the actual working elements students interact with. Additionally, micro-guidance helper text is added inline, context guide copy is made more actionable, and the workflow guide is rewritten for daily use.
+From the screenshot: both the **FirstLoginModal** and the **driver.js tour** are showing simultaneously. The tour auto-starts on its own (via `useTour` auto-start logic) regardless of whether the user chose "Take a quick tour" from the modal. Additionally, the overlay is too dark (0.6 opacity), and there's no "don't show again" checkbox.
 
----
+## Changes
 
-## Part 1 — Rewrite Student Tour Steps
+### 1. Stop tour from auto-starting — let FirstLoginModal control it
 
-**File: `src/components/tour/studentTourSteps.ts`**
+**File: `src/hooks/useTour.ts`**
 
-Replace all sidebar-targeting steps with 5 content-focused steps in behavioral order (Resume → Review → Prioritize → Follow path → Explore):
+- **Remove** the auto-start logic (the two `useEffect` blocks that check `hasSeen` and set `tourReady`). The tour should only start when explicitly triggered: either from the FirstLoginModal "Take a quick tour" button, or from the sidebar "Take a Tour" menu item.
+- Keep the `kalm:start-tour` event listener for manual triggers.
+- This fixes the double-popup issue (modal + tour firing together).
 
-| Step | Selector | Title | Description |
-|------|----------|-------|-------------|
-| 1 | `[data-tour="continue-card"]` | Continue | "Start here. This takes you back to exactly where you left off." |
-| 2 | `[data-tour="flashcards-due"]` | Daily reviews | "Complete these first to keep knowledge fresh and maintain retention." |
-| 3 | `[data-tour="today-plan"]` | Today's priorities | "This shows what deserves your attention today." |
-| 4 | `[data-tour="study-plan"]` | Study path | "Follow this step by step to stay organized." |
-| 5 | `[data-tour="modules"]` | Modules | "Use this to explore topics or revise specific areas." |
-| 6 | (no element) | You're ready | "Start with your reviews, then follow today's plan." |
+### 2. Add "Don't show again" checkbox to the FirstLoginModal
 
-All steps use `side: 'bottom'` for content elements. Missing elements are skipped; minimum 2 valid steps required to run (already handled by `useTour.ts`).
+**File: `src/components/guidance/FirstLoginModal.tsx`**
 
----
+- Add a checkbox: "Don't show this again" above the Skip button.
+- When checked and user clicks Skip (or closes), set `kalm_tour_student_done` / `kalm_tour_admin_done` in addition to the first-login key — this prevents the modal from ever reappearing AND prevents any future tour auto-trigger.
+- Change "Skip for now" text to just "Skip" when checkbox is checked.
 
-## Part 2 — Add `data-tour` Selectors to Home.tsx
+### 3. Reduce overlay darkness
 
-**File: `src/pages/Home.tsx`**
+**File: `src/hooks/useTour.ts`**
 
-Add attributes to these existing elements:
+- Change `overlayColor` from `'rgba(0, 0, 0, 0.6)'` to `'rgba(0, 0, 0, 0.3)'` — lighter dimming so users can still see the app behind the tour.
+- Increase `stagePadding` from 8 to 12 for better visual clarity of highlighted elements.
 
-| Element | Line area | Attribute | Notes |
-|---------|-----------|-----------|-------|
-| Continue card wrapper `<div>` | ~358 | `data-tour="continue-card"` | The rounded-xl border div |
-| Flashcards Card | ~571 (due) / ~593 (caught up) | `data-tour="flashcards-due"` | On the Card element |
-| ClassificationDashboard Card | ~554 | `data-tour="today-plan"` | **This is the Intelligence panel** containing "Today's Plan", "Needs Attention", "Improve" — the actual daily priorities area |
-| Today's Study Plan wrapper `<div>` | ~614 | `data-tour="study-plan"` | The `space-y-2` div containing suggestions |
-| Modules `<section>` | ~382 | `data-tour="modules"` | The section containing year selector + module grid |
+### 4. Add "Don't show again" button to the tour popover
 
-**`data-tour="today-plan"` target**: The `ClassificationDashboard` Card (line 554) — this is the panel users see as their daily priorities dashboard. It contains "Today's Plan", "Needs Attention", and "Improve" sections, making it the most intuitive "daily priorities" element.
+**File: `src/hooks/useTour.ts`**
 
----
+- Add `doneBtnText: "Finish"` and a custom `onNextClick` or use driver.js's built-in `popoverClass` to add a "Don't show again" link in the final step.
+- Simpler approach: The tour already marks done on close/complete via `markDone()`. Add `showButtons: ['next', 'previous', 'close']` config. The existing `onDestroyStarted` already calls `markDone()`, so closing/completing the tour = won't show again. This is already working — the real issue is that the tour auto-fires without user consent.
 
-## Part 3 — Add Micro-Guidance Helper Text
+## Summary of Behavior After Fix
 
-**File: `src/pages/Home.tsx`**
+1. **First visit**: FirstLoginModal appears. User picks "Take a tour", "Learn how to use", or "Skip".
+2. **If "Take a tour"**: Modal closes, tour starts with light overlay.
+3. **If "Skip" + "Don't show again" checked**: Modal never shows again, tour never auto-fires.
+4. **If "Skip" without checkbox**: Modal won't show again (first-login key set), but user can still trigger tour from sidebar.
+5. **Tour overlay**: Light enough to see the app clearly behind it.
 
-Add subtle `<p className="text-[10px] text-muted-foreground">` lines near key elements:
+## Files Modified (3)
 
-| Element | Helper text | Placement |
-|---------|------------|-----------|
-| Continue card | "Pick up exactly where you left off" | Below the "Continue where you left off" label (line ~369) |
-| Flashcards widget | "Daily review to keep knowledge fresh" | Below "X cards due today" text (line ~583) |
-| ClassificationDashboard | "Your daily priorities" | As a subtle subtitle above the component |
-| Today's Study Plan heading | "Follow this step by step to stay organized" | Below the "Today's Study Plan" heading (line ~616) |
-| Modules heading | "Explore topics or revise specific areas" | Below "Your Modules" heading (line ~385) |
-
-These use existing muted styling — no new components.
-
----
-
-## Part 4 — Update Context Guide Copy
-
-**File: `src/pages/Home.tsx`** (line ~266)
-- Title: `"Start here"`
-- Description: `"Resume where you left off, then follow today's plan to stay on track."`
-
-**File: `src/pages/ChapterPage.tsx`** — update existing ContextGuide instances:
-- Practice: Description → `"Use questions here to identify weak areas before moving forward."`
-- Interactive: Description → `"Work through clinical cases to practice real decision-making."`
-
-**File: `src/pages/ProgressPage.tsx`**
-- Title: `"Track your performance"`
-- Description: `"Focus on weak areas and maintain your strengths."`
-
-**File: `src/pages/DiscussionsPage.tsx`**
-- Title: `"Get help when needed"`
-- Description: `"Ask questions or contact your module lead if you're stuck."`
-
-**Admin pages** — tighten copy:
-- AdminDashboard: `"Monitor activity and act where needed."`
-- AdminInboxPage: `"Respond to student questions promptly."`
-- AdminOverview: `"Use insights to improve content quality."`
-
----
-
-## Part 5 — Rewrite Workflow Guide
-
-**File: `src/components/guidance/WorkflowGuide.tsx`**
-
-Student title: `"How to use KALM daily"`
-
-| # | Title | Description |
-|---|-------|-------------|
-| 1 | Start here | "Resume from where you left off using the continue card." |
-| 2 | Complete your reviews | "Do your flashcards first to maintain retention." |
-| 3 | Follow today's priorities | "Use the suggested tasks instead of choosing randomly." |
-| 4 | Practice | "Test your understanding and identify weak areas." |
-| 5 | Go deeper when needed | "Use modules to explore topics more thoroughly." |
-| 6 | Ask for help | "Use Connect when something is unclear." |
-
-Admin steps: keep current content (already good).
-
----
-
-## Part 6 — "Today's Plan" vs "Study Plan" Distinction
-
-Consistent language everywhere:
-- **ClassificationDashboard** = "Your daily priorities" (what needs attention)
-- **Today's Study Plan** = "Your step-by-step learning path" (actionable tasks)
-
-No overlapping wording like "structured" or "your plan" used for both.
-
----
-
-## Files Summary
-
-| Action | File |
-|--------|------|
-| Rewrite | `src/components/tour/studentTourSteps.ts` |
-| Edit | `src/pages/Home.tsx` (selectors + micro-guidance + context guide copy) |
-| Edit | `src/components/guidance/WorkflowGuide.tsx` (student steps) |
-| Edit | `src/pages/ChapterPage.tsx` (context guide copy) |
-| Edit | `src/pages/ProgressPage.tsx` (context guide copy) |
-| Edit | `src/pages/DiscussionsPage.tsx` (context guide copy) |
-| Edit | `src/pages/AdminDashboard.tsx` (context guide copy) |
-| Edit | `src/pages/AdminInboxPage.tsx` (context guide copy) |
-| Edit | `src/pages/AdminOverview.tsx` (context guide copy) |
-
-Admin tour (`adminTourSteps.ts`) unchanged. No new dependencies. No new components.
+| File | Change |
+|------|--------|
+| `src/hooks/useTour.ts` | Remove auto-start effects, reduce overlay opacity |
+| `src/components/guidance/FirstLoginModal.tsx` | Add "Don't show again" checkbox, wire it to tour keys |
+| `src/pages/Home.tsx` | No changes needed (already wired correctly) |
 
