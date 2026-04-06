@@ -1,5 +1,5 @@
 /**
- * Learning Mode Awareness — Phase 2.5
+ * Learning Mode Awareness — Phase 2.5 (Session 4: migrated to ChapterStatus)
  *
  * Maps content types to three pedagogical modes:
  *   learning  → understanding (Socrates, videos, explanations, flashcards)
@@ -7,10 +7,10 @@
  *   assessment → evaluation    (Test Yourself / formative exams)
  *
  * Used by the planner and recommended-path to assign the right activity type
- * based on chapter state instead of treating all activity equally.
+ * based on chapter status instead of treating all activity equally.
  */
 
-import type { ChapterState } from '@/lib/studentMetrics';
+import type { ChapterStatus } from '@/lib/readiness';
 
 // ─── Mode types ───────────────────────────────────────────────
 
@@ -91,45 +91,51 @@ export const MODE_CONFIGS: Record<LearningMode, ModeConfig> = {
 // ─── State → Mode ratios ────────────────────────────────────
 
 /**
- * For each chapter state, defines what proportion of study time
+ * For each ChapterStatus, defines what proportion of study time
  * should go to each mode. Values are weights (sum to 1).
  *
- * This is the SINGLE source of truth for state→mode mapping.
+ * This is the SINGLE source of truth for status→mode mapping.
  */
-export const STATE_MODE_RATIOS: Record<ChapterState, Record<LearningMode, number>> = {
-  not_started: { learning: 1.0, practice: 0.0, assessment: 0.0 },
-  early:       { learning: 0.7, practice: 0.3, assessment: 0.0 },
-  weak:        { learning: 0.6, practice: 0.4, assessment: 0.0 },
-  unstable:    { learning: 0.3, practice: 0.6, assessment: 0.1 },
-  in_progress: { learning: 0.2, practice: 0.5, assessment: 0.3 },
-  strong:      { learning: 0.0, practice: 0.3, assessment: 0.7 },
+export const STATUS_MODE_RATIOS: Record<ChapterStatus, Record<LearningMode, number>> = {
+  not_started:     { learning: 1.0, practice: 0.0, assessment: 0.0 },
+  started:         { learning: 0.7, practice: 0.3, assessment: 0.0 },
+  building:        { learning: 0.4, practice: 0.5, assessment: 0.1 },
+  needs_attention: { learning: 0.5, practice: 0.5, assessment: 0.0 },
+  ready:           { learning: 0.1, practice: 0.4, assessment: 0.5 },
+  strong:          { learning: 0.0, practice: 0.3, assessment: 0.7 },
 };
+
+/**
+ * @deprecated Use STATUS_MODE_RATIOS instead. Kept for backward-compat
+ * with any consumer that hasn't migrated yet.
+ */
+export const STATE_MODE_RATIOS = STATUS_MODE_RATIOS;
 
 // ─── Helpers ─────────────────────────────────────────────────
 
 /**
- * Returns the primary (highest-weight) learning mode for a chapter state.
+ * Returns the primary (highest-weight) learning mode for a chapter status.
  */
-export function getPrimaryMode(state: ChapterState): LearningMode {
-  const ratios = STATE_MODE_RATIOS[state] ?? STATE_MODE_RATIOS.not_started;
+export function getPrimaryMode(status: ChapterStatus): LearningMode {
+  const ratios = STATUS_MODE_RATIOS[status] ?? STATUS_MODE_RATIOS.not_started;
   if (ratios.assessment >= ratios.practice && ratios.assessment >= ratios.learning) return 'assessment';
   if (ratios.practice >= ratios.learning) return 'practice';
   return 'learning';
 }
 
 /**
- * Returns the ModeConfig for the primary mode of a chapter state.
+ * Returns the ModeConfig for the primary mode of a chapter status.
  */
-export function getModeConfigForState(state: ChapterState): ModeConfig {
-  return MODE_CONFIGS[getPrimaryMode(state)];
+export function getModeConfigForState(status: ChapterStatus): ModeConfig {
+  return MODE_CONFIGS[getPrimaryMode(status)];
 }
 
 /**
- * Returns ordered list of modes by weight for a chapter state.
+ * Returns ordered list of modes by weight for a chapter status.
  * Only includes modes with weight > 0.
  */
-export function getOrderedModes(state: ChapterState): { mode: LearningMode; weight: number }[] {
-  const ratios = STATE_MODE_RATIOS[state] ?? STATE_MODE_RATIOS.not_started;
+export function getOrderedModes(status: ChapterStatus): { mode: LearningMode; weight: number }[] {
+  const ratios = STATUS_MODE_RATIOS[status] ?? STATUS_MODE_RATIOS.not_started;
   return (Object.entries(ratios) as [LearningMode, number][])
     .filter(([, w]) => w > 0)
     .sort(([, a], [, b]) => b - a)

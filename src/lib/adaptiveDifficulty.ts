@@ -1,16 +1,13 @@
 /**
- * Difficulty-Adaptive MCQ Selection
+ * Difficulty-Adaptive MCQ Selection (Session 4: migrated to ChapterStatus)
  *
- * Reorders questions so the difficulty mix matches the student's chapter state.
+ * Reorders questions so the difficulty mix matches the student's chapter status.
  * Does NOT remove questions — just changes presentation order.
- *
- * All tuning constants are in one place for easy adjustment.
  */
 
-import type { ChapterState } from '@/lib/studentMetrics';
+import type { ChapterStatus } from '@/lib/readiness';
 
-// ─── Difficulty mix targets per chapter state ────────────────────
-// Values are weights (not strict percentages). They guide proportional ordering.
+// ─── Difficulty mix targets per chapter status ────────────────────
 
 export interface DifficultyMix {
   easy: number;
@@ -18,16 +15,16 @@ export interface DifficultyMix {
   hard: number;
 }
 
-export const DIFFICULTY_MIX: Record<ChapterState, DifficultyMix> = {
-  not_started: { easy: 0.80, medium: 0.15, hard: 0.05 },
-  early:       { easy: 0.70, medium: 0.25, hard: 0.05 },
-  weak:        { easy: 0.70, medium: 0.25, hard: 0.05 },
-  unstable:    { easy: 0.40, medium: 0.40, hard: 0.20 },
-  in_progress: { easy: 0.30, medium: 0.40, hard: 0.30 },
-  strong:      { easy: 0.10, medium: 0.30, hard: 0.60 },
+export const DIFFICULTY_MIX: Record<ChapterStatus, DifficultyMix> = {
+  not_started:     { easy: 0.80, medium: 0.15, hard: 0.05 },
+  started:         { easy: 0.70, medium: 0.25, hard: 0.05 },
+  needs_attention: { easy: 0.70, medium: 0.25, hard: 0.05 },
+  building:        { easy: 0.40, medium: 0.40, hard: 0.20 },
+  ready:           { easy: 0.30, medium: 0.40, hard: 0.30 },
+  strong:          { easy: 0.10, medium: 0.30, hard: 0.60 },
 };
 
-/** Fallback mix when chapter state is unknown */
+/** Fallback mix when chapter status is unknown */
 export const DEFAULT_MIX: DifficultyMix = { easy: 0.33, medium: 0.34, hard: 0.33 };
 
 // ─── Adaptive reordering ─────────────────────────────────────────
@@ -85,12 +82,12 @@ function dailySeed(userId?: string): number {
  */
 export function adaptiveReorder<T extends HasDifficulty>(
   questions: T[],
-  chapterState: ChapterState | undefined,
+  chapterStatus: ChapterStatus | undefined,
   userId?: string,
 ): T[] {
   if (questions.length === 0) return questions;
 
-  const mix = chapterState ? (DIFFICULTY_MIX[chapterState] ?? DEFAULT_MIX) : DEFAULT_MIX;
+  const mix = chapterStatus ? (DIFFICULTY_MIX[chapterStatus] ?? DEFAULT_MIX) : DEFAULT_MIX;
   const seed = dailySeed(userId);
   const total = questions.length;
 
