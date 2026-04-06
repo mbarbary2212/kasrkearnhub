@@ -1,9 +1,8 @@
 import {
-  classifyChapterState,
   getPerformanceTrend,
-  type ChapterState,
   type PerformanceTrend,
 } from './classifyChapterState';
+import { classifyFromMetrics, type ChapterStatus } from '@/lib/readiness';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
 
@@ -33,7 +32,7 @@ export interface CoachInsightInput {
 interface ClassifiedChapter {
   id: string;
   title: string;
-  state: ChapterState;
+  state: ChapterStatus;
   trend: PerformanceTrend;
   metric: StudentChapterMetric;
   examBoost: number;
@@ -44,7 +43,7 @@ function classify(input: CoachInsightInput): ClassifiedChapter[] {
   return input.metrics
     .filter(m => m.mcq_attempts >= 1) // need some data
     .map(m => {
-      const state = classifyChapterState(m);
+      const state = classifyFromMetrics(m);
       const trend = getPerformanceTrend(m);
       const examBoost = getExamWeightBoost(m.chapter_id, input.examWeightMap);
       return {
@@ -70,9 +69,9 @@ function chapterRoute(moduleId: string | undefined, chapterId: string, tab?: str
 // ─── Insight generators (each returns 0-1 insight) ────────────
 
 function priorityInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
-  // Weak + high-yield = top priority
+  // needs_attention + high-yield = top priority
   const weakHighYield = chapters
-    .filter(c => c.state === 'weak' && c.isHighYield)
+    .filter(c => c.state === 'needs_attention' && c.isHighYield)
     .sort((a, b) => b.examBoost - a.examBoost);
 
   if (weakHighYield.length > 0) {
@@ -87,9 +86,9 @@ function priorityInsight(chapters: ClassifiedChapter[], moduleId?: string): Coac
     };
   }
 
-  // Weak but not high-yield
+  // needs_attention but not high-yield
   const weak = chapters
-    .filter(c => c.state === 'weak')
+    .filter(c => c.state === 'needs_attention')
     .sort((a, b) => a.metric.recent_mcq_accuracy - b.metric.recent_mcq_accuracy);
 
   if (weak.length > 0) {
@@ -109,7 +108,7 @@ function priorityInsight(chapters: ClassifiedChapter[], moduleId?: string): Coac
 
 function misallocationInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
   const neglectedHighYield = chapters.filter(
-    c => c.isHighYield && (c.state === 'weak' || c.state === 'unstable' || c.state === 'early') && c.metric.mcq_attempts < 10
+    c => c.isHighYield && (c.state === 'needs_attention' || c.state === 'building' || c.state === 'started') && c.metric.mcq_attempts < 10
   );
 
   const overStudied = chapters.filter(
@@ -134,7 +133,7 @@ function misallocationInsight(chapters: ClassifiedChapter[], moduleId?: string):
 function trendInsight(chapters: ClassifiedChapter[], moduleId?: string): CoachInsight | null {
   // Declining chapters
   const declining = chapters
-    .filter(c => c.trend === 'declining' && c.state !== 'weak' && c.metric.mcq_attempts >= 5)
+    .filter(c => c.trend === 'declining' && c.state !== 'needs_attention' && c.metric.mcq_attempts >= 5)
     .sort((a, b) => b.examBoost - a.examBoost);
 
   if (declining.length > 0) {
