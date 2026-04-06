@@ -203,7 +203,16 @@ export function calculateChapterReadiness(
     evidenceLevel,
   );
 
-  // 11. Build result (reviewUrgency populated in Session 7)
+  // 11. Review urgency (Session 7)
+  const urgencyResult = determineReviewUrgency(
+    chapterStatus,
+    riskFlags,
+    input.daysSinceLastActivity,
+    evidenceLevel,
+    finalScores,
+  );
+
+  // 12. Build result
   return {
     readinessScore,
     chapterStatus,
@@ -213,8 +222,8 @@ export function calculateChapterReadiness(
     evidenceLevel,
 
     riskFlags,
-    reviewUrgency: 'on_track' as const,  // stub — Session 7
-    reviewReason: '',                      // stub — Session 7
+    reviewUrgency: urgencyResult.urgency,
+    reviewReason: urgencyResult.reason,
     nextBestAction: narratives.nextBestAction,
     insightMessage: narratives.insightMessage,
     secondaryHint: narratives.secondaryHint,
