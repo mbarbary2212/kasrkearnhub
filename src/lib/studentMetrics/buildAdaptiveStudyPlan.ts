@@ -1,9 +1,8 @@
 import {
-  classifyChapterState,
   getPerformanceTrend,
-  type ChapterState,
   type PerformanceTrend,
 } from './classifyChapterState';
+import { classifyFromMetrics, type ChapterStatus } from '@/lib/readiness';
 import { classifyLearningPattern, type LearningPattern } from './classifyLearningPattern';
 import { getRevisionState, getReviewType, type RevisionState } from './reviewScheduling';
 import { generateConfidenceInsight } from './classifyLearningPattern';
