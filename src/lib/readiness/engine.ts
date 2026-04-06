@@ -181,7 +181,7 @@ export function calculateChapterReadiness(
       : cappedScore;
 
   // 8. Classify status
-  const chapterStatus = classifyStatus(
+  const chapterStatus = classifyChapterStatus(
     readinessScore,
     evidenceLevel,
     finalScores.engagement,
