@@ -36,8 +36,7 @@ async function fetchChapterMetrics(
     .from('student_chapter_metrics' as any)
     .select(
       'recent_mcq_accuracy, mcq_attempts, last_activity_at, ' +
-      'flashcards_overdue, overconfident_error_rate, ' +
-      'consistency_score, confidence_avg'
+      'flashcards_overdue, overconfident_error_rate, confidence_avg'
     )
     .eq('student_id', userId)
     .eq('chapter_id', chapterId)
@@ -124,10 +123,8 @@ export function useChapterReadiness({
         // Retention: derived from flashcard overdue state
         retentionScore: deriveRetentionScore(metrics),
 
-        // Consistency: from student_chapter_metrics (already 0–100)
-        consistencyScore: metrics?.consistency_score != null
-          ? Number(metrics.consistency_score)
-          : null,
+        // Consistency: derived from last_activity_at recency
+        consistencyScore: deriveConsistencyScore(metrics?.last_activity_at),
 
         // Confidence: from confidence_avg (already 0–100 scale)
         confidenceScore: metrics?.confidence_avg != null
