@@ -200,7 +200,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     // ── review_due slot: overdue/due revision or flashcards ──
     if (m && (revState === 'overdue' || revState === 'due')) {
       const isOverdue = revState === 'overdue';
-      const weakBoost = state === 'weak' ? 10 : 0;
+      const weakBoost = state === 'needs_attention' ? 10 : 0;
 
       let reason = isOverdue ? 'Overdue revision' : 'Due today';
       if (patternResult?.pattern === 'misconception') {
@@ -253,9 +253,9 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       });
     }
 
-    // ── progress slot: not started / early ──
+    // ── progress slot: not started / started ──
     // Phase 2.5: Always assign learning mode for new chapters
-    if (state === 'not_started' || state === 'early') {
+    if (state === 'not_started' || state === 'started') {
       const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       candidates.push({
         slot: 'progress',
@@ -280,12 +280,12 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     // Phase 2.5: strong chapters get assessment mode tasks via review_due slot above
     if (state === 'strong') continue;
 
-    // ── weakness slot: weak / unstable ──
-    // Phase 2.5: weak → learning mode; unstable → practice mode
-    if (state === 'weak' || state === 'unstable') {
+    // ── weakness slot: needs_attention / building ──
+    // needs_attention → learning mode; building → practice mode
+    if (state === 'needs_attention' || state === 'building') {
       const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
 
-      let reason = state === 'weak' ? 'Review with Socrates first' : 'Needs more practice';
+      let reason = state === 'needs_attention' ? 'Review with Socrates first' : 'Needs more practice';
       if (patternResult?.pattern === 'misconception') reason = 'Confident mistakes detected';
       else if (patternResult?.pattern === 'hesitant') reason = 'You know this, but hesitate';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -294,7 +294,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       const pBoost = patternResult?.pattern === 'misconception' ? 20
         : patternResult?.pattern === 'hesitant' ? 10 : 0;
 
-      const basePriority = (state === 'weak' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost;
+      const basePriority = (state === 'needs_attention' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost;
 
       candidates.push({
         slot: 'weakness',
@@ -317,8 +317,8 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       continue;
     }
 
-    // ── weakness slot (light): in-progress chapters ──
-    // Phase 2.5: in_progress → mix of practice + assessment
+    // ── weakness slot (light): ready / remaining chapters ──
+    // ready → mix of practice + assessment
     {
       const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       let reason = 'Continue where you left';
