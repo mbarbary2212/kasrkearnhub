@@ -19,6 +19,9 @@ export type { LegacyChapterState } from './statusCompat';
 // Module aggregation (Session 6)
 export { calculateModuleReadiness } from './moduleReadiness';
 
+// Review urgency (Session 7)
+export { determineReviewUrgency, URGENCY_SORT_ORDER } from './reviewUrgency';
+
 // Engagement
 export {
   calculateEngagement,
