@@ -5,6 +5,12 @@
 // Engine
 export { calculateChapterReadiness } from './engine';
 
+// Engagement
+export {
+  calculateEngagement,
+  mapRpcToEngagementData,
+} from './engagement';
+
 // Config (for consumers that need thresholds, e.g. debug panel)
 export {
   CALCULATION_VERSION,
@@ -35,3 +41,10 @@ export type {
   ModuleReadinessResult,
   ReviewUrgencyResult,
 } from './types';
+
+export type {
+  EngagementSourceData,
+  EngagementSourceBreakdown,
+  EngagementResult,
+  RpcProgressForEngagement,
+} from './engagement';
