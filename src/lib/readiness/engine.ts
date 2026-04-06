@@ -4,8 +4,7 @@
  * Single function that computes chapter readiness from raw inputs.
  * 
  * Session 1: core scoring with dynamic weight redistribution + evidence caps.
- * Engagement stubs to existing coverage_percent.
- * Classification is basic (refined in Session 4).
+ * Session 4: classifier extracted to classify.ts.
  * Risk flags / insights return defaults (populated in Session 5).
  */
 
@@ -14,13 +13,12 @@ import {
   COMPONENT_WEIGHTS,
   EVIDENCE_CAPS,
   EVIDENCE_THRESHOLDS,
-  STATUS_THRESHOLDS,
   COMPETENCY_GUARDRAILS,
 } from './config';
+import { classifyChapterStatus } from './classify';
 import type {
   ChapterReadinessInput,
   ChapterReadinessResult,
-  ChapterStatus,
   ComponentName,
   ComponentScores,
   EffectiveWeights,
@@ -124,56 +122,7 @@ function redistributeWeights(
   return weights;
 }
 
-// ============================================================================
-// Basic Classification (refined in Session 4)
-// ============================================================================
-
-function classifyStatus(
-  readinessScore: number,
-  evidenceLevel: EvidenceLevel,
-  engagementScore: number,
-  recentAccuracy: number | null,
-  totalAttempts: number,
-): ChapterStatus {
-  const g = COMPETENCY_GUARDRAILS;
-
-  // Force not_started when no evidence or negligible activity
-  if (evidenceLevel === 'none') return 'not_started';
-  if (engagementScore < g.zeroStateEngagement && totalAttempts === 0) {
-    return 'not_started';
-  }
-
-  // needs_attention override: low accuracy with enough attempts
-  if (
-    recentAccuracy != null &&
-    recentAccuracy < g.needsAttentionAccuracy &&
-    totalAttempts >= g.minAttemptsForFlag
-  ) {
-    return 'needs_attention';
-  }
-
-  // Evidence-constrained status
-  if (
-    readinessScore >= STATUS_THRESHOLDS.strong &&
-    evidenceLevel === 'strong' &&
-    (recentAccuracy == null || recentAccuracy >= g.strongMinAccuracy) &&
-    engagementScore >= g.strongMinEngagement
-  ) {
-    return 'strong';
-  }
-
-  if (
-    readinessScore >= STATUS_THRESHOLDS.ready &&
-    (evidenceLevel === 'moderate' || evidenceLevel === 'strong') &&
-    (recentAccuracy == null || recentAccuracy >= g.readyMinAccuracy) &&
-    engagementScore >= g.readyMinEngagement
-  ) {
-    return 'ready';
-  }
-
-  if (readinessScore >= STATUS_THRESHOLDS.building) return 'building';
-  return 'started';
-}
+// Classification extracted to classify.ts — Session 4
 
 // ============================================================================
 // Main Calculator
