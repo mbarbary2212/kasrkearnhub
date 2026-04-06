@@ -5,6 +5,13 @@
 // Engine
 export { calculateChapterReadiness } from './engine';
 
+// Classifier (Session 4)
+export { classifyChapterStatus, classifyFromMetrics } from './classify';
+
+// Compatibility bridge (deprecated — Phase 2 removal)
+export { mapStatusToLegacy, mapLegacyToStatus } from './statusCompat';
+export type { LegacyChapterState } from './statusCompat';
+
 // Engagement
 export {
   calculateEngagement,
