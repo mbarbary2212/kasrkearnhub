@@ -45,6 +45,8 @@ export function getConsistencyScore(lastActivityAt: string | null | undefined): 
 
 /**
  * Classify a chapter's learning state from real per-chapter metrics.
+ * @deprecated Use classifyFromMetrics() from '@/lib/readiness' instead.
+ * This function returns legacy ChapterState values. New code should use ChapterStatus.
  */
 export function classifyChapterState(m: ChapterMetricsInput): ChapterState {
   if (m.coverage_percent === 0 && m.mcq_attempts < 3) return 'not_started';

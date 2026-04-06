@@ -1,5 +1,10 @@
+/** @deprecated Use classifyFromMetrics from '@/lib/readiness' for new code */
 export { classifyChapterState, getModuleStatusFromMetrics, getPerformanceTrend, getConsistencyScore, calculateChapterReadiness } from './classifyChapterState';
 export type { ChapterState, ChapterMetricsInput, PerformanceTrend } from './classifyChapterState';
+
+// New canonical classifier re-export
+export { classifyFromMetrics } from '@/lib/readiness';
+export type { ChapterStatus } from '@/lib/readiness';
 export { buildDashboardSuggestions, getWeakTopics, calculateAggregateReadiness } from './buildDashboardSuggestions';
 export type { DashboardAction, WeakTopic } from './buildDashboardSuggestions';
 export { classifyLearningPattern, getPatternPriorityBoost, generateConfidenceInsight } from './classifyLearningPattern';
