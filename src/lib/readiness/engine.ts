@@ -17,6 +17,7 @@ import {
 } from './config';
 import { classifyChapterStatus } from './classify';
 import { detectRiskFlags, generateNarratives } from './narratives';
+import { determineReviewUrgency } from './reviewUrgency';
 import type {
   ChapterReadinessInput,
   ChapterReadinessResult,
