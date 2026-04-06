@@ -5,7 +5,7 @@
  * 
  * Session 1: core scoring with dynamic weight redistribution + evidence caps.
  * Session 4: classifier extracted to classify.ts.
- * Risk flags / insights return defaults (populated in Session 5).
+ * Session 5: risk flags & narrative insights wired in.
  */
 
 import {
@@ -16,6 +16,7 @@ import {
   COMPETENCY_GUARDRAILS,
 } from './config';
 import { classifyChapterStatus } from './classify';
+import { detectRiskFlags, generateNarratives } from './narratives';
 import type {
   ChapterReadinessInput,
   ChapterReadinessResult,
@@ -189,7 +190,19 @@ export function calculateChapterReadiness(
     input.totalAttempts,
   );
 
-  // 9. Build result (risk flags, insights, review urgency are stubs for now)
+  // 9. Detect risk flags (Session 5)
+  const riskFlags = detectRiskFlags(finalScores, input, evidenceLevel);
+
+  // 10. Generate narrative insights (Session 5)
+  const narratives = generateNarratives(
+    chapterStatus,
+    finalScores,
+    riskFlags,
+    input,
+    evidenceLevel,
+  );
+
+  // 11. Build result (reviewUrgency populated in Session 7)
   return {
     readinessScore,
     chapterStatus,
@@ -198,13 +211,12 @@ export function calculateChapterReadiness(
     missingComponents,
     evidenceLevel,
 
-    // Stubs — populated in Session 5
-    riskFlags: [],
-    reviewUrgency: 'on_track',
-    reviewReason: '',
-    nextBestAction: '',
-    insightMessage: '',
-    secondaryHint: null,
+    riskFlags,
+    reviewUrgency: 'on_track' as const,  // stub — Session 7
+    reviewReason: '',                      // stub — Session 7
+    nextBestAction: narratives.nextBestAction,
+    insightMessage: narratives.insightMessage,
+    secondaryHint: narratives.secondaryHint,
 
     calculationVersion: CALCULATION_VERSION,
     chapterId: input.chapterId,
