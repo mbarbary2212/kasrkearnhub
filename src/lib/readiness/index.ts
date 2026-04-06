@@ -16,6 +16,9 @@ export type { NarrativeOutput } from './narratives';
 export { mapStatusToLegacy, mapLegacyToStatus } from './statusCompat';
 export type { LegacyChapterState } from './statusCompat';
 
+// Module aggregation (Session 6)
+export { calculateModuleReadiness } from './moduleReadiness';
+
 // Engagement
 export {
   calculateEngagement,
