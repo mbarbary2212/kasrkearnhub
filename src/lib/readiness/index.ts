@@ -22,6 +22,9 @@ export { calculateModuleReadiness } from './moduleReadiness';
 // Review urgency (Session 7)
 export { determineReviewUrgency, URGENCY_SORT_ORDER } from './reviewUrgency';
 
+// Observability & diagnostics (Session 8)
+export { buildDebugSnapshot, diagnoseDataGaps, getActiveConfig } from './debug';
+
 // Engagement
 export {
   calculateEngagement,
@@ -57,6 +60,8 @@ export type {
   ChapterReadinessResult,
   ModuleReadinessResult,
   ReviewUrgencyResult,
+  ReadinessDebugSnapshot,
+  DataGapDiagnostic,
 } from './types';
 
 export type {
