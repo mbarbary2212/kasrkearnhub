@@ -1,3 +1,15 @@
+/**
+ * Edge Function: cache-readiness (v2)
+ *
+ * Computes chapter-level readiness using the Unified Readiness Engine logic
+ * and upserts results into `student_readiness_cache`.
+ *
+ * Accepts:
+ *   { userId, moduleId, chapterId?, forceRecalculate? }
+ *
+ * If chapterId is omitted, recalculates all chapters in the module.
+ */
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -5,40 +17,307 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Readiness calculation constants (matching lib/readinessCalculator.ts)
-const READINESS_WEIGHTS = {
-  coverage: 0.40,
-  performance: 0.30,
-  improvement: 0.20,
+// ── Config (mirrors src/lib/readiness/config.ts) ────────────────────────
+
+const CALCULATION_VERSION = '2.0.0';
+
+const COMPONENT_WEIGHTS = {
+  engagement: 0.25,
+  performance: 0.35,
+  retention: 0.20,
   consistency: 0.10,
+  confidence: 0.10,
 };
 
-const READINESS_CAPS = {
-  lowCoverage: { threshold: 40, maxReadiness: 50 },
-  lowPerformance: { threshold: 50, maxReadiness: 65 },
-  decliningImprovement: { threshold: 40, maxReadiness: 75 },
+const EVIDENCE_CAPS: Record<string, number> = {
+  none: 0,
+  low: 40,
+  moderate: 75,
+  strong: 100,
 };
 
-const PERFORMANCE_WEIGHTS = {
-  mcq: 0.50,
-  osce: 0.30,
-  conceptCheck: 0.20,
+const EVIDENCE_THRESHOLDS = { low: 1, moderate: 3, strong: 5 };
+
+const STATUS_THRESHOLDS = { started: 0, building: 25, ready: 65, strong: 85 };
+
+const COMPETENCY_GUARDRAILS = {
+  readyMinAccuracy: 65,
+  strongMinAccuracy: 75,
+  readyMinEngagement: 30,
+  strongMinEngagement: 50,
+  zeroStateEngagement: 5,
+  needsAttentionAccuracy: 50,
+  minAttemptsForFlag: 5,
 };
 
-const MIN_ATTEMPTS_FOR_IMPROVEMENT = {
-  mcq: 5,
-  osce: 2,
+const RISK_FLAG_THRESHOLDS = {
+  lowEngagement: 20,
+  weakPerformanceAccuracy: 50,
+  weakPerformanceMinAttempts: 5,
+  overdueRevisionDays: 14,
+  inconsistentConsistency: 30,
+  overconfidentErrorRate: 25,
 };
 
-interface ReadinessComponents {
-  coverage: number;
-  performance: number;
-  improvement: number;
-  consistency: number;
+const REVIEW_URGENCY_THRESHOLDS = {
+  reviewNowInactiveDays: 14,
+  reviewSoonInactiveDays: 7,
+};
+
+// ── Types ───────────────────────────────────────────────────────────────
+
+type ComponentName = 'engagement' | 'performance' | 'retention' | 'consistency' | 'confidence';
+type EvidenceLevel = 'none' | 'low' | 'moderate' | 'strong';
+type ChapterStatus = 'not_started' | 'started' | 'building' | 'needs_attention' | 'ready' | 'strong';
+type ReviewUrgency = 'review_now' | 'review_soon' | 'on_track' | 'low_priority';
+type RiskSeverity = 'low' | 'medium' | 'high';
+
+interface RiskFlag {
+  flag: string;
+  severity: RiskSeverity;
+  description: string;
 }
 
+interface ComponentScores {
+  engagement: number;
+  performance: number;
+  retention: number;
+  consistency: number;
+  confidence: number;
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+function clamp(v: number, min = 0, max = 100) {
+  return Math.max(min, Math.min(max, v));
+}
+
+const COMPONENT_KEYS: ComponentName[] = ['engagement', 'performance', 'retention', 'consistency', 'confidence'];
+
+function determineEvidenceLevel(activeCount: number): EvidenceLevel {
+  if (activeCount >= EVIDENCE_THRESHOLDS.strong) return 'strong';
+  if (activeCount >= EVIDENCE_THRESHOLDS.moderate) return 'moderate';
+  if (activeCount >= EVIDENCE_THRESHOLDS.low) return 'low';
+  return 'none';
+}
+
+function redistributeWeights(active: Set<ComponentName>): Record<ComponentName, number> {
+  const weights: Record<ComponentName, number> = { engagement: 0, performance: 0, retention: 0, consistency: 0, confidence: 0 };
+  if (active.size === 0) return weights;
+  let sum = 0;
+  for (const k of COMPONENT_KEYS) if (active.has(k)) sum += COMPONENT_WEIGHTS[k];
+  for (const k of COMPONENT_KEYS) if (active.has(k)) weights[k] = COMPONENT_WEIGHTS[k] / sum;
+  return weights;
+}
+
+function classifyChapterStatus(
+  score: number, evidence: EvidenceLevel, engagement: number,
+  accuracy: number | null, attempts: number,
+): ChapterStatus {
+  const g = COMPETENCY_GUARDRAILS;
+  if (evidence === 'none') return 'not_started';
+  if (engagement < g.zeroStateEngagement && attempts === 0) return 'not_started';
+  if (accuracy != null && accuracy < g.needsAttentionAccuracy && attempts >= g.minAttemptsForFlag) return 'needs_attention';
+  if (score >= STATUS_THRESHOLDS.strong && evidence === 'strong' &&
+      (accuracy == null || accuracy >= g.strongMinAccuracy) && engagement >= g.strongMinEngagement) return 'strong';
+  if (score >= STATUS_THRESHOLDS.ready && (evidence === 'moderate' || evidence === 'strong') &&
+      (accuracy == null || accuracy >= g.readyMinAccuracy) && engagement >= g.readyMinEngagement) return 'ready';
+  if (score >= STATUS_THRESHOLDS.building) return 'building';
+  return 'started';
+}
+
+function detectRiskFlags(
+  scores: ComponentScores, recentAccuracy: number | null, totalAttempts: number,
+  hasOverdueFlashcards: boolean, daysSinceLastActivity: number | null,
+  overconfidentErrorRate: number | null, evidenceLevel: EvidenceLevel,
+): RiskFlag[] {
+  const t = RISK_FLAG_THRESHOLDS;
+  const flags: RiskFlag[] = [];
+  if (recentAccuracy != null && recentAccuracy < t.weakPerformanceAccuracy && totalAttempts >= t.weakPerformanceMinAttempts) {
+    flags.push({ flag: 'weak_performance', severity: recentAccuracy < 30 ? 'high' : 'medium', description: `Recent accuracy is ${Math.round(recentAccuracy)}%.` });
+  }
+  if (hasOverdueFlashcards) {
+    const sev: RiskSeverity = daysSinceLastActivity != null && daysSinceLastActivity >= t.overdueRevisionDays ? 'high' : 'medium';
+    flags.push({ flag: 'overdue_revision', severity: sev, description: 'Flashcards are overdue for review.' });
+  }
+  if (scores.engagement < t.lowEngagement) {
+    flags.push({ flag: 'low_engagement', severity: scores.engagement === 0 ? 'high' : 'medium', description: `Content engagement is only ${Math.round(scores.engagement)}%.` });
+  }
+  if (scores.consistency < t.inconsistentConsistency && scores.consistency > 0) {
+    flags.push({ flag: 'inconsistent_activity', severity: 'medium', description: 'Study activity has been irregular recently.' });
+  }
+  if (overconfidentErrorRate != null && overconfidentErrorRate >= t.overconfidentErrorRate) {
+    flags.push({ flag: 'overconfident_errors', severity: overconfidentErrorRate >= 50 ? 'high' : 'medium', description: `Overconfident error rate is ${Math.round(overconfidentErrorRate)}%.` });
+  }
+  if (evidenceLevel === 'none' || evidenceLevel === 'low') {
+    flags.push({ flag: 'low_evidence', severity: 'low', description: 'Not enough activity data to assess this chapter reliably.' });
+  }
+  return flags;
+}
+
+function determineReviewUrgency(
+  status: ChapterStatus, riskFlags: RiskFlag[], daysSinceLastActivity: number | null,
+  _evidenceLevel: EvidenceLevel, _scores: ComponentScores,
+): { urgency: ReviewUrgency; reason: string; suggestedAction: string } {
+  const days = daysSinceLastActivity ?? 0;
+  const started = status !== 'not_started';
+  if (!started) return { urgency: 'low_priority', reason: 'Chapter not yet started.', suggestedAction: 'Start this chapter when ready.' };
+
+  const hasHigh = riskFlags.some(f => f.severity === 'high');
+  const weakPerf = riskFlags.find(f => f.flag === 'weak_performance');
+  const hasMedHigh = riskFlags.some(f => f.severity === 'high' || f.severity === 'medium');
+
+  if (status === 'needs_attention' && hasHigh) return { urgency: 'review_now', reason: 'Performance issues require immediate attention.', suggestedAction: 'Review weak areas and retry practice questions.' };
+  if (days >= REVIEW_URGENCY_THRESHOLDS.reviewNowInactiveDays) return { urgency: 'review_now', reason: `No activity for ${days} days — knowledge may have decayed.`, suggestedAction: 'Do a quick review session to refresh your memory.' };
+  if (weakPerf && weakPerf.severity === 'high') return { urgency: 'review_now', reason: 'Recent accuracy is critically low.', suggestedAction: 'Focus on understanding core concepts before more practice.' };
+
+  if (riskFlags.find(f => f.flag === 'overdue_revision')) return { urgency: 'review_soon', reason: 'Flashcards are overdue for revision.', suggestedAction: 'Complete your pending flashcard reviews.' };
+  if (days >= REVIEW_URGENCY_THRESHOLDS.reviewSoonInactiveDays) return { urgency: 'review_soon', reason: `${days} days since last activity — consider a refresher.`, suggestedAction: 'Spend a few minutes reviewing key material.' };
+  if (weakPerf && weakPerf.severity === 'medium') return { urgency: 'review_soon', reason: 'Recent accuracy is below expectations.', suggestedAction: 'Review mistakes from recent practice sessions.' };
+  if (status === 'needs_attention') return { urgency: 'review_soon', reason: 'This chapter needs more work to reach readiness.', suggestedAction: 'Revisit challenging topics and practice again.' };
+
+  if ((status === 'strong' || status === 'ready') && !hasMedHigh) {
+    return { urgency: 'low_priority', reason: status === 'strong' ? 'Excellent mastery.' : 'Good progress.', suggestedAction: 'Continue current study pace.' };
+  }
+
+  return { urgency: 'on_track', reason: 'Progressing steadily — no urgent action needed.', suggestedAction: 'Continue your current study plan.' };
+}
+
+function generateNarratives(
+  status: ChapterStatus, scores: ComponentScores, primaryFlag: string | null,
+  recentAccuracy: number | null,
+): { nextBestAction: string; insightMessage: string } {
+  // Simplified narrative generation for cache
+  if (status === 'not_started') return { insightMessage: "You haven't started this chapter yet.", nextBestAction: 'Start learning' };
+
+  if (primaryFlag === 'weak_performance') return {
+    insightMessage: scores.engagement >= 50 ? 'You are active but accuracy still needs work.' : 'This chapter needs attention — recent performance is weak.',
+    nextBestAction: 'Revisit weak questions',
+  };
+  if (primaryFlag === 'overdue_revision') return { insightMessage: 'Your revision is falling behind.', nextBestAction: 'Review overdue flashcards' };
+  if (primaryFlag === 'low_engagement') return {
+    insightMessage: recentAccuracy != null && recentAccuracy >= 65 ? 'Performing well but not enough content covered yet.' : 'Low content coverage — focus on the core material.',
+    nextBestAction: 'Finish core content',
+  };
+  if (primaryFlag === 'inconsistent_activity') return { insightMessage: 'Your study pattern has been inconsistent.', nextBestAction: 'Do a short study session' };
+  if (primaryFlag === 'overconfident_errors') return { insightMessage: 'Making errors on questions rated as confident.', nextBestAction: 'Redo confident-but-wrong questions' };
+  if (primaryFlag === 'low_evidence') return { insightMessage: 'Not enough data to assess this chapter reliably.', nextBestAction: 'Complete more activities' };
+
+  switch (status) {
+    case 'strong': return { insightMessage: 'Great progress — maintain with light review.', nextBestAction: 'Continue — progress is stable' };
+    case 'ready': return { insightMessage: 'Well prepared — try exam conditions.', nextBestAction: 'Try an exam-style practice set' };
+    case 'building': return { insightMessage: 'Making steady progress.', nextBestAction: scores.performance < 60 ? 'Do 10 more MCQs' : 'Keep practising' };
+    case 'needs_attention': return { insightMessage: 'This chapter needs focused effort.', nextBestAction: 'Focus on weak areas' };
+    default: return { insightMessage: 'You have begun this chapter.', nextBestAction: 'Continue learning' };
+  }
+}
+
+// ── Compute readiness for a single chapter ──────────────────────────────
+
+interface ChapterMetrics {
+  chapter_id: string;
+  module_id: string;
+  coverage_percent: number;
+  recent_mcq_accuracy: number;
+  mcq_attempts: number;
+  flashcards_overdue: number;
+  flashcards_due: number;
+  last_activity_at: string | null;
+  overconfident_error_rate: number | null;
+  confidence_avg: number | null;
+}
+
+function computeChapterReadiness(m: ChapterMetrics) {
+  // Derive component scores
+  const engagementPercent = clamp(m.coverage_percent);
+
+  const recentAccuracy = m.mcq_attempts > 0 ? m.recent_mcq_accuracy : null;
+  const totalAttempts = m.mcq_attempts;
+
+  // Retention
+  let retentionScore: number | null = null;
+  const overdue = m.flashcards_overdue ?? 0;
+  if (overdue > 0) retentionScore = overdue > 15 ? 10 : overdue > 5 ? 30 : 60;
+  else if ((m.flashcards_due ?? 0) >= 0 && m.flashcards_overdue != null) retentionScore = 100;
+
+  // Consistency
+  let consistencyScore: number | null = null;
+  let daysSinceLastActivity: number | null = null;
+  if (m.last_activity_at) {
+    daysSinceLastActivity = Math.max(0, Math.floor((Date.now() - new Date(m.last_activity_at).getTime()) / (1000 * 60 * 60 * 24)));
+    if (daysSinceLastActivity < 3) consistencyScore = 100;
+    else if (daysSinceLastActivity < 7) consistencyScore = 70;
+    else if (daysSinceLastActivity < 14) consistencyScore = 40;
+    else consistencyScore = 15;
+  }
+
+  // Confidence
+  const confidenceScore = m.confidence_avg != null ? Math.round(Number(m.confidence_avg) * 100) / 100 : null;
+
+  const hasOverdueFlashcards = overdue > 0;
+  const overconfidentErrorRate = m.overconfident_error_rate != null ? Number(m.overconfident_error_rate) : null;
+
+  // Build raw scores
+  const rawScores: Record<ComponentName, number | null> = {
+    engagement: engagementPercent > 0 || totalAttempts > 0 ? clamp(engagementPercent) : null,
+    performance: recentAccuracy != null && totalAttempts > 0 ? clamp(recentAccuracy) : null,
+    retention: retentionScore,
+    consistency: consistencyScore,
+    confidence: confidenceScore,
+  };
+
+  // Determine active
+  const activeComponents = new Set<ComponentName>();
+  const finalScores: ComponentScores = { engagement: 0, performance: 0, retention: 0, consistency: 0, confidence: 0 };
+  const missingComponents: ComponentName[] = [];
+
+  for (const key of COMPONENT_KEYS) {
+    const val = rawScores[key];
+    if (val != null) {
+      activeComponents.add(key);
+      finalScores[key] = val;
+    } else {
+      missingComponents.push(key);
+    }
+  }
+
+  const evidenceLevel = determineEvidenceLevel(activeComponents.size);
+  const effectiveWeights = redistributeWeights(activeComponents);
+
+  let rawScore = 0;
+  for (const key of COMPONENT_KEYS) rawScore += finalScores[key] * effectiveWeights[key];
+  rawScore = Math.round(clamp(rawScore));
+
+  const evidenceCap = EVIDENCE_CAPS[evidenceLevel];
+  const cappedScore = Math.min(rawScore, evidenceCap);
+
+  const g = COMPETENCY_GUARDRAILS;
+  const readinessScore = finalScores.engagement < g.zeroStateEngagement && totalAttempts === 0 ? 0 : cappedScore;
+
+  const chapterStatus = classifyChapterStatus(readinessScore, evidenceLevel, finalScores.engagement, recentAccuracy, totalAttempts);
+  const riskFlags = detectRiskFlags(finalScores, recentAccuracy, totalAttempts, hasOverdueFlashcards, daysSinceLastActivity, overconfidentErrorRate, evidenceLevel);
+  const urgencyResult = determineReviewUrgency(chapterStatus, riskFlags, daysSinceLastActivity, evidenceLevel, finalScores);
+  const primaryFlag = riskFlags.length > 0 ? riskFlags[0].flag : null;
+  const narratives = generateNarratives(chapterStatus, finalScores, primaryFlag, recentAccuracy);
+
+  return {
+    readiness_score: readinessScore,
+    chapter_status: chapterStatus,
+    component_scores: finalScores,
+    evidence_level: evidenceLevel,
+    risk_flags: riskFlags,
+    review_urgency: urgencyResult.urgency,
+    review_reason: urgencyResult.reason,
+    next_best_action: narratives.nextBestAction,
+    insight_message: narratives.insightMessage,
+    calculation_version: CALCULATION_VERSION,
+    is_stale: false,
+  };
+}
+
+// ── Main handler ────────────────────────────────────────────────────────
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -48,325 +327,125 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { userId, moduleId, forceRecalculate } = await req.json();
+    const { userId, moduleId, chapterId, forceRecalculate } = await req.json();
 
     if (!userId || !moduleId) {
       return new Response(
         JSON.stringify({ error: 'userId and moduleId are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
-    console.log(`[cache-readiness] Calculating readiness for user=${userId}, module=${moduleId}`);
+    console.log(`[cache-readiness] v2 calc user=${userId} module=${moduleId} chapter=${chapterId || 'all'}`);
 
-    // Check if we have a recent cache (less than 5 minutes old)
-    if (!forceRecalculate) {
-      const { data: existingCache } = await supabase
+    // Determine which chapters to process
+    let chapterIds: string[] = [];
+    if (chapterId) {
+      chapterIds = [chapterId];
+    } else {
+      const { data: chapters } = await supabase
+        .from('module_chapters')
+        .select('id')
+        .eq('module_id', moduleId);
+      chapterIds = (chapters || []).map((c: { id: string }) => c.id);
+    }
+
+    if (chapterIds.length === 0) {
+      return new Response(
+        JSON.stringify({ updated: 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // If not forcing, check staleness
+    if (!forceRecalculate && chapterId) {
+      const { data: existing } = await supabase
         .from('student_readiness_cache')
-        .select('*')
+        .select('is_stale, last_calculated_at')
         .eq('user_id', userId)
-        .eq('module_id', moduleId)
-        .single();
+        .eq('chapter_id', chapterId)
+        .maybeSingle();
 
-      if (existingCache) {
-        const cacheAge = Date.now() - new Date(existingCache.last_calculated_at).getTime();
-        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-        if (cacheAge < CACHE_TTL) {
-          console.log(`[cache-readiness] Using cached result (age: ${Math.round(cacheAge / 1000)}s)`);
+      if (existing && !existing.is_stale) {
+        const age = Date.now() - new Date(existing.last_calculated_at).getTime();
+        if (age < 5 * 60 * 1000) {
+          console.log(`[cache-readiness] fresh cache, skipping`);
           return new Response(
-            JSON.stringify({ cached: true, data: existingCache }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ cached: true, updated: 0 }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
           );
         }
       }
     }
 
-    // Fetch all necessary data for calculation
-    const [
-      chaptersRes,
-      userProgressRes,
-      mcqsRes,
-      essaysRes,
-      caseScenariosRes,
-      questionAttemptsRes,
-    ] = await Promise.all([
-      supabase.from('module_chapters').select('id').eq('module_id', moduleId),
-      supabase.from('user_progress').select('content_id, completed, completed_at').eq('user_id', userId),
-      supabase.from('mcqs').select('id').eq('module_id', moduleId).eq('is_deleted', false),
-      supabase.from('essays').select('id').eq('module_id', moduleId).eq('is_deleted', false),
-      supabase.from('virtual_patient_cases').select('id').eq('module_id', moduleId).eq('is_deleted', false),
-      supabase.from('question_attempts').select('question_type, is_correct, selected_answer, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(100),
-    ]);
+    // Fetch metrics for all target chapters
+    const { data: metricsRows } = await supabase
+      .from('student_chapter_metrics')
+      .select('chapter_id, module_id, coverage_percent, recent_mcq_accuracy, mcq_attempts, flashcards_overdue, flashcards_due, last_activity_at, overconfident_error_rate, confidence_avg')
+      .eq('student_id', userId)
+      .in('chapter_id', chapterIds);
 
-    const chapters = chaptersRes.data || [];
-    const userProgress = userProgressRes.data || [];
-    const mcqs = mcqsRes.data || [];
-    const essays = essaysRes.data || [];
-    const vpCases = caseScenariosRes.data || [];
-    const questionAttempts = questionAttemptsRes.data || [];
+    const metricsMap = new Map<string, ChapterMetrics>();
+    for (const row of (metricsRows || [])) {
+      metricsMap.set(row.chapter_id, row as unknown as ChapterMetrics);
+    }
 
-    // Calculate content IDs for this module
-    const contentIds = new Set([
-      ...mcqs.map(m => m.id),
-      ...essays.map(e => e.id),
-      ...vpCases.map(c => c.id),
-    ]);
+    // Process each chapter
+    const upsertRows = [];
+    for (const cId of chapterIds) {
+      const metrics = metricsMap.get(cId) || {
+        chapter_id: cId,
+        module_id: moduleId,
+        coverage_percent: 0,
+        recent_mcq_accuracy: 0,
+        mcq_attempts: 0,
+        flashcards_overdue: 0,
+        flashcards_due: 0,
+        last_activity_at: null,
+        overconfident_error_rate: null,
+        confidence_avg: null,
+      };
 
-    // Calculate coverage
-    const completedIds = new Set(
-      userProgress.filter(p => p.completed).map(p => p.content_id)
-    );
-    const totalItems = contentIds.size;
-    const completedItems = [...contentIds].filter(id => completedIds.has(id)).length;
-    const coveragePercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      const result = computeChapterReadiness(metrics);
 
-    // Calculate consistency
-    const moduleProgress = userProgress.filter(p => 
-      p.completed_at && contentIds.has(p.content_id)
-    );
-    const consistencyScore = calculateConsistencyScore(moduleProgress);
-
-    // Calculate performance
-    const mcqAttempts = questionAttempts.filter(a => a.question_type === 'mcq');
-    const osceAttempts = questionAttempts.filter(a => a.question_type === 'osce');
-    const conceptCheckAttempts = questionAttempts.filter(a => a.question_type === 'guided_explanation');
-
-    const mcqAccuracy = mcqAttempts.length > 0 
-      ? (mcqAttempts.filter(a => a.is_correct).length / mcqAttempts.length) * 100 
-      : 0;
-
-    const osceScores = osceAttempts
-      .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
-      .filter(s => s > 0);
-    const osceAvgScore = osceScores.length > 0
-      ? osceScores.reduce((sum, s) => sum + s, 0) / osceScores.length
-      : 0;
-
-    const conceptCheckPassRate = conceptCheckAttempts.length > 0
-      ? (conceptCheckAttempts.filter(a => a.is_correct).length / conceptCheckAttempts.length) * 100
-      : 0;
-
-    const performanceScore = calculatePerformance({
-      mcq: { accuracy: mcqAccuracy, attempts: mcqAttempts.length },
-      osce: { avgScore: osceAvgScore, attempts: osceAttempts.length },
-      conceptCheck: { passRate: conceptCheckPassRate, total: conceptCheckAttempts.length },
-    });
-
-    // Calculate improvement
-    const RECENT_MCQ = 10;
-    const RECENT_OSCE = 5;
-
-    const recentMcq = mcqAttempts.slice(0, RECENT_MCQ);
-    const priorMcq = mcqAttempts.slice(RECENT_MCQ, RECENT_MCQ * 2);
-    const recentOsce = osceAttempts.slice(0, RECENT_OSCE)
-      .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
-      .filter(s => s > 0);
-    const priorOsce = osceAttempts.slice(RECENT_OSCE, RECENT_OSCE * 2)
-      .map(a => (a.selected_answer as { score?: number } | null)?.score ?? 0)
-      .filter(s => s > 0);
-
-    const improvementScore = calculateImprovement(recentMcq, priorMcq, recentOsce, priorOsce);
-
-    // Calculate final readiness with caps
-    const components: ReadinessComponents = {
-      coverage: coveragePercent,
-      performance: performanceScore,
-      improvement: improvementScore,
-      consistency: consistencyScore,
-    };
-
-    const { examReadiness, capType, rawScore } = calculateReadiness(components);
-
-    // Upsert cache
-    const { data: cacheData, error: upsertError } = await supabase
-      .from('student_readiness_cache')
-      .upsert({
+      upsertRows.push({
         user_id: userId,
         module_id: moduleId,
-        coverage_score: coveragePercent,
-        performance_score: performanceScore,
-        improvement_score: improvementScore,
-        consistency_score: consistencyScore,
-        exam_readiness: examReadiness,
-        cap_type: capType,
-        raw_score: rawScore,
+        chapter_id: cId,
+        ...result,
         last_calculated_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,module_id',
-      })
-      .select()
-      .single();
+        // Legacy columns — keep at 0 for backward compat
+        coverage_score: Math.round(result.component_scores.engagement),
+        performance_score: Math.round(result.component_scores.performance),
+        improvement_score: 50,
+        consistency_score: Math.round(result.component_scores.consistency),
+        exam_readiness: result.readiness_score,
+        cap_type: null,
+        raw_score: result.readiness_score,
+      });
+    }
+
+    const { error: upsertError } = await supabase
+      .from('student_readiness_cache')
+      .upsert(upsertRows, { onConflict: 'user_id,chapter_id' });
 
     if (upsertError) {
-      console.error('[cache-readiness] Error upserting cache:', upsertError);
+      console.error('[cache-readiness] upsert error:', upsertError);
       throw upsertError;
     }
 
-    console.log(`[cache-readiness] Successfully cached readiness: ${examReadiness}%`);
+    console.log(`[cache-readiness] updated ${upsertRows.length} chapters`);
 
     return new Response(
-      JSON.stringify({ cached: false, data: cacheData }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ cached: false, updated: upsertRows.length }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
-
   } catch (error) {
     console.error('[cache-readiness] Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });
-
-// Helper functions (matching lib/readinessCalculator.ts logic)
-
-function calculateConsistencyScore(progress: { completed_at: string | null }[]): number {
-  if (progress.length === 0) return 0;
-
-  const now = new Date();
-  const fourteenDaysAgo = new Date(now);
-  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-  const sevenDaysAgo = new Date(now);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-  const recentDates = new Set(
-    progress
-      .filter(p => p.completed_at && new Date(p.completed_at) >= fourteenDaysAgo)
-      .map(p => new Date(p.completed_at!).toDateString())
-  );
-
-  const veryRecentDates = new Set(
-    progress
-      .filter(p => p.completed_at && new Date(p.completed_at) >= sevenDaysAgo)
-      .map(p => new Date(p.completed_at!).toDateString())
-  );
-
-  const fourteenDayScore = Math.min(50, (recentDates.size / 14) * 100);
-  const sevenDayScore = Math.min(50, (veryRecentDates.size / 7) * 100);
-
-  return Math.round(fourteenDayScore + sevenDayScore);
-}
-
-function calculatePerformance(input: {
-  mcq: { accuracy: number; attempts: number };
-  osce: { avgScore: number; attempts: number };
-  conceptCheck: { passRate: number; total: number };
-}): number {
-  const { mcq, osce, conceptCheck } = input;
-  
-  const hasMcq = mcq.attempts > 0;
-  const hasOsce = osce.attempts > 0;
-  const hasConceptCheck = conceptCheck.total > 0;
-  
-  if (!hasMcq && !hasOsce && !hasConceptCheck) return 0;
-  
-  let totalWeight = 0;
-  if (hasMcq) totalWeight += PERFORMANCE_WEIGHTS.mcq;
-  if (hasOsce) totalWeight += PERFORMANCE_WEIGHTS.osce;
-  if (hasConceptCheck) totalWeight += PERFORMANCE_WEIGHTS.conceptCheck;
-  
-  let weightedScore = 0;
-  
-  if (hasMcq) {
-    weightedScore += mcq.accuracy * (PERFORMANCE_WEIGHTS.mcq / totalWeight);
-  }
-  if (hasOsce) {
-    const oscePercent = (osce.avgScore / 5) * 100;
-    weightedScore += oscePercent * (PERFORMANCE_WEIGHTS.osce / totalWeight);
-  }
-  if (hasConceptCheck) {
-    weightedScore += conceptCheck.passRate * (PERFORMANCE_WEIGHTS.conceptCheck / totalWeight);
-  }
-  
-  return Math.round(weightedScore);
-}
-
-function calculateImprovement(
-  recentMcq: { is_correct: boolean }[],
-  priorMcq: { is_correct: boolean }[],
-  recentOsce: number[],
-  priorOsce: number[]
-): number {
-  const hasMcqData = recentMcq.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.mcq && 
-                     priorMcq.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.mcq;
-  const hasOsceData = recentOsce.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.osce && 
-                      priorOsce.length >= MIN_ATTEMPTS_FOR_IMPROVEMENT.osce;
-  
-  if (!hasMcqData && !hasOsceData) return 50;
-  
-  let totalChange = 0;
-  let totalWeight = 0;
-  
-  if (hasMcqData) {
-    const recentAcc = (recentMcq.filter(a => a.is_correct).length / recentMcq.length) * 100;
-    const priorAcc = (priorMcq.filter(a => a.is_correct).length / priorMcq.length) * 100;
-    totalChange += (recentAcc - priorAcc) * 0.6;
-    totalWeight += 0.6;
-  }
-  
-  if (hasOsceData) {
-    const recentAvg = recentOsce.reduce((s, v) => s + v, 0) / recentOsce.length;
-    const priorAvg = priorOsce.reduce((s, v) => s + v, 0) / priorOsce.length;
-    totalChange += (recentAvg - priorAvg) * 20 * 0.4;
-    totalWeight += 0.4;
-  }
-  
-  if (totalWeight > 0 && totalWeight < 1) {
-    totalChange = totalChange / totalWeight;
-  }
-  
-  return Math.round(Math.max(0, Math.min(100, 50 + (totalChange * 2.5))));
-}
-
-function calculateReadiness(components: ReadinessComponents): { 
-  examReadiness: number; 
-  capType: string | null; 
-  rawScore: number;
-} {
-  const { coverage, performance, improvement, consistency } = components;
-  
-  const rawScore = 
-    coverage * READINESS_WEIGHTS.coverage +
-    performance * READINESS_WEIGHTS.performance +
-    improvement * READINESS_WEIGHTS.improvement +
-    consistency * READINESS_WEIGHTS.consistency;
-  
-  let finalScore = rawScore;
-  let capType: string | null = null;
-  
-  if (coverage < READINESS_CAPS.lowCoverage.threshold) {
-    const maxScore = READINESS_CAPS.lowCoverage.maxReadiness;
-    if (finalScore > maxScore) {
-      finalScore = maxScore;
-      capType = 'coverage';
-    }
-  }
-  
-  if (performance < READINESS_CAPS.lowPerformance.threshold && 
-      (capType === null || READINESS_CAPS.lowPerformance.maxReadiness < finalScore)) {
-    const maxScore = READINESS_CAPS.lowPerformance.maxReadiness;
-    if (rawScore > maxScore && (finalScore > maxScore || capType === null)) {
-      finalScore = maxScore;
-      capType = 'performance';
-    }
-  }
-  
-  if (improvement < READINESS_CAPS.decliningImprovement.threshold && 
-      improvement !== 50 &&
-      (capType === null || READINESS_CAPS.decliningImprovement.maxReadiness < finalScore)) {
-    const maxScore = READINESS_CAPS.decliningImprovement.maxReadiness;
-    if (rawScore > maxScore && (finalScore > maxScore || capType === null)) {
-      finalScore = maxScore;
-      capType = 'improvement';
-    }
-  }
-  
-  return {
-    examReadiness: Math.round(finalScore),
-    capType,
-    rawScore: Math.round(rawScore),
-  };
-}
