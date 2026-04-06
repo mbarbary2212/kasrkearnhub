@@ -107,14 +107,18 @@ function redistributeWeights(
 
   // Sum weights of active components
   let activeWeightSum = 0;
-  for (const key of activeComponents) {
-    activeWeightSum += COMPONENT_WEIGHTS[key];
+  for (const key of COMPONENT_KEYS) {
+    if (activeComponents.has(key)) {
+      activeWeightSum += COMPONENT_WEIGHTS[key];
+    }
   }
 
   // Redistribute: each active component gets its original weight
   // scaled up so all active weights sum to 1.0
-  for (const key of activeComponents) {
-    weights[key] = COMPONENT_WEIGHTS[key] / activeWeightSum;
+  for (const key of COMPONENT_KEYS) {
+    if (activeComponents.has(key)) {
+      weights[key] = COMPONENT_WEIGHTS[key] / activeWeightSum;
+    }
   }
 
   return weights;
