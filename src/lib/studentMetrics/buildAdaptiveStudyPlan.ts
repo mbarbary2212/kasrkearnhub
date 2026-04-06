@@ -47,9 +47,9 @@ function getTaskConfig(mode: StudyMode): StudyModeTaskConfig {
 
 // ─── Mode-aware task config ──────────────────────────────────
 
-function getModeAwareTaskConfig(state: ChapterState): { modeConfig: ModeConfig; primaryMode: LearningMode } {
-  const primaryMode = getPrimaryMode(state);
-  const modeConfig = getModeConfigForState(state);
+function getModeAwareTaskConfig(status: ChapterStatus): { modeConfig: ModeConfig; primaryMode: LearningMode } {
+  const primaryMode = getPrimaryMode(status);
+  const modeConfig = getModeConfigForState(status);
   return { modeConfig, primaryMode };
 }
 
