@@ -1,4 +1,5 @@
-import { classifyChapterState, getPerformanceTrend, type ChapterState, type PerformanceTrend } from './classifyChapterState';
+import { getPerformanceTrend } from './classifyChapterState';
+import { classifyFromMetrics } from '@/lib/readiness';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterExamWeights';
 
@@ -88,7 +89,7 @@ function inactivityAlert(input: RiskAlertInput): RiskAlert | null {
 function weakChapterClusterAlert(input: RiskAlertInput): RiskAlert | null {
   const weakChapters = input.metrics
     .filter(m => m.mcq_attempts >= 3)
-    .filter(m => classifyChapterState(m) === 'weak');
+    .filter(m => classifyFromMetrics(m) === 'needs_attention');
 
   if (weakChapters.length < RISK_THRESHOLDS.weakChapterMin) return null;
 
