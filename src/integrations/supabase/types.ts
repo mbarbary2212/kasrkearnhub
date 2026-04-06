@@ -5554,51 +5554,94 @@ export type Database = {
       }
       student_readiness_cache: {
         Row: {
+          calculation_version: string
           cap_type: string | null
+          chapter_id: string | null
+          chapter_status: string
+          component_scores: Json
           consistency_score: number
           coverage_score: number
           created_at: string
+          evidence_level: string
           exam_readiness: number
           id: string
           improvement_score: number
+          insight_message: string
+          is_stale: boolean
           last_calculated_at: string
           module_id: string
+          next_best_action: string
           performance_score: number
           raw_score: number
+          readiness_score: number
+          review_reason: string
+          review_urgency: string
+          risk_flags: Json
           updated_at: string
           user_id: string
         }
         Insert: {
+          calculation_version?: string
           cap_type?: string | null
+          chapter_id?: string | null
+          chapter_status?: string
+          component_scores?: Json
           consistency_score?: number
           coverage_score?: number
           created_at?: string
+          evidence_level?: string
           exam_readiness?: number
           id?: string
           improvement_score?: number
+          insight_message?: string
+          is_stale?: boolean
           last_calculated_at?: string
           module_id: string
+          next_best_action?: string
           performance_score?: number
           raw_score?: number
+          readiness_score?: number
+          review_reason?: string
+          review_urgency?: string
+          risk_flags?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
+          calculation_version?: string
           cap_type?: string | null
+          chapter_id?: string | null
+          chapter_status?: string
+          component_scores?: Json
           consistency_score?: number
           coverage_score?: number
           created_at?: string
+          evidence_level?: string
           exam_readiness?: number
           id?: string
           improvement_score?: number
+          insight_message?: string
+          is_stale?: boolean
           last_calculated_at?: string
           module_id?: string
+          next_best_action?: string
           performance_score?: number
           raw_score?: number
+          readiness_score?: number
+          review_reason?: string
+          review_urgency?: string
+          risk_flags?: Json
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_readiness_cache_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_readiness_cache_module_id_fkey"
             columns: ["module_id"]

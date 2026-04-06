@@ -1,12 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { type ReadinessResult, getEmptyReadinessResult } from '@/lib/readinessCalculator';
+import type {
+  ChapterReadinessResult,
+  ChapterStatus,
+  ComponentScores,
+  EvidenceLevel,
+  ReviewUrgency,
+  RiskFlag,
+} from '@/lib/readiness/types';
 
-interface CachedReadinessData {
+// ── Cached row shape (matches DB columns) ───────────────────────────────
+
+interface CachedReadinessRow {
   id: string;
   user_id: string;
   module_id: string;
+  chapter_id: string | null;
+  readiness_score: number;
+  chapter_status: string;
+  component_scores: ComponentScores;
+  evidence_level: string;
+  risk_flags: RiskFlag[];
+  review_urgency: string;
+  review_reason: string;
+  next_best_action: string;
+  insight_message: string;
+  calculation_version: string;
+  is_stale: boolean;
+  last_calculated_at: string;
+  // Legacy columns (kept for backward compat)
   coverage_score: number;
   performance_score: number;
   improvement_score: number;
@@ -14,115 +37,171 @@ interface CachedReadinessData {
   exam_readiness: number;
   cap_type: string | null;
   raw_score: number;
-  last_calculated_at: string;
 }
 
-/**
- * Hook to fetch cached readiness data from the database.
- * Falls back to live calculation if cache is stale or missing.
- */
-export function useCachedReadiness(moduleId?: string) {
+// ── Public result type ──────────────────────────────────────────────────
+
+export interface CachedChapterReadiness {
+  readinessScore: number;
+  chapterStatus: ChapterStatus;
+  componentScores: ComponentScores;
+  evidenceLevel: EvidenceLevel;
+  riskFlags: RiskFlag[];
+  reviewUrgency: ReviewUrgency;
+  reviewReason: string;
+  nextBestAction: string;
+  insightMessage: string;
+  calculationVersion: string;
+  isStale: boolean;
+  lastCalculatedAt: string;
+}
+
+function rowToResult(row: CachedReadinessRow): CachedChapterReadiness {
+  return {
+    readinessScore: row.readiness_score,
+    chapterStatus: row.chapter_status as ChapterStatus,
+    componentScores: row.component_scores,
+    evidenceLevel: row.evidence_level as EvidenceLevel,
+    riskFlags: row.risk_flags ?? [],
+    reviewUrgency: row.review_urgency as ReviewUrgency,
+    reviewReason: row.review_reason,
+    nextBestAction: row.next_best_action,
+    insightMessage: row.insight_message,
+    calculationVersion: row.calculation_version,
+    isStale: row.is_stale,
+    lastCalculatedAt: row.last_calculated_at,
+  };
+}
+
+function getEmptyCachedResult(): CachedChapterReadiness {
+  return {
+    readinessScore: 0,
+    chapterStatus: 'not_started',
+    componentScores: { engagement: 0, performance: 0, retention: 0, consistency: 0, confidence: 0 },
+    evidenceLevel: 'none',
+    riskFlags: [],
+    reviewUrgency: 'low_priority',
+    reviewReason: '',
+    nextBestAction: 'Start learning',
+    insightMessage: '',
+    calculationVersion: '2.0.0',
+    isStale: true,
+    lastCalculatedAt: '',
+  };
+}
+
+// ── Hook: fetch cached readiness for a single chapter ───────────────────
+
+export function useCachedReadiness(chapterId?: string) {
   const { user } = useAuthContext();
 
   return useQuery({
-    queryKey: ['cached-readiness', moduleId, user?.id],
-    queryFn: async (): Promise<CachedReadinessData | null> => {
-      if (!user?.id || !moduleId) return null;
+    queryKey: ['cached-readiness', chapterId, user?.id],
+    queryFn: async (): Promise<CachedChapterReadiness> => {
+      if (!user?.id || !chapterId) return getEmptyCachedResult();
 
       const { data, error } = await supabase
-        .from('student_readiness_cache')
+        .from('student_readiness_cache' as any)
         .select('*')
         .eq('user_id', user.id)
-        .eq('module_id', moduleId)
-        .single();
+        .eq('chapter_id', chapterId)
+        .maybeSingle();
 
-      if (error) {
-        // PGRST116 means no rows found - not an actual error
-        if (error.code !== 'PGRST116') {
-          console.error('Error fetching cached readiness:', error);
-        }
-        return null;
-      }
+      if (error || !data) return getEmptyCachedResult();
 
-      return data;
+      return rowToResult(data as unknown as CachedReadinessRow);
     },
-    enabled: !!user?.id && !!moduleId,
-    staleTime: 60000, // 1 minute
+    enabled: !!user?.id && !!chapterId,
+    staleTime: 60_000,
   });
 }
 
-/**
- * Hook to refresh the readiness cache via edge function.
- */
+// ── Hook: fetch cached readiness for all chapters in a module ───────────
+
+export function useModuleCachedReadiness(moduleId?: string) {
+  const { user } = useAuthContext();
+
+  return useQuery({
+    queryKey: ['cached-readiness-module', moduleId, user?.id],
+    queryFn: async (): Promise<CachedChapterReadiness[]> => {
+      if (!user?.id || !moduleId) return [];
+
+      const { data, error } = await supabase
+        .from('student_readiness_cache' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('module_id', moduleId);
+
+      if (error || !data) return [];
+
+      return (data as unknown as CachedReadinessRow[]).map(rowToResult);
+    },
+    enabled: !!user?.id && !!moduleId,
+    staleTime: 60_000,
+  });
+}
+
+// ── Hook: refresh readiness cache via edge function ─────────────────────
+
 export function useRefreshReadinessCache() {
   const queryClient = useQueryClient();
   const { user } = useAuthContext();
 
   return useMutation({
-    mutationFn: async ({ moduleId, forceRecalculate = false }: { 
-      moduleId: string; 
+    mutationFn: async ({
+      moduleId,
+      chapterId,
+      forceRecalculate = false,
+    }: {
+      moduleId: string;
+      chapterId?: string;
       forceRecalculate?: boolean;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
       const { data, error } = await supabase.functions.invoke('cache-readiness', {
-        body: {
-          userId: user.id,
-          moduleId,
-          forceRecalculate,
-        },
+        body: { userId: user.id, moduleId, chapterId, forceRecalculate },
       });
 
       if (error) throw error;
       return data;
     },
     onSuccess: (_, variables) => {
-      // Invalidate the cached readiness query
-      queryClient.invalidateQueries({ 
-        queryKey: ['cached-readiness', variables.moduleId] 
+      queryClient.invalidateQueries({
+        queryKey: ['cached-readiness'],
       });
-      // Also invalidate the student dashboard to pick up new data
-      queryClient.invalidateQueries({ 
-        queryKey: ['student-dashboard'] 
+      queryClient.invalidateQueries({
+        queryKey: ['cached-readiness-module', variables.moduleId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['student-dashboard'],
       });
     },
   });
 }
 
-/**
- * Convert cached data to ReadinessResult format.
- */
-export function cachedDataToReadinessResult(cached: CachedReadinessData | null): ReadinessResult {
-  if (!cached) return getEmptyReadinessResult();
+// ── Backward compat: convert cached data to ChapterReadinessResult ──────
 
+export function cachedToReadinessResult(
+  cached: CachedChapterReadiness,
+  chapterId: string,
+  moduleId: string,
+): ChapterReadinessResult {
   return {
-    examReadiness: cached.exam_readiness,
-    components: {
-      coverage: cached.coverage_score,
-      performance: cached.performance_score,
-      improvement: cached.improvement_score,
-      consistency: cached.consistency_score,
-    },
-    cap: cached.cap_type ? {
-      type: cached.cap_type as 'coverage' | 'performance' | 'improvement',
-      threshold: getCapThreshold(cached.cap_type),
-      maxReadiness: cached.exam_readiness,
-    } : null,
-    rawScore: cached.raw_score,
-    breakdown: {
-      coverageContribution: Math.round(cached.coverage_score * 0.40),
-      performanceContribution: Math.round(cached.performance_score * 0.30),
-      improvementContribution: Math.round(cached.improvement_score * 0.20),
-      consistencyContribution: Math.round(cached.consistency_score * 0.10),
-    },
+    readinessScore: cached.readinessScore,
+    chapterStatus: cached.chapterStatus,
+    componentScores: cached.componentScores,
+    effectiveWeights: { engagement: 0, performance: 0, retention: 0, consistency: 0, confidence: 0 },
+    missingComponents: [],
+    evidenceLevel: cached.evidenceLevel,
+    riskFlags: cached.riskFlags,
+    reviewUrgency: cached.reviewUrgency,
+    reviewReason: cached.reviewReason,
+    nextBestAction: cached.nextBestAction,
+    insightMessage: cached.insightMessage,
+    secondaryHint: null,
+    calculationVersion: cached.calculationVersion,
+    chapterId,
+    moduleId,
   };
-}
-
-function getCapThreshold(capType: string): number {
-  switch (capType) {
-    case 'coverage': return 40;
-    case 'performance': return 50;
-    case 'improvement': return 40;
-    default: return 0;
-  }
 }
