@@ -5,7 +5,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { classifyChapterState, type ChapterMetricsInput, type ChapterState } from '@/lib/studentMetrics';
+import { classifyFromMetrics, type ChapterStatus } from '@/lib/readiness';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
 import { cn } from '@/lib/utils';
 
@@ -15,21 +15,21 @@ interface ChapterHealthHeatmapProps {
   onChapterClick?: (chapterId: string, moduleId: string) => void;
 }
 
-const stateColors: Record<ChapterState, string> = {
+const stateColors: Record<ChapterStatus, string> = {
   not_started: 'bg-muted',
-  early: 'bg-primary/20',
-  in_progress: 'bg-primary/40',
-  weak: 'bg-destructive/50',
-  unstable: 'bg-[hsl(var(--medical-orange))]/40',
+  started: 'bg-primary/20',
+  building: 'bg-primary/40',
+  needs_attention: 'bg-destructive/50',
+  ready: 'bg-accent/50',
   strong: 'bg-accent/60',
 };
 
-const stateLabels: Record<ChapterState, string> = {
+const stateLabels: Record<ChapterStatus, string> = {
   not_started: 'Not started',
-  early: 'Early',
-  in_progress: 'In progress',
-  weak: 'Weak',
-  unstable: 'Unstable',
+  started: 'Getting Started',
+  building: 'Building',
+  needs_attention: 'Needs Attention',
+  ready: 'Ready',
   strong: 'Strong',
 };
 
@@ -37,18 +37,7 @@ export function ChapterHealthHeatmap({ metrics, chapterTitleMap, onChapterClick 
   if (metrics.length === 0) return null;
 
   const chapters = metrics.map(m => {
-    const input: ChapterMetricsInput = {
-      coverage_percent: m.coverage_percent,
-      mcq_attempts: m.mcq_attempts,
-      mcq_accuracy: m.mcq_accuracy,
-      recent_mcq_accuracy: m.recent_mcq_accuracy,
-      readiness_score: m.readiness_score,
-      flashcards_due: m.flashcards_due,
-      flashcards_overdue: m.flashcards_overdue,
-      last_activity_at: m.last_activity_at,
-      confidence_mismatch_rate: m.confidence_mismatch_rate,
-    };
-    const state = classifyChapterState(input);
+    const state = classifyFromMetrics(m);
     return {
       id: m.chapter_id,
       moduleId: m.module_id,
@@ -58,7 +47,7 @@ export function ChapterHealthHeatmap({ metrics, chapterTitleMap, onChapterClick 
     };
   });
 
-  const legendItems: ChapterState[] = ['strong', 'in_progress', 'early', 'unstable', 'weak', 'not_started'];
+  const legendItems: ChapterStatus[] = ['strong', 'ready', 'building', 'started', 'needs_attention', 'not_started'];
 
   return (
     <Card>

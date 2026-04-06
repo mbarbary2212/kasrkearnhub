@@ -1,12 +1,12 @@
 /**
- * Recommended Study Path — maps chapter state to recommended sections/tabs.
+ * Recommended Study Path (Session 4: migrated to ChapterStatus)
  *
- * Uses the existing ChapterState from classifyChapterState.ts.
- * Phase 2.5: Now mode-aware — recommends learning, practice, or assessment
- * based on STATE_MODE_RATIOS from learningModes.ts.
+ * Maps chapter status to recommended sections/tabs.
+ * Mode-aware — recommends learning, practice, or assessment
+ * based on STATUS_MODE_RATIOS from learningModes.ts.
  */
 
-import type { ChapterState } from '@/lib/studentMetrics';
+import type { ChapterStatus } from '@/lib/readiness';
 import { getPrimaryMode, getModeConfigForState, getOrderedModes, MODE_CONFIGS, type LearningMode } from '@/lib/learningModes';
 
 export type SectionMode = 'resources' | 'interactive' | 'practice' | 'test';
@@ -20,7 +20,7 @@ export interface PathRecommendation {
   message: string;
   /** All recommended sections (for subtle emphasis) */
   recommendedSections: SectionMode[];
-  /** Primary learning mode for this state */
+  /** Primary learning mode for this status */
   primaryMode: LearningMode;
 }
 
@@ -33,24 +33,24 @@ function modeToSection(mode: LearningMode): SectionMode {
   }
 }
 
-/** State-specific guidance messages */
-const STATE_MESSAGES: Record<ChapterState, string> = {
+/** Status-specific guidance messages */
+const STATUS_MESSAGES: Record<ChapterStatus, string> = {
   not_started: 'Start with Socrates and videos to build your foundation.',
-  early: 'Continue learning with explanations before moving to practice.',
-  weak: 'Review with Socrates and guided explanations before practicing.',
-  unstable: 'Mix learning and practice to strengthen your understanding.',
-  in_progress: 'Keep practicing and start testing yourself.',
+  started: 'Continue learning with explanations before moving to practice.',
+  needs_attention: 'Review with Socrates and guided explanations before practicing.',
+  building: 'Mix learning and practice to strengthen your understanding.',
+  ready: 'Keep practicing and start testing yourself.',
   strong: 'Test yourself with exam-style questions to confirm mastery.',
 };
 
 /**
- * Derive a recommended study path from the current chapter state.
- * Mode-aware: uses centralized STATE_MODE_RATIOS to determine recommendations.
+ * Derive a recommended study path from the current chapter status.
+ * Mode-aware: uses centralized STATUS_MODE_RATIOS to determine recommendations.
  */
-export function getRecommendedPath(state: ChapterState): PathRecommendation {
-  const primaryMode = getPrimaryMode(state);
-  const modeConfig = getModeConfigForState(state);
-  const orderedModes = getOrderedModes(state);
+export function getRecommendedPath(status: ChapterStatus): PathRecommendation {
+  const primaryMode = getPrimaryMode(status);
+  const modeConfig = getModeConfigForState(status);
+  const orderedModes = getOrderedModes(status);
 
   const primarySection = modeToSection(primaryMode);
   const recommendedSections = orderedModes.map(m => modeToSection(m.mode));
@@ -68,21 +68,26 @@ export function getRecommendedPath(state: ChapterState): PathRecommendation {
   return {
     primarySection,
     recommendedTabs,
-    message: STATE_MESSAGES[state] ?? 'Start exploring this chapter.',
+    message: STATUS_MESSAGES[status] ?? 'Start exploring this chapter.',
     recommendedSections,
     primaryMode,
   };
 }
 
-/** Map ChapterState to a human-friendly label */
-export function getStateLabel(state: ChapterState): string {
-  switch (state) {
+/** Map ChapterStatus to a human-friendly label */
+export function getStatusLabel(status: ChapterStatus): string {
+  switch (status) {
     case 'not_started': return 'Not Started';
-    case 'early': return 'Getting Started';
-    case 'weak': return 'Needs Review';
-    case 'unstable': return 'Needs Practice';
-    case 'in_progress': return 'In Progress';
+    case 'started': return 'Getting Started';
+    case 'needs_attention': return 'Needs Attention';
+    case 'building': return 'Building';
+    case 'ready': return 'Ready';
     case 'strong': return 'Strong';
     default: return '';
   }
 }
+
+/**
+ * @deprecated Use getStatusLabel instead.
+ */
+export const getStateLabel = getStatusLabel;

@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getRecommendedPath, type PathRecommendation } from '@/lib/recommendedPath';
-import type { ChapterState } from '@/lib/studentMetrics';
+import type { ChapterStatus } from '@/lib/readiness';
 
 interface RecommendedPathBannerProps {
-  chapterState: ChapterState;
+  chapterStatus: ChapterStatus;
   activeSection: string;
   onNavigateSection?: (section: string) => void;
   className?: string;
@@ -19,15 +19,15 @@ const sectionLabels: Record<string, string> = {
 };
 
 export function RecommendedPathBanner({
-  chapterState,
+  chapterStatus,
   activeSection,
   onNavigateSection,
   className,
 }: RecommendedPathBannerProps) {
-  const recommendation = useMemo(() => getRecommendedPath(chapterState), [chapterState]);
+  const recommendation = useMemo(() => getRecommendedPath(chapterStatus), [chapterStatus]);
 
-  // Don't show if already on recommended section or state is unclassified
-  if (!chapterState || chapterState === 'not_started') return null;
+  // Don't show if status is unclassified
+  if (!chapterStatus || chapterStatus === 'not_started') return null;
 
   const isOnRecommended = recommendation.recommendedSections.includes(activeSection as any);
 
@@ -70,9 +70,9 @@ export function RecommendedPathBanner({
  */
 export function isRecommendedSection(
   sectionId: string,
-  chapterState: ChapterState | undefined,
+  chapterStatus: ChapterStatus | undefined,
 ): boolean {
-  if (!chapterState) return false;
-  const rec = getRecommendedPath(chapterState);
+  if (!chapterStatus) return false;
+  const rec = getRecommendedPath(chapterStatus);
   return rec.recommendedSections.includes(sectionId as any);
 }
