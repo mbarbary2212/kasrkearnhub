@@ -64,6 +64,20 @@ function daysSince(dateStr: string | null | undefined): number | null {
 }
 
 /**
+ * Derive consistency score from last activity recency (0–100).
+ * Mirrors the legacy getConsistencyScore logic.
+ */
+function deriveConsistencyScore(lastActivityAt: string | null | undefined): number | null {
+  if (!lastActivityAt) return null;
+  const days = daysSince(lastActivityAt);
+  if (days == null) return null;
+  if (days < 3) return 100;
+  if (days < 7) return 70;
+  if (days < 14) return 40;
+  return 15;
+}
+
+/**
  * Derive a basic retention score from flashcard state.
  * 0 overdue → 100; any overdue → scaled down.
  * Session 3 stub — refined when flashcard SRS data is richer.
