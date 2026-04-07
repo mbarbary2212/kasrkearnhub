@@ -1,5 +1,9 @@
 // Rubric-based marking for short-answer questions
 import { VPRubric, VPRubricResult } from '@/types/virtualPatient';
+import { StructuredRubric, parseRubric, type GradingResult } from '@/types/essayRubric';
+
+export { parseRubric, getExpectedPoints } from '@/types/essayRubric';
+export type { StructuredRubric, GradingResult } from '@/types/essayRubric';
 
 const DEFAULT_PASS_THRESHOLD = 0.6; // 60%
 
