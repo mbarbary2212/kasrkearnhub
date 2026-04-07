@@ -1,53 +1,34 @@
 
 
-# Intelligent Fallback Distribution in Blueprint
+# Fix Mind Maps Table View + AI Auto-Assign Content to Sections
 
-## Problem
+## Two Issues
 
-Line 31-33 of `_shared/blueprint.ts`: when no blueprint config exists, `distribution_instruction` returns `""`. All generators then give the AI zero guidance on how to weight sections — so "Introduction" gets the same volume as "Signs & Symptoms", which is clinically wrong.
+### Issue 1: Mind Maps Table View Not Working
+The "Table" view toggle in Visual Resources shows a `VisualResourcesAdminTable` which only renders `study_resources` mind maps. The **AI Mind Maps** (stored in the `mind_maps` table) are only shown in the Cards view inside `MindMapAdminPanel`. When an admin switches to Table view, the AI mind maps disappear — there is no section assignment column in `MindMapAdminPanel`'s `MapGroup` table either.
 
-## Solution
+**Fix**: Add a section assignment dropdown column to the `MapGroup` table inside `MindMapAdminPanel.tsx`, so admins can assign AI mind maps to sections directly from the existing table. This requires:
+- Pass `sections` prop into `MindMapAdminPanel` (already available from `useChapterSections` in the parent)
+- Add a "Section" column to the `MapGroup` table with a `Select` dropdown
+- Create a mutation to update `mind_maps.section_id` via supabase
 
-Modify `getBlueprintContext()` in `supabase/functions/_shared/blueprint.ts` to:
+### Issue 2: AI Auto-Assign Content to Sections
+The existing `useAutoTagSections` hook + `ai-auto-tag-sections` edge function already handles AI-powered section assignment for 11 content tables. But `mind_maps` is not included.
 
-1. When no blueprint configs exist, **fetch the chapter's actual sections** from the `sections` table
-2. Pass those section names to the AI with an explicit instruction to **evaluate each section's clinical and exam importance** and weight content generation accordingly
-3. Give concrete examples of weighting logic (e.g., pathophysiology/signs/management > introduction/history)
+**Fix**: Add `mind_maps` to the auto-tag pipeline so when admins click "Auto Detect" for sections, mind maps are also assigned.
 
-## Single File Change
+## File Changes
 
-**`supabase/functions/_shared/blueprint.ts`** — Replace the early return (lines 31-33) with:
+| File | Action | What |
+|---|---|---|
+| `src/components/admin/MindMapAdminPanel.tsx` | **Modify** | Add `sections` prop, add Section column to MapGroup table with dropdown, add section update mutation |
+| `src/hooks/useMindMaps.ts` | **Modify** | Add `useUpdateMindMapSection` mutation hook |
+| `src/components/study/VisualResourcesSection.tsx` | **Modify** | Pass `sections` to `MindMapAdminPanel` |
+| `src/hooks/useAutoTagSections.ts` | **Modify** | Add `mind_maps` to `CONTENT_TABLES` and `CONTENT_COLUMNS` |
 
-```typescript
-if (error || !rawConfigs || rawConfigs.length === 0) {
-  // No blueprint — fetch actual sections so AI can intelligently weight them
-  let sectionList = "";
-  if (chapterId) {
-    const { data: sections } = await client
-      .from("sections")
-      .select("name, section_number")
-      .eq("chapter_id", chapterId)
-      .order("display_order");
-    if (sections && sections.length > 0) {
-      sectionList = "\n\nSections in this chapter:\n" +
-        sections.map(s => `- ${s.section_number ? s.section_number + '. ' : ''}${s.name}`).join("\n");
-    }
-  }
+## Details
 
-  return {
-    configs: [],
-    distribution_instruction: `CONTENT DISTRIBUTION (no admin blueprint configured — use your own clinical judgment):
-No admin-defined blueprint exists for this chapter. You MUST evaluate each section's importance and distribute items proportionally. DO NOT treat all sections equally.${sectionList}
+**MindMapAdminPanel — Section Column**: Each row in the MapGroup table gets a Select dropdown (matching the pattern in `ContentAdminTable`'s section column) that updates `mind_maps.section_id` via a new `useUpdateMindMapSection` hook.
 
-Weighting rules:
-- Core clinical sections (pathophysiology, signs & symptoms, diagnosis, management, complications) → HIGH weight, generate more items
-- Moderate sections (epidemiology, risk factors, investigations, prognosis) → MEDIUM weight
-- Low-yield sections (introduction, history, definitions, summary) → LOW weight, generate fewer items
-- Weight toward sections most likely to appear in medical exams
-- Vary difficulty: harder questions for high-weight sections, basic recall for low-weight ones`
-  };
-}
-```
-
-This ensures every generator — flashcards, mind maps, pathways, cases — always receives intelligent distribution guidance, whether from admin blueprint or AI clinical judgment. The section list gives the AI concrete names to reason about rather than guessing from the PDF alone.
+**Auto-Tag Integration**: Add `'mind_maps'` to `CONTENT_TABLES` array with columns `['title', 'section_title']` in `CONTENT_COLUMNS`. The existing AI matching logic will then automatically include untagged mind maps when admins run "Auto Detect" on sections.
 
