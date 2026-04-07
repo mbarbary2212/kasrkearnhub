@@ -137,7 +137,7 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
       );
     }
     if (hasEssays) {
-      return <ShortEssayExam questions={essays!} onComplete={() => {}} />;
+      return <ShortEssayExam questions={essays!} onComplete={() => {}} chapterId={chapterId} />;
     }
   }
 
@@ -214,7 +214,7 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
       )}
 
       {contentType === 'short_essay' && hasEssays && (
-        <ShortEssayExam questions={essays!} onComplete={() => {}} />
+        <ShortEssayExam questions={essays!} onComplete={() => {}} chapterId={chapterId} />
       )}
     </div>
   );
