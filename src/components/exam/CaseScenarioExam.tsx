@@ -20,6 +20,7 @@ interface CaseQuestion {
   max_marks: number;
   rubric_json?: unknown;
   display_order: number;
+  reasoning_domain?: string | null;
 }
 
 interface ExamCase {
