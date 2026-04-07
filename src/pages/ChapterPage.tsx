@@ -987,7 +987,7 @@ export default function ChapterPage() {
                         </Button>
                         <AIFlashcardGenerateButton
                           chapterId={chapterId}
-                          moduleId={moduleId}
+                          moduleId={contentModuleId || moduleId}
                         />
                       </div>
                     )}

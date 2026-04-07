@@ -100,6 +100,20 @@ export function AIFlashcardGenerateButton({
         throw new Error("No linked PDF found for this chapter/topic. Upload a document first.");
       }
 
+      // 2. Fetch existing flashcard fingerprints for dedup across sessions
+      const scopeCol = chapterId ? "chapter_id" : "topic_id";
+      const scopeVal = (chapterId || topicId)!;
+      // Use supabase client with type assertion to avoid deep type instantiation
+      const client = supabase as any;
+      const { data: existingFlash } = await client
+        .from("study_resources")
+        .select("title, content")
+        .in("type", ["flashcard", "cloze_flashcard"])
+        .eq(scopeCol, scopeVal);
+      const dedupFingerprints = ((existingFlash as any[]) || []).map(
+        (c: any) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
+      ).filter(Boolean);
+
       const documentId = docs[0].id;
       const qty = parseInt(quantity);
       const types: string[] =
@@ -121,6 +135,7 @@ export function AIFlashcardGenerateButton({
           quantity: perTypeQty,
           additional_instructions: focusInstructions || null,
           action: "generate",
+          dedup_fingerprints: dedupFingerprints,
         });
 
         // Error is already handled by invokeWithAuth
@@ -226,6 +241,11 @@ export function AIFlashcardGenerateButton({
                   <SelectItem value="5">5 cards</SelectItem>
                   <SelectItem value="10">10 cards</SelectItem>
                   <SelectItem value="15">15 cards</SelectItem>
+                  <SelectItem value="20">20 cards</SelectItem>
+                  <SelectItem value="25">25 cards</SelectItem>
+                  <SelectItem value="30">30 cards</SelectItem>
+                  <SelectItem value="35">35 cards</SelectItem>
+                  <SelectItem value="40">40 cards</SelectItem>
                 </SelectContent>
               </Select>
               {cardType === "both" && (
