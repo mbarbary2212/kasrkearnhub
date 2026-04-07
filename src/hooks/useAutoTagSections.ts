@@ -15,6 +15,7 @@ const CONTENT_TABLES = [
   'matching_questions',
   'true_false_questions',
   'virtual_patient_cases',
+  'mind_maps',
 ] as const;
 
 type ContentTable = typeof CONTENT_TABLES[number];
@@ -32,6 +33,7 @@ const CONTENT_COLUMNS: Record<ContentTable, string[]> = {
   matching_questions: ['instruction'],
   true_false_questions: ['statement', 'explanation'],
   virtual_patient_cases: ['title'],
+  mind_maps: ['title', 'section_title'],
 };
 
 interface AutoTagResult {

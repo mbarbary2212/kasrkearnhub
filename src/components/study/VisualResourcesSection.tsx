@@ -129,7 +129,7 @@ export function VisualResourcesSection({
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="generate" className="mt-3">
-                  <MindMapAdminPanel chapterId={chapterId} topicId={topicId} />
+                  <MindMapAdminPanel chapterId={chapterId} topicId={topicId} sections={sections} />
                 </TabsContent>
                 <TabsContent value="upload" className="mt-3">
                   <Button size="sm" variant="outline" onClick={() => onAdd?.('mind_map')}>
