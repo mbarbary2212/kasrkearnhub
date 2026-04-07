@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Star, Printer, Eye, EyeOff, CheckCircle, ListChecks } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
+import { getExpectedPoints } from '@/types/essayRubric';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Essay {
   id: string;
@@ -19,6 +22,8 @@ interface Essay {
   model_answer?: string | null;
   rating?: number | null;
   chapter_id?: string | null;
+  rubric_json?: unknown | null;
+  max_points?: number | null;
 }
 
 interface EssayDetailModalProps {
@@ -29,6 +34,27 @@ interface EssayDetailModalProps {
   markedIds?: Set<string>;
   onToggleMark?: (id: string) => void;
   isAdmin?: boolean;
+}
+
+/**
+ * Fetch the model_answer on-demand for a specific essay.
+ * This enforces strict answer isolation — model_answer is never in list queries.
+ */
+function useEssayModelAnswer(essayId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['essay-model-answer', essayId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('essays')
+        .select('model_answer')
+        .eq('id', essayId!)
+        .single();
+      if (error) throw error;
+      return data?.model_answer as string | null;
+    },
+    enabled: !!essayId && enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 }
 
 export function EssayDetailModal({
@@ -45,7 +71,6 @@ export function EssayDetailModal({
   const completedEssays = useRef<Set<string>>(new Set());
   const { markComplete } = useMarkItemComplete();
   
-  // Reset state when modal opens or navigates
   useEffect(() => {
     if (open) {
       setCurrentIndex(initialIndex);
@@ -55,7 +80,19 @@ export function EssayDetailModal({
 
   const essay = essays[currentIndex];
 
-  // Mark as complete when answer is shown (model answer revealed)
+  // Fetch model_answer on-demand only when "Show Answer" is clicked
+  const { data: fetchedModelAnswer, isLoading: answerLoading } = useEssayModelAnswer(
+    essay?.id,
+    showAnswer
+  );
+
+  // Use fetched answer, or fall back to essay.model_answer if it was passed (admin context)
+  const modelAnswer = fetchedModelAnswer ?? essay?.model_answer;
+
+  // Get expected points from rubric
+  const expectedPoints = essay ? getExpectedPoints(essay.rubric_json) : null;
+
+  // Mark as complete when answer is shown
   useEffect(() => {
     if (showAnswer && essay && !completedEssays.current.has(essay.id) && !isAdmin && essay.chapter_id) {
       markComplete(essay.id, 'essay', essay.chapter_id);
@@ -66,14 +103,14 @@ export function EssayDetailModal({
   const goNext = () => {
     if (currentIndex < essays.length - 1) {
       setCurrentIndex(currentIndex + 1);
-      setShowAnswer(false); // Single-focus: collapse answer when navigating
+      setShowAnswer(false);
     }
   };
 
   const goPrev = () => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
-      setShowAnswer(false); // Single-focus: collapse answer when navigating
+      setShowAnswer(false);
     }
   };
 
@@ -99,10 +136,10 @@ export function EssayDetailModal({
           <div class="section-label">Question:</div>
           <div class="section-content">${essay.question}</div>
         </div>
-        ${essay.model_answer ? `
+        ${modelAnswer ? `
         <div class="section">
           <div class="section-label">Answer:</div>
-          <div class="section-content">${essay.model_answer}</div>
+          <div class="section-content">${modelAnswer}</div>
         </div>
         ` : ''}
         ${essay.rating ? `
@@ -131,7 +168,6 @@ export function EssayDetailModal({
       <DialogContent className="max-w-2xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex flex-row items-center justify-between pr-8 shrink-0">
           <div className="flex items-center gap-2 flex-1">
-            {/* Mark for Review star */}
             {onToggleMark && (
               <button
                 onClick={() => onToggleMark(essay.id)}
@@ -171,6 +207,16 @@ export function EssayDetailModal({
               </div>
             </div>
 
+            {/* Points to Cover Badge */}
+            {expectedPoints && (
+              <div className="flex justify-center">
+                <Badge variant="outline" className="gap-1.5 px-3 py-1 text-xs">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  Cover the main key points (≈ {expectedPoints})
+                </Badge>
+              </div>
+            )}
+
             {/* Show/Hide Answer Button */}
             <div className="flex justify-center">
               <Button
@@ -193,15 +239,17 @@ export function EssayDetailModal({
               </Button>
             </div>
 
-            {/* Answer Section - Only shown when toggled */}
+            {/* Answer Section - Only shown when toggled, fetched on-demand */}
             {showAnswer && (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Answer
                 </h3>
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                  {essay.model_answer ? (
-                    <p className="text-foreground whitespace-pre-wrap">{essay.model_answer}</p>
+                  {answerLoading ? (
+                    <p className="text-muted-foreground italic">Loading answer...</p>
+                  ) : modelAnswer ? (
+                    <p className="text-foreground whitespace-pre-wrap">{modelAnswer}</p>
                   ) : (
                     <p className="text-muted-foreground italic">No model answer provided.</p>
                   )}
