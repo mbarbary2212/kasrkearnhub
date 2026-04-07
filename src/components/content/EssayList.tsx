@@ -402,7 +402,7 @@ export default function EssayList({
                                 id={essay.id}
                                 title={essay.title}
                                 description={essay.question}
-                                modelAnswer={essay.model_answer}
+                                modelAnswer={undefined}
                                 rating={essay.rating}
                                 maxPoints={essay.max_points}
                                 keywords={essay.keywords}
