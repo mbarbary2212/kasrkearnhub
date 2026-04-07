@@ -320,6 +320,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                   onComplete={clearSelection}
                 />
               )}
+              <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
               {chapterId && moduleId && (
                 <Button
                   variant="outline"

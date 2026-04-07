@@ -233,6 +233,7 @@ export default function EssayList({
                       onComplete={clearSelection}
                     />
                   )}
+                  <AutoTagSectionsButton chapterId={chapterId} />
                   <Button
                     variant="destructive"
                     size="sm"

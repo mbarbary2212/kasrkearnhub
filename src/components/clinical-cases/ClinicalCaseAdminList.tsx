@@ -246,6 +246,7 @@ export function ClinicalCaseAdminList({ moduleId, chapterId, topicId }: Clinical
             contentTable="virtual_patient_cases"
             onComplete={clearSelection}
           />
+          <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
           
           <Button size="sm" variant="outline" onClick={handleDownloadCases}>
             <Download className="w-4 h-4 mr-1" />

@@ -349,6 +349,7 @@ export function MatchingQuestionList({
                         onComplete={clearSelection}
                       />
                     )}
+                    <AutoTagSectionsButton chapterId={chapterId ?? undefined} topicId={topicId ?? undefined} />
                     <Button
                       variant="destructive"
                       size="sm"

@@ -533,6 +533,7 @@ export function LectureList({
                 {chapterId && (
                   <BulkSectionAssignment chapterId={chapterId} selectedIds={Array.from(selectedIds)} contentTable="lectures" onComplete={clearSelection} />
                 )}
+                <AutoTagSectionsButton chapterId={chapterId} />
                 <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-7 gap-1">
                   <Trash2 className="h-3.5 w-3.5" />Delete
                 </Button>

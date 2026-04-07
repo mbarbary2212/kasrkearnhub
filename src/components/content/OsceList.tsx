@@ -390,6 +390,7 @@ export function OsceList({
               contentTable="osce_questions"
               onComplete={clearSelection}
             />
+            <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
             
             <Button size="sm" variant="outline" onClick={() => {
               setEditingQuestion(null);

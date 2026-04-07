@@ -172,6 +172,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
                     onComplete={clearSelection}
                   />
                 )}
+                <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
                 <Button
                   variant="destructive"
                   size="sm"
