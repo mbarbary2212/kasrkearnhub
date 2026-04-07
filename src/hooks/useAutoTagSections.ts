@@ -106,7 +106,7 @@ export function useAutoTagSections() {
           : buildSelect(table);
 
         const baseQuery = () => supabase
-          .from(table)
+          .from(table as any)
           .select(selectCols)
           .eq(filterCol, filterVal)
           .is('section_id', null);
