@@ -201,3 +201,23 @@ export function useUpdateMindMapMarkdown() {
     },
   });
 }
+
+export function useUpdateMindMapSection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, section_id }: { id: string; section_id: string | null }) => {
+      const { error } = await supabase
+        .from('mind_maps' as any)
+        .update({ section_id } as any)
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEY });
+      toast.success('Section updated');
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to update section: ' + err.message);
+    },
+  });
+}

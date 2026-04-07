@@ -67,15 +67,18 @@ import {
   useGenerateMindMap,
   useUpdateMindMapStatus,
   useDeleteMindMap,
+  useUpdateMindMapSection,
   MindMap,
   GenerateMindMapResponse,
 } from '@/hooks/useMindMaps';
+import type { Section } from '@/hooks/useSections';
 import { useAdminDocuments } from '@/hooks/useAdminDocuments';
 import { format } from 'date-fns';
 
 interface MindMapAdminPanelProps {
   chapterId?: string;
   topicId?: string;
+  sections?: Section[];
 }
 
 function StatusBadge({ status }: { status: 'draft' | 'published' }) {
@@ -100,7 +103,7 @@ function SourceBadge({ source }: { source: string }) {
   );
 }
 
-export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps) {
+export function MindMapAdminPanel({ chapterId, topicId, sections = [] }: MindMapAdminPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [generationMode, setGenerationMode] = useState<'full' | 'sections' | 'both'>('both');
   const [selectedDocId, setSelectedDocId] = useState<string>('auto');
@@ -279,10 +282,10 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
               ) : (
                 <div className="space-y-3">
                   {fullMaps.length > 0 && (
-                    <MapGroup title="Full Chapter Maps" maps={fullMaps} onPreview={setPreviewMap} onToggle={handleToggleStatus} onDelete={setDeleteTarget} onDownload={handleDownloadMd} />
+                    <MapGroup title="Full Chapter Maps" maps={fullMaps} sections={sections} onPreview={setPreviewMap} onToggle={handleToggleStatus} onDelete={setDeleteTarget} onDownload={handleDownloadMd} />
                   )}
                   {sectionMaps.length > 0 && (
-                    <MapGroup title={`Section Maps (${sectionMaps.length})`} maps={sectionMaps} onPreview={setPreviewMap} onToggle={handleToggleStatus} onDelete={setDeleteTarget} onDownload={handleDownloadMd} />
+                    <MapGroup title={`Section Maps (${sectionMaps.length})`} maps={sectionMaps} sections={sections} onPreview={setPreviewMap} onToggle={handleToggleStatus} onDelete={setDeleteTarget} onDownload={handleDownloadMd} />
                   )}
                 </div>
               )}
@@ -425,9 +428,35 @@ export function MindMapAdminPanel({ chapterId, topicId }: MindMapAdminPanelProps
 
 /* ---- Map group sub-component ---- */
 
+function SectionCell({ map, sections }: { map: MindMap; sections: Section[] }) {
+  const updateSection = useUpdateMindMapSection();
+
+  const handleChange = (val: string) => {
+    const sectionId = val === '__none__' ? null : val;
+    updateSection.mutate({ id: map.id, section_id: sectionId });
+  };
+
+  return (
+    <Select value={(map as any).section_id || '__none__'} onValueChange={handleChange}>
+      <SelectTrigger className="h-7 text-xs w-36">
+        <SelectValue placeholder="No section" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__">No section</SelectItem>
+        {sections.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
+            {s.section_number ? `${s.section_number}. ` : ''}{s.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function MapGroup({
   title,
   maps,
+  sections,
   onPreview,
   onToggle,
   onDelete,
@@ -435,6 +464,7 @@ function MapGroup({
 }: {
   title: string;
   maps: MindMap[];
+  sections: Section[];
   onPreview: (m: MindMap) => void;
   onToggle: (m: MindMap) => void;
   onDelete: (m: MindMap) => void;
@@ -449,6 +479,7 @@ function MapGroup({
             <TableRow className="hover:bg-transparent">
               <TableHead className="text-xs h-8">Title</TableHead>
               <TableHead className="text-xs h-8 w-24">Type</TableHead>
+              <TableHead className="text-xs h-8 w-40">Section</TableHead>
               <TableHead className="text-xs h-8 w-28">Status</TableHead>
               <TableHead className="text-xs h-8 w-28">Created</TableHead>
               <TableHead className="text-xs h-8 w-32 text-right">Actions</TableHead>
@@ -469,6 +500,13 @@ function MapGroup({
                 </TableCell>
                 <TableCell className="py-1.5">
                   <SourceBadge source={m.source_type} />
+                </TableCell>
+                <TableCell className="py-1.5">
+                  {sections.length > 0 ? (
+                    <SectionCell map={m} sections={sections} />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="py-1.5">
                   <StatusBadge status={m.status} />
