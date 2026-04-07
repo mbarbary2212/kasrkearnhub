@@ -170,12 +170,20 @@ export default function ContentItemActions({
         const kw = editKeywords.split(',').map(k => k.trim()).filter(Boolean);
         data.keywords = kw.length > 0 ? kw : null;
         data.difficulty_level = editDifficulty || null;
-        // Build rubric_json from visual editor
+        // Build rubric_json from visual editor — always structured v1
         const rubricObj = buildRubricJson(rubricData);
-        const hasRubric = (rubricObj.required_concepts as string[]).length > 0 ||
-          (rubricObj.optional_concepts as string[]).length > 0 ||
-          (rubricObj.critical_omissions as string[]).length > 0;
-        data.rubric_json = hasRubric ? rubricObj : null;
+        const requiredConcepts = rubricObj.required_concepts as Array<{ label: string }>;
+        const optionalConcepts = rubricObj.optional_concepts as Array<{ label: string }>;
+        const hasRubric = requiredConcepts.length > 0 || optionalConcepts.length > 0;
+        if (!hasRubric) {
+          toast.error('Short Questions require a structured rubric. Add at least one required concept.');
+          return;
+        }
+        if (rubricObj.rubric_version !== 1) {
+          toast.error('Rubric must be structured v1 format.');
+          return;
+        }
+        data.rubric_json = rubricObj;
       } else {
         data.description = editDescription.trim() || null;
       }

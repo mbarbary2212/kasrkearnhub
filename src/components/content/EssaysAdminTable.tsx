@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { ContentAdminTable, type ColumnConfig } from '@/components/admin/ContentAdminTable';
 import { useChapterSections } from '@/hooks/useSections';
 import { ESSAY_EXPORT_COLUMNS } from '@/lib/csvExport';
+import { Badge } from '@/components/ui/badge';
+import { needsRubricUpgrade, hasStructuredRubric } from '@/types/essayRubric';
 
 interface Essay {
   id: string;
@@ -15,6 +17,7 @@ interface Essay {
   question_type?: string | null;
   max_points?: number | null;
   difficulty_level?: string | null;
+  rubric_json?: unknown | null;
 }
 
 interface EssaysAdminTableProps {
@@ -94,6 +97,30 @@ export function EssaysAdminTable({
       render: (item) => (
         <span className="text-sm text-muted-foreground">{item.difficulty_level || '—'}</span>
       ),
+    },
+    {
+      key: 'rubric_json' as keyof Essay,
+      header: 'Rubric',
+      className: 'w-32 text-center',
+      render: (item) => {
+        if (needsRubricUpgrade(item.rubric_json)) {
+          return (
+            <Badge variant="destructive" className="text-[10px] gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Upgrade
+            </Badge>
+          );
+        }
+        if (hasStructuredRubric(item.rubric_json)) {
+          return (
+            <Badge variant="outline" className="text-[10px] gap-1 text-emerald-600 border-emerald-300 bg-emerald-50">
+              <ShieldCheck className="h-3 w-3" />
+              v1
+            </Badge>
+          );
+        }
+        return <span className="text-xs text-muted-foreground">None</span>;
+      },
     },
     {
       key: 'section',

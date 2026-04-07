@@ -350,7 +350,8 @@ export function BlueprintExamRunner({
             marked_at: new Date().toISOString(),
           });
         } else {
-          // Legacy VPRubric format
+          // @deprecated Legacy VPRubric fallback — will be removed once all essays are migrated to v1
+          console.warn(`[rubric-upgrade] Essay "${essay.id}" uses legacy rubric format. Needs migration to v1.`);
           const rubric = essay.rubric_json as unknown as VPRubric;
           const result = gradeWithRubric(answerText, rubric);
           const points = Math.round(result.score * maxPoints);
