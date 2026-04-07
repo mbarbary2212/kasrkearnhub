@@ -1,5 +1,9 @@
 // Rubric-based marking for short-answer questions
 import { VPRubric, VPRubricResult } from '@/types/virtualPatient';
+import { StructuredRubric, parseRubric, type GradingResult } from '@/types/essayRubric';
+
+export { parseRubric, getExpectedPoints } from '@/types/essayRubric';
+export type { StructuredRubric, GradingResult } from '@/types/essayRubric';
 
 const DEFAULT_PASS_THRESHOLD = 0.6; // 60%
 
@@ -227,4 +231,55 @@ export function parseConcepts(text: string): string[] {
  */
 export function formatConcepts(concepts: string[]): string {
   return concepts.join(', ');
+}
+
+/**
+ * Grade a short-answer response against a StructuredRubric (new format).
+ * Used as a local fallback when AI grading is unavailable.
+ */
+export function gradeWithStructuredRubric(
+  answer: string,
+  rubric: StructuredRubric,
+): GradingResult {
+  const acceptablePhrases = rubric.acceptable_phrases || {};
+  const matchedPoints: string[] = [];
+  const missedPoints: string[] = [];
+  const missingCritical: string[] = [];
+
+  for (const concept of rubric.required_concepts) {
+    // Build a per-concept synonym lookup
+    const synonyms = concept.acceptable_phrases || [];
+    const phraseLookup: Record<string, string[]> = {};
+    if (synonyms.length) phraseLookup[concept.label.toLowerCase()] = synonyms;
+    // Also merge global acceptable phrases
+    Object.assign(phraseLookup, acceptablePhrases);
+
+    if (conceptPresent(answer, concept.label, phraseLookup)) {
+      matchedPoints.push(concept.label);
+    } else {
+      missedPoints.push(concept.label);
+      if (concept.is_critical) {
+        missingCritical.push(concept.label);
+      }
+    }
+  }
+
+  const maxScore = rubric.required_concepts.length;
+  const score = matchedPoints.length;
+  const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+
+  return {
+    score,
+    max_score: maxScore,
+    percentage,
+    matched_points: matchedPoints,
+    missed_points: missedPoints,
+    missing_critical_points: missingCritical,
+    confidence_score: maxScore > 0 ? score / maxScore : 0,
+    feedback: missingCritical.length > 0
+      ? `Critical points missed: ${missingCritical.join(', ')}`
+      : missedPoints.length > 0
+        ? `Good attempt. Missing: ${missedPoints.join(', ')}`
+        : 'Excellent — all key points covered!',
+  };
 }

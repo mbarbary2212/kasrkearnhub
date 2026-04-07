@@ -67,9 +67,13 @@ export function useChapterEssays(chapterId?: string, includeDeleted = false, opt
   return useQuery({
     queryKey: ['chapter-essays', chapterId, includeDeleted],
     queryFn: async () => {
+      // STRICT ANSWER ISOLATION: Never include model_answer in list queries
+      const selectColumns = includeDeleted
+        ? 'id, title, question, rating, max_points, keywords, is_deleted, chapter_id, section_id, difficulty_level, question_type, rubric_json, display_order, created_at'
+        : 'id, title, question, rating, max_points, keywords, is_deleted, chapter_id, section_id, difficulty_level, question_type, rubric_json, display_order, created_at';
       let query = supabase
         .from('essays')
-        .select('*')
+        .select(selectColumns)
         .eq('chapter_id', chapterId!)
         .order('display_order', { ascending: true });
 
