@@ -10,7 +10,7 @@ import { MatchingQuestionFormModal } from './MatchingQuestionFormModal';
 import { MatchingQuestionBulkUploadModal } from './MatchingQuestionBulkUploadModal';
 import { MatchingAdminTable } from './MatchingAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 import { toast } from 'sonner';
 import { 

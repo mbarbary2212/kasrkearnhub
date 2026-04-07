@@ -24,7 +24,7 @@ import ContentItemActions from '@/components/admin/ContentItemActions';
 import { EssayDetailModal } from './EssayDetailModal';
 import { EssaysAdminTable } from './EssaysAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 import { cn } from '@/lib/utils';
 import { useContentDelete } from '@/hooks/useContentDelete';

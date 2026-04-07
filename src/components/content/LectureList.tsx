@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LecturesAdminTable } from './LecturesAdminTable';

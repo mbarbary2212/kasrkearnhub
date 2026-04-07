@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { AutoTagSectionsButton } from '@/components/sections';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,

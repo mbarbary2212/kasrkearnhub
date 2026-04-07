@@ -10,6 +10,7 @@ import { OsceBulkUploadModal } from './OsceBulkUploadModal';
 import { OsceAdminTable } from './OsceAdminTable';
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { AutoTagSectionsButton } from '@/components/sections';
 import { 
   UnifiedQuestionFilter,
   UnifiedFilterState,
