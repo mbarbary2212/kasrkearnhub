@@ -101,18 +101,21 @@ export function AIFlashcardGenerateButton({
       }
 
       // 2. Fetch existing flashcard fingerprints for dedup
-      const scopeFilter = chapterId ? { chapter_id: chapterId } : { topic_id: topicId! };
-      const { data: existingCards } = await (supabase
-        .from("study_resources")
-        .select("title, content")
-        .eq("type", "flashcard")
-        .match(scopeFilter) as any);
-      const { data: existingCloze } = await (supabase
-        .from("study_resources")
-        .select("title, content")
-        .eq("type", "cloze_flashcard")
-        .match(scopeFilter) as any);
-      const allExisting = [...(existingCards || []), ...(existingCloze || [])];
+      const scopeCol = chapterId ? "chapter_id" : "topic_id";
+      const scopeVal = (chapterId || topicId) as string;
+      const fetchExisting = async (type: string) => {
+        const { data } = await supabase
+          .from("study_resources")
+          .select("title, content")
+          .eq("type" as any, type)
+          .eq(scopeCol as any, scopeVal);
+        return data || [];
+      };
+      const [existingCards, existingCloze] = await Promise.all([
+        fetchExisting("flashcard"),
+        fetchExisting("cloze_flashcard"),
+      ]);
+      const allExisting = [...existingCards, ...existingCloze];
       const dedupFingerprints = (existingCards || []).map(
         (c) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
       ).filter(Boolean);
