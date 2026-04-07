@@ -56,7 +56,26 @@ export function AIFlashcardGenerateButton({
         body: payload,
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
-      if (error) throw error;
+      if (error) {
+        // Extract the actual error message from the response body
+        let message = error.message || "Unknown error";
+        if (error instanceof Object && 'context' in error) {
+          try {
+            const ctx = (error as any).context;
+            if (ctx?.body) {
+              const reader = ctx.body.getReader?.();
+              if (reader) {
+                const { value } = await reader.read();
+                const text = new TextDecoder().decode(value);
+                const parsed = JSON.parse(text);
+                if (parsed?.error) message = parsed.error;
+              }
+            }
+          } catch {}
+        }
+        throw new Error(message);
+      }
+      if (data?.error) throw new Error(data.error);
       return data;
     },
     [getValidSession]
