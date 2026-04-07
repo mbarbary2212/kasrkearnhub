@@ -9,7 +9,7 @@ import { getExamWeightBoost, type ChapterExamWeight } from '@/hooks/useChapterEx
 // ─── Types ────────────────────────────────────────────────────
 
 export interface CoachInsight {
-  type: 'priority' | 'misallocation' | 'trend' | 'strength' | 'confidence' | 'time_balance';
+  type: 'priority' | 'misallocation' | 'trend' | 'strength' | 'confidence' | 'time_balance' | 'safety_alert' | 'reasoning_weakness' | 'reasoning_trend';
   message: string;
   /** Higher = more important, show first */
   priority: number;
@@ -25,6 +25,8 @@ export interface CoachInsightInput {
   chapterTitleMap: Map<string, string>;
   examWeightMap?: Map<string, ChapterExamWeight>;
   moduleId?: string;
+  /** Optional reasoning profile from case attempts */
+  reasoningProfile?: { domain: string; label: string; avgPercentage: number; attemptCount: number; criticalMissRate: number; trend: string }[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -238,25 +240,94 @@ function timeBalanceInsight(metrics: StudentChapterMetric[]): CoachInsight | nul
   return null;
 }
 
+// ─── Reasoning domain insights (safety > weakness > trend) ────
+
+function safetyAlertInsight(input: CoachInsightInput): CoachInsight | null {
+  const profile = input.reasoningProfile;
+  if (!profile || profile.length === 0) return null;
+
+  const dangerous = profile.filter(d => d.criticalMissRate > 40 && d.attemptCount >= 3);
+  if (dangerous.length === 0) return null;
+
+  const worst = dangerous.sort((a, b) => b.criticalMissRate - a.criticalMissRate)[0];
+  return {
+    type: 'safety_alert',
+    message: `You are repeatedly missing critical actions in ${worst.label} cases (${worst.criticalMissRate}% miss rate).`,
+    priority: 110, // Highest priority — safety first
+    action: `Practice ${worst.label} Case Qs`,
+  };
+}
+
+function reasoningWeaknessInsight(input: CoachInsightInput): CoachInsight | null {
+  const profile = input.reasoningProfile;
+  if (!profile || profile.length === 0) return null;
+
+  const weak = profile.filter(d => d.avgPercentage < 50 && d.attemptCount >= 3);
+  if (weak.length === 0) return null;
+
+  const weakest = weak[0]; // already sorted weakest-first from hook
+  return {
+    type: 'reasoning_weakness',
+    message: `Your ${weakest.label.toLowerCase()} skills need work — averaging ${weakest.avgPercentage}% on case questions.`,
+    priority: 95,
+    action: `Do focused ${weakest.label} Case Qs`,
+  };
+}
+
+function reasoningTrendInsight(input: CoachInsightInput): CoachInsight | null {
+  const profile = input.reasoningProfile;
+  if (!profile || profile.length === 0) return null;
+
+  // Only show if at least one domain has enough data for trend
+  const improving = profile.filter(d => d.trend === 'improving');
+  const declining = profile.filter(d => d.trend === 'declining');
+
+  if (declining.length > 0) {
+    const d = declining[0];
+    return {
+      type: 'reasoning_trend',
+      message: `Your ${d.label.toLowerCase()} reasoning is declining — review recent cases.`,
+      priority: 78,
+      action: `Revisit ${d.label} cases`,
+    };
+  }
+
+  if (improving.length > 0) {
+    const d = improving[0];
+    return {
+      type: 'reasoning_trend',
+      message: `Your ${d.label.toLowerCase()} reasoning is improving — keep it up.`,
+      priority: 40,
+    };
+  }
+
+  return null;
+}
+
 // ─── Main builder ─────────────────────────────────────────────
 
 const MAX_INSIGHTS = 4;
 
 export function buildCoachInsights(input: CoachInsightInput): CoachInsight[] {
   const chapters = classify(input);
-
-  if (chapters.length === 0) return [];
-
   const moduleId = input.moduleId;
 
   // Generate one insight per type
+  // Priority order: safety_alert > reasoning_weakness > priority > misallocation > reasoning_trend > trend > confidence > time_balance > strength
   const candidates: CoachInsight[] = [
-    priorityInsight(chapters, moduleId),
-    misallocationInsight(chapters, moduleId),
-    trendInsight(chapters, moduleId),
-    confidenceInsight(chapters, moduleId),
-    timeBalanceInsight(input.metrics),
-    strengthInsight(chapters),
+    safetyAlertInsight(input),
+    reasoningWeaknessInsight(input),
+    ...(chapters.length > 0 ? [
+      priorityInsight(chapters, moduleId),
+      misallocationInsight(chapters, moduleId),
+    ] : []),
+    reasoningTrendInsight(input),
+    ...(chapters.length > 0 ? [
+      trendInsight(chapters, moduleId),
+      confidenceInsight(chapters, moduleId),
+      timeBalanceInsight(input.metrics),
+      strengthInsight(chapters),
+    ] : []),
   ].filter((i): i is CoachInsight => i !== null);
 
   // Deduplicate by chapterId (keep highest priority mention)
