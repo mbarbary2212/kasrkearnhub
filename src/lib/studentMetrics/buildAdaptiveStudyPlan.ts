@@ -36,6 +36,7 @@ const STUDY_MODE_TASK_CONFIG: Record<string, StudyModeTaskConfig> = {
   mcq_practice:      { detail: '10–20 questions',    estimatedMinutes: 15 },
   recall_practice:   { detail: 'structured recall',  estimatedMinutes: 15 },
   case_scenarios:    { detail: '1–2 clinical cases',  estimatedMinutes: 20 },
+  case_practice:     { detail: 'focused clinical cases', estimatedMinutes: 20 },
   clinical_practice: { detail: 'OSCE / case walkthrough', estimatedMinutes: 25 },
   visual_practice:   { detail: 'images & pathology',  estimatedMinutes: 15 },
   review:            { detail: 'flashcards',           estimatedMinutes: 10 },
