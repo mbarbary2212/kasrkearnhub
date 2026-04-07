@@ -29,7 +29,32 @@ export async function getBlueprintContext(
     .eq("chapter_id", chapterId);
 
   if (error || !rawConfigs || rawConfigs.length === 0) {
-    return { configs: [], distribution_instruction: "" };
+    // No blueprint — fetch actual sections so AI can intelligently weight them
+    let sectionList = "";
+    if (chapterId) {
+      const { data: sections } = await client
+        .from("sections")
+        .select("name, section_number")
+        .eq("chapter_id", chapterId)
+        .order("display_order");
+      if (sections && sections.length > 0) {
+        sectionList = "\n\nSections in this chapter:\n" +
+          sections.map((s: any) => `- ${s.section_number ? s.section_number + '. ' : ''}${s.name}`).join("\n");
+      }
+    }
+
+    return {
+      configs: [],
+      distribution_instruction: `CONTENT DISTRIBUTION (no admin blueprint configured — use your own clinical judgment):
+No admin-defined blueprint exists for this chapter. You MUST evaluate each section's importance and distribute items proportionally. DO NOT treat all sections equally.${sectionList}
+
+Weighting rules:
+- Core clinical sections (pathophysiology, signs & symptoms, diagnosis, management, complications) → HIGH weight, generate more items
+- Moderate sections (epidemiology, risk factors, investigations, prognosis) → MEDIUM weight
+- Low-yield sections (introduction, history, definitions, summary) → LOW weight, generate fewer items
+- Weight toward sections most likely to appear in medical exams
+- Vary difficulty: harder questions for high-weight sections, basic recall for low-weight ones`
+    };
   }
 
   // Collect unique section IDs
