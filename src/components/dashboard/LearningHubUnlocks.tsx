@@ -175,7 +175,7 @@ function calculateUnlockLevels(dashboard: DashboardData): UnlockLevel[] {
       title: 'Practice Level',
       description: 'Extended practice questions and formative exercises.',
       unlockCriteria: 'Begin studying at least one chapter in this module.',
-      assessments: ['Extended MCQs', 'Short Essays', 'Matching Questions'],
+      assessments: ['Extended MCQs', 'Short Questions', 'Matching Questions'],
       isUnlocked: level2Unlocked,
       progress: level2Progress,
       icon: <ClipboardList className="w-3 h-3" />,

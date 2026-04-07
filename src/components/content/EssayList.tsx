@@ -34,7 +34,6 @@ interface Essay {
   id: string;
   title: string;
   question: string;
-  model_answer?: string | null;
   rating?: number | null;
   max_points?: number | null;
   keywords?: string[] | null;
