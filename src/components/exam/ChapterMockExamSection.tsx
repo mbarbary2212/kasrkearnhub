@@ -7,10 +7,12 @@ import { useMockExamSettings } from '@/hooks/useMockExam';
 import { MockTimedExam } from './MockTimedExam';
 import { OsceTimedExam } from './OsceTimedExam';
 import { ShortEssayExam } from './ShortEssayExam';
-import { FileQuestion, Stethoscope, PenTool } from 'lucide-react';
+import { CaseScenarioExam } from './CaseScenarioExam';
+import { FileQuestion, Stethoscope, PenTool, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useExamCaseScenarios } from '@/hooks/useCaseScenarios';
 
 interface ChapterMockExamSectionProps {
   moduleId: string;
@@ -18,7 +20,7 @@ interface ChapterMockExamSectionProps {
   topicId?: string;
 }
 
-type ContentType = 'mcq' | 'osce' | 'short_essay';
+type ContentType = 'mcq' | 'osce' | 'short_essay' | 'case_scenario';
 
 // Fetch essays for exam — strict answer isolation: no model_answer
 function useExamEssays(chapterId?: string, topicId?: string) {
@@ -51,6 +53,7 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
   const { data: chapterOsce, isLoading: chapterOsceLoading } = useChapterOsceQuestions(chapterId);
   const { data: topicOsce, isLoading: topicOsceLoading } = useTopicOsceQuestions(topicId);
   const { data: essays, isLoading: essaysLoading } = useExamEssays(chapterId, topicId);
+  const { data: caseScenarios, isLoading: casesLoading } = useExamCaseScenarios(chapterId, topicId);
   const { data: settings, isLoading: settingsLoading } = useMockExamSettings(moduleId);
 
   const mcqs = chapterId ? chapterMcqs : topicMcqs;
@@ -58,24 +61,27 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
   const mcqsLoading = chapterId ? chapterMcqsLoading : topicMcqsLoading;
   const osceLoading = chapterId ? chapterOsceLoading : topicOsceLoading;
 
-  const isLoading = mcqsLoading || osceLoading || essaysLoading || settingsLoading;
+  const isLoading = mcqsLoading || osceLoading || essaysLoading || casesLoading || settingsLoading;
 
   const mcqCount = mcqs?.length || 0;
   const osceCount = osceQuestions?.length || 0;
   const essayCount = essays?.length || 0;
+  const caseCount = caseScenarios?.length || 0;
   
   const hasMcqs = mcqCount > 0;
   const hasOsce = osceCount > 0;
   const hasEssays = essayCount > 0;
-  const hasAnyContent = hasMcqs || hasOsce || hasEssays;
+  const hasCases = caseCount > 0;
+  const hasAnyContent = hasMcqs || hasOsce || hasEssays || hasCases;
 
   const availableTypes = useMemo(() => {
     const types: ContentType[] = [];
     if (hasMcqs) types.push('mcq');
     if (hasOsce) types.push('osce');
     if (hasEssays) types.push('short_essay');
+    if (hasCases) types.push('case_scenario');
     return types;
-  }, [hasMcqs, hasOsce, hasEssays]);
+  }, [hasMcqs, hasOsce, hasEssays, hasCases]);
 
   // Auto-select first available type
   useMemo(() => {
@@ -105,7 +111,7 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
           Test is not available yet for this {entityLabel}.
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          No MCQ, OSCE, or Short Questions have been added.
+          No MCQ, OSCE, Short Questions, or Case Qs have been added.
         </p>
       </div>
     );
@@ -139,57 +145,38 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
     if (hasEssays) {
       return <ShortEssayExam questions={essays!} onComplete={() => {}} chapterId={chapterId} />;
     }
+    if (hasCases) {
+      return <CaseScenarioExam cases={caseScenarios!} onComplete={() => {}} chapterId={chapterId} />;
+    }
   }
+
+  const tabConfig: { type: ContentType; icon: typeof FileQuestion; label: string; count: number; has: boolean }[] = [
+    { type: 'mcq', icon: FileQuestion, label: 'MCQ', count: mcqCount, has: hasMcqs },
+    { type: 'osce', icon: Stethoscope, label: 'OSCE', count: osceCount, has: hasOsce },
+    { type: 'short_essay', icon: PenTool, label: 'Short Questions', count: essayCount, has: hasEssays },
+    { type: 'case_scenario', icon: ClipboardList, label: 'Case Qs', count: caseCount, has: hasCases },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Content Type Tabs */}
       <div className="flex gap-2 justify-center flex-wrap mb-6">
-        {hasMcqs && (
+        {tabConfig.filter(t => t.has).map(({ type, icon: Icon, label, count }) => (
           <button
-            onClick={() => setContentType('mcq')}
+            key={type}
+            onClick={() => setContentType(type)}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors border",
-              contentType === 'mcq'
+              contentType === type
                 ? "bg-violet-500 text-white font-medium shadow-sm border-violet-500"
                 : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
             )}
           >
-            <FileQuestion className="w-4 h-4" />
-            MCQ
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{mcqCount}</Badge>
+            <Icon className="w-4 h-4" />
+            {label}
+            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{count}</Badge>
           </button>
-        )}
-        {hasOsce && (
-          <button
-            onClick={() => setContentType('osce')}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors border",
-              contentType === 'osce'
-                ? "bg-violet-500 text-white font-medium shadow-sm border-violet-500"
-                : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
-            )}
-          >
-            <Stethoscope className="w-4 h-4" />
-            OSCE
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{osceCount}</Badge>
-          </button>
-        )}
-        {hasEssays && (
-          <button
-            onClick={() => setContentType('short_essay')}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-colors border",
-              contentType === 'short_essay'
-                ? "bg-violet-500 text-white font-medium shadow-sm border-violet-500"
-                : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
-            )}
-          >
-            <PenTool className="w-4 h-4" />
-            Short Questions
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">{essayCount}</Badge>
-          </button>
-        )}
+        ))}
       </div>
 
       {contentType === 'mcq' && hasMcqs && (
@@ -215,6 +202,10 @@ export function ChapterMockExamSection({ moduleId, chapterId, topicId }: Chapter
 
       {contentType === 'short_essay' && hasEssays && (
         <ShortEssayExam questions={essays!} onComplete={() => {}} chapterId={chapterId} />
+      )}
+
+      {contentType === 'case_scenario' && hasCases && (
+        <CaseScenarioExam cases={caseScenarios!} onComplete={() => {}} chapterId={chapterId} />
       )}
     </div>
   );
