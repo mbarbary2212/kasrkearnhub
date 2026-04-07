@@ -103,19 +103,13 @@ export function AIFlashcardGenerateButton({
       // 2. Fetch existing flashcard fingerprints for dedup
       const scopeCol = chapterId ? "chapter_id" : "topic_id";
       const scopeVal = (chapterId || topicId) as string;
-      const fetchExisting = async (type: string) => {
-        const { data } = await supabase
-          .from("study_resources")
-          .select("title, content")
-          .eq("type" as any, type)
-          .eq(scopeCol as any, scopeVal);
-        return data || [];
-      };
-      const [existingCards, existingCloze] = await Promise.all([
-        fetchExisting("flashcard"),
-        fetchExisting("cloze_flashcard"),
-      ]);
-      const allExisting = [...existingCards, ...existingCloze];
+      const { data: allExisting } = await supabase.rpc("get_flashcard_fingerprints" as any, {
+        p_scope_col: scopeCol,
+        p_scope_val: scopeVal,
+      }).throwOnError() as any;
+      const dedupFingerprints = ((allExisting as any[]) || []).map(
+        (c: any) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
+      ).filter(Boolean);
       const dedupFingerprints = (existingCards || []).map(
         (c) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
       ).filter(Boolean);
