@@ -48,6 +48,7 @@ interface CaseScenarioExamProps {
 }
 
 export function CaseScenarioExam({ cases, onComplete, chapterId }: CaseScenarioExamProps) {
+  const { user } = useAuthContext();
   const [currentCaseIndex, setCurrentCaseIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, string>>>({});
   const [results, setResults] = useState<Record<string, CaseGradingResult>>({});
