@@ -226,6 +226,11 @@ export function AIFlashcardGenerateButton({
                   <SelectItem value="5">5 cards</SelectItem>
                   <SelectItem value="10">10 cards</SelectItem>
                   <SelectItem value="15">15 cards</SelectItem>
+                  <SelectItem value="20">20 cards</SelectItem>
+                  <SelectItem value="25">25 cards</SelectItem>
+                  <SelectItem value="30">30 cards</SelectItem>
+                  <SelectItem value="35">35 cards</SelectItem>
+                  <SelectItem value="40">40 cards</SelectItem>
                 </SelectContent>
               </Select>
               {cardType === "both" && (
