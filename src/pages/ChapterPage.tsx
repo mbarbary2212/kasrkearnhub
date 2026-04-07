@@ -46,6 +46,7 @@ import { useChapterProgress } from "@/hooks/useChapterProgress";
 import { useChapterMatchingQuestions, useChapterMatchingCount } from "@/hooks/useMatchingQuestions";
 import { useClinicalCases } from "@/hooks/useClinicalCases";
 import { FlashcardsTab } from "@/components/study/FlashcardsTab";
+import { AIFlashcardGenerateButton } from "@/components/flashcards/AIFlashcardGenerateButton";
 import { StudyResourceFormModal } from "@/components/study/StudyResourceFormModal";
 import { StudyBulkUploadModal } from "@/components/study/StudyBulkUploadModal";
 import { ClinicalToolsSection } from "@/components/study/ClinicalToolsSection";
