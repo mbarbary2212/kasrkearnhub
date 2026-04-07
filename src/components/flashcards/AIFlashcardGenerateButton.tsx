@@ -100,14 +100,17 @@ export function AIFlashcardGenerateButton({
         throw new Error("No linked PDF found for this chapter/topic. Upload a document first.");
       }
 
-      // 2. Fetch existing flashcard fingerprints for dedup
+      // 2. Fetch existing flashcard fingerprints for dedup across sessions
       const scopeCol = chapterId ? "chapter_id" : "topic_id";
-      const scopeVal = (chapterId || topicId) as string;
-      const { data: allExisting } = await supabase.rpc("get_flashcard_fingerprints" as any, {
-        p_scope_col: scopeCol,
-        p_scope_val: scopeVal,
-      }).throwOnError() as any;
-      const dedupFingerprints = ((allExisting as any[]) || []).map(
+      const scopeVal = (chapterId || topicId)!;
+      // Use supabase client with type assertion to avoid deep type instantiation
+      const client = supabase as any;
+      const { data: existingFlash } = await client
+        .from("study_resources")
+        .select("title, content")
+        .in("type", ["flashcard", "cloze_flashcard"])
+        .eq(scopeCol, scopeVal);
+      const dedupFingerprints = ((existingFlash as any[]) || []).map(
         (c: any) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
       ).filter(Boolean);
 
