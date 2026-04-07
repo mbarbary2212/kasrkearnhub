@@ -28,6 +28,8 @@ interface ExamCase {
   stem: string;
   difficulty: string;
   chapter_id?: string | null;
+  module_id?: string | null;
+  topic_id?: string | null;
   questions: CaseQuestion[];
 }
 
