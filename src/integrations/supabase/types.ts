@@ -1268,6 +1268,7 @@ export type Database = {
           model_answer: string | null
           question_text: string
           question_type: Database["public"]["Enums"]["case_question_type"]
+          rubric_json: Json | null
         }
         Insert: {
           case_id: string
@@ -1279,6 +1280,7 @@ export type Database = {
           model_answer?: string | null
           question_text: string
           question_type?: Database["public"]["Enums"]["case_question_type"]
+          rubric_json?: Json | null
         }
         Update: {
           case_id?: string
@@ -1290,6 +1292,7 @@ export type Database = {
           model_answer?: string | null
           question_text?: string
           question_type?: Database["public"]["Enums"]["case_question_type"]
+          rubric_json?: Json | null
         }
         Relationships: [
           {
@@ -1311,6 +1314,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          section_id: string | null
           stem: string
           tags: string[] | null
           topic_id: string | null
@@ -1326,6 +1330,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           stem: string
           tags?: string[] | null
           topic_id?: string | null
@@ -1341,6 +1346,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           stem?: string
           tags?: string[] | null
           topic_id?: string | null
@@ -1360,6 +1366,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
