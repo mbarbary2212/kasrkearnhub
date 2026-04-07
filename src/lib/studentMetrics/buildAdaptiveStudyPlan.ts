@@ -108,6 +108,8 @@ export interface AdaptivePlanInput {
   examWeightMap?: Map<string, ChapterExamWeight>;
   /** Exam date from study_plans configuration */
   examDate?: Date;
+  /** Optional reasoning profile for case practice tasks */
+  reasoningProfile?: { domain: string; label: string; avgPercentage: number; attemptCount: number; criticalMissRate: number; trend: string }[];
 }
 
 // ─── Slot types for balanced daily plan ───────────────────────
