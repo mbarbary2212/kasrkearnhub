@@ -499,6 +499,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           strength: 'strong',
           confidence: 'missed',
           time_balance: 'attention',
+          safety_alert: 'attention',
+          reasoning_weakness: 'attention',
+          reasoning_trend: 'attention',
         };
         return {
           type: typeMap[ci.type] || 'attention',
@@ -507,6 +510,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
             : ci.type === 'trend' ? 'Trend Alert'
             : ci.type === 'strength' ? 'Strength'
             : ci.type === 'time_balance' ? 'Time Balance'
+            : ci.type === 'safety_alert' ? '⚠ Safety Alert'
+            : ci.type === 'reasoning_weakness' ? 'Clinical Reasoning'
+            : ci.type === 'reasoning_trend' ? 'Reasoning Trend'
             : 'Confidence',
           detail: ci.message,
           action: ci.action,
