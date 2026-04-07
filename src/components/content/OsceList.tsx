@@ -10,6 +10,7 @@ import { OsceBulkUploadModal } from './OsceBulkUploadModal';
 import { OsceAdminTable } from './OsceAdminTable';
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { AutoTagSectionsButton } from '@/components/sections';
 import { 
   UnifiedQuestionFilter,
   UnifiedFilterState,
@@ -389,6 +390,7 @@ export function OsceList({
               contentTable="osce_questions"
               onComplete={clearSelection}
             />
+            <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
             
             <Button size="sm" variant="outline" onClick={() => {
               setEditingQuestion(null);

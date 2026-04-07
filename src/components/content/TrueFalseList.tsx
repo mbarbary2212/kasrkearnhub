@@ -28,6 +28,7 @@ import { TrueFalseBulkUploadModal } from './TrueFalseBulkUploadModal';
 import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewToggle';
 import { TrueFalseAdminTable } from './TrueFalseAdminTable';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { AutoTagSectionsButton } from '@/components/sections';
 import { 
   useDeleteTrueFalseQuestion, 
   useRestoreTrueFalseQuestion,
@@ -227,6 +228,7 @@ export function TrueFalseList({
                   onComplete={handleBulkComplete}
                 />
               )}
+              <AutoTagSectionsButton chapterId={chapterId} />
             </div>
             
             <div className="flex items-center gap-2">
