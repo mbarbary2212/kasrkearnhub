@@ -22,13 +22,13 @@ export default function BlueprintExamPage() {
   const { data: mcqs, isLoading: mcqsLoading } = useModuleMcqs(moduleId);
   const { data: settings, isLoading: settingsLoading } = useMockExamSettings(moduleId);
 
-  // Fetch essays for this module
+  // Fetch essays for this module — STRICT ANSWER ISOLATION: no model_answer
   const { data: essays = [], isLoading: essaysLoading } = useQuery({
     queryKey: ['module-essays', moduleId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('essays')
-        .select('id, title, question, model_answer, keywords, chapter_id, rubric_json, max_points, question_type')
+        .select('id, title, question, keywords, chapter_id, rubric_json, max_points, question_type')
         .eq('module_id', moduleId!)
         .eq('is_deleted', false);
       if (error) throw error;

@@ -87,15 +87,16 @@ export function useEssays(topicId: string | undefined) {
     queryFn: async () => {
       if (!topicId) return [];
 
+      // STRICT ANSWER ISOLATION: Never include model_answer in list queries
       const { data, error } = await supabase
         .from('essays')
-        .select('*')
+        .select('id, title, question, rating, max_points, keywords, is_deleted, chapter_id, topic_id, section_id, difficulty_level, question_type, rubric_json, display_order, created_at, module_id')
         .eq('topic_id', topicId)
         .eq('is_deleted', false)
         .order('display_order');
 
       if (error) throw error;
-      return data as Essay[];
+      return data as unknown as Essay[];
     },
     enabled: !!topicId,
   });

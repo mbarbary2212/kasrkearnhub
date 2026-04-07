@@ -19,7 +19,6 @@ interface Essay {
   id: string;
   title: string;
   question: string;
-  model_answer?: string | null;
   rating?: number | null;
   chapter_id?: string | null;
   rubric_json?: unknown | null;
@@ -86,8 +85,8 @@ export function EssayDetailModal({
     showAnswer
   );
 
-  // Use fetched answer, or fall back to essay.model_answer if it was passed (admin context)
-  const modelAnswer = fetchedModelAnswer ?? essay?.model_answer;
+  // Use only the on-demand fetched answer — never from list data
+  const modelAnswer = fetchedModelAnswer;
 
   // Get expected points from rubric
   const expectedPoints = essay ? getExpectedPoints(essay.rubric_json) : null;
