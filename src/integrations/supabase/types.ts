@@ -1203,6 +1203,75 @@ export type Database = {
         }
         Relationships: []
       }
+      case_attempt_details: {
+        Row: {
+          case_id: string
+          chapter_id: string | null
+          completed_at: string
+          confidence_score: number | null
+          created_at: string
+          id: string
+          max_score: number
+          missing_critical_points: Json | null
+          module_id: string | null
+          percentage: number
+          question_id: string
+          reasoning_domain: string | null
+          score: number
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          chapter_id?: string | null
+          completed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          max_score?: number
+          missing_critical_points?: Json | null
+          module_id?: string | null
+          percentage?: number
+          question_id: string
+          reasoning_domain?: string | null
+          score?: number
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          chapter_id?: string | null
+          completed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          max_score?: number
+          missing_critical_points?: Json | null
+          module_id?: string | null
+          percentage?: number
+          question_id?: string
+          reasoning_domain?: string | null
+          score?: number
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_attempt_details_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_scenarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_attempt_details_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "case_scenario_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_reference_documents: {
         Row: {
           case_id: string | null
@@ -1268,6 +1337,7 @@ export type Database = {
           model_answer: string | null
           question_text: string
           question_type: Database["public"]["Enums"]["case_question_type"]
+          reasoning_domain: string | null
           rubric_json: Json | null
         }
         Insert: {
@@ -1280,6 +1350,7 @@ export type Database = {
           model_answer?: string | null
           question_text: string
           question_type?: Database["public"]["Enums"]["case_question_type"]
+          reasoning_domain?: string | null
           rubric_json?: Json | null
         }
         Update: {
@@ -1292,6 +1363,7 @@ export type Database = {
           model_answer?: string | null
           question_text?: string
           question_type?: Database["public"]["Enums"]["case_question_type"]
+          reasoning_domain?: string | null
           rubric_json?: Json | null
         }
         Relationships: [
