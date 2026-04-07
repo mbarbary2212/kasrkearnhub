@@ -16,7 +16,7 @@ export const CONTENT_TYPE_LABELS: Record<string, string> = {
   matching: 'Matching',
   flashcard: 'Flashcards',
   clinical_case: 'Clinical Cases',
-  case_scenario: 'Case Scenarios',
+  case_scenario: 'Case Qs',
   practical: 'Practical',
   lecture: 'Lecture',
   resource: 'Resource',
