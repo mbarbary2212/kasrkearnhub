@@ -101,14 +101,17 @@ export function AIFlashcardGenerateButton({
       }
 
       // 2. Fetch existing flashcard fingerprints for dedup
-      const dedupQuery = chapterId
-        ? supabase.from("study_resources").select("title, content").eq("type", "flashcard").eq("chapter_id", chapterId)
-        : supabase.from("study_resources").select("title, content").eq("type", "flashcard").eq("topic_id", topicId!);
-      const { data: existingCards } = await dedupQuery;
-      const clozeQuery = chapterId
-        ? supabase.from("study_resources").select("title, content").eq("type", "cloze_flashcard").eq("chapter_id", chapterId)
-        : supabase.from("study_resources").select("title, content").eq("type", "cloze_flashcard").eq("topic_id", topicId!);
-      const { data: existingCloze } = await clozeQuery;
+      const scopeFilter = chapterId ? { chapter_id: chapterId } : { topic_id: topicId! };
+      const { data: existingCards } = await (supabase
+        .from("study_resources")
+        .select("title, content")
+        .eq("type", "flashcard")
+        .match(scopeFilter) as any);
+      const { data: existingCloze } = await (supabase
+        .from("study_resources")
+        .select("title, content")
+        .eq("type", "cloze_flashcard")
+        .match(scopeFilter) as any);
       const allExisting = [...(existingCards || []), ...(existingCloze || [])];
       const dedupFingerprints = (existingCards || []).map(
         (c) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
