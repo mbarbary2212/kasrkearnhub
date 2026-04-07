@@ -762,6 +762,8 @@ export function McqList({
                   onComplete={clearSelection}
                 />
                 <AutoTagSectionsButton chapterId={chapterId ?? undefined} topicId={topicId ?? undefined} />
+              </>
+            )}
             
             {/* Permission warning for admins without access */}
             {!permissionLoading && !canManageContent && (
