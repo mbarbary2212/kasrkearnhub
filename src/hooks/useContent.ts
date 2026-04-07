@@ -96,7 +96,7 @@ export function useEssays(topicId: string | undefined) {
         .order('display_order');
 
       if (error) throw error;
-      return data as Essay[];
+      return data as unknown as Essay[];
     },
     enabled: !!topicId,
   });
