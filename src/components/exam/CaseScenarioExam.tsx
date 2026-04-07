@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CaseScenarioResult } from './CaseScenarioResult';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
+import { useAuthContext } from '@/contexts/AuthContext';
 import type { GradingResult } from '@/types/essayRubric';
 
 interface CaseQuestion {
