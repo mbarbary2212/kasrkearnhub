@@ -34,33 +34,10 @@ Deno.serve(async (req) => {
     const userId = claimsData.claims.sub as string;
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Parse body
-    const { essay_id, student_answer } = await req.json();
-    if (!essay_id || !student_answer?.trim()) {
-      return new Response(JSON.stringify({ error: 'essay_id and student_answer are required' }), { status: 400, headers: corsHeaders });
-    }
+    const body = await req.json();
 
-    // Fetch essay with rubric and model_answer
-    const { data: essay, error: essayError } = await serviceClient
-      .from('essays')
-      .select('question, model_answer, rubric_json, max_points, keywords')
-      .eq('id', essay_id)
-      .single();
-
-    if (essayError || !essay) {
-      return new Response(JSON.stringify({ error: 'Essay not found' }), { status: 404, headers: corsHeaders });
-    }
-
-    // Parse rubric
-    const rubric = essay.rubric_json as Record<string, unknown> | null;
-    const requiredConcepts = Array.isArray(rubric?.required_concepts) ? rubric!.required_concepts : [];
-    const expectedPoints = typeof rubric?.expected_points === 'number' ? rubric!.expected_points : requiredConcepts.length;
-
-    // Build concept list for AI prompt
-    const conceptsForPrompt = requiredConcepts.map((c: any) => {
-      if (typeof c === 'string') return { label: c, is_critical: false, acceptable_phrases: [] };
-      return c;
-    });
+    // Determine mode: explicit mode field, or infer from payload
+    const mode: 'essay' | 'case_scenario' = body.mode || (body.case_scenario_id ? 'case_scenario' : 'essay');
 
     // Get user role for AI key resolution
     const { data: roleData } = await serviceClient
@@ -80,7 +57,226 @@ Deno.serve(async (req) => {
     const provider = getAIProvider(settings);
     if (apiKey) provider.model = settings.gemini_model;
 
-    const systemPrompt = `You are a strict but fair medical examiner.
+    if (mode === 'case_scenario') {
+      return await handleCaseScenario(body, serviceClient, provider, apiKey, userId, keySource, settings);
+    } else {
+      return await handleEssay(body, serviceClient, provider, apiKey, userId, keySource, settings);
+    }
+  } catch (err) {
+    console.error('grade-short-essay error:', err);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+  }
+});
+
+// ==================== ESSAY MODE (existing) ====================
+
+async function handleEssay(
+  body: any,
+  serviceClient: any,
+  provider: any,
+  apiKey: string | null,
+  userId: string,
+  keySource: string | null,
+  settings: any,
+) {
+  const { essay_id, student_answer } = body;
+  if (!essay_id || !student_answer?.trim()) {
+    return new Response(JSON.stringify({ error: 'essay_id and student_answer are required' }), { status: 400, headers: corsHeaders });
+  }
+
+  const { data: essay, error: essayError } = await serviceClient
+    .from('essays')
+    .select('question, model_answer, rubric_json, max_points, keywords')
+    .eq('id', essay_id)
+    .single();
+
+  if (essayError || !essay) {
+    return new Response(JSON.stringify({ error: 'Essay not found' }), { status: 404, headers: corsHeaders });
+  }
+
+  const rubric = essay.rubric_json as Record<string, unknown> | null;
+  const requiredConcepts = Array.isArray(rubric?.required_concepts) ? rubric!.required_concepts : [];
+  const expectedPoints = typeof rubric?.expected_points === 'number' ? rubric!.expected_points : requiredConcepts.length;
+
+  const conceptsForPrompt = requiredConcepts.map((c: any) => {
+    if (typeof c === 'string') return { label: c, is_critical: false, acceptable_phrases: [] };
+    return c;
+  });
+
+  const systemPrompt = buildEssaySystemPrompt(expectedPoints);
+  const userPrompt = buildEssayUserPrompt(essay, conceptsForPrompt, expectedPoints, student_answer);
+
+  const result = await callAI(systemPrompt, userPrompt, provider, apiKey);
+  if (!result.success) {
+    return new Response(JSON.stringify({ error: result.error }), { status: result.status || 500, headers: corsHeaders });
+  }
+
+  let gradingResult = parseAIResponse(result.content!);
+  if (!gradingResult) {
+    return new Response(JSON.stringify({ error: 'AI returned invalid grading response. Please try again.' }), { status: 500, headers: corsHeaders });
+  }
+
+  normalizeGradingResult(gradingResult, expectedPoints);
+
+  await logAIUsage(serviceClient, userId, 'short_essay_grading', provider.name, keySource || 'lovable');
+
+  return new Response(JSON.stringify(gradingResult), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
+
+// ==================== CASE SCENARIO MODE ====================
+
+async function handleCaseScenario(
+  body: any,
+  serviceClient: any,
+  provider: any,
+  apiKey: string | null,
+  userId: string,
+  keySource: string | null,
+  settings: any,
+) {
+  const { case_scenario_id, answers } = body;
+  if (!case_scenario_id || !Array.isArray(answers) || answers.length === 0) {
+    return new Response(
+      JSON.stringify({ error: 'case_scenario_id and answers[] are required' }),
+      { status: 400, headers: corsHeaders }
+    );
+  }
+
+  // Fetch case stem
+  const { data: caseData, error: caseErr } = await serviceClient
+    .from('case_scenarios')
+    .select('stem, difficulty')
+    .eq('id', case_scenario_id)
+    .single();
+
+  if (caseErr || !caseData) {
+    return new Response(JSON.stringify({ error: 'Case scenario not found' }), { status: 404, headers: corsHeaders });
+  }
+
+  // Fetch sub-questions with model_answer and rubric_json
+  const questionIds = answers.map((a: any) => a.question_id);
+  const { data: questions, error: qErr } = await serviceClient
+    .from('case_scenario_questions')
+    .select('id, question_text, model_answer, rubric_json, max_marks, display_order')
+    .in('id', questionIds)
+    .order('display_order', { ascending: true });
+
+  if (qErr || !questions || questions.length === 0) {
+    return new Response(JSON.stringify({ error: 'Case questions not found' }), { status: 404, headers: corsHeaders });
+  }
+
+  // Grade each sub-question independently, in parallel
+  const questionResults = await Promise.allSettled(
+    questions.map(async (q: any) => {
+      const studentAnswer = answers.find((a: any) => a.question_id === q.id)?.answer || '';
+      if (!studentAnswer.trim()) {
+        return {
+          question_id: q.id,
+          score: 0,
+          max_score: q.max_marks || 10,
+          percentage: 0,
+          matched_points: [],
+          missed_points: [],
+          missing_critical_points: [],
+          confidence_score: 0,
+          feedback: 'No answer provided.',
+        };
+      }
+
+      const rubric = q.rubric_json as Record<string, unknown> | null;
+      const requiredConcepts = Array.isArray(rubric?.required_concepts) ? rubric!.required_concepts : [];
+      const expectedPoints = typeof rubric?.expected_points === 'number' ? rubric!.expected_points : requiredConcepts.length || q.max_marks || 10;
+
+      const conceptsForPrompt = requiredConcepts.map((c: any) => {
+        if (typeof c === 'string') return { label: c, is_critical: false, acceptable_phrases: [] };
+        return c;
+      });
+
+      const systemPrompt = buildEssaySystemPrompt(expectedPoints);
+      const userPrompt = `CLINICAL SCENARIO (context for the question):
+${caseData.stem}
+
+QUESTION: ${q.question_text}
+
+RUBRIC CONCEPTS (${conceptsForPrompt.length} required, expected ${expectedPoints} points):
+${JSON.stringify(conceptsForPrompt, null, 2)}
+
+${q.model_answer ? `MODEL ANSWER (for calibration only): ${q.model_answer}` : ''}
+
+STUDENT ANSWER:
+${studentAnswer}
+
+Grade the student answer against the rubric.`;
+
+      const result = await callAI(systemPrompt, userPrompt, provider, apiKey);
+      if (!result.success) {
+        throw new Error(result.error || 'AI call failed');
+      }
+
+      let gradingResult = parseAIResponse(result.content!);
+      if (!gradingResult) {
+        throw new Error('Invalid AI response');
+      }
+
+      normalizeGradingResult(gradingResult, expectedPoints);
+      gradingResult.question_id = q.id;
+
+      return gradingResult;
+    })
+  );
+
+  // Aggregate results
+  const questionGrades: any[] = [];
+  for (const r of questionResults) {
+    if (r.status === 'fulfilled') {
+      questionGrades.push(r.value);
+    } else {
+      // Find the question this failure belongs to by index
+      const idx = questionResults.indexOf(r);
+      const q = questions[idx];
+      questionGrades.push({
+        question_id: q?.id || 'unknown',
+        score: 0,
+        max_score: q?.max_marks || 10,
+        percentage: 0,
+        matched_points: [],
+        missed_points: [],
+        missing_critical_points: [],
+        confidence_score: 0,
+        feedback: 'Grading failed for this question.',
+      });
+    }
+  }
+
+  const totalScore = questionGrades.reduce((sum, r) => sum + (r.score || 0), 0);
+  const totalMax = questionGrades.reduce((sum, r) => sum + (r.max_score || 0), 0);
+  const percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+
+  // Generate overall feedback
+  let overallFeedback = '';
+  if (percentage >= 80) {
+    overallFeedback = 'Excellent performance across the case. You demonstrated strong clinical reasoning.';
+  } else if (percentage >= 60) {
+    overallFeedback = 'Good attempt. Review the missed points to strengthen your understanding of this clinical scenario.';
+  } else {
+    overallFeedback = 'This case needs more work. Focus on the clinical reasoning pattern and key concepts highlighted in the feedback.';
+  }
+
+  await logAIUsage(serviceClient, userId, 'case_scenario_grading', provider.name, keySource || 'lovable');
+
+  return new Response(JSON.stringify({
+    total_score: totalScore,
+    max_score: totalMax,
+    percentage,
+    questions: questionGrades,
+    overall_feedback: overallFeedback,
+  }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+}
+
+// ==================== SHARED HELPERS ====================
+
+function buildEssaySystemPrompt(expectedPoints: number): string {
+  return `You are a strict but fair medical examiner.
 
 Grade a student's short-answer response using the provided rubric.
 
@@ -112,8 +308,10 @@ Return ONLY valid JSON (no markdown, no code fences):
   "confidence_score": <number 0-1 — how confident you are in the grading>,
   "feedback": "<1-2 sentence constructive feedback>"
 }`;
+}
 
-    const userPrompt = `QUESTION: ${essay.question}
+function buildEssayUserPrompt(essay: any, conceptsForPrompt: any[], expectedPoints: number, studentAnswer: string): string {
+  return `QUESTION: ${essay.question}
 
 RUBRIC CONCEPTS (${conceptsForPrompt.length} required, expected ${expectedPoints} points):
 ${JSON.stringify(conceptsForPrompt, null, 2)}
@@ -121,46 +319,31 @@ ${JSON.stringify(conceptsForPrompt, null, 2)}
 ${essay.model_answer ? `MODEL ANSWER (for calibration only): ${essay.model_answer}` : ''}
 
 STUDENT ANSWER:
-${student_answer}
+${studentAnswer}
 
 Grade the student answer against the rubric.`;
+}
 
-    const result = await callAI(systemPrompt, userPrompt, provider, apiKey);
-
-    if (!result.success) {
-      return new Response(JSON.stringify({ error: result.error }), { status: result.status || 500, headers: corsHeaders });
+function parseAIResponse(content: string): any | null {
+  try {
+    let cleaned = content.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
     }
-
-    // Parse AI response
-    let gradingResult;
-    try {
-      let content = result.content!.trim();
-      if (content.startsWith('```')) {
-        content = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-      }
-      gradingResult = JSON.parse(content);
-    } catch {
-      return new Response(JSON.stringify({ error: 'AI returned invalid grading response. Please try again.' }), { status: 500, headers: corsHeaders });
-    }
-
-    // Ensure required fields
-    gradingResult.score = typeof gradingResult.score === 'number' ? gradingResult.score : 0;
-    gradingResult.max_score = typeof gradingResult.max_score === 'number' ? gradingResult.max_score : expectedPoints;
-    gradingResult.percentage = typeof gradingResult.percentage === 'number' ? gradingResult.percentage : 
-      (gradingResult.max_score > 0 ? Math.round((gradingResult.score / gradingResult.max_score) * 100) : 0);
-    gradingResult.matched_points = Array.isArray(gradingResult.matched_points) ? gradingResult.matched_points : [];
-    gradingResult.missed_points = Array.isArray(gradingResult.missed_points) ? gradingResult.missed_points : [];
-    gradingResult.missing_critical_points = Array.isArray(gradingResult.missing_critical_points) ? gradingResult.missing_critical_points : [];
-    gradingResult.confidence_score = typeof gradingResult.confidence_score === 'number' ? gradingResult.confidence_score : 0.5;
-    gradingResult.feedback = gradingResult.feedback || '';
-
-    // Log usage
-    await logAIUsage(serviceClient, userId, 'short_essay_grading', provider.name, keySource || 'lovable');
-
-    return new Response(JSON.stringify(gradingResult), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-  } catch (err) {
-    console.error('grade-short-essay error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: corsHeaders });
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
   }
-});
+}
+
+function normalizeGradingResult(result: any, expectedPoints: number): void {
+  result.score = typeof result.score === 'number' ? result.score : 0;
+  result.max_score = typeof result.max_score === 'number' ? result.max_score : expectedPoints;
+  result.percentage = typeof result.percentage === 'number' ? result.percentage :
+    (result.max_score > 0 ? Math.round((result.score / result.max_score) * 100) : 0);
+  result.matched_points = Array.isArray(result.matched_points) ? result.matched_points : [];
+  result.missed_points = Array.isArray(result.missed_points) ? result.missed_points : [];
+  result.missing_critical_points = Array.isArray(result.missing_critical_points) ? result.missing_critical_points : [];
+  result.confidence_score = typeof result.confidence_score === 'number' ? result.confidence_score : 0.5;
+  result.feedback = result.feedback || '';
+}
