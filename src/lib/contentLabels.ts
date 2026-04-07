@@ -25,6 +25,20 @@ export const CONTENT_TYPE_LABELS: Record<string, string> = {
 };
 
 /**
+ * Clinical reasoning domain labels for Case Qs.
+ */
+export const REASONING_DOMAIN_LABELS: Record<string, string> = {
+  diagnosis: 'Diagnosis',
+  investigation: 'Investigation',
+  interpretation: 'Interpretation',
+  management: 'Management',
+  complications: 'Complications',
+  prioritization: 'Prioritization',
+  emergency_action: 'Emergency Action',
+  follow_up: 'Follow-up',
+};
+
+/**
  * Get the display label for a content type.
  * Falls back to the raw key with first letter capitalized if not found.
  */

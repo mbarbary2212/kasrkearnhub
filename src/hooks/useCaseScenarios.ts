@@ -24,6 +24,7 @@ export interface CaseScenarioQuestion {
   display_order: number;
   explanation: string | null;
   rubric_json?: unknown;
+  reasoning_domain?: string | null;
 }
 
 export function useChapterCaseScenarios(chapterId?: string) {
@@ -109,7 +110,7 @@ export function useCaseScenarioWithQuestions(caseId?: string) {
           .single(),
         supabase
           .from('case_scenario_questions')
-          .select('id, case_id, question_text, question_type, max_marks, display_order, explanation, rubric_json')
+          .select('id, case_id, question_text, question_type, max_marks, display_order, explanation, rubric_json, reasoning_domain')
           .eq('case_id', caseId!)
           .order('display_order', { ascending: true }),
       ]);
@@ -154,7 +155,7 @@ export function useExamCaseScenarios(chapterId?: string, topicId?: string) {
     queryFn: async () => {
       let caseQuery = supabase
         .from('case_scenarios')
-        .select('id, stem, difficulty, chapter_id')
+        .select('id, stem, difficulty, chapter_id, module_id, topic_id')
         .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
@@ -169,7 +170,7 @@ export function useExamCaseScenarios(chapterId?: string, topicId?: string) {
       const caseIds = cases.map(c => c.id);
       const { data: questions, error: qErr } = await supabase
         .from('case_scenario_questions')
-        .select('id, case_id, question_text, question_type, max_marks, display_order, rubric_json')
+        .select('id, case_id, question_text, question_type, max_marks, display_order, rubric_json, reasoning_domain')
         .in('case_id', caseIds)
         .order('display_order', { ascending: true });
       if (qErr) throw qErr;

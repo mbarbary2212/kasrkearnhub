@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CaseScenarioResult } from './CaseScenarioResult';
 import { useMarkItemComplete } from '@/hooks/useChapterProgress';
+import { useAuthContext } from '@/contexts/AuthContext';
 import type { GradingResult } from '@/types/essayRubric';
 
 interface CaseQuestion {
@@ -19,6 +20,7 @@ interface CaseQuestion {
   max_marks: number;
   rubric_json?: unknown;
   display_order: number;
+  reasoning_domain?: string | null;
 }
 
 interface ExamCase {
@@ -26,6 +28,8 @@ interface ExamCase {
   stem: string;
   difficulty: string;
   chapter_id?: string | null;
+  module_id?: string | null;
+  topic_id?: string | null;
   questions: CaseQuestion[];
 }
 
@@ -44,6 +48,7 @@ interface CaseScenarioExamProps {
 }
 
 export function CaseScenarioExam({ cases, onComplete, chapterId }: CaseScenarioExamProps) {
+  const { user } = useAuthContext();
   const [currentCaseIndex, setCurrentCaseIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, Record<string, string>>>({});
   const [results, setResults] = useState<Record<string, CaseGradingResult>>({});
@@ -86,8 +91,34 @@ export function CaseScenarioExam({ cases, onComplete, chapterId }: CaseScenarioE
 
       setResults(prev => ({ ...prev, [currentCase.id]: data }));
 
-      // Mark case complete after ALL sub-questions graded
+      // Store detailed attempt data for reasoning profile
       const effectiveChapterId = chapterId || currentCase.chapter_id;
+      if (user?.id && data?.questions) {
+        const attemptRows = (data.questions as Array<GradingResult & { question_id: string }>).map((qr) => {
+          const questionMeta = currentCase.questions.find(q => q.id === qr.question_id);
+          return {
+            user_id: user.id,
+            case_id: currentCase.id,
+            question_id: qr.question_id,
+            chapter_id: effectiveChapterId || null,
+            topic_id: currentCase.topic_id || null,
+            module_id: currentCase.module_id || null,
+            reasoning_domain: questionMeta?.reasoning_domain || null,
+            score: qr.score ?? 0,
+            max_score: qr.max_score ?? questionMeta?.max_marks ?? 0,
+            percentage: qr.percentage ?? (qr.max_score ? Math.round(((qr.score ?? 0) / qr.max_score) * 100) : 0),
+            missing_critical_points: qr.missing_critical_points || [],
+            confidence_score: qr.confidence_score ?? 0,
+          };
+        });
+
+        // Insert in background — don't block UI
+        supabase.from('case_attempt_details').insert(attemptRows).then(({ error: insertErr }) => {
+          if (insertErr) console.error('Failed to store case attempt details:', insertErr);
+        });
+      }
+
+      // Mark case complete after ALL sub-questions graded
       if (effectiveChapterId) {
         markComplete(currentCase.id, 'case_scenario', effectiveChapterId);
       }

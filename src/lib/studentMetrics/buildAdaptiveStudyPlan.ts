@@ -36,6 +36,7 @@ const STUDY_MODE_TASK_CONFIG: Record<string, StudyModeTaskConfig> = {
   mcq_practice:      { detail: '10–20 questions',    estimatedMinutes: 15 },
   recall_practice:   { detail: 'structured recall',  estimatedMinutes: 15 },
   case_scenarios:    { detail: '1–2 clinical cases',  estimatedMinutes: 20 },
+  case_practice:     { detail: 'focused clinical cases', estimatedMinutes: 20 },
   clinical_practice: { detail: 'OSCE / case walkthrough', estimatedMinutes: 25 },
   visual_practice:   { detail: 'images & pathology',  estimatedMinutes: 15 },
   review:            { detail: 'flashcards',           estimatedMinutes: 10 },
@@ -55,7 +56,7 @@ function getModeAwareTaskConfig(status: ChapterStatus): { modeConfig: ModeConfig
 
 // ─── Public Types ─────────────────────────────────────────────
 
-export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'clinical_practice' | 'visual_practice' | 'review';
+export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'case_practice' | 'clinical_practice' | 'visual_practice' | 'review';
 
 export interface PlannedTask {
   /** @deprecated Use prescribedStudyMode.key instead */
@@ -107,6 +108,8 @@ export interface AdaptivePlanInput {
   examWeightMap?: Map<string, ChapterExamWeight>;
   /** Exam date from study_plans configuration */
   examDate?: Date;
+  /** Optional reasoning profile for case practice tasks */
+  reasoningProfile?: { domain: string; label: string; avgPercentage: number; attemptCount: number; criticalMissRate: number; trend: string }[];
 }
 
 // ─── Slot types for balanced daily plan ───────────────────────
@@ -346,6 +349,41 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
         prescribedStudyMode: studyMode,
         learningMode: primaryMode,
       });
+    }
+  }
+
+  // ── Case practice tasks from reasoning profile weaknesses ──
+  if (input.reasoningProfile && input.reasoningProfile.length > 0) {
+    const weakDomains = input.reasoningProfile
+      .filter(d => (d.avgPercentage < 50 || d.criticalMissRate > 30) && d.attemptCount >= 3)
+      .slice(0, 2); // max 2 case practice tasks
+
+    for (const domain of weakDomains) {
+      // Find a chapter that has case scenarios (use first available chapter with some activity)
+      const targetChapter = chapters[0]; // Simple: assign to first chapter; could be smarter later
+      const taskDetail = domain.criticalMissRate > 40
+        ? `critical miss recovery — ${domain.label}`
+        : `focused ${domain.label} practice`;
+
+      candidates.push({
+        slot: 'weakness',
+        type: 'case_practice',
+        title: `Case Qs — ${domain.label} (${taskDetail})`,
+        chapterTitle: targetChapter?.moduleName,
+        reason: domain.criticalMissRate > 40
+          ? `${domain.criticalMissRate}% critical miss rate in ${domain.label}`
+          : `${domain.label} averaging ${domain.avgPercentage}%`,
+        detail: taskDetail,
+        estimatedMinutes: 20,
+        moduleId: targetChapter?.moduleId,
+        chapterId: targetChapter?.id,
+        tab: 'practice',
+        subtab: 'case_scenario',
+        priority: domain.criticalMissRate > 40 ? 92 : 82,
+        state: 'building',
+        trend: domain.trend === 'declining' ? 'declining' : domain.trend === 'improving' ? 'improving' : 'stable',
+        prescribedStudyMode: { key: 'case_practice', label: 'Case Practice', tab: 'practice' },
+      } as SlottedTask);
     }
   }
 
