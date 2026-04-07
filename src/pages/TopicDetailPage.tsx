@@ -607,6 +607,10 @@ export default function TopicDetailPage() {
                           <Upload className="w-3 h-3 mr-1" />
                           Bulk Upload
                         </Button>
+                        <AIFlashcardGenerateButton
+                          topicId={topicId}
+                          moduleId={moduleId}
+                        />
                       </div>
                     )}
                     {flashcardsLoading ? (
