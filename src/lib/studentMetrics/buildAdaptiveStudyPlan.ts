@@ -56,7 +56,7 @@ function getModeAwareTaskConfig(status: ChapterStatus): { modeConfig: ModeConfig
 
 // ─── Public Types ─────────────────────────────────────────────
 
-export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'clinical_practice' | 'visual_practice' | 'review';
+export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'case_practice' | 'clinical_practice' | 'visual_practice' | 'review';
 
 export interface PlannedTask {
   /** @deprecated Use prescribedStudyMode.key instead */

@@ -155,7 +155,7 @@ export function useExamCaseScenarios(chapterId?: string, topicId?: string) {
     queryFn: async () => {
       let caseQuery = supabase
         .from('case_scenarios')
-        .select('id, stem, difficulty, chapter_id')
+        .select('id, stem, difficulty, chapter_id, module_id, topic_id')
         .eq('is_deleted', false)
         .order('display_order', { ascending: true });
 
