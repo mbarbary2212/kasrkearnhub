@@ -24,7 +24,8 @@ import {
 import { Clock, AlertTriangle, FileText, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDuration, useCreateMockExamAttempt, useSubmitMockExam } from '@/hooks/useMockExam';
-import { gradeWithRubric } from '@/lib/rubricMarking';
+import { gradeWithRubric, gradeWithStructuredRubric } from '@/lib/rubricMarking';
+import { parseRubric } from '@/types/essayRubric';
 import { VPRubric } from '@/types/virtualPatient';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { toast } from '@/hooks/use-toast';
