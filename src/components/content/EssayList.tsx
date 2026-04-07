@@ -169,12 +169,6 @@ export default function EssayList({
           <div class="section-label">Question:</div>
           <div class="section-content">${essay.question}</div>
         </div>
-        ${essay.model_answer ? `
-        <div class="section">
-          <div class="section-label">Answer:</div>
-          <div class="section-content">${essay.model_answer}</div>
-        </div>
-        ` : ''}
       </body>
       </html>
     `;
