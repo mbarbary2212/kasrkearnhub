@@ -101,13 +101,15 @@ export function AIFlashcardGenerateButton({
       }
 
       // 2. Fetch existing flashcard fingerprints for dedup
-      const filterCol = chapterId ? "chapter_id" : "topic_id";
-      const filterVal = chapterId || topicId;
-      const { data: existingCards } = await supabase
-        .from("study_resources")
-        .select("title, content")
-        .in("type", ["flashcard", "cloze_flashcard"] as any)
-        .eq(filterCol, filterVal as string);
+      const dedupQuery = chapterId
+        ? supabase.from("study_resources").select("title, content").eq("type", "flashcard").eq("chapter_id", chapterId)
+        : supabase.from("study_resources").select("title, content").eq("type", "flashcard").eq("topic_id", topicId!);
+      const { data: existingCards } = await dedupQuery;
+      const clozeQuery = chapterId
+        ? supabase.from("study_resources").select("title, content").eq("type", "cloze_flashcard").eq("chapter_id", chapterId)
+        : supabase.from("study_resources").select("title, content").eq("type", "cloze_flashcard").eq("topic_id", topicId!);
+      const { data: existingCloze } = await clozeQuery;
+      const allExisting = [...(existingCards || []), ...(existingCloze || [])];
       const dedupFingerprints = (existingCards || []).map(
         (c) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
       ).filter(Boolean);
