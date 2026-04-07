@@ -45,10 +45,10 @@ export function EssayResultsSection({
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            Essay Review
+            Short Questions Review
           </CardTitle>
           <CardDescription>
-            Review your essay answers with automated marking feedback
+            Review your short question answers with automated marking feedback
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -79,7 +79,7 @@ export function EssayResultsSection({
                         <XCircle className="w-5 h-5 text-red-600 shrink-0" />
                       )}
                       <span className="text-sm font-medium">
-                        Essay {index + 1}. {essay.title}
+                        Q{index + 1}. {essay.title}
                       </span>
                       {answer.score !== null && answer.max_score !== null && (
                         <Badge variant="outline" className="ml-auto mr-2">

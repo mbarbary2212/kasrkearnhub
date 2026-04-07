@@ -9,6 +9,7 @@ import { getExpectedPoints } from '@/types/essayRubric';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ShortEssayResult } from './ShortEssayResult';
+import { useMarkItemComplete } from '@/hooks/useChapterProgress';
 import type { GradingResult } from '@/types/essayRubric';
 
 interface ShortEssayQuestion {
@@ -17,20 +18,23 @@ interface ShortEssayQuestion {
   question: string;
   rubric_json?: unknown;
   max_points?: number | null;
+  chapter_id?: string | null;
 }
 
 interface ShortEssayExamProps {
   questions: ShortEssayQuestion[];
   onComplete: () => void;
+  chapterId?: string;
 }
 
-export function ShortEssayExam({ questions, onComplete }: ShortEssayExamProps) {
+export function ShortEssayExam({ questions, onComplete, chapterId }: ShortEssayExamProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [results, setResults] = useState<Record<string, GradingResult>>({});
   const [grading, setGrading] = useState(false);
   const [examMode, setExamMode] = useState(false);
   const [finished, setFinished] = useState(false);
+  const { markComplete } = useMarkItemComplete();
 
   const question = questions[currentIndex];
   const expectedPoints = question ? getExpectedPoints(question.rubric_json) : null;
@@ -56,6 +60,12 @@ export function ShortEssayExam({ questions, onComplete }: ShortEssayExamProps) {
       if (data?.error) throw new Error(data.error);
 
       setResults(prev => ({ ...prev, [question.id]: data }));
+
+      // Track progress: mark essay as completed after successful grading
+      const effectiveChapterId = chapterId || question.chapter_id;
+      if (effectiveChapterId) {
+        markComplete(question.id, 'essay', effectiveChapterId);
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Grading failed. Please try again.');
     } finally {
