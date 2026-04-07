@@ -123,8 +123,7 @@ export function AIFlashcardGenerateButton({
           action: "generate",
         });
 
-        if (genData?.error) throw new Error(genData.error);
-
+        // Error is already handled by invokeWithAuth
         const items = genData?.items || [];
         const jobId = genData?.job_id;
 
