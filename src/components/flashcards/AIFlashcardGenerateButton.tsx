@@ -100,6 +100,20 @@ export function AIFlashcardGenerateButton({
         throw new Error("No linked PDF found for this chapter/topic. Upload a document first.");
       }
 
+      // 2. Fetch existing flashcard fingerprints for dedup
+      let existingQuery = supabase
+        .from("study_resources")
+        .select("title, content")
+        .in("type", ["flashcard", "cloze_flashcard"]);
+
+      if (chapterId) existingQuery = existingQuery.eq("chapter_id", chapterId);
+      else if (topicId) existingQuery = existingQuery.eq("topic_id", topicId);
+
+      const { data: existingCards } = await existingQuery;
+      const dedupFingerprints = (existingCards || []).map(
+        (c) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
+      ).filter(Boolean);
+
       const documentId = docs[0].id;
       const qty = parseInt(quantity);
       const types: string[] =
@@ -121,6 +135,7 @@ export function AIFlashcardGenerateButton({
           quantity: perTypeQty,
           additional_instructions: focusInstructions || null,
           action: "generate",
+          dedup_fingerprints: dedupFingerprints,
         });
 
         // Error is already handled by invokeWithAuth
