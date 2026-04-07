@@ -55,7 +55,7 @@ const CLAUDE_MODELS = [
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQ Questions' },
   { value: 'sba', label: 'SBA Questions' },
-  { value: 'essay', label: 'Short Essay' },
+  { value: 'essay', label: 'Short Questions' },
   { value: 'osce', label: 'OSCE Questions' },
   { value: 'matching', label: 'Matching Questions' },
   { value: 'flashcard', label: 'Flashcards' },

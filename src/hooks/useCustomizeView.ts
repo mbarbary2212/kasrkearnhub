@@ -73,7 +73,7 @@ export const MODULE_KEY_LABELS: Record<string, string> = {
   mcq: 'MCQ',
   sba: 'SBA',
   true_false: 'True/False',
-  short_answer: 'Short Essay',
+  short_answer: 'Short Questions',
   osce: 'OSCE',
   practical: 'Practical',
   matching: 'Matching',

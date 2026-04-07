@@ -340,8 +340,8 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   },
   {
     id: 'essay',
-    title: 'Short Essay Questions Template',
-    description: 'Essay-type questions with scenario, model answer, and keywords',
+    title: 'Short Questions Template',
+    description: 'Short question-type content with scenario, model answer, and keywords',
     format: 'csv',
     icon: 'spreadsheet',
   },
