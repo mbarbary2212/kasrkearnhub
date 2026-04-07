@@ -117,6 +117,9 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
       {/* Learning Pattern Summary */}
       <LearningPatternSummary metrics={dashboard.chapterMetrics} />
 
+      {/* Clinical Thinking Profile — only shown with ≥5 case attempts */}
+      {reasoningProfile && <ClinicalThinkingPanel profile={reasoningProfile} />}
+
       {/* Test Performance Indicators */}
       <DashboardTestProgress moduleId={moduleId} />
 
