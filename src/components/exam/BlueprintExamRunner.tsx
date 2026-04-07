@@ -33,7 +33,6 @@ interface Essay {
   id: string;
   title: string;
   question: string;
-  model_answer: string | null;
   keywords: string[] | null;
   chapter_id: string | null;
   rubric_json?: Record<string, unknown> | null;
