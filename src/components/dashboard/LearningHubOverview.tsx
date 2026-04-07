@@ -13,10 +13,12 @@ import { StudyStreakCalendar } from './StudyStreakCalendar';
 import { LearningPatternSummary } from './LearningPatternSummary';
 import { WeeklyProgressReport } from './WeeklyProgressReport';
 import { DashboardRiskAlerts } from './DashboardRiskAlerts';
+import { ClinicalThinkingPanel } from './ClinicalThinkingPanel';
 import { Card, CardContent } from '@/components/ui/card';
 import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useCaseReasoningProfile } from '@/hooks/useCaseReasoningProfile';
 import { useEffect } from 'react';
 
 interface LearningHubOverviewProps {
@@ -40,6 +42,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
   } = useNeedsPractice(moduleId);
 
   const { mutate: checkBadges } = useCheckBadges();
+  const { data: reasoningProfile } = useCaseReasoningProfile(user?.id, moduleId);
   
   useEffect(() => {
     if (moduleSelected && dashboard.coveragePercent > 0) {
