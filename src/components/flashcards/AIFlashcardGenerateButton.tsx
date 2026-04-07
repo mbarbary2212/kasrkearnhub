@@ -110,9 +110,6 @@ export function AIFlashcardGenerateButton({
       const dedupFingerprints = ((allExisting as any[]) || []).map(
         (c: any) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
       ).filter(Boolean);
-      const dedupFingerprints = (existingCards || []).map(
-        (c) => `${c.title || ''} | ${typeof c.content === 'string' ? c.content.substring(0, 100) : ''}`
-      ).filter(Boolean);
 
       const documentId = docs[0].id;
       const qty = parseInt(quantity);
