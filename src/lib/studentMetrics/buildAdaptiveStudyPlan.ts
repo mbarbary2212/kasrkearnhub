@@ -352,6 +352,41 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     }
   }
 
+  // ── Case practice tasks from reasoning profile weaknesses ──
+  if (input.reasoningProfile && input.reasoningProfile.length > 0) {
+    const weakDomains = input.reasoningProfile
+      .filter(d => (d.avgPercentage < 50 || d.criticalMissRate > 30) && d.attemptCount >= 3)
+      .slice(0, 2); // max 2 case practice tasks
+
+    for (const domain of weakDomains) {
+      // Find a chapter that has case scenarios (use first available chapter with some activity)
+      const targetChapter = chapters[0]; // Simple: assign to first chapter; could be smarter later
+      const taskDetail = domain.criticalMissRate > 40
+        ? `critical miss recovery — ${domain.label}`
+        : `focused ${domain.label} practice`;
+
+      candidates.push({
+        slot: 'weakness',
+        type: 'case_practice',
+        title: `Case Qs — ${domain.label} (${taskDetail})`,
+        chapterTitle: targetChapter?.moduleName,
+        reason: domain.criticalMissRate > 40
+          ? `${domain.criticalMissRate}% critical miss rate in ${domain.label}`
+          : `${domain.label} averaging ${domain.avgPercentage}%`,
+        detail: taskDetail,
+        estimatedMinutes: 20,
+        moduleId: targetChapter?.moduleId,
+        chapterId: targetChapter?.id,
+        tab: 'practice',
+        subtab: 'case_scenario',
+        priority: domain.criticalMissRate > 40 ? 92 : 82,
+        state: 'building',
+        trend: domain.trend === 'declining' ? 'declining' : domain.trend === 'improving' ? 'improving' : 'stable',
+        prescribedStudyMode: { key: 'case_practice', label: 'Case Practice', tab: 'practice' },
+      } as SlottedTask);
+    }
+  }
+
   // ── Apply exam weight boost + engagement factor ──
   for (const c of candidates) {
     const examBoost = getExamWeightBoost(c.chapterId || '', examWeightMap);
