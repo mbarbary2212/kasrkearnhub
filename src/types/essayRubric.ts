@@ -111,3 +111,29 @@ export function getExpectedPoints(rubricJson: unknown): number | null {
 export function rubricToJson(rubric: StructuredRubric): Record<string, unknown> {
   return { ...rubric };
 }
+
+/**
+ * Check whether a rubric_json value is NOT v1 structured format.
+ * Returns true if the essay has rubric data but it's legacy/unstructured.
+ * Returns false if v1, or if there's no rubric at all.
+ */
+export function needsRubricUpgrade(rubricJson: unknown): boolean {
+  if (!rubricJson || typeof rubricJson !== 'object') return false;
+  const r = rubricJson as Record<string, unknown>;
+  // Already v1 → no upgrade needed
+  if (r.rubric_version === 1) return false;
+  // Has some rubric data but not v1
+  if (Array.isArray(r.required_concepts) || Array.isArray(r.optional_concepts) || Array.isArray(r.critical_omissions)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Check if an essay has a valid structured rubric (v1).
+ */
+export function hasStructuredRubric(rubricJson: unknown): boolean {
+  if (!rubricJson || typeof rubricJson !== 'object') return false;
+  const parsed = parseRubric(rubricJson);
+  return parsed !== null && parsed.rubric_version === 1;
+}
