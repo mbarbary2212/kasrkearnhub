@@ -2,11 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 
-/**
- * Content tables that support section_id tagging.
- * Each entry: [tableName, contentColumns, filterColumn]
- * filterColumn is used to scope by chapter or topic.
- */
 const CONTENT_TABLES = [
   { table: 'lectures', cols: ['title'], hasDeleted: true },
   { table: 'resources', cols: ['title'], hasDeleted: true },
@@ -33,21 +28,45 @@ interface Section {
   topic_id: string | null;
 }
 
+export interface SkipReasons {
+  alreadyTagged: number;
+  noChapter: number;
+  noSectionsForChapter: number;
+  aiNoMatch: number;
+}
+
+export interface TableResult {
+  scanned: number;
+  eligible: number;
+  tagged: number;
+  skipped: number;
+  skipReasons: SkipReasons;
+}
+
 export interface SystemAutoTagProgress {
   phase: string;
   currentTable: string;
   tablesProcessed: number;
   totalTables: number;
+  itemsScanned: number;
+  itemsEligible: number;
   itemsProcessed: number;
-  totalItems: number;
   itemsTagged: number;
   itemsSkipped: number;
+  skipReasons: SkipReasons;
   errors: string[];
-  /** Per-table breakdown */
-  tableResults: Record<string, { total: number; tagged: number; skipped: number }>;
+  tableResults: Record<string, TableResult>;
 }
 
 const BATCH_SIZE = 40;
+
+function emptySkipReasons(): SkipReasons {
+  return { alreadyTagged: 0, noChapter: 0, noSectionsForChapter: 0, aiNoMatch: 0 };
+}
+
+function emptyTableResult(): TableResult {
+  return { scanned: 0, eligible: 0, tagged: 0, skipped: 0, skipReasons: emptySkipReasons() };
+}
 
 function extractContent(row: any, cols: readonly string[]): string {
   const parts: string[] = [];
@@ -79,17 +98,19 @@ export function useSystemAutoTag() {
       currentTable: '',
       tablesProcessed: 0,
       totalTables: CONTENT_TABLES.length,
+      itemsScanned: 0,
+      itemsEligible: 0,
       itemsProcessed: 0,
-      totalItems: 0,
       itemsTagged: 0,
       itemsSkipped: 0,
+      skipReasons: emptySkipReasons(),
       errors: [],
       tableResults: {},
     };
     setProgress({ ...prog });
 
     try {
-      // 1. Fetch ALL sections grouped by chapter
+      // 1. Fetch ALL sections
       const { data: allSections, error: secError } = await supabase
         .from('sections' as any)
         .select('id, name, chapter_id, topic_id')
@@ -103,8 +124,6 @@ export function useSystemAutoTag() {
       }
 
       const sections = allSections as unknown as Section[];
-
-      // Group sections by chapter_id
       const sectionsByChapter = new Map<string, Section[]>();
       for (const s of sections) {
         const key = s.chapter_id || s.topic_id || '__none__';
@@ -126,51 +145,74 @@ export function useSystemAutoTag() {
         prog.phase = `Scanning ${table.replace(/_/g, ' ')}...`;
         setProgress({ ...prog });
 
-        // Fetch untagged items (no section_id)
-        const selectCols = ['id', 'chapter_id', ...cols].join(', ');
+        const tr = emptyTableResult();
+        prog.tableResults[table] = tr;
 
-        let query = supabase
-          .from(table as any)
-          .select(selectCols)
-          .is('section_id', null)
-          .limit(1000);
+        // --- Step A: Count total rows (scanned) including already-tagged ---
+        const countCols = 'id, section_id, chapter_id';
+        let countQuery = supabase.from(table as any).select(countCols).limit(5000);
+        if (hasDeleted) countQuery = countQuery.eq('is_deleted', false);
 
-        if (hasDeleted) {
-          query = query.eq('is_deleted', false);
-        }
+        const { data: allRows, error: countErr } = await (countQuery as any);
+        if (countErr) {
+          // Retry without is_deleted
+          const { data: retryAll } = await supabase.from(table as any).select(countCols).limit(5000) as any;
+          if (retryAll?.length) {
+            const alreadyTagged = retryAll.filter((r: any) => r.section_id != null).length;
+            tr.scanned = retryAll.length;
+            tr.skipReasons.alreadyTagged = alreadyTagged;
+            prog.skipReasons.alreadyTagged += alreadyTagged;
+            prog.itemsScanned += retryAll.length;
 
-        const { data: rawItems, error: fetchErr } = await (query as any);
-
-        if (fetchErr) {
-          // Retry without is_deleted filter
-          const { data: retryItems } = await supabase
-            .from(table as any)
-            .select(selectCols)
-            .is('section_id', null)
-            .limit(1000) as any;
-          
-          if (!retryItems?.length) {
-            prog.tableResults[table] = { total: 0, tagged: 0, skipped: 0 };
-            continue;
+            const untagged = retryAll.filter((r: any) => r.section_id == null);
+            if (untagged.length > 0) {
+              // Fetch full content for untagged
+              const selectCols = ['id', 'chapter_id', ...cols].join(', ');
+              const { data: fullItems } = await supabase
+                .from(table as any)
+                .select(selectCols)
+                .is('section_id', null)
+                .limit(1000) as any;
+              if (fullItems?.length) {
+                await processTableItems(fullItems, tableDef, sectionsByChapter, prog, tr, overwriteHighConfidence);
+              }
+            }
           }
-          // Use retry results
-          await processTableItems(retryItems, tableDef, sectionsByChapter, prog, overwriteHighConfidence);
-        } else if (rawItems?.length) {
-          await processTableItems(rawItems, tableDef, sectionsByChapter, prog, overwriteHighConfidence);
+        } else if (allRows?.length) {
+          const alreadyTagged = allRows.filter((r: any) => r.section_id != null).length;
+          tr.scanned = allRows.length;
+          tr.skipReasons.alreadyTagged = alreadyTagged;
+          prog.skipReasons.alreadyTagged += alreadyTagged;
+          prog.itemsScanned += allRows.length;
+
+          const untagged = allRows.filter((r: any) => r.section_id == null);
+          if (untagged.length > 0) {
+            // Fetch full content for untagged items
+            const selectCols = ['id', 'chapter_id', ...cols].join(', ');
+            let query = supabase.from(table as any).select(selectCols).is('section_id', null).limit(1000);
+            if (hasDeleted) query = query.eq('is_deleted', false);
+            const { data: rawItems } = await (query as any);
+            if (rawItems?.length) {
+              await processTableItems(rawItems, tableDef, sectionsByChapter, prog, tr, overwriteHighConfidence);
+            }
+          }
         } else {
-          prog.tableResults[table] = { total: 0, tagged: 0, skipped: 0 };
+          tr.scanned = 0;
         }
+
+        // Compute skipped for table
+        tr.skipped = tr.skipReasons.alreadyTagged + tr.skipReasons.noChapter + tr.skipReasons.noSectionsForChapter + tr.skipReasons.aiNoMatch;
 
         setProgress({ ...prog });
       }
 
       prog.tablesProcessed = CONTENT_TABLES.length;
       prog.phase = 'Complete';
+      // Recompute totals
+      prog.itemsSkipped = prog.skipReasons.alreadyTagged + prog.skipReasons.noChapter + prog.skipReasons.noSectionsForChapter + prog.skipReasons.aiNoMatch;
       setProgress({ ...prog });
 
-      // Invalidate all queries
       queryClient.invalidateQueries({ predicate: () => true });
-
       return prog;
     } catch (err) {
       prog.errors.push(`System error: ${err instanceof Error ? err.message : 'Unknown'}`);
@@ -190,34 +232,49 @@ async function processTableItems(
   tableDef: TableDef,
   sectionsByChapter: Map<string, Section[]>,
   prog: SystemAutoTagProgress,
+  tr: TableResult,
   overwriteHighConfidence: boolean,
 ) {
   const { table, cols } = tableDef;
-  prog.totalItems += items.length;
-  prog.tableResults[table] = { total: items.length, tagged: 0, skipped: 0 };
 
-  // Group items by chapter_id to batch AI calls per chapter context
+  tr.eligible += items.length;
+  prog.itemsEligible += items.length;
+
+  // Group items by chapter_id
   const itemsByChapter = new Map<string, any[]>();
+  const noChapterItems: any[] = [];
+
   for (const item of items) {
-    const key = item.chapter_id || '__none__';
-    if (!itemsByChapter.has(key)) itemsByChapter.set(key, []);
-    itemsByChapter.get(key)!.push(item);
+    if (!item.chapter_id) {
+      noChapterItems.push(item);
+    } else {
+      const key = item.chapter_id;
+      if (!itemsByChapter.has(key)) itemsByChapter.set(key, []);
+      itemsByChapter.get(key)!.push(item);
+    }
+  }
+
+  // Handle no-chapter items
+  if (noChapterItems.length > 0) {
+    tr.skipReasons.noChapter += noChapterItems.length;
+    prog.skipReasons.noChapter += noChapterItems.length;
+    prog.itemsProcessed += noChapterItems.length;
   }
 
   for (const [chapterId, chapterItems] of itemsByChapter.entries()) {
     const chapterSections = sectionsByChapter.get(chapterId);
     if (!chapterSections?.length) {
-      // No sections defined for this chapter — skip
-      prog.itemsSkipped += chapterItems.length;
-      prog.tableResults[table].skipped += chapterItems.length;
+      tr.skipReasons.noSectionsForChapter += chapterItems.length;
+      prog.skipReasons.noSectionsForChapter += chapterItems.length;
       prog.itemsProcessed += chapterItems.length;
       continue;
     }
 
     // Process in batches
     for (let i = 0; i < chapterItems.length; i += BATCH_SIZE) {
-      const batch = chapterItems.slice(i, i + BATCH_SIZE);
+      if ((prog as any).__abort) break;
 
+      const batch = chapterItems.slice(i, i + BATCH_SIZE);
       const aiItems = batch.map((item: any) => ({
         id: item.id,
         content: extractContent(item, cols as unknown as string[]),
@@ -243,36 +300,26 @@ async function processTableItems(
         const assignments: Record<string, { section_id: string; confidence: string } | string | null> =
           response.data?.assignments || {};
 
-        // Group by section for batch updates
         const updates: Record<string, string[]> = {};
         let batchTagged = 0;
 
         for (const item of batch) {
           const assignment = assignments[item.id];
           if (!assignment) {
-            prog.itemsSkipped++;
-            prog.tableResults[table].skipped++;
+            tr.skipReasons.aiNoMatch++;
+            prog.skipReasons.aiNoMatch++;
             continue;
           }
 
           let sectionId: string;
-          let confidence: string;
-
           if (typeof assignment === 'string') {
             sectionId = assignment;
-            confidence = 'medium';
           } else if (assignment && typeof assignment === 'object') {
             sectionId = assignment.section_id;
-            confidence = assignment.confidence || 'medium';
           } else {
-            prog.itemsSkipped++;
-            prog.tableResults[table].skipped++;
+            tr.skipReasons.aiNoMatch++;
+            prog.skipReasons.aiNoMatch++;
             continue;
-          }
-
-          // Safety: only overwrite existing if high confidence and flag set
-          if (!overwriteHighConfidence && confidence !== 'high' && confidence !== 'medium') {
-            // low confidence on items without section is still acceptable
           }
 
           if (!updates[sectionId]) updates[sectionId] = [];
@@ -280,7 +327,6 @@ async function processTableItems(
           batchTagged++;
         }
 
-        // Apply updates
         for (const [sectionId, ids] of Object.entries(updates)) {
           await supabase
             .from(table as any)
@@ -288,8 +334,8 @@ async function processTableItems(
             .in('id', ids);
         }
 
+        tr.tagged += batchTagged;
         prog.itemsTagged += batchTagged;
-        prog.tableResults[table].tagged += batchTagged;
         prog.itemsProcessed += batch.length;
       } catch (err) {
         prog.errors.push(`Error processing ${table} batch: ${err instanceof Error ? err.message : 'Unknown'}`);

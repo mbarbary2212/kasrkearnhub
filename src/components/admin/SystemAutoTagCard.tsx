@@ -3,13 +3,105 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Wand2, Loader2, CheckCircle2, XCircle, AlertTriangle, StopCircle } from 'lucide-react';
+import { Wand2, Loader2, CheckCircle2, XCircle, AlertTriangle, StopCircle, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSystemAutoTag, SystemAutoTagProgress } from '@/hooks/useSystemAutoTag';
+import { useSystemAutoTag, SystemAutoTagProgress, SkipReasons, TableResult } from '@/hooks/useSystemAutoTag';
+
+function SkipBreakdown({ reasons, compact = false }: { reasons: SkipReasons; compact?: boolean }) {
+  const entries = [
+    { label: 'Already tagged', value: reasons.alreadyTagged, color: 'text-blue-600' },
+    { label: 'No chapter', value: reasons.noChapter, color: 'text-amber-600' },
+    { label: 'No sections defined', value: reasons.noSectionsForChapter, color: 'text-orange-600' },
+    { label: 'AI no match', value: reasons.aiNoMatch, color: 'text-red-500' },
+  ].filter(e => e.value > 0);
+
+  if (entries.length === 0) return null;
+
+  if (compact) {
+    return (
+      <span className="text-xs text-muted-foreground">
+        ({entries.map(e => `${e.label}: ${e.value}`).join(', ')})
+      </span>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+      {entries.map(e => (
+        <span key={e.label} className={e.color}>
+          {e.label}: <strong>{e.value}</strong>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function generateReport(display: SystemAutoTagProgress): string {
+  const lines: string[] = [];
+  const ts = new Date().toISOString();
+  lines.push(`AI Auto-Tag Report — ${ts}`);
+  lines.push('='.repeat(60));
+  lines.push('');
+
+  const coverage = display.itemsScanned > 0
+    ? ((display.itemsTagged + display.skipReasons.alreadyTagged) / display.itemsScanned * 100).toFixed(1)
+    : '0';
+
+  lines.push('OVERALL SUMMARY');
+  lines.push(`  Scanned:          ${display.itemsScanned}`);
+  lines.push(`  Already tagged:   ${display.skipReasons.alreadyTagged}`);
+  lines.push(`  Eligible:         ${display.itemsEligible}`);
+  lines.push(`  Tagged (new):     ${display.itemsTagged}`);
+  lines.push(`  Skipped:          ${display.itemsSkipped}`);
+  lines.push(`  Coverage:         ${coverage}%`);
+  lines.push('');
+  lines.push('SKIP REASONS');
+  lines.push(`  Already tagged:         ${display.skipReasons.alreadyTagged}`);
+  lines.push(`  No chapter assigned:    ${display.skipReasons.noChapter}`);
+  lines.push(`  No sections for chapter:${display.skipReasons.noSectionsForChapter}`);
+  lines.push(`  AI could not match:     ${display.skipReasons.aiNoMatch}`);
+  lines.push('');
+  lines.push('-'.repeat(60));
+  lines.push('PER-TABLE BREAKDOWN');
+  lines.push('-'.repeat(60));
+
+  for (const [table, r] of Object.entries(display.tableResults)) {
+    lines.push('');
+    lines.push(`  ${table}`);
+    lines.push(`    Scanned:    ${r.scanned}`);
+    lines.push(`    Eligible:   ${r.eligible}`);
+    lines.push(`    Tagged:     ${r.tagged}`);
+    lines.push(`    Skipped:    ${r.skipped}`);
+    if (r.skipReasons.alreadyTagged) lines.push(`      Already tagged:          ${r.skipReasons.alreadyTagged}`);
+    if (r.skipReasons.noChapter) lines.push(`      No chapter:              ${r.skipReasons.noChapter}`);
+    if (r.skipReasons.noSectionsForChapter) lines.push(`      No sections for chapter: ${r.skipReasons.noSectionsForChapter}`);
+    if (r.skipReasons.aiNoMatch) lines.push(`      AI no match:             ${r.skipReasons.aiNoMatch}`);
+  }
+
+  lines.push('');
+  if (display.errors.length > 0) {
+    lines.push('ERRORS');
+    display.errors.forEach((e, i) => lines.push(`  ${i + 1}. ${e}`));
+  }
+
+  return lines.join('\n');
+}
+
+function downloadReport(display: SystemAutoTagProgress) {
+  const text = generateReport(display);
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `auto-tag-report-${new Date().toISOString().slice(0, 16).replace(/:/g, '-')}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function SystemAutoTagCard() {
   const { runSystemAutoTag, isRunning, progress, abort } = useSystemAutoTag();
   const [lastResult, setLastResult] = useState<SystemAutoTagProgress | null>(null);
+  const [showTableDetails, setShowTableDetails] = useState(false);
 
   const handleRun = async () => {
     toast.info('Starting system-wide AI section tagging...');
@@ -19,13 +111,13 @@ export function SystemAutoTagCard() {
       if (result.errors.length > 0) {
         toast.warning(`Completed with ${result.errors.length} error(s). Tagged ${result.itemsTagged} items.`);
       } else {
-        toast.success(`Tagged ${result.itemsTagged} of ${result.totalItems} items across all tables.`);
+        toast.success(`Tagged ${result.itemsTagged} of ${result.itemsEligible} eligible items.`);
       }
     }
   };
 
-  const pct = progress && progress.totalItems > 0
-    ? Math.round((progress.itemsProcessed / progress.totalItems) * 100)
+  const pct = progress && progress.itemsEligible > 0
+    ? Math.round((progress.itemsProcessed / progress.itemsEligible) * 100)
     : progress?.tablesProcessed && progress.totalTables > 0
       ? Math.round((progress.tablesProcessed / progress.totalTables) * 100)
       : 0;
@@ -46,31 +138,21 @@ export function SystemAutoTagCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
-          <Button
-            onClick={handleRun}
-            disabled={isRunning}
-            className="gap-2"
-          >
+          <Button onClick={handleRun} disabled={isRunning} className="gap-2">
             {isRunning ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Running...
-              </>
+              <><Loader2 className="w-4 h-4 animate-spin" />Running...</>
             ) : (
-              <>
-                <Wand2 className="w-4 h-4" />
-                Auto-tag All Content
-              </>
+              <><Wand2 className="w-4 h-4" />Auto-tag All Content</>
             )}
           </Button>
           {isRunning && (
             <Button variant="destructive" size="sm" onClick={abort} className="gap-1.5">
-              <StopCircle className="w-3.5 h-3.5" />
-              Stop
+              <StopCircle className="w-3.5 h-3.5" />Stop
             </Button>
           )}
         </div>
 
+        {/* Running progress */}
         {isRunning && progress && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -78,66 +160,110 @@ export function SystemAutoTagCard() {
               <span className="font-medium">{pct}%</span>
             </div>
             <Progress value={pct} className="h-2" />
-            <div className="flex gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>Tables: {progress.tablesProcessed}/{progress.totalTables}</span>
-              <span>Items: {progress.itemsProcessed}/{progress.totalItems}</span>
+              <span>Scanned: {progress.itemsScanned}</span>
+              <span>Eligible: {progress.itemsEligible}</span>
               <span className="text-green-600">Tagged: {progress.itemsTagged}</span>
-              <span className="text-amber-600">Skipped: {progress.itemsSkipped}</span>
+              <span className="text-amber-600">Skipped: {progress.skipReasons.noChapter + progress.skipReasons.noSectionsForChapter + progress.skipReasons.aiNoMatch}</span>
             </div>
           </div>
         )}
 
+        {/* Completed results */}
         {!isRunning && display && (
           <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
-            <div className="flex items-center gap-2">
-              {display.errors.length === 0 ? (
-                <CheckCircle2 className="w-4 h-4 text-green-600" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-              )}
-              <span className="font-medium text-sm">
-                {display.phase === 'Complete' ? 'Tagging Complete' : 'Tagging Finished'}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {display.errors.length === 0 ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                )}
+                <span className="font-medium text-sm">
+                  {display.phase === 'Complete' ? 'Tagging Complete' : 'Tagging Finished'}
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => downloadReport(display)} className="gap-1.5 text-xs">
+                <Download className="w-3.5 h-3.5" />Report
+              </Button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            {/* Summary grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
               <div>
-                <div className="text-2xl font-bold">{display.totalItems}</div>
-                <div className="text-xs text-muted-foreground">Total Untagged</div>
+                <div className="text-2xl font-bold">{display.itemsScanned}</div>
+                <div className="text-xs text-muted-foreground">Scanned</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{display.skipReasons.alreadyTagged}</div>
+                <div className="text-xs text-muted-foreground">Already Tagged</div>
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{display.itemsEligible}</div>
+                <div className="text-xs text-muted-foreground">Eligible</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-green-600">{display.itemsTagged}</div>
-                <div className="text-xs text-muted-foreground">Tagged</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-amber-600">{display.itemsSkipped}</div>
-                <div className="text-xs text-muted-foreground">Skipped</div>
+                <div className="text-xs text-muted-foreground">Newly Tagged</div>
               </div>
               <div>
                 <div className="text-2xl font-bold">
-                  {display.totalItems > 0
-                    ? Math.round((display.itemsTagged / display.totalItems) * 100)
+                  {display.itemsScanned > 0
+                    ? Math.round(((display.itemsTagged + display.skipReasons.alreadyTagged) / display.itemsScanned) * 100)
                     : 0}%
                 </div>
                 <div className="text-xs text-muted-foreground">Coverage</div>
               </div>
             </div>
 
+            {/* Skip reasons */}
+            <div className="space-y-1">
+              <div className="text-xs font-medium text-muted-foreground">Skip reasons:</div>
+              <SkipBreakdown reasons={display.skipReasons} />
+            </div>
+
             {/* Per-table breakdown */}
             {Object.keys(display.tableResults).length > 0 && (
-              <div className="space-y-1">
-                <div className="text-xs font-medium text-muted-foreground mb-1">Per-table breakdown:</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(display.tableResults).map(([table, result]) => (
-                    <Badge
-                      key={table}
-                      variant={result.tagged > 0 ? 'default' : 'secondary'}
-                      className="text-xs font-normal"
-                    >
-                      {table.replace(/_/g, ' ')}: {result.tagged}/{result.total}
-                    </Badge>
-                  ))}
-                </div>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setShowTableDetails(!showTableDetails)}
+                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showTableDetails ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  Per-table breakdown ({Object.keys(display.tableResults).length} tables)
+                </button>
+
+                {!showTableDetails && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(display.tableResults).map(([table, r]) => (
+                      <Badge
+                        key={table}
+                        variant={r.tagged > 0 ? 'default' : 'secondary'}
+                        className="text-xs font-normal"
+                      >
+                        {table.replace(/_/g, ' ')}: {r.tagged}/{r.scanned}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {showTableDetails && (
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {Object.entries(display.tableResults).map(([table, r]) => (
+                      <div key={table} className="border rounded p-2.5 bg-background text-xs space-y-1">
+                        <div className="font-medium">{table.replace(/_/g, ' ')}</div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted-foreground">
+                          <span>Scanned: {r.scanned}</span>
+                          <span>Eligible: {r.eligible}</span>
+                          <span className="text-green-600">Tagged: {r.tagged}</span>
+                          <span className="text-amber-600">Skipped: {r.skipped}</span>
+                        </div>
+                        <SkipBreakdown reasons={r.skipReasons} compact />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
