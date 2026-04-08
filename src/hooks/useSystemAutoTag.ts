@@ -47,7 +47,7 @@ export interface SystemAutoTagProgress {
   tableResults: Record<string, { total: number; tagged: number; skipped: number }>;
 }
 
-const BATCH_SIZE = 80;
+const BATCH_SIZE = 40;
 
 function extractContent(row: any, cols: readonly string[]): string {
   const parts: string[] = [];
