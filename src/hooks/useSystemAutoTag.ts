@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
  * filterColumn is used to scope by chapter or topic.
  */
 const CONTENT_TABLES = [
-  { table: 'lectures', cols: ['title'], hasDeleted: false },
+  { table: 'lectures', cols: ['title'], hasDeleted: true },
   { table: 'resources', cols: ['title'], hasDeleted: false },
   { table: 'study_resources', cols: ['title'], hasDeleted: false },
   { table: 'mcqs', cols: ['stem', 'explanation'], hasDeleted: true },
