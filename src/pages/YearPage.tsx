@@ -17,8 +17,6 @@ import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { formatDistanceToNow } from 'date-fns';
 import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
-import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
-import { formatDistanceToNow } from 'date-fns';
 
 export default function YearPage() {
   const { yearId } = useParams();
