@@ -12,6 +12,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useEmailPreferences, useUpdateEmailPreferences } from '@/hooks/useEmailPreferences';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
+import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
