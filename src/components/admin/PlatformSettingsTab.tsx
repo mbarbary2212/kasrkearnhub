@@ -18,6 +18,7 @@ import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
 import { ExaminerAvatarsCard } from '@/components/admin/ExaminerAvatarsCard';
 import { SentryDiagnosticsSection } from '@/components/admin/SentryDiagnosticsSection';
+import { SystemAutoTagCard } from '@/components/admin/SystemAutoTagCard';
 import { supabase } from '@/integrations/supabase/client';
 
 function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
