@@ -8,11 +8,11 @@ import { useQueryClient } from '@tanstack/react-query';
  * filterColumn is used to scope by chapter or topic.
  */
 const CONTENT_TABLES = [
-  { table: 'lectures', cols: ['title'], hasDeleted: false },
-  { table: 'resources', cols: ['title'], hasDeleted: false },
-  { table: 'study_resources', cols: ['title'], hasDeleted: false },
+  { table: 'lectures', cols: ['title'], hasDeleted: true },
+  { table: 'resources', cols: ['title'], hasDeleted: true },
+  { table: 'study_resources', cols: ['title'], hasDeleted: true },
   { table: 'mcqs', cols: ['stem', 'explanation'], hasDeleted: true },
-  { table: 'mcq_sets', cols: ['title'], hasDeleted: false },
+  { table: 'mcq_sets', cols: ['title'], hasDeleted: true },
   { table: 'essays', cols: ['title', 'model_answer'], hasDeleted: true },
   { table: 'practicals', cols: ['title'], hasDeleted: true },
   { table: 'osce_questions', cols: ['history_text'], hasDeleted: true },
@@ -47,7 +47,7 @@ export interface SystemAutoTagProgress {
   tableResults: Record<string, { total: number; tagged: number; skipped: number }>;
 }
 
-const BATCH_SIZE = 80;
+const BATCH_SIZE = 40;
 
 function extractContent(row: any, cols: readonly string[]): string {
   const parts: string[] = [];
