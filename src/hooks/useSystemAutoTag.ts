@@ -9,10 +9,10 @@ import { useQueryClient } from '@tanstack/react-query';
  */
 const CONTENT_TABLES = [
   { table: 'lectures', cols: ['title'], hasDeleted: true },
-  { table: 'resources', cols: ['title'], hasDeleted: false },
-  { table: 'study_resources', cols: ['title'], hasDeleted: false },
+  { table: 'resources', cols: ['title'], hasDeleted: true },
+  { table: 'study_resources', cols: ['title'], hasDeleted: true },
   { table: 'mcqs', cols: ['stem', 'explanation'], hasDeleted: true },
-  { table: 'mcq_sets', cols: ['title'], hasDeleted: false },
+  { table: 'mcq_sets', cols: ['title'], hasDeleted: true },
   { table: 'essays', cols: ['title', 'model_answer'], hasDeleted: true },
   { table: 'practicals', cols: ['title'], hasDeleted: true },
   { table: 'osce_questions', cols: ['history_text'], hasDeleted: true },
