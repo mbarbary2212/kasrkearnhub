@@ -79,3 +79,45 @@ export function expandModuleIds(
   }
   return expanded;
 }
+
+/**
+ * Build a chapter-id → effective-module-id map.
+ * Guest-module chapters are remapped to the host module when merged mode is ON.
+ * Returns undefined when config is absent/disabled (no remapping needed).
+ */
+export function buildEffectiveModuleMap(
+  chapters: { id: string; module_id: string }[],
+  config: MergedModuleConfig | null | undefined
+): Map<string, string> | undefined {
+  if (!config?.enabled) return undefined;
+
+  // Build reverse lookup: guestModuleId → hostModuleId
+  const guestToHost = new Map<string, string>();
+  for (const [hostId, guestIds] of Object.entries(config.chapterMerge)) {
+    for (const guestId of guestIds) {
+      guestToHost.set(guestId, hostId);
+    }
+  }
+
+  // Only create map if there are actual remappings needed
+  if (guestToHost.size === 0) return undefined;
+
+  const effectiveMap = new Map<string, string>();
+  for (const ch of chapters) {
+    const host = guestToHost.get(ch.module_id);
+    effectiveMap.set(ch.id, host ?? ch.module_id);
+  }
+  return effectiveMap;
+}
+
+/**
+ * Get the effective module id for a chapter, falling back to the raw module_id.
+ */
+export function getEffectiveModuleId(
+  chapterId: string,
+  rawModuleId: string,
+  effectiveMap: Map<string, string> | undefined
+): string {
+  if (!effectiveMap) return rawModuleId;
+  return effectiveMap.get(chapterId) ?? rawModuleId;
+}

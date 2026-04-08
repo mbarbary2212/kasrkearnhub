@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useMergedModuleConfig, expandModuleIds, type MergedModuleConfig } from '@/hooks/useMergedModuleConfig';
+import { useMergedModuleConfig, expandModuleIds, buildEffectiveModuleMap, getEffectiveModuleId, type MergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import {
   calculatePerformance,
   calculateImprovement,
@@ -222,6 +222,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const caseScenarios = vpCasesRes.data || [];
       const lectures = lecturesRes.data || [];
 
+      // Build effective module map for chapter context override
+      const effectiveModMap = buildEffectiveModuleMap(chapters, mergedConfig);
+
       // Create module lookup
       const moduleMap = new Map(modules.map(m => [m.id, m.name]));
       // Add merged guest modules to moduleMap so their chapters get proper names
@@ -266,13 +269,15 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           status = 'in_progress';
         }
 
+        const effModuleId = getEffectiveModuleId(chapter.id, chapter.module_id, effectiveModMap);
+
         return {
           id: chapter.id,
           title: chapter.title,
           chapterNumber: chapter.chapter_number,
           bookLabel: chapter.book_label,
-          moduleId: chapter.module_id,
-          moduleName: moduleMap.get(chapter.module_id) || 'Unknown Module',
+          moduleId: effModuleId,
+          moduleName: moduleMap.get(effModuleId) || moduleMap.get(chapter.module_id) || 'Unknown Module',
           status,
           progress,
           totalItems,
@@ -386,8 +391,16 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // ============================================================================
       // Use real chapter metrics for suggestions and weak chapters
       // ============================================================================
-      const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
+      const rawMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
         .filter(m => moduleIds.includes(m.module_id));
+      
+      // Remap module_id in metrics to effective context (without mutating originals)
+      const realMetrics: StudentChapterMetric[] = effectiveModMap
+        ? rawMetrics.map(m => {
+            const effId = effectiveModMap.get(m.chapter_id);
+            return effId && effId !== m.module_id ? { ...m, module_id: effId } : m;
+          })
+        : rawMetrics;
 
       // ============================================================================
       // Fetch exam weights for priority boosting + prescribed study modes
@@ -463,14 +476,17 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       }
 
       // Build chapter info for suggestion builder
-      const chapterInfos = chapters.map(ch => ({
-        id: ch.id,
-        title: ch.title,
-        moduleId: ch.module_id,
-        moduleName: moduleMap.get(ch.module_id) || 'Unknown Module',
-        hasLectures: lectures.some(l => l.chapter_id === ch.id),
-        firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
-      }));
+      const chapterInfos = chapters.map(ch => {
+        const effModId = getEffectiveModuleId(ch.id, ch.module_id, effectiveModMap);
+        return {
+          id: ch.id,
+          title: ch.title,
+          moduleId: effModId,
+          moduleName: moduleMap.get(effModId) || moduleMap.get(ch.module_id) || 'Unknown Module',
+          hasLectures: lectures.some(l => l.chapter_id === ch.id),
+          firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
+        };
+      });
 
       // Build adaptive study plan from real metrics + exam weights
       const studyPlan = buildAdaptiveStudyPlan({
