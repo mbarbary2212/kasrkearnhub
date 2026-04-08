@@ -6,12 +6,13 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Loader2, Settings, ChevronRight, Trash2, Mail, ShieldCheck } from 'lucide-react';
+import { Loader2, Settings, ChevronRight, Trash2, Mail, ShieldCheck, GitMerge } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useHideEmptySelfAssessmentTabs, useUpsertStudySetting } from '@/hooks/useStudyResources';
 import { useEmailPreferences, useUpdateEmailPreferences } from '@/hooks/useEmailPreferences';
 import { useArchiveLegacyOsce } from '@/hooks/useOsceQuestions';
+import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import { AISettingsPanel } from '@/components/admin/AISettingsPanel';
 import { ModulePinSettings } from '@/components/admin/ModulePinSettings';
 import { HomeMindMapSettings } from '@/components/admin/HomeMindMapSettings';
@@ -176,6 +177,34 @@ function EmailNotificationPreferences() {
   );
 }
 
+const MERGED_SURGERY_CONFIG_ON = JSON.stringify({
+  enabled: true,
+  hiddenModules: ['153318ba-32b9-4f8e-9cbc-bdd8df9b9b10'],
+  display: {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': {
+      displayName: 'Surgery',
+      tags: ['423', '523'],
+    },
+  },
+  chapterMerge: {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': ['153318ba-32b9-4f8e-9cbc-bdd8df9b9b10'],
+  },
+});
+
+const MERGED_SURGERY_CONFIG_OFF = JSON.stringify({
+  enabled: false,
+  hiddenModules: ['153318ba-32b9-4f8e-9cbc-bdd8df9b9b10'],
+  display: {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': {
+      displayName: 'Surgery',
+      tags: ['423', '523'],
+    },
+  },
+  chapterMerge: {
+    '7f5167dd-b746-4ac6-94f3-109d637df861': ['153318ba-32b9-4f8e-9cbc-bdd8df9b9b10'],
+  },
+});
+
 export function PlatformSettingsTab() {
   const { data: hideEmptyTabs, isLoading } = useHideEmptySelfAssessmentTabs();
   const { data: disclaimerSetting, isLoading: disclaimerLoading } = useQuery({
@@ -192,6 +221,8 @@ export function PlatformSettingsTab() {
   const disclaimerEnabled = disclaimerSetting ?? false;
   const upsertSetting = useUpsertStudySetting();
   const { isSuperAdmin } = useAuthContext();
+  const { data: mergedConfig } = useMergedModuleConfig();
+  const mergedEnabled = !!mergedConfig?.enabled;
 
   const handleToggle = async (checked: boolean) => {
     try {
@@ -212,7 +243,6 @@ export function PlatformSettingsTab() {
         key: 'platform_disclaimer_enabled',
         value: checked ? 'true' : 'false',
       });
-      // When re-enabling, update the version so all students see it again
       if (checked) {
         await upsertSetting.mutateAsync({
           key: 'platform_disclaimer_version',
@@ -222,6 +252,19 @@ export function PlatformSettingsTab() {
       toast.success(checked ? 'Disclaimer enabled for all students' : 'Disclaimer disabled');
     } catch (error) {
       console.error('Error updating disclaimer setting:', error);
+      toast.error('Failed to update setting');
+    }
+  };
+
+  const handleMergedSurgeryToggle = async (checked: boolean) => {
+    try {
+      await upsertSetting.mutateAsync({
+        key: 'merged_surgery_config',
+        value: checked ? MERGED_SURGERY_CONFIG_ON : MERGED_SURGERY_CONFIG_OFF,
+      });
+      toast.success(checked ? 'Merged Surgery mode enabled' : 'Merged Surgery mode disabled');
+    } catch (error) {
+      console.error('Error updating merged surgery setting:', error);
       toast.error('Failed to update setting');
     }
   };
@@ -274,6 +317,31 @@ export function PlatformSettingsTab() {
           />
         </div>
       </CollapsibleSettingsCard>
+
+      {isSuperAdmin && (
+        <CollapsibleSettingsCard
+          icon={<GitMerge className="w-5 h-5" />}
+          title="Merged Surgery Modules"
+          description="Temporarily merges SUR-423 into SUR-523 for student display and study logic."
+        >
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-1">
+              <Label htmlFor="merged-surgery-toggle" className="text-base font-medium">
+                Enable Merged Surgery Mode
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled: SUR-423 is hidden from Year 4 students, SUR-523 appears as "Surgery" with 423/523 tags in Year 5, and SUR-423 chapters are included in Year 5 coaching and study plans.
+              </p>
+            </div>
+            <Switch
+              id="merged-surgery-toggle"
+              checked={mergedEnabled}
+              onCheckedChange={handleMergedSurgeryToggle}
+              disabled={upsertSetting.isPending}
+            />
+          </div>
+        </CollapsibleSettingsCard>
+      )}
 
       <ModulePinSettings />
       <HomeMindMapSettings />

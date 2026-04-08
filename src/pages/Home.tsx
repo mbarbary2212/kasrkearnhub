@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useModules } from '@/hooks/useModules';
 import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
+import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
@@ -209,7 +210,16 @@ function LoggedInHome() {
   }, [selectedYearId, years, setActiveYear]);
 
   // Modules for selected year
-  const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
+  const { data: rawModules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
+  const { data: mergedConfig } = useMergedModuleConfig();
+
+  // Apply merged module filtering and overrides for students
+  const modules = useMemo(() => {
+    if (!rawModules) return undefined;
+    if (!mergedConfig?.enabled || isAdmin) return rawModules;
+    return rawModules.filter(m => !mergedConfig.hiddenModules.includes(m.id));
+  }, [rawModules, mergedConfig, isAdmin]);
+
   const moduleIds = useMemo(() => modules?.map(m => m.id) || [], [modules]);
   const { data: readinessMap = {} } = useModuleReadinessBatch(moduleIds);
 
@@ -483,7 +493,18 @@ function LoggedInHome() {
                         <div className="p-2.5">
                           <div className="flex items-start justify-between gap-1.5">
                             <div className="min-w-0 flex-1">
-                              <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
+                              <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">
+                                {mergedConfig?.enabled && mergedConfig.display[module.id]
+                                  ? mergedConfig.display[module.id].displayName
+                                  : `${module.slug?.toUpperCase()} — ${module.name}`}
+                              </p>
+                              {mergedConfig?.enabled && mergedConfig.display[module.id] && (
+                                <div className="flex gap-1 mt-0.5">
+                                  {mergedConfig.display[module.id].tags.map(tag => (
+                                    <span key={tag} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                                  ))}
+                                </div>
+                              )}
                               <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />
                               <ModuleCardLeads moduleId={module.id} />
                             </div>
@@ -515,7 +536,18 @@ function LoggedInHome() {
                       >
                         <span className="text-xs font-mono font-semibold text-primary min-w-[4.5rem]">{module.slug?.toUpperCase()}</span>
                         <div className="flex-1 min-w-0 flex items-center gap-2">
-                          <span className="text-sm font-medium text-foreground truncate">{module.name}</span>
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {mergedConfig?.enabled && mergedConfig.display[module.id]
+                              ? mergedConfig.display[module.id].displayName
+                              : module.name}
+                          </span>
+                          {mergedConfig?.enabled && mergedConfig.display[module.id] && (
+                            <div className="flex gap-1">
+                              {mergedConfig.display[module.id].tags.map(tag => (
+                                <span key={tag} className="text-[10px] font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                              ))}
+                            </div>
+                          )}
                           <ModuleCardLeads moduleId={module.id} />
                         </div>
                         <div className="w-24 flex-shrink-0">
