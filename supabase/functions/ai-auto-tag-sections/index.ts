@@ -13,8 +13,29 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_ITEMS_PER_BATCH = 40;
+const MAX_ITEMS_PER_BATCH = 20;
 const MAX_TOTAL_ITEMS = 200;
+
+/** Attempt to extract valid assignments from truncated JSON */
+function repairAndExtractAssignments(raw: string): Record<string, any> | null {
+  // Try direct parse first
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    // Fall through to repair
+  }
+
+  // Extract individual entries using regex
+  const results: Record<string, any> = {};
+  const entryPattern = /"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"\s*:\s*\{\s*"section_id"\s*:\s*"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"\s*,\s*"confidence"\s*:\s*"(high|medium|low)"\s*\}/g;
+  
+  let match;
+  while ((match = entryPattern.exec(raw)) !== null) {
+    results[match[1]] = { section_id: match[2], confidence: match[3] };
+  }
+
+  return Object.keys(results).length > 0 ? results : null;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
