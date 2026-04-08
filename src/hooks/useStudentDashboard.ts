@@ -391,8 +391,16 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // ============================================================================
       // Use real chapter metrics for suggestions and weak chapters
       // ============================================================================
-      const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
+      const rawMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
         .filter(m => moduleIds.includes(m.module_id));
+      
+      // Remap module_id in metrics to effective context (without mutating originals)
+      const realMetrics: StudentChapterMetric[] = effectiveModMap
+        ? rawMetrics.map(m => {
+            const effId = effectiveModMap.get(m.chapter_id);
+            return effId && effId !== m.module_id ? { ...m, module_id: effId } : m;
+          })
+        : rawMetrics;
 
       // ============================================================================
       // Fetch exam weights for priority boosting + prescribed study modes
