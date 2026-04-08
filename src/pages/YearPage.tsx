@@ -16,6 +16,9 @@ import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { formatDistanceToNow } from 'date-fns';
+import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
+import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function YearPage() {
   const { yearId } = useParams();
@@ -30,7 +33,15 @@ export default function YearPage() {
   const { data: lastPosition } = useLastPosition();
 
   const { data: year, isLoading: yearLoading } = useYear(yearNumber);
-  const { data: modules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
+  const { data: rawModules, isLoading: modulesLoading } = useModulesByYearNumber(yearNumber);
+  const { data: mergedConfig } = useMergedModuleConfig();
+  const isStudentView = !auth.isAdmin && !auth.isTeacher && !auth.isPlatformAdmin && !auth.isSuperAdmin;
+
+  const modules = useMemo(() => {
+    if (!rawModules) return undefined;
+    if (!mergedConfig?.enabled || !isStudentView) return rawModules;
+    return rawModules.filter(m => !mergedConfig.hiddenModules.includes(m.id));
+  }, [rawModules, mergedConfig, isStudentView]);
 
   const moduleIds = useMemo(() => (modules || []).map(m => m.id), [modules]);
   const { data: readinessMap = {} } = useModuleReadinessBatch(moduleIds);
@@ -225,7 +236,18 @@ export default function YearPage() {
                       <div className="p-2.5">
                         <div className="flex items-start justify-between gap-1.5">
                           <div className="min-w-0 flex-1">
-                            <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">{module.slug?.toUpperCase()} — {module.name}</p>
+                            <p className="font-heading font-semibold text-foreground truncate text-xs sm:text-sm">
+                              {mergedConfig?.enabled && mergedConfig.display[module.id]
+                                ? mergedConfig.display[module.id].displayName
+                                : `${module.slug?.toUpperCase()} — ${module.name}`}
+                            </p>
+                            {mergedConfig?.enabled && mergedConfig.display[module.id] && (
+                              <div className="flex gap-1 mt-0.5">
+                                {mergedConfig.display[module.id].tags.map(tag => (
+                                  <span key={tag} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                                ))}
+                              </div>
+                            )}
                             {module.description && (
                               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-2">{module.description}</p>
                             )}
@@ -266,8 +288,19 @@ export default function YearPage() {
                       <span className="text-xs font-mono font-semibold text-primary min-w-[4.5rem]">
                         {module.slug?.toUpperCase()}
                       </span>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-foreground truncate block">{module.name}</span>
+                      <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground truncate block">
+                          {mergedConfig?.enabled && mergedConfig.display[module.id]
+                            ? mergedConfig.display[module.id].displayName
+                            : module.name}
+                        </span>
+                        {mergedConfig?.enabled && mergedConfig.display[module.id] && (
+                          <div className="flex gap-1">
+                            {mergedConfig.display[module.id].tags.map(tag => (
+                              <span key={tag} className="text-[10px] font-mono px-1 py-0.5 rounded bg-muted text-muted-foreground">{tag}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       <div className="w-24 flex-shrink-0">
                         <ModuleReadinessBar readiness={readinessMap[module.id] ?? null} />

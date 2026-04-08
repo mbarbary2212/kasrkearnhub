@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useMergedModuleConfig, expandModuleIds, type MergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import {
   calculatePerformance,
   calculateImprovement,
@@ -138,10 +139,10 @@ interface DashboardFilters {
  */
 export function useStudentDashboard(filters?: DashboardFilters, testProgress?: TestProgressData) {
   const { user } = useAuthContext();
+  const { data: mergedConfig } = useMergedModuleConfig();
 
   return useQuery({
-    // Include testProgress in queryKey so results update when it arrives
-    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId, testProgress ? 'withTP' : 'noTP'],
+    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId, testProgress ? 'withTP' : 'noTP', mergedConfig?.enabled ? 'merged' : 'normal'],
     queryFn: async (): Promise<DashboardData> => {
       if (!user?.id) {
         return getEmptyDashboard();
@@ -162,9 +163,12 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // Get module IDs to filter chapters
       let moduleIds = modules.map(m => m.id);
       
-      // If specific module is selected, use only that
+      // Expand with merged guest modules (e.g. SUR-423 into SUR-523)
+      moduleIds = expandModuleIds(moduleIds, mergedConfig);
+      
+      // If specific module is selected, use only that (but still expand)
       if (filters?.moduleId) {
-        moduleIds = [filters.moduleId];
+        moduleIds = expandModuleIds([filters.moduleId], mergedConfig);
       }
 
       // If no modules match the filter, return empty
@@ -220,6 +224,17 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
 
       // Create module lookup
       const moduleMap = new Map(modules.map(m => [m.id, m.name]));
+      // Add merged guest modules to moduleMap so their chapters get proper names
+      if (mergedConfig?.enabled) {
+        for (const [hostId, guestIds] of Object.entries(mergedConfig.chapterMerge)) {
+          const hostName = moduleMap.get(hostId) || 'Surgery';
+          for (const guestId of guestIds) {
+            if (!moduleMap.has(guestId)) {
+              moduleMap.set(guestId, hostName);
+            }
+          }
+        }
+      }
 
       // Create completed content set
       const completedIds = new Set(
