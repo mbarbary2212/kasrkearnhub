@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useMergedModuleConfig, expandModuleIds, type MergedModuleConfig } from '@/hooks/useMergedModuleConfig';
+import { useMergedModuleConfig, expandModuleIds, buildEffectiveModuleMap, getEffectiveModuleId, type MergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import {
   calculatePerformance,
   calculateImprovement,
