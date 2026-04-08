@@ -348,6 +348,8 @@ export function PlatformSettingsTab() {
       <HomeMindMapSettings />
       <ExaminerAvatarsCard />
 
+      {isSuperAdmin && <SystemAutoTagCard />}
+
       {isSuperAdmin && <SentryDiagnosticsSection />}
 
       {isSuperAdmin && (
