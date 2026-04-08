@@ -222,6 +222,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const caseScenarios = vpCasesRes.data || [];
       const lectures = lecturesRes.data || [];
 
+      // Build effective module map for chapter context override
+      const effectiveModMap = buildEffectiveModuleMap(chapters, mergedConfig);
+
       // Create module lookup
       const moduleMap = new Map(modules.map(m => [m.id, m.name]));
       // Add merged guest modules to moduleMap so their chapters get proper names
