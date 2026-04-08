@@ -468,14 +468,17 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       }
 
       // Build chapter info for suggestion builder
-      const chapterInfos = chapters.map(ch => ({
-        id: ch.id,
-        title: ch.title,
-        moduleId: ch.module_id,
-        moduleName: moduleMap.get(ch.module_id) || 'Unknown Module',
-        hasLectures: lectures.some(l => l.chapter_id === ch.id),
-        firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
-      }));
+      const chapterInfos = chapters.map(ch => {
+        const effModId = getEffectiveModuleId(ch.id, ch.module_id, effectiveModMap);
+        return {
+          id: ch.id,
+          title: ch.title,
+          moduleId: effModId,
+          moduleName: moduleMap.get(effModId) || moduleMap.get(ch.module_id) || 'Unknown Module',
+          hasLectures: lectures.some(l => l.chapter_id === ch.id),
+          firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
+        };
+      });
 
       // Build adaptive study plan from real metrics + exam weights
       const studyPlan = buildAdaptiveStudyPlan({
