@@ -269,13 +269,15 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           status = 'in_progress';
         }
 
+        const effModuleId = getEffectiveModuleId(chapter.id, chapter.module_id, effectiveModMap);
+
         return {
           id: chapter.id,
           title: chapter.title,
           chapterNumber: chapter.chapter_number,
           bookLabel: chapter.book_label,
-          moduleId: chapter.module_id,
-          moduleName: moduleMap.get(chapter.module_id) || 'Unknown Module',
+          moduleId: effModuleId,
+          moduleName: moduleMap.get(effModuleId) || moduleMap.get(chapter.module_id) || 'Unknown Module',
           status,
           progress,
           totalItems,
