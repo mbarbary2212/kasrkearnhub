@@ -224,7 +224,7 @@ RESPONSE FORMAT (raw JSON, no markdown):
               ],
               generationConfig: {
                 temperature: 0.1,
-                maxOutputTokens: 8192,
+                maxOutputTokens: 16384,
               },
             }),
           }
@@ -252,29 +252,28 @@ RESPONSE FORMAT (raw JSON, no markdown):
           .replace(/\n?```\s*$/, "");
       }
 
-      try {
-        const batchAssignments = JSON.parse(cleaned);
-        const sectionIds = new Set(sections.map((s: any) => s.id));
-        
-        for (const [itemId, value] of Object.entries(batchAssignments)) {
-          // Handle both old format (string) and new format ({section_id, confidence})
-          if (typeof value === 'string') {
-            if (sectionIds.has(value)) {
-              allAssignments[itemId] = { section_id: value, confidence: 'medium' };
-            }
-          } else if (value && typeof value === 'object') {
-            const v = value as { section_id?: string; confidence?: string };
-            if (v.section_id && sectionIds.has(v.section_id)) {
-              allAssignments[itemId] = {
-                section_id: v.section_id,
-                confidence: v.confidence || 'medium',
-              };
-            }
+      const batchAssignments = repairAndExtractAssignments(cleaned);
+      if (!batchAssignments) {
+        console.error("Failed to parse or repair AI response, skipping batch", i);
+        continue;
+      }
+
+      const sectionIds = new Set(sections.map((s: any) => s.id));
+      
+      for (const [itemId, value] of Object.entries(batchAssignments)) {
+        if (typeof value === 'string') {
+          if (sectionIds.has(value)) {
+            allAssignments[itemId] = { section_id: value, confidence: 'medium' };
+          }
+        } else if (value && typeof value === 'object') {
+          const v = value as { section_id?: string; confidence?: string };
+          if (v.section_id && sectionIds.has(v.section_id)) {
+            allAssignments[itemId] = {
+              section_id: v.section_id,
+              confidence: v.confidence || 'medium',
+            };
           }
         }
-      } catch (parseErr) {
-        console.error("Failed to parse AI response:", cleaned, parseErr);
-        continue;
       }
     }
 
