@@ -196,7 +196,7 @@ export async function importBlueprintFromExcel(
         continue;
       }
 
-      const secName = label.replace(/^[→→]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+      const secName = label.replace(/^[→→]\s*/, '').replace(/^\d+\.\s*/, '').replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u2705\u274C]+\s*/u, '').trim();
       const chapterSections = sectionMap.get(currentChapter.id) || [];
 
       let sec: typeof chapterSections[0] | undefined;
