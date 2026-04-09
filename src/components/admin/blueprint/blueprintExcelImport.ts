@@ -133,30 +133,57 @@ export async function importBlueprintFromExcel(
     }
   }
 
+  // Build a reverse lookup: section name → { sectionObj, chapterId }
+  const sectionByName = new Map<string, { sec: { id: string; name: string; section_number: string | null; chapter_id: string }; chapterId: string }>();
+  for (const [chId, secs] of sectionMap) {
+    for (const s of secs) {
+      sectionByName.set(s.name.toLowerCase(), { sec: s, chapterId: chId });
+    }
+  }
+
   for (let r = 2; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
-    const label = String(row.getCell(1).value ?? '').trim();
-    if (!label) continue;
+    const rawLabel = String(row.getCell(1).value ?? '').trim();
+    if (!rawLabel) continue;
+
+    // Strip common emoji/symbol prefixes (✅, ❌, ⚠️, etc.)
+    const label = rawLabel.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u2705\u274C\u26A0\uFE0F✅❌⚠️🔴🟢🟡✓✔☑️]+\s*/u, '').trim();
 
     const rowChapterId = chapterIdCol ? String(row.getCell(chapterIdCol).value ?? '').trim() : '';
     const rowSectionId = sectionIdCol ? String(row.getCell(sectionIdCol).value ?? '').trim() : '';
 
     const isSection = label.startsWith('→') || label.startsWith('→');
 
-    if (!isSection) {
+    // Detect if this is a section row even without → prefix:
+    // If there's a section_id column with a value, or the label matches a known section name
+    const isSectionByContext = !isSection && (
+      (rowSectionId && rowSectionId.length > 10) ||
+      (!rowChapterId && currentChapter && sectionByName.has(label.replace(/^\d+\.\s*/, '').trim().toLowerCase()))
+    );
+
+    if (!isSection && !isSectionByContext) {
       // Chapter row
       let ch = rowChapterId ? chapterById.get(rowChapterId) : undefined;
       if (!ch) {
         ch = chapterByLabel.get(label.toLowerCase());
         if (!ch) {
-          const stripped = label.replace(/^ch\s*\d+:\s*/i, '').toLowerCase();
+          // Strip "Ch N:" prefix and emoji for matching
+          const stripped = label.replace(/^ch\s*\d+:\s*/i, '').toLowerCase().trim();
           for (const [, c] of chapterByLabel) {
             if (c.title.toLowerCase() === stripped) { ch = c; break; }
+          }
+          // Also try partial/fuzzy match
+          if (!ch) {
+            for (const [, c] of chapterByLabel) {
+              if (stripped.includes(c.title.toLowerCase()) || c.title.toLowerCase().includes(stripped)) {
+                ch = c; break;
+              }
+            }
           }
         }
       }
       if (!ch) {
-        errors.push(`Row ${r}: Could not match chapter "${label}"`);
+        errors.push(`Row ${r}: Could not match chapter "${rawLabel}"`);
         currentChapter = null;
         continue;
       }
@@ -169,7 +196,7 @@ export async function importBlueprintFromExcel(
         continue;
       }
 
-      const secName = label.replace(/^[→→]\s*/, '').replace(/^\d+\.\s*/, '').trim();
+      const secName = label.replace(/^[→→]\s*/, '').replace(/^\d+\.\s*/, '').replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u2705\u274C]+\s*/u, '').trim();
       const chapterSections = sectionMap.get(currentChapter.id) || [];
 
       let sec: typeof chapterSections[0] | undefined;
