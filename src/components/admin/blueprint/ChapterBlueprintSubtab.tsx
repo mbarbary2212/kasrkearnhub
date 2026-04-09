@@ -246,13 +246,14 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config-multi'] });
 
+      const parts = [`${result.upserted} updated`, result.cleared > 0 ? `${result.cleared} cleared` : ''].filter(Boolean).join(', ');
       if (result.errors.length > 0) {
-        toast.warning(`Imported ${result.upserted} configs with ${result.errors.length} warning(s)`, {
+        toast.warning(`Imported (${parts}) with ${result.errors.length} warning(s)`, {
           description: result.errors.slice(0, 3).join('; '),
           duration: 8000,
         });
       } else {
-        toast.success(`Successfully imported ${result.upserted} blueprint configs`);
+        toast.success(`Blueprint import complete: ${parts}`);
       }
     } catch (err: any) {
       toast.error('Import failed: ' + (err.message || 'Unknown error'));

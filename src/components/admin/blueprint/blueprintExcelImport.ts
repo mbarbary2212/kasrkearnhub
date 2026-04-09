@@ -15,6 +15,13 @@ interface ParsedRow {
   exam_type: string;
 }
 
+interface ClearRow {
+  chapter_id: string;
+  section_id: string | null;
+  component_type: string;
+  exam_type: string;
+}
+
 interface ImportResult {
   upserted: number;
   cleared: number;
@@ -69,7 +76,7 @@ export async function importBlueprintFromExcel(
 
   // Detect column mapping from header row
   const headerRow = ws.getRow(1);
-  const colMap = new Map<number, string>(); // col index → component_type key
+  const colMap = new Map<number, string>();
   headerRow.eachCell({ includeEmpty: false }, (cell, colNum) => {
     const val = String(cell.value ?? '').trim().toLowerCase();
     for (const col of COMPONENT_COLUMNS) {
@@ -80,7 +87,7 @@ export async function importBlueprintFromExcel(
     }
   });
 
-  // Find hidden ID columns (chapter_id, section_id)
+  // Find hidden ID columns
   let chapterIdCol: number | null = null;
   let sectionIdCol: number | null = null;
   headerRow.eachCell({ includeEmpty: false }, (cell, colNum) => {
@@ -90,15 +97,47 @@ export async function importBlueprintFromExcel(
   });
 
   const rows: ParsedRow[] = [];
+  const clears: ClearRow[] = [];
   const errors: string[] = [];
   let currentChapter: { id: string; module_id: string } | null = null;
+
+  // Helper: process component cells for a resolved chapter/section
+  function processCells(
+    row: ExcelJS.Row,
+    chapterId: string,
+    moduleId: string,
+    sectionId: string | null,
+  ) {
+    for (const [colNum, compKey] of colMap) {
+      const cellVal = String(row.getCell(colNum).value ?? '').trim();
+      const parsed = parseCell(cellVal);
+      if (parsed) {
+        rows.push({
+          chapter_id: chapterId,
+          module_id: moduleId,
+          section_id: sectionId,
+          component_type: compKey,
+          inclusion_level: parsed.level,
+          question_types: parsed.types,
+          exam_type: examType,
+        });
+      } else if (!cellVal || cellVal === '—' || cellVal === '-') {
+        // Empty / dash cell → mark for deletion if a config exists
+        clears.push({
+          chapter_id: chapterId,
+          section_id: sectionId,
+          component_type: compKey,
+          exam_type: examType,
+        });
+      }
+    }
+  }
 
   for (let r = 2; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
     const label = String(row.getCell(1).value ?? '').trim();
     if (!label) continue;
 
-    // Try to resolve chapter/section by hidden IDs first, then by name
     const rowChapterId = chapterIdCol ? String(row.getCell(chapterIdCol).value ?? '').trim() : '';
     const rowSectionId = sectionIdCol ? String(row.getCell(sectionIdCol).value ?? '').trim() : '';
 
@@ -108,10 +147,8 @@ export async function importBlueprintFromExcel(
       // Chapter row
       let ch = rowChapterId ? chapterById.get(rowChapterId) : undefined;
       if (!ch) {
-        // Fallback to name matching
         ch = chapterByLabel.get(label.toLowerCase());
         if (!ch) {
-          // Try partial match: strip "Ch N: "
           const stripped = label.replace(/^ch\s*\d+:\s*/i, '').toLowerCase();
           for (const [, c] of chapterByLabel) {
             if (c.title.toLowerCase() === stripped) { ch = c; break; }
@@ -124,23 +161,7 @@ export async function importBlueprintFromExcel(
         continue;
       }
       currentChapter = { id: ch.id, module_id: ch.module_id };
-
-      // Parse component cells
-      for (const [colNum, compKey] of colMap) {
-        const cellVal = String(row.getCell(colNum).value ?? '').trim();
-        const parsed = parseCell(cellVal);
-        if (parsed) {
-          rows.push({
-            chapter_id: ch.id,
-            module_id: ch.module_id,
-            section_id: null,
-            component_type: compKey,
-            inclusion_level: parsed.level,
-            question_types: parsed.types,
-            exam_type: examType,
-          });
-        }
-      }
+      processCells(row, ch.id, ch.module_id, null);
     } else {
       // Section row
       if (!currentChapter) {
@@ -152,17 +173,16 @@ export async function importBlueprintFromExcel(
       const chapterSections = sectionMap.get(currentChapter.id) || [];
 
       let sec: typeof chapterSections[0] | undefined;
-
-      // Try by hidden ID first
       if (rowSectionId) {
         sec = chapterSections.find(s => s.id === rowSectionId);
       }
       if (!sec) {
-        // Name match
         sec = chapterSections.find(s => s.name.toLowerCase() === secName.toLowerCase());
         if (!sec) {
-          // Partial/fuzzy
-          sec = chapterSections.find(s => secName.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(secName.toLowerCase()));
+          sec = chapterSections.find(s =>
+            secName.toLowerCase().includes(s.name.toLowerCase()) ||
+            s.name.toLowerCase().includes(secName.toLowerCase())
+          );
         }
       }
 
@@ -171,25 +191,11 @@ export async function importBlueprintFromExcel(
         continue;
       }
 
-      for (const [colNum, compKey] of colMap) {
-        const cellVal = String(row.getCell(colNum).value ?? '').trim();
-        const parsed = parseCell(cellVal);
-        if (parsed) {
-          rows.push({
-            chapter_id: currentChapter.id,
-            module_id: currentChapter.module_id,
-            section_id: sec.id,
-            component_type: compKey,
-            inclusion_level: parsed.level,
-            question_types: parsed.types,
-            exam_type: examType,
-          });
-        }
-      }
+      processCells(row, currentChapter.id, currentChapter.module_id, sec.id);
     }
   }
 
-  // Batch upsert - manual check + insert/update to handle COALESCE unique index
+  // Batch upsert
   let upserted = 0;
   let cleared = 0;
 
@@ -238,6 +244,35 @@ export async function importBlueprintFromExcel(
         errors.push(`Insert failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
       } else {
         upserted++;
+      }
+    }
+  }
+
+  // Delete configs for cells that were cleared (empty/dash)
+  for (const c of clears) {
+    let query = supabase
+      .from('chapter_blueprint_config')
+      .select('id')
+      .eq('chapter_id', c.chapter_id)
+      .eq('exam_type', c.exam_type)
+      .eq('component_type', c.component_type);
+
+    if (c.section_id) {
+      query = query.eq('section_id', c.section_id);
+    } else {
+      query = query.is('section_id', null);
+    }
+
+    const { data: existing } = await query.maybeSingle();
+    if (existing) {
+      const { error } = await supabase
+        .from('chapter_blueprint_config')
+        .delete()
+        .eq('id', existing.id);
+      if (error) {
+        errors.push(`Clear failed for ${c.component_type}/${c.chapter_id}: ${error.message}`);
+      } else {
+        cleared++;
       }
     }
   }
