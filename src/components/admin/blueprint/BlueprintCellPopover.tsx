@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { X } from 'lucide-react';
 import {
   useUpsertChapterBlueprintConfig,
   useDeleteChapterBlueprintConfig,
@@ -108,6 +109,21 @@ export function BlueprintCellPopover({
       </PopoverTrigger>
       <PopoverContent className="w-52 p-1.5" align="center" side="bottom">
         <div className="space-y-0.5">
+          {/* Clear button at top when config exists */}
+          {config && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-xs h-7 text-destructive hover:text-destructive hover:bg-destructive/10 mb-0.5"
+              onClick={handleClear}
+            >
+              <X className="h-3 w-3 mr-1.5" />
+              Clear (set to —)
+            </Button>
+          )}
+
+          {config && <div className="border-t my-1" />}
+
           {INCLUSION_LEVELS.map((l) => (
             <Button
               key={l.value}
@@ -151,15 +167,6 @@ export function BlueprintCellPopover({
                 onClick={saveTypesOnly}
               >
                 Save formats
-              </Button>
-              <div className="border-t my-1" />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-xs h-7 text-muted-foreground"
-                onClick={handleClear}
-              >
-                Clear
               </Button>
             </>
           )}
