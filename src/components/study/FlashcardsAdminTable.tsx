@@ -100,6 +100,16 @@ export function FlashcardsAdminTable({
       ),
     },
     {
+      key: 'cardType' as keyof FlashcardRow,
+      header: 'Type',
+      className: 'w-24',
+      render: (item) => (
+        <Badge variant={item.cardType === 'cloze' ? 'default' : 'secondary'} className="text-xs">
+          {item.cardType === 'cloze' ? 'Cloze' : 'Classic'}
+        </Badge>
+      ),
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-32',
@@ -121,19 +131,33 @@ export function FlashcardsAdminTable({
   }, [rows]);
 
   return (
-    <ContentAdminTable
-      data={rows}
-      columns={columns}
-      contentTable="study_resources"
-      chapterId={chapterId}
-      sections={sections}
-      onEdit={onEdit ? (row) => onEdit(row.resource) : undefined}
-      onDelete={onDelete ? (row) => onDelete(row.resource) : undefined}
-      csvExportConfig={{
-        filename: `flashcards-${chapterId || 'export'}`,
-        columns: FLASHCARD_EXPORT_COLUMNS as any,
-      }}
-      emptyMessage="No flashcards available"
-    />
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Select value={cardTypeFilter} onValueChange={(v) => setCardTypeFilter(v as CardTypeFilter)}>
+          <SelectTrigger className="w-40 h-8 text-xs">
+            <SelectValue placeholder="Card type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types ({allRows.length})</SelectItem>
+            <SelectItem value="classic">Classic ({classicCount})</SelectItem>
+            <SelectItem value="cloze">Cloze ({clozeCount})</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <ContentAdminTable
+        data={rows}
+        columns={columns}
+        contentTable="study_resources"
+        chapterId={chapterId}
+        sections={sections}
+        onEdit={onEdit ? (row) => onEdit(row.resource) : undefined}
+        onDelete={onDelete ? (row) => onDelete(row.resource) : undefined}
+        csvExportConfig={{
+          filename: `flashcards-${chapterId || 'export'}`,
+          columns: FLASHCARD_EXPORT_COLUMNS as any,
+        }}
+        emptyMessage="No flashcards available"
+      />
+    </div>
   );
 }
