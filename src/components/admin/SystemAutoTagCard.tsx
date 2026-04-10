@@ -108,10 +108,12 @@ export function SystemAutoTagCard() {
     const result = await runSystemAutoTag(false);
     if (result) {
       setLastResult(result);
+      // Auto-download report on completion
+      downloadReport(result);
       if (result.errors.length > 0) {
-        toast.warning(`Completed with ${result.errors.length} error(s). Tagged ${result.itemsTagged} items.`);
+        toast.warning(`Completed with ${result.errors.length} error(s). Tagged ${result.itemsTagged} items. Report downloaded.`);
       } else {
-        toast.success(`Tagged ${result.itemsTagged} of ${result.itemsEligible} eligible items.`);
+        toast.success(`Tagged ${result.itemsTagged} of ${result.itemsEligible} eligible items. Report downloaded.`);
       }
     }
   };
