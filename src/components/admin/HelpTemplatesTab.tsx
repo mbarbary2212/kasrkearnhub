@@ -906,6 +906,7 @@ function generateTemplateDownload(templateId: string) {
   switch (templateId) {
     case 'mcq':
     case 'flashcard':
+    case 'cloze_flashcard':
     case 'table':
     case 'algorithm':
     case 'exam_tip':
