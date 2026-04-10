@@ -492,6 +492,12 @@ export function FlashcardsSlideshowMode({ cards, markedIds, onToggleMark, chapte
               <div className="absolute inset-0 backface-hidden rounded-xl border-2 bg-emerald-50 dark:bg-emerald-950/30 shadow-lg p-6 flex flex-col items-center justify-start text-center rotate-y-180 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
                 <div className="text-xs uppercase text-muted-foreground tracking-wider mb-2 shrink-0">Answer</div>
                 <div className="text-lg font-medium text-foreground whitespace-pre-wrap pb-4">{currentCard.back}</div>
+                {currentCard.extra && (
+                  <div className="mt-2 w-full p-3 bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-500 rounded text-sm text-left">
+                    <span className="font-bold text-amber-700 dark:text-amber-400 block mb-1">Extra:</span>
+                    <div className="text-amber-900 dark:text-amber-200 whitespace-pre-wrap">{currentCard.extra}</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

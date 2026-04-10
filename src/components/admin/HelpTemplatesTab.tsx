@@ -95,12 +95,12 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   flashcard: {
-    columns: ['title', 'front', 'back', 'section_name', 'section_number'],
+    columns: ['title', 'front', 'back', 'extra', 'section_name', 'section_number'],
     required: ['title', 'front', 'back'],
-    optional: ['section_name', 'section_number'],
+    optional: ['extra', 'section_name', 'section_number'],
     examples: [
-      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Heart Basics', '1'],
-      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', 'Heart Basics', '1'],
+      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Measured via echocardiography', 'Heart Basics', '1'],
+      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', '', 'Heart Basics', '1'],
     ],
   },
   cloze_flashcard: {
@@ -300,6 +300,13 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     id: 'flashcard',
     title: 'Flashcards Template',
     description: 'Front and back flashcard content with section tagging',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
+    id: 'cloze_flashcard',
+    title: 'Cloze Flashcards Template',
+    description: 'Fill-in-the-blank cloze cards with {{c1::answer}} syntax',
     format: 'csv',
     icon: 'spreadsheet',
   },
