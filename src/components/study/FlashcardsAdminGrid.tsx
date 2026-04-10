@@ -188,9 +188,14 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, selectedIds =
             <div className="text-sm font-medium text-foreground line-clamp-4">{current.front}</div>
           </div>
           {/* Back */}
-          <div className="absolute inset-0 backface-hidden rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-4 flex flex-col items-center justify-center text-center rotate-y-180">
+          <div className="absolute inset-0 backface-hidden rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-4 flex flex-col items-center justify-center text-center rotate-y-180 overflow-y-auto">
             <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Answer</div>
-            <div className="text-sm font-medium text-foreground line-clamp-4">{current.back}</div>
+            <div className="text-sm font-medium text-foreground line-clamp-3">{current.back}</div>
+            {(current.resource.content as FlashcardContent)?.extra && (
+              <div className="mt-1.5 w-full p-1.5 bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-500 rounded text-left">
+                <div className="text-[10px] text-amber-700 dark:text-amber-400 line-clamp-2">{(current.resource.content as FlashcardContent).extra}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
