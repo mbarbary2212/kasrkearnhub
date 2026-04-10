@@ -21,7 +21,19 @@ interface FlashcardRow {
   front: string;
   back: string;
   section_id: string | null;
+  cardType: 'classic' | 'cloze';
   resource: StudyResource;
+}
+
+type CardTypeFilter = 'all' | 'classic' | 'cloze';
+
+const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/;
+
+function detectCardType(content: FlashcardContent): 'classic' | 'cloze' {
+  if (content.card_type === 'cloze' && content.cloze_text && CLOZE_REGEX.test(content.cloze_text)) {
+    return 'cloze';
+  }
+  return 'classic';
 }
 
 export function FlashcardsAdminTable({
@@ -32,9 +44,10 @@ export function FlashcardsAdminTable({
   onDelete,
 }: FlashcardsAdminTableProps) {
   const { data: sections = [] } = useChapterSections(chapterId);
+  const [cardTypeFilter, setCardTypeFilter] = useState<CardTypeFilter>('all');
 
   // Transform resources to flat rows for the table
-  const rows = useMemo((): FlashcardRow[] => {
+  const allRows = useMemo((): FlashcardRow[] => {
     return resources.map(resource => {
       const content = resource.content as FlashcardContent;
       return {
@@ -43,10 +56,19 @@ export function FlashcardsAdminTable({
         front: content?.front || '',
         back: content?.back || '',
         section_id: resource.section_id || null,
+        cardType: detectCardType(content),
         resource,
       };
     });
   }, [resources]);
+
+  const rows = useMemo(() => {
+    if (cardTypeFilter === 'all') return allRows;
+    return allRows.filter(r => r.cardType === cardTypeFilter);
+  }, [allRows, cardTypeFilter]);
+
+  const classicCount = useMemo(() => allRows.filter(r => r.cardType === 'classic').length, [allRows]);
+  const clozeCount = useMemo(() => allRows.filter(r => r.cardType === 'cloze').length, [allRows]);
 
   const columns: ColumnConfig<FlashcardRow>[] = [
     {
