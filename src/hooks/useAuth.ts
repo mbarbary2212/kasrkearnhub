@@ -51,6 +51,9 @@ export function useAuth() {
     if (fetchInFlightRef.current === userId) return;
     fetchInFlightRef.current = userId;
 
+    // Ensure isLoading is true while fetching role data (prevents false permission denials on reload)
+    setState(prev => ({ ...prev, isLoading: true }));
+
     try {
       // Parallel fetch: profile, role, and module assignments
       const [profileResult, roleResult, moduleAdminResult] = await Promise.all([
