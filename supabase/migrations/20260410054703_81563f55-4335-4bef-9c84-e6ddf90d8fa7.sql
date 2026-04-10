@@ -1,0 +1,1 @@
+DELETE FROM public.chapter_blueprint_config WHERE module_id = '7f5167dd-b746-4ac6-94f3-109d637df861';
