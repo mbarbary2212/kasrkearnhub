@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ContentAdminTable, type ColumnConfig } from '@/components/admin/ContentAdminTable';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useChapterSections } from '@/hooks/useSections';
 import { FLASHCARD_EXPORT_COLUMNS } from '@/lib/csvExport';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 interface FlashcardsAdminTableProps {
   resources: StudyResource[];
