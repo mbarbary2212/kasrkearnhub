@@ -436,6 +436,34 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )}
+
+      {/* Import mode dialog */}
+      <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>How should we import this file?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p><strong>Replace All</strong> — Deletes all existing blueprint data for chapters in this file, then imports the new data fresh. Best when you have a complete updated file.</p>
+              <p><strong>Merge</strong> — Only updates cells that exist in the file and clears cells marked with dashes. Existing data not mentioned in the file is kept. Best for partial edits.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2 sm:gap-0">
+            <AlertDialogCancel onClick={() => setPendingFile(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="outline"
+              onClick={() => executeImport(false)}
+            >
+              Merge
+            </AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => executeImport(true)}
+            >
+              Replace All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
