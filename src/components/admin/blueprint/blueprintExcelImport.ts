@@ -43,6 +43,7 @@ export async function importBlueprintFromExcel(
   buffer: ArrayBuffer,
   chapters: { id: string; chapter_number: number; title: string; module_id: string }[],
   examType: string = 'default',
+  replaceAll: boolean = false,
 ): Promise<ImportResult> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
@@ -225,6 +226,28 @@ export async function importBlueprintFromExcel(
   // Batch upsert
   let upserted = 0;
   let cleared = 0;
+  let replaced = 0;
+
+  // Replace All mode: delete all existing configs for affected chapters first
+  if (replaceAll) {
+    const affectedChapterIds = [...new Set(rows.map(r => r.chapter_id))];
+    if (affectedChapterIds.length > 0) {
+      // Delete in batches of 50 to avoid query size limits
+      for (let i = 0; i < affectedChapterIds.length; i += 50) {
+        const batch = affectedChapterIds.slice(i, i + 50);
+        const { count, error } = await supabase
+          .from('chapter_blueprint_config')
+          .delete()
+          .in('chapter_id', batch)
+          .eq('exam_type', examType);
+        if (error) {
+          errors.push(`Failed to clear existing configs: ${error.message}`);
+        } else {
+          replaced += count ?? 0;
+        }
+      }
+    }
+  }
 
   for (const r of rows) {
     let query = supabase
