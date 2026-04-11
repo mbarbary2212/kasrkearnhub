@@ -6,6 +6,16 @@ import { Loader2, ChevronRight, ChevronDown, Download, Upload } from 'lucide-rea
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -144,6 +154,8 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
   const [selectedModuleId, setSelectedModuleId] = useState('');
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
