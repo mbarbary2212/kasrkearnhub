@@ -258,7 +258,7 @@ export function TaggingIssuesTab() {
           <Select value={bulkSectionId} onValueChange={setBulkSectionId}>
             <SelectTrigger className="w-[200px] h-8"><SelectValue placeholder="Pick section..." /></SelectTrigger>
             <SelectContent>
-              {sections.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+              {sections.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button size="sm" onClick={handleBulkSection} disabled={!bulkSectionId || bulkAssignSection.isPending}>
@@ -308,7 +308,7 @@ export function TaggingIssuesTab() {
                       onToggle={() => toggleSelect(`${issue.tableName}:${issue.id}`)}
                       moduleName={moduleLookup[issue.moduleId || '']}
                       chapters={chapters.filter(c => !issue.moduleId || c.module_id === issue.moduleId)}
-                      sections={sections.filter(s => s.chapter_id === issue.chapterId)}
+                      sections={sections.filter(s => s.chapter_id === issue.chapterId).map(s => ({ id: s.id, title: s.name }))}
                       onAssignChapter={(chId) => handleAssignChapter(issue, chId)}
                       onAssignSection={(sId) => handleAssignSection(issue, sId)}
                       isPending={assignChapter.isPending || assignSection.isPending}
