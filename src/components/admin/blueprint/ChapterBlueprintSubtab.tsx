@@ -6,6 +6,16 @@ import { Loader2, ChevronRight, ChevronDown, Download, Upload } from 'lucide-rea
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -144,6 +154,8 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
   const [selectedModuleId, setSelectedModuleId] = useState('');
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -233,20 +245,30 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
     exportBlueprintToExcel(chapters, configs, selectedModuleName);
   }, [chapters, configs, selectedModuleName]);
 
-  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = '';
+    setPendingFile(file);
+    setShowImportDialog(true);
+  }, []);
 
+  const executeImport = useCallback(async (replaceAll: boolean) => {
+    if (!pendingFile) return;
+    setShowImportDialog(false);
     setImporting(true);
     try {
-      const buffer = await file.arrayBuffer();
-      const result = await importBlueprintFromExcel(buffer, chapters);
-      // Invalidate all related queries
+      const buffer = await pendingFile.arrayBuffer();
+      const result = await importBlueprintFromExcel(buffer, chapters, 'default', replaceAll);
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config-multi'] });
 
-      const parts = [`${result.upserted} updated`, result.cleared > 0 ? `${result.cleared} cleared` : ''].filter(Boolean).join(', ');
+      const parts = [
+        replaceAll && result.replaced > 0 ? `${result.replaced} old entries removed` : '',
+        `${result.upserted} imported`,
+        result.cleared > 0 ? `${result.cleared} cleared` : '',
+      ].filter(Boolean).join(', ');
+
       if (result.errors.length > 0) {
         toast.warning(`Imported (${parts}) with ${result.errors.length} warning(s)`, {
           description: result.errors.slice(0, 3).join('; '),
@@ -259,8 +281,9 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       toast.error('Import failed: ' + (err.message || 'Unknown error'));
     } finally {
       setImporting(false);
+      setPendingFile(null);
     }
-  }, [chapters, queryClient]);
+  }, [pendingFile, chapters, queryClient]);
 
   const isLoading = chaptersLoading || configsLoading;
 
@@ -413,6 +436,34 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )}
+
+      {/* Import mode dialog */}
+      <AlertDialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>How should we import this file?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p><strong>Replace All</strong> — Deletes all existing blueprint data for chapters in this file, then imports the new data fresh. Best when you have a complete updated file.</p>
+              <p><strong>Merge</strong> — Only updates cells that exist in the file and clears cells marked with dashes. Existing data not mentioned in the file is kept. Best for partial edits.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2 sm:gap-0">
+            <AlertDialogCancel onClick={() => setPendingFile(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+              onClick={() => executeImport(false)}
+            >
+              Merge
+            </AlertDialogAction>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => executeImport(true)}
+            >
+              Replace All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

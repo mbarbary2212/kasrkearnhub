@@ -25,6 +25,7 @@ interface ClearRow {
 interface ImportResult {
   upserted: number;
   cleared: number;
+  replaced: number;
   errors: string[];
 }
 
@@ -43,6 +44,7 @@ export async function importBlueprintFromExcel(
   buffer: ArrayBuffer,
   chapters: { id: string; chapter_number: number; title: string; module_id: string }[],
   examType: string = 'default',
+  replaceAll: boolean = false,
 ): Promise<ImportResult> {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
@@ -225,37 +227,32 @@ export async function importBlueprintFromExcel(
   // Batch upsert
   let upserted = 0;
   let cleared = 0;
+  let replaced = 0;
+
+  // Replace All mode: delete all existing configs for affected chapters first
+  if (replaceAll) {
+    const affectedChapterIds = [...new Set(rows.map(r => r.chapter_id))];
+    if (affectedChapterIds.length > 0) {
+      // Delete in batches of 50 to avoid query size limits
+      for (let i = 0; i < affectedChapterIds.length; i += 50) {
+        const batch = affectedChapterIds.slice(i, i + 50);
+        const { count, error } = await supabase
+          .from('chapter_blueprint_config')
+          .delete()
+          .in('chapter_id', batch)
+          .eq('exam_type', examType);
+        if (error) {
+          errors.push(`Failed to clear existing configs: ${error.message}`);
+        } else {
+          replaced += count ?? 0;
+        }
+      }
+    }
+  }
 
   for (const r of rows) {
-    let query = supabase
-      .from('chapter_blueprint_config')
-      .select('id')
-      .eq('chapter_id', r.chapter_id)
-      .eq('exam_type', r.exam_type)
-      .eq('component_type', r.component_type);
-
-    if (r.section_id) {
-      query = query.eq('section_id', r.section_id);
-    } else {
-      query = query.is('section_id', null);
-    }
-
-    const { data: existing } = await query.maybeSingle();
-
-    if (existing) {
-      const { error } = await supabase
-        .from('chapter_blueprint_config')
-        .update({
-          inclusion_level: r.inclusion_level,
-          question_types: r.question_types,
-        })
-        .eq('id', existing.id);
-      if (error) {
-        errors.push(`Update failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
-      } else {
-        upserted++;
-      }
-    } else {
+    if (replaceAll) {
+      // In replace mode, we already deleted everything — just insert
       const { error } = await supabase
         .from('chapter_blueprint_config')
         .insert({
@@ -272,37 +269,86 @@ export async function importBlueprintFromExcel(
       } else {
         upserted++;
       }
-    }
-  }
-
-  // Delete configs for cells that were cleared (empty/dash)
-  for (const c of clears) {
-    let query = supabase
-      .from('chapter_blueprint_config')
-      .select('id')
-      .eq('chapter_id', c.chapter_id)
-      .eq('exam_type', c.exam_type)
-      .eq('component_type', c.component_type);
-
-    if (c.section_id) {
-      query = query.eq('section_id', c.section_id);
     } else {
-      query = query.is('section_id', null);
-    }
-
-    const { data: existing } = await query.maybeSingle();
-    if (existing) {
-      const { error } = await supabase
+      let query = supabase
         .from('chapter_blueprint_config')
-        .delete()
-        .eq('id', existing.id);
-      if (error) {
-        errors.push(`Clear failed for ${c.component_type}/${c.chapter_id}: ${error.message}`);
+        .select('id')
+        .eq('chapter_id', r.chapter_id)
+        .eq('exam_type', r.exam_type)
+        .eq('component_type', r.component_type);
+
+      if (r.section_id) {
+        query = query.eq('section_id', r.section_id);
       } else {
-        cleared++;
+        query = query.is('section_id', null);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('chapter_blueprint_config')
+          .update({
+            inclusion_level: r.inclusion_level,
+            question_types: r.question_types,
+          })
+          .eq('id', existing.id);
+        if (error) {
+          errors.push(`Update failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
+        } else {
+          upserted++;
+        }
+      } else {
+        const { error } = await supabase
+          .from('chapter_blueprint_config')
+          .insert({
+            chapter_id: r.chapter_id,
+            module_id: r.module_id,
+            section_id: r.section_id,
+            exam_type: r.exam_type,
+            component_type: r.component_type,
+            inclusion_level: r.inclusion_level,
+            question_types: r.question_types,
+          });
+        if (error) {
+          errors.push(`Insert failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
+        } else {
+          upserted++;
+        }
       }
     }
   }
 
-  return { upserted, cleared, errors };
+  // Delete configs for cells that were cleared (empty/dash) — skip in replaceAll mode
+  if (!replaceAll) {
+    for (const c of clears) {
+      let query = supabase
+        .from('chapter_blueprint_config')
+        .select('id')
+        .eq('chapter_id', c.chapter_id)
+        .eq('exam_type', c.exam_type)
+        .eq('component_type', c.component_type);
+
+      if (c.section_id) {
+        query = query.eq('section_id', c.section_id);
+      } else {
+        query = query.is('section_id', null);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+      if (existing) {
+        const { error } = await supabase
+          .from('chapter_blueprint_config')
+          .delete()
+          .eq('id', existing.id);
+        if (error) {
+          errors.push(`Clear failed for ${c.component_type}/${c.chapter_id}: ${error.message}`);
+        } else {
+          cleared++;
+        }
+      }
+    }
+  }
+
+  return { upserted, cleared, replaced, errors };
 }
