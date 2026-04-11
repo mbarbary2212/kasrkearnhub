@@ -218,10 +218,16 @@ export function SystemAutoTagCard() {
                 ) : (
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
                 )}
-                <span className="font-medium text-sm">
-                  {display.phase === 'Complete' ? 'Tagging Complete' : 'Tagging Finished'}
-                </span>
-              </div>
+                <div>
+                  <span className="font-medium text-sm">
+                    {display.phase === 'Complete' ? 'Tagging Complete' : 'Tagging Finished'}
+                  </span>
+                  {lastRunTimestamp && !isRunning && (
+                    <div className="text-xs text-muted-foreground">
+                      Last run: {new Date(lastRunTimestamp).toLocaleString()}
+                    </div>
+                  )}
+                </div>
               <Button variant="outline" size="sm" onClick={() => downloadReport(display)} className="gap-1.5 text-xs">
                 <Download className="w-3.5 h-3.5" />Report
               </Button>
