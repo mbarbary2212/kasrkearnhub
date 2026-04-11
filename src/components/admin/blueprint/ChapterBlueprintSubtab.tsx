@@ -245,20 +245,30 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
     exportBlueprintToExcel(chapters, configs, selectedModuleName);
   }, [chapters, configs, selectedModuleName]);
 
-  const handleUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (fileInputRef.current) fileInputRef.current.value = '';
+    setPendingFile(file);
+    setShowImportDialog(true);
+  }, []);
 
+  const executeImport = useCallback(async (replaceAll: boolean) => {
+    if (!pendingFile) return;
+    setShowImportDialog(false);
     setImporting(true);
     try {
-      const buffer = await file.arrayBuffer();
-      const result = await importBlueprintFromExcel(buffer, chapters);
-      // Invalidate all related queries
+      const buffer = await pendingFile.arrayBuffer();
+      const result = await importBlueprintFromExcel(buffer, chapters, 'default', replaceAll);
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config-multi'] });
 
-      const parts = [`${result.upserted} updated`, result.cleared > 0 ? `${result.cleared} cleared` : ''].filter(Boolean).join(', ');
+      const parts = [
+        replaceAll && result.replaced > 0 ? `${result.replaced} old entries removed` : '',
+        `${result.upserted} imported`,
+        result.cleared > 0 ? `${result.cleared} cleared` : '',
+      ].filter(Boolean).join(', ');
+
       if (result.errors.length > 0) {
         toast.warning(`Imported (${parts}) with ${result.errors.length} warning(s)`, {
           description: result.errors.slice(0, 3).join('; '),
@@ -271,8 +281,9 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       toast.error('Import failed: ' + (err.message || 'Unknown error'));
     } finally {
       setImporting(false);
+      setPendingFile(null);
     }
-  }, [chapters, queryClient]);
+  }, [pendingFile, chapters, queryClient]);
 
   const isLoading = chaptersLoading || configsLoading;
 
