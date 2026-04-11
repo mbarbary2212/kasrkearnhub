@@ -228,6 +228,7 @@ export function SystemAutoTagCard() {
                     </div>
                   )}
                 </div>
+              </div>
               <Button variant="outline" size="sm" onClick={() => downloadReport(display)} className="gap-1.5 text-xs">
                 <Download className="w-3.5 h-3.5" />Report
               </Button>
