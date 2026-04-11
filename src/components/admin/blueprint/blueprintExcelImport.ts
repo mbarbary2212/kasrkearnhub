@@ -25,6 +25,7 @@ interface ClearRow {
 interface ImportResult {
   upserted: number;
   cleared: number;
+  replaced: number;
   errors: string[];
 }
 
@@ -318,34 +319,36 @@ export async function importBlueprintFromExcel(
     }
   }
 
-  // Delete configs for cells that were cleared (empty/dash)
-  for (const c of clears) {
-    let query = supabase
-      .from('chapter_blueprint_config')
-      .select('id')
-      .eq('chapter_id', c.chapter_id)
-      .eq('exam_type', c.exam_type)
-      .eq('component_type', c.component_type);
-
-    if (c.section_id) {
-      query = query.eq('section_id', c.section_id);
-    } else {
-      query = query.is('section_id', null);
-    }
-
-    const { data: existing } = await query.maybeSingle();
-    if (existing) {
-      const { error } = await supabase
+  // Delete configs for cells that were cleared (empty/dash) — skip in replaceAll mode
+  if (!replaceAll) {
+    for (const c of clears) {
+      let query = supabase
         .from('chapter_blueprint_config')
-        .delete()
-        .eq('id', existing.id);
-      if (error) {
-        errors.push(`Clear failed for ${c.component_type}/${c.chapter_id}: ${error.message}`);
+        .select('id')
+        .eq('chapter_id', c.chapter_id)
+        .eq('exam_type', c.exam_type)
+        .eq('component_type', c.component_type);
+
+      if (c.section_id) {
+        query = query.eq('section_id', c.section_id);
       } else {
-        cleared++;
+        query = query.is('section_id', null);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+      if (existing) {
+        const { error } = await supabase
+          .from('chapter_blueprint_config')
+          .delete()
+          .eq('id', existing.id);
+        if (error) {
+          errors.push(`Clear failed for ${c.component_type}/${c.chapter_id}: ${error.message}`);
+        } else {
+          cleared++;
+        }
       }
     }
   }
 
-  return { upserted, cleared, errors };
+  return { upserted, cleared, replaced, errors };
 }
