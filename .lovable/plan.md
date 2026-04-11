@@ -1,26 +1,20 @@
 
 
-## Plan: Add "Replace All" Mode to Blueprint Import
+## Plan: Persist Auto-Tag Results & Add Navigation Warning
 
-### Problem
-When uploading updated blueprint files for modules 423/523, the current import only updates cells that have values and clears cells with dashes. It does **not** remove old configs that aren't mentioned in the new file — so stale entries persist.
+### Changes to `src/components/admin/SystemAutoTagCard.tsx`
 
-### Solution
-Add a **"Replace All"** option to the import flow. Before importing, delete all existing `chapter_blueprint_config` entries for the affected module's chapters, then insert the new file's data fresh. This is the cleanest approach — no stale data, no confusion.
+1. **Persist results to localStorage**
+   - On completion, save `lastResult` + timestamp to `localStorage` key `system-auto-tag-last-result`
+   - On component mount, initialize `lastResult` state from `localStorage` if available
+   - This way, navigating away and back still shows the last run's report + download button
 
-### Changes
+2. **Navigation warning while running**
+   - Add a `useEffect` that attaches a `beforeunload` listener when `isRunning` is true
+   - Browser will prompt "Are you sure you want to leave?" if user tries to navigate away during a run
 
-**1. `src/components/admin/blueprint/blueprintExcelImport.ts`**
-- Add an optional `replaceAll?: boolean` parameter to `importBlueprintFromExcel`
-- When `replaceAll` is true, before upserting, delete all existing configs for the chapter IDs present in the import file
-- This ensures old values are wiped and replaced with the new file's content
+3. **Show last run timestamp**
+   - Display a small "Last run: [date/time]" label in the results card so it's clear when the data was generated
 
-**2. `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`**
-- Show a confirmation dialog when the user picks a file: "Replace all existing blueprint data for this module with the uploaded file?"
-- Two options: **Replace All** (deletes old + imports new) and **Merge** (current behavior — updates matching cells only)
-- Pass the chosen mode to `importBlueprintFromExcel`
-
-### Behavior Summary
-- **Replace All**: Deletes ALL existing blueprint configs for chapters in the file, then imports everything fresh. Best for "I have a new complete file."
-- **Merge** (existing behavior): Only updates cells that exist in the file, clears dash cells. Best for partial edits.
+### No other files need changes.
 
