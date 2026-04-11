@@ -450,7 +450,7 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
           <AlertDialogFooter className="flex gap-2 sm:gap-0">
             <AlertDialogCancel onClick={() => setPendingFile(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="outline"
+              className="border border-input bg-background hover:bg-accent hover:text-accent-foreground"
               onClick={() => executeImport(false)}
             >
               Merge
