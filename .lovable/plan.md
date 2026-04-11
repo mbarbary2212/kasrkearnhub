@@ -1,18 +1,26 @@
 
 
-## Combined Plan: Flashcard Extra Field + Cloze Template
+## Plan: Add "Replace All" Mode to Blueprint Import
 
-### Plan A: Show "Extra" field in classic flashcard views
+### Problem
+When uploading updated blueprint files for modules 423/523, the current import only updates cells that have values and clears cells with dashes. It does **not** remove old configs that aren't mentioned in the new file — so stale entries persist.
 
-1. **`src/components/study/FlashcardsSlideshowMode.tsx`** — Add amber "Extra" section below the answer when flipped and `extra` exists
-2. **`src/components/study/FlashcardsStudentView.tsx`** — Same treatment for student-facing view
-3. **`src/components/study/FlashcardsAdminGrid.tsx`** — Show extra on the back face of the flip card in muted style
+### Solution
+Add a **"Replace All"** option to the import flow. Before importing, delete all existing `chapter_blueprint_config` entries for the affected module's chapters, then insert the new file's data fresh. This is the cleanest approach — no stale data, no confusion.
 
-### Plan B: Help & Templates updates
+### Changes
 
-4. **`src/components/admin/HelpTemplatesTab.tsx`**:
-   - Add `extra` to classic flashcard schema `columns` and `optional` arrays
-   - Add cloze flashcard template to `BUILTIN_TEMPLATES` array
+**1. `src/components/admin/blueprint/blueprintExcelImport.ts`**
+- Add an optional `replaceAll?: boolean` parameter to `importBlueprintFromExcel`
+- When `replaceAll` is true, before upserting, delete all existing configs for the chapter IDs present in the import file
+- This ensures old values are wiped and replaced with the new file's content
 
-All changes reuse the existing amber styling from `FlashcardClozeMode.tsx` for consistency.
+**2. `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`**
+- Show a confirmation dialog when the user picks a file: "Replace all existing blueprint data for this module with the uploaded file?"
+- Two options: **Replace All** (deletes old + imports new) and **Merge** (current behavior — updates matching cells only)
+- Pass the chosen mode to `importBlueprintFromExcel`
+
+### Behavior Summary
+- **Replace All**: Deletes ALL existing blueprint configs for chapters in the file, then imports everything fresh. Best for "I have a new complete file."
+- **Merge** (existing behavior): Only updates cells that exist in the file, clears dash cells. Best for partial edits.
 
