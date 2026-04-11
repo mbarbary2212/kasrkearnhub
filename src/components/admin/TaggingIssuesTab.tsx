@@ -188,7 +188,7 @@ export function TaggingIssuesTab() {
         </Card>
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-medium text-orange-600">Chapters w/o Sections</CardTitle>
+            <CardTitle className="text-sm font-medium text-warning">Chapters w/o Sections</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <p className="text-2xl font-bold">{noSectionsDefinedCount}</p>
@@ -397,7 +397,7 @@ function TaggingIssueRow({
           )
         )}
         {issue.issueType === 'no_sections_defined' && (
-          <span className="text-xs text-orange-600">Define sections in blueprint</span>
+          <span className="text-xs text-warning">Define sections in blueprint</span>
         )}
       </TableCell>
     </TableRow>
