@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, ShieldAlert, BrainCircuit, Video, Radio } from 'lucide-react';
+import { BarChart3, ShieldAlert, BrainCircuit, Video, Radio, Tag } from 'lucide-react';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { AICasesAdminTab } from './AICasesAdminTab';
 import { VideoAnalyticsTab } from './VideoAnalyticsTab';
 import { RealtimeAnalyticsTab } from './RealtimeAnalyticsTab';
+import { TaggingIssuesTab } from './TaggingIssuesTab';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ContentAnalyticsTabProps {
@@ -22,6 +23,7 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
     { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
     { value: 'video-analytics', label: 'Video Analytics', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
     { value: 'realtime', label: 'Live', icon: Radio, visible: isSuperAdmin || isPlatformAdmin },
+    { value: 'tagging-issues', label: 'Tagging Issues', icon: Tag, visible: isSuperAdmin || isPlatformAdmin },
   ].filter(t => t.visible);
 
   const defaultTab = tabs[0]?.value || 'questions';
@@ -64,6 +66,10 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
 
         <TabsContent value="realtime" className="mt-4">
           <RealtimeAnalyticsTab />
+        </TabsContent>
+
+        <TabsContent value="tagging-issues" className="mt-4">
+          <TaggingIssuesTab />
         </TabsContent>
       </Tabs>
     </div>
