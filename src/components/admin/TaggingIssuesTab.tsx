@@ -60,7 +60,7 @@ export function TaggingIssuesTab() {
   const { data: sections = [] } = useQuery({
     queryKey: ['all-sections'],
     queryFn: async () => {
-      const { data } = await supabase.from('sections').select('id, title, chapter_id').order('order_index');
+      const { data } = await supabase.from('sections').select('id, name, chapter_id').order('order_index');
       return data || [];
     },
     staleTime: 10 * 60 * 1000,
