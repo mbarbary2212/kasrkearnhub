@@ -250,35 +250,8 @@ export async function importBlueprintFromExcel(
   }
 
   for (const r of rows) {
-    let query = supabase
-      .from('chapter_blueprint_config')
-      .select('id')
-      .eq('chapter_id', r.chapter_id)
-      .eq('exam_type', r.exam_type)
-      .eq('component_type', r.component_type);
-
-    if (r.section_id) {
-      query = query.eq('section_id', r.section_id);
-    } else {
-      query = query.is('section_id', null);
-    }
-
-    const { data: existing } = await query.maybeSingle();
-
-    if (existing) {
-      const { error } = await supabase
-        .from('chapter_blueprint_config')
-        .update({
-          inclusion_level: r.inclusion_level,
-          question_types: r.question_types,
-        })
-        .eq('id', existing.id);
-      if (error) {
-        errors.push(`Update failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
-      } else {
-        upserted++;
-      }
-    } else {
+    if (replaceAll) {
+      // In replace mode, we already deleted everything — just insert
       const { error } = await supabase
         .from('chapter_blueprint_config')
         .insert({
@@ -294,6 +267,53 @@ export async function importBlueprintFromExcel(
         errors.push(`Insert failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
       } else {
         upserted++;
+      }
+    } else {
+      let query = supabase
+        .from('chapter_blueprint_config')
+        .select('id')
+        .eq('chapter_id', r.chapter_id)
+        .eq('exam_type', r.exam_type)
+        .eq('component_type', r.component_type);
+
+      if (r.section_id) {
+        query = query.eq('section_id', r.section_id);
+      } else {
+        query = query.is('section_id', null);
+      }
+
+      const { data: existing } = await query.maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('chapter_blueprint_config')
+          .update({
+            inclusion_level: r.inclusion_level,
+            question_types: r.question_types,
+          })
+          .eq('id', existing.id);
+        if (error) {
+          errors.push(`Update failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
+        } else {
+          upserted++;
+        }
+      } else {
+        const { error } = await supabase
+          .from('chapter_blueprint_config')
+          .insert({
+            chapter_id: r.chapter_id,
+            module_id: r.module_id,
+            section_id: r.section_id,
+            exam_type: r.exam_type,
+            component_type: r.component_type,
+            inclusion_level: r.inclusion_level,
+            question_types: r.question_types,
+          });
+        if (error) {
+          errors.push(`Insert failed for ${r.component_type}/${r.chapter_id}: ${error.message}`);
+        } else {
+          upserted++;
+        }
       }
     }
   }
