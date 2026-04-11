@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -98,17 +98,53 @@ function downloadReport(display: SystemAutoTagProgress) {
   URL.revokeObjectURL(url);
 }
 
+const STORAGE_KEY = 'system-auto-tag-last-result';
+
 export function SystemAutoTagCard() {
   const { runSystemAutoTag, isRunning, progress, abort } = useSystemAutoTag();
-  const [lastResult, setLastResult] = useState<SystemAutoTagProgress | null>(null);
+  const [lastResult, setLastResult] = useState<SystemAutoTagProgress | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.result || null;
+      }
+    } catch {}
+    return null;
+  });
+  const [lastRunTimestamp, setLastRunTimestamp] = useState<string | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.timestamp || null;
+      }
+    } catch {}
+    return null;
+  });
   const [showTableDetails, setShowTableDetails] = useState(false);
+
+  // Warn before navigating away while running
+  useEffect(() => {
+    if (!isRunning) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isRunning]);
 
   const handleRun = async () => {
     toast.info('Starting system-wide AI section tagging...');
     const result = await runSystemAutoTag(false);
     if (result) {
+      const timestamp = new Date().toISOString();
       setLastResult(result);
-      // Auto-download report on completion
+      setLastRunTimestamp(timestamp);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ result, timestamp }));
+      } catch {}
       downloadReport(result);
       if (result.errors.length > 0) {
         toast.warning(`Completed with ${result.errors.length} error(s). Tagged ${result.itemsTagged} items. Report downloaded.`);
@@ -182,9 +218,16 @@ export function SystemAutoTagCard() {
                 ) : (
                   <AlertTriangle className="w-4 h-4 text-amber-500" />
                 )}
-                <span className="font-medium text-sm">
-                  {display.phase === 'Complete' ? 'Tagging Complete' : 'Tagging Finished'}
-                </span>
+                <div>
+                  <span className="font-medium text-sm">
+                    {display.phase === 'Complete' ? 'Tagging Complete' : 'Tagging Finished'}
+                  </span>
+                  {lastRunTimestamp && !isRunning && (
+                    <div className="text-xs text-muted-foreground">
+                      Last run: {new Date(lastRunTimestamp).toLocaleString()}
+                    </div>
+                  )}
+                </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => downloadReport(display)} className="gap-1.5 text-xs">
                 <Download className="w-3.5 h-3.5" />Report
