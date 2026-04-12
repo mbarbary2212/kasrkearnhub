@@ -1,31 +1,35 @@
 
 
-## Plan: Support CSV and Excel (.xlsx) Uploads for Flashcards
+## Plan: Fix Cloze Flashcard Duplicate Detection
 
-### Approach
-Intercept file selection in `StudyBulkUploadModal`. If the file is `.xlsx`, parse it using the existing `readExcelToArray` from `src/lib/excel.ts`, convert the 2D array into CSV text, then feed it into the existing `processCSV` pipeline. No separate Excel import logic needed.
+### Root Cause
 
-### Files to change
+The duplicate detection compares `front` and `back` fields. Cloze cards store their content in `cloze_text` instead, leaving `front` and `back` empty. This means **every cloze card compares as empty-string vs empty-string**, and they all appear as "exact duplicates" of each other.
 
-**1. `src/components/study/StudyBulkUploadModal.tsx`**
-- Update `handleFileSelect` to check file extension
-- For `.xlsx`: read as `ArrayBuffer`, call `readExcelToArray()`, join rows into CSV string, pass to `processCSV()`
-- For `.csv`: keep existing `readAsText` flow
-- Update `DragDropZone` props: `accept=".csv,.xlsx"` and `acceptedTypes={['.csv', '.xlsx']}`
-- Update format help text from "CSV Format" to "CSV / Excel Format"
+This is NOT related to deleted items — deleted items are already correctly excluded from the comparison.
 
-**2. `src/components/ui/drag-drop-zone.tsx`**
-- Update default props from `.csv` to `.csv,.xlsx` (minor, mostly driven by parent props)
+### Fix
 
-### How Excel → CSV conversion works
+**File: `src/components/study/StudyBulkUploadModal.tsx`**
+
+Update the `detectDuplicates` function to use the correct field based on card type:
+
+- When building comparison objects from existing resources and parsed items, check `card_type`
+- If `card_type === 'cloze'`: use `cloze_text` as the `front` field for comparison (and keep `back` as the `extra` or back field)
+- If `card_type === 'normal'` or undefined: use `front`/`back` as before
+
 ```
-.xlsx file → ArrayBuffer → readExcelToArray() → string[][] → join with commas (quote fields containing commas) → CSV string → processCSV()
+// Instead of:
+front: (r.content as FlashcardContent).front || ''
+
+// Use:
+front: content.card_type === 'cloze' 
+  ? (content.cloze_text || '') 
+  : (content.front || '')
 ```
 
-The existing `readExcelToArray` in `src/lib/excel.ts` already handles header rows and data extraction from the first sheet.
+Apply the same logic to both `existingForComparison` and `parsedForComparison` arrays (lines ~127-136).
 
-### Validation
-- Same validation as CSV: `text` required, others optional, empty rows skipped
-- Preview shows first N rows with missing field highlighting (already exists)
-- File type and size validation handled by `DragDropZone`
+### No other files need changes
+The core `isFlashcardDuplicate` function in `duplicateDetection.ts` is fine — it correctly compares whatever `front`/`back` strings it receives. The bug is solely in how those strings are extracted from cloze card content.
 
