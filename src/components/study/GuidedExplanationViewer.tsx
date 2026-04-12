@@ -59,7 +59,7 @@ export function GuidedExplanationViewer({
   };
 
   const handleRevealAnswer = () => {
-    setRevealedAnswers(prev => new Set([...prev, currentIndex]));
+    updateRevealedAnswers(prev => new Set([...prev, currentIndex]));
   };
 
   const handleNext = () => {
