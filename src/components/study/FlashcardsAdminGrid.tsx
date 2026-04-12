@@ -25,9 +25,13 @@ const TIMING_OPTIONS = [
   { value: '7000', label: '7s' },
 ];
 
+type CardTypeFilter = 'all' | 'classic' | 'cloze';
+
 export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds = new Set(), onToggleSelection }: FlashcardsAdminGridProps) {
+  const [cardTypeFilter, setCardTypeFilter] = useState<CardTypeFilter>('all');
+
   // Group flashcards by title
-  const groups = useMemo(() => {
+  const allGroups = useMemo(() => {
     const map = new Map<string, { front: string; back: string; isCloze: boolean; resource: StudyResource }[]>();
     for (const resource of resources) {
       const content = resource.content as FlashcardContent;
@@ -47,7 +51,18 @@ export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds 
     }));
   }, [resources]);
 
-  if (groups.length === 0) {
+  const classicCount = useMemo(() => resources.filter(r => (r.content as FlashcardContent).card_type !== 'cloze').length, [resources]);
+  const clozeCount = useMemo(() => resources.filter(r => (r.content as FlashcardContent).card_type === 'cloze').length, [resources]);
+
+  const groups = useMemo(() => {
+    if (cardTypeFilter === 'all') return allGroups;
+    const isClozeFilter = cardTypeFilter === 'cloze';
+    return allGroups
+      .map(g => ({ ...g, cards: g.cards.filter(c => c.isCloze === isClozeFilter) }))
+      .filter(g => g.cards.length > 0);
+  }, [allGroups, cardTypeFilter]);
+
+  if (resources.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         No flashcards available
@@ -56,18 +71,32 @@ export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds 
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {groups.map((group) => (
-        <FlashcardDeckGroup
-          key={group.title}
-          deckTitle={group.title}
-          cards={group.cards}
-          canManage={canManage}
-          onEdit={onEdit}
-          selectedIds={selectedIds}
-          onToggleSelection={onToggleSelection}
-        />
-      ))}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Select value={cardTypeFilter} onValueChange={(v) => setCardTypeFilter(v as CardTypeFilter)}>
+          <SelectTrigger className="w-40 h-8 text-xs">
+            <SelectValue placeholder="Card type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types ({resources.length})</SelectItem>
+            <SelectItem value="classic">Classic ({classicCount})</SelectItem>
+            <SelectItem value="cloze">Cloze ({clozeCount})</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <FlashcardDeckGroup
+            key={group.title}
+            deckTitle={group.title}
+            cards={group.cards}
+            canManage={canManage}
+            onEdit={onEdit}
+            selectedIds={selectedIds}
+            onToggleSelection={onToggleSelection}
+          />
+        ))}
+      </div>
     </div>
   );
 }
