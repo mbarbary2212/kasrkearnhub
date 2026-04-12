@@ -112,6 +112,20 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .eq('question_type', 'osce')
           .lte('score', 3)
           .order('score', { ascending: true }),
+        // All MCQ attempts (for attempted count)
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('module_id', moduleId)
+          .eq('question_type', 'mcq'),
+        // All OSCE attempts (for attempted count)
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('module_id', moduleId)
+          .eq('question_type', 'osce'),
         // Chapters for this module
         supabase
           .from('module_chapters')
