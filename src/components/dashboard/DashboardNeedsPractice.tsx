@@ -98,6 +98,12 @@ export function DashboardNeedsPractice({
     </div>
   );
 
+  const NotStartedBadge = ({ message }: { message: string }) => (
+    <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50 border-border">
+      <span className="text-sm text-muted-foreground">{message}</span>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {/* MCQ Needs Practice */}
@@ -117,6 +123,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allMcqsComplete ? (
               <AllClearBadge message="All MCQs mastered!" />
+            ) : mcqNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some MCQs!" />
             ) : (
               <>
                 {mcqNeedsPractice.slice(0, 5).map((item) => (
@@ -180,6 +188,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allOsceComplete ? (
               <AllClearBadge message="OSCE stations complete!" />
+            ) : osceNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some OSCE stations!" />
             ) : (
               <>
                 {osceNeedsPractice.slice(0, 5).map((item) => (
