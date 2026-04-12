@@ -193,6 +193,24 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
                   />
                 )}
                 <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 gap-1">
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Convert Type
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => setConvertTarget('cloze')}>
+                      <PenLine className="h-3.5 w-3.5 mr-2" />
+                      Convert to Cloze
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setConvertTarget('normal')}>
+                      <Layers className="h-3.5 w-3.5 mr-2" />
+                      Convert to Classic
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                   variant="destructive"
                   size="sm"
