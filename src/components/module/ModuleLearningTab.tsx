@@ -78,6 +78,10 @@ interface ModuleLearningTabProps {
   selectedDepartmentId?: string | null;
   /** When provided (from ModulePage), student pill filtering is handled externally */
   externalActiveBookLabel?: string | null;
+  /** When true, chapters with zero content items are hidden from the list */
+  hideEmptyChapters?: boolean;
+  /** Chapter status data from dashboard — used to determine which chapters have content */
+  chapterContentMap?: Array<{ id: string; totalItems: number }>;
 }
 
 // Sortable book card component
@@ -569,14 +573,25 @@ function StudentBookPillView({
 // ─── Main component ───
 export function ModuleLearningTab({
   moduleId, 
-  chapters, 
+  chapters: rawChapters, 
   chaptersLoading,
   selectorLabel = 'Department',
   canManageBooks = false,
   canManageChapters = false,
   selectedDepartmentId,
   externalActiveBookLabel,
+  hideEmptyChapters = false,
+  chapterContentMap,
 }: ModuleLearningTabProps) {
+  // Filter out empty chapters for students when dashboard data is available
+  const chapters = useMemo(() => {
+    if (!hideEmptyChapters || !chapterContentMap || !rawChapters) return rawChapters;
+    const contentChapterIds = new Set(
+      chapterContentMap.filter(c => c.totalItems > 0).map(c => c.id)
+    );
+    return rawChapters.filter(ch => contentChapterIds.has(ch.id));
+  }, [hideEmptyChapters, chapterContentMap, rawChapters]);
+
   const navigate = useNavigate();
   const auth = useAuthContext();
   const storageKey = `kasrlearn_book_${moduleId}`;

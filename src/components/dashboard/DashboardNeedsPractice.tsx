@@ -66,12 +66,20 @@ export function DashboardNeedsPractice({
   }
 
   // Check if all content is complete (for "all clear" state)
-  const allMcqsComplete = counts.mcqTotal > 0 && mcqNeedsPractice.length === 0;
-  const allOsceComplete = counts.osceTotal > 0 && osceNeedsPractice.length === 0;
+  // IMPORTANT: require attemptedCount > 0 to avoid showing "mastered" on fresh accounts
+  const allMcqsComplete = counts.mcqTotal > 0 && mcqNeedsPractice.length === 0 && counts.mcqAttempted > 0;
+  const allOsceComplete = counts.osceTotal > 0 && osceNeedsPractice.length === 0 && counts.osceAttempted > 0;
   const allVideosComplete = counts.videoTotal > 0 && videosToComplete.length === 0;
-  const allMatchingComplete = counts.matchingTotal > 0 && matchingToComplete.length === 0;
-  const allEssaysComplete = counts.essayTotal > 0 && essaysToReview.length === 0;
-  const allCasesComplete = counts.caseScenarioTotal > 0 && casesToReview.length === 0;
+  const allMatchingComplete = counts.matchingTotal > 0 && matchingToComplete.length === 0 && counts.matchingAttempted > 0;
+  const allEssaysComplete = counts.essayTotal > 0 && essaysToReview.length === 0 && counts.essayAttempted > 0;
+  const allCasesComplete = counts.caseScenarioTotal > 0 && casesToReview.length === 0 && counts.caseAttempted > 0;
+
+  // "Not started" states — content exists but zero attempts
+  const mcqNotStarted = counts.mcqTotal > 0 && mcqNeedsPractice.length === 0 && counts.mcqAttempted === 0;
+  const osceNotStarted = counts.osceTotal > 0 && osceNeedsPractice.length === 0 && counts.osceAttempted === 0;
+  const matchingNotStarted = counts.matchingTotal > 0 && matchingToComplete.length === 0 && counts.matchingAttempted === 0;
+  const essayNotStarted = counts.essayTotal > 0 && essaysToReview.length === 0 && counts.essayAttempted === 0;
+  const caseNotStarted = counts.caseScenarioTotal > 0 && casesToReview.length === 0 && counts.caseAttempted === 0;
 
   // Only show sections with content
   const showMcq = counts.mcqTotal > 0;
@@ -87,6 +95,12 @@ export function DashboardNeedsPractice({
     <div className="flex items-center gap-2 p-3 rounded-lg border bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
       <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
       <span className="text-sm text-green-700 dark:text-green-400">{message}</span>
+    </div>
+  );
+
+  const NotStartedBadge = ({ message }: { message: string }) => (
+    <div className="flex items-center gap-2 p-3 rounded-lg border bg-muted/50 border-border">
+      <span className="text-sm text-muted-foreground">{message}</span>
     </div>
   );
 
@@ -109,6 +123,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allMcqsComplete ? (
               <AllClearBadge message="All MCQs mastered!" />
+            ) : mcqNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some MCQs!" />
             ) : (
               <>
                 {mcqNeedsPractice.slice(0, 5).map((item) => (
@@ -172,6 +188,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allOsceComplete ? (
               <AllClearBadge message="OSCE stations complete!" />
+            ) : osceNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some OSCE stations!" />
             ) : (
               <>
                 {osceNeedsPractice.slice(0, 5).map((item) => (
@@ -339,6 +357,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allMatchingComplete ? (
               <AllClearBadge message="All matching complete!" />
+            ) : matchingNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some matching questions!" />
             ) : (
               <>
                 {matchingToComplete.slice(0, 5).map((item) => (
@@ -391,6 +411,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allEssaysComplete ? (
               <AllClearBadge message="All essays reviewed!" />
+            ) : essayNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some essays!" />
             ) : (
               <>
                 {essaysToReview.slice(0, 5).map((item) => (
@@ -443,6 +465,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allCasesComplete ? (
               <AllClearBadge message="All cases explored!" />
+            ) : caseNotStarted ? (
+              <NotStartedBadge message="Not started yet — explore some cases!" />
             ) : (
               <>
                 {casesToReview.slice(0, 5).map((item) => (
