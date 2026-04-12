@@ -124,16 +124,24 @@ export function StudyBulkUploadModal({
     }
 
     // For flashcards, do duplicate detection
-    const existingForComparison = existingResources.map(r => ({
-      id: r.id,
-      front: (r.content as FlashcardContent).front || '',
-      back: (r.content as FlashcardContent).back || '',
-    }));
+    const existingForComparison = existingResources.map(r => {
+      const content = r.content as FlashcardContent;
+      const isCloze = content.card_type === 'cloze';
+      return {
+        id: r.id,
+        front: isCloze ? (content.cloze_text || '') : (content.front || ''),
+        back: content.back || content.extra || '',
+      };
+    });
 
-    const parsedForComparison = parsed.map(p => ({
-      front: (p.content as FlashcardContent).front || '',
-      back: (p.content as FlashcardContent).back || '',
-    }));
+    const parsedForComparison = parsed.map(p => {
+      const content = p.content as FlashcardContent;
+      const isCloze = content.card_type === 'cloze';
+      return {
+        front: isCloze ? (content.cloze_text || '') : (content.front || ''),
+        back: content.back || content.extra || '',
+      };
+    });
 
     const results = findDuplicates(
       parsedForComparison,
