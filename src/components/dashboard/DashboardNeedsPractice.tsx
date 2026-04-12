@@ -357,6 +357,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allMatchingComplete ? (
               <AllClearBadge message="All matching complete!" />
+            ) : matchingNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some matching questions!" />
             ) : (
               <>
                 {matchingToComplete.slice(0, 5).map((item) => (
@@ -409,6 +411,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allEssaysComplete ? (
               <AllClearBadge message="All essays reviewed!" />
+            ) : essayNotStarted ? (
+              <NotStartedBadge message="Not started yet — try some essays!" />
             ) : (
               <>
                 {essaysToReview.slice(0, 5).map((item) => (
@@ -461,6 +465,8 @@ export function DashboardNeedsPractice({
           <CardContent className="space-y-2">
             {allCasesComplete ? (
               <AllClearBadge message="All cases explored!" />
+            ) : caseNotStarted ? (
+              <NotStartedBadge message="Not started yet — explore some cases!" />
             ) : (
               <>
                 {casesToReview.slice(0, 5).map((item) => (
