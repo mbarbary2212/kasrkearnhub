@@ -18,22 +18,45 @@ import { GuidedExplanationContent } from '@/hooks/useStudyResources';
 interface GuidedExplanationViewerProps {
   title: string;
   content: GuidedExplanationContent;
+  resourceId?: string;
   onComplete?: () => void;
 }
 
 export function GuidedExplanationViewer({ 
   title, 
   content, 
+  resourceId,
   onComplete 
 }: GuidedExplanationViewerProps) {
+  const storageKey = resourceId ? `guided_progress_${resourceId}` : null;
+
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set());
+  const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(() => {
+    if (storageKey) {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) return new Set(JSON.parse(saved) as number[]);
+      } catch { /* ignore */ }
+    }
+    return new Set();
+  });
   const [showHint, setShowHint] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
   const questions = content.guided_questions || [];
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((revealedAnswers.size / questions.length) * 100) : 0;
+
+  // Persist revealed answers to localStorage
+  const updateRevealedAnswers = (updater: (prev: Set<number>) => Set<number>) => {
+    setRevealedAnswers(prev => {
+      const next = updater(prev);
+      if (storageKey) {
+        try { localStorage.setItem(storageKey, JSON.stringify([...next])); } catch { /* ignore */ }
+      }
+      return next;
+    });
+  };
 
   const handleRevealAnswer = () => {
     setRevealedAnswers(prev => new Set([...prev, currentIndex]));

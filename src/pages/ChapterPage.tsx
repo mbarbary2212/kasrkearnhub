@@ -817,7 +817,7 @@ export default function ChapterPage() {
                     <span className="sm:hidden">{activeTabConfig?.label || "Select"}</span>
                     {triggerCounts.total > 0 && (
                       <span className="text-[10px] font-semibold opacity-70 tabular-nums">
-                        {triggerCounts.completed}/{triggerCounts.total}
+                        {triggerCounts.completed}/{triggerCounts.total}{currentSubTab === 'guided_explanations' ? ' sets' : ''}
                       </span>
                     )}
                     <ChevronDown className="w-4 h-4 opacity-60" />
