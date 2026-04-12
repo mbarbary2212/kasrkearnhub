@@ -80,6 +80,8 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
       const [
         mcqAttemptsRes,
         osceAttemptsRes,
+        allMcqAttemptsRes,
+        allOsceAttemptsRes,
         chaptersRes,
         mcqsRes,
         oscesRes,
