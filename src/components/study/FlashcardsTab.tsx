@@ -12,7 +12,7 @@ import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Layers, PenLine, LayoutGrid, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
+import { Layers, PenLine, LayoutGrid, Star, Filter, RotateCcw, Trash2, X, RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
-import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
+import { useBulkDeleteContent, useBulkConvertCardType } from '@/hooks/useContentBulkOperations';
 import { toast } from 'sonner';
 
 interface FlashcardsTabProps {
@@ -54,10 +54,12 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<'cloze' | 'normal' | null>(null);
   
   // Synced stars across devices - supports both chapter and topic
   const { starredIds, toggleStar } = useFlashcardStars({ chapterId, topicId });
   const bulkDelete = useBulkDeleteContent('study_resources');
+  const bulkConvert = useBulkConvertCardType();
   
   // Persisted settings - supports both chapter and topic
   const {
@@ -99,6 +101,24 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
       toast.error('Failed to delete flashcards');
     } finally {
       setBulkDeleteOpen(false);
+    }
+  };
+
+  const handleBulkConvert = async () => {
+    if (!convertTarget) return;
+    try {
+      await bulkConvert.mutateAsync({
+        ids: Array.from(selectedIds),
+        targetType: convertTarget,
+        chapterId,
+        topicId,
+      });
+      toast.success(`Converted ${selectedIds.size} cards to ${convertTarget === 'cloze' ? 'Cloze' : 'Classic'}`);
+      clearSelection();
+    } catch (error) {
+      toast.error('Failed to convert cards');
+    } finally {
+      setConvertTarget(null);
     }
   };
 
