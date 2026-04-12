@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { AlertCircle, Check, AlertTriangle, Copy } from 'lucide-react';
+import { readExcelToArray } from '@/lib/excel';
 import {
   Dialog,
   DialogContent,
@@ -191,14 +192,41 @@ export function StudyBulkUploadModal({
     [resourceType, cardSubtype, detectDuplicates]
   );
 
-  const handleFileSelect = useCallback((file: File) => {
+  const handleFileSelect = useCallback(async (file: File) => {
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      processCSV(text);
-    };
-    reader.readAsText(file);
+    const ext = file.name.split('.').pop()?.toLowerCase();
+
+    if (ext === 'xlsx') {
+      try {
+        const buffer = await file.arrayBuffer();
+        const rows = await readExcelToArray(buffer);
+        if (rows.length === 0) {
+          setErrors([{ row: 0, reason: 'Excel file is empty or has no readable data' }]);
+          return;
+        }
+        // Convert 2D array to CSV string
+        const csvText = rows
+          .map(row =>
+            row.map(cell => {
+              const s = String(cell ?? '');
+              return s.includes(',') || s.includes('"') || s.includes('\n')
+                ? `"${s.replace(/"/g, '""')}"`
+                : s;
+            }).join(',')
+          )
+          .join('\n');
+        processCSV(csvText);
+      } catch (e) {
+        setErrors([{ row: 0, reason: `Failed to parse Excel file: ${(e as Error).message}` }]);
+      }
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        processCSV(text);
+      };
+      reader.readAsText(file);
+    }
   }, [processCSV]);
 
 
@@ -303,21 +331,22 @@ export function StudyBulkUploadModal({
           <SectionWarningBanner chapterId={chapterId} topicId={topicId} />
           {/* CSV Format Example */}
           <div className="bg-muted p-3 rounded-lg">
-            <p className="text-sm font-medium mb-2">CSV Format:</p>
+            <p className="text-sm font-medium mb-2">CSV / Excel Format:</p>
             <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
               {resourceType === 'flashcard'
                 ? (cardSubtype === 'cloze' ? CSV_FORMAT_FLASHCARD_CLOZE : CSV_FORMAT_FLASHCARD_NORMAL)
                 : CSV_FORMATS[resourceType]}
             </pre>
+            <p className="text-xs text-muted-foreground mt-2">Supports .csv and .xlsx files</p>
           </div>
 
           {/* File Upload Area with Drag & Drop */}
           <DragDropZone
             id={`csv-upload-${resourceType}`}
             onFileSelect={handleFileSelect}
-            accept=".csv"
+            accept=".csv,.xlsx"
             fileName={fileName}
-            acceptedTypes={['.csv']}
+            acceptedTypes={['.csv', '.xlsx']}
             maxSizeMB={10}
           />
 
