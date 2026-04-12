@@ -1,35 +1,21 @@
 
 
-## Plan: Fix Cloze Flashcard Duplicate Detection
+## Plan: Display Cloze Flashcards Correctly in Admin Grid
 
-### Root Cause
-
-The duplicate detection compares `front` and `back` fields. Cloze cards store their content in `cloze_text` instead, leaving `front` and `back` empty. This means **every cloze card compares as empty-string vs empty-string**, and they all appear as "exact duplicates" of each other.
-
-This is NOT related to deleted items — deleted items are already correctly excluded from the comparison.
+### Problem
+The admin grid always reads `content.front` and `content.back` for display. Cloze cards store their text in `content.cloze_text` and leave `front`/`back` empty, so they appear blank.
 
 ### Fix
 
-**File: `src/components/study/StudyBulkUploadModal.tsx`**
+**File: `src/components/study/FlashcardsAdminGrid.tsx`**
 
-Update the `detectDuplicates` function to use the correct field based on card type:
+Two changes:
 
-- When building comparison objects from existing resources and parsed items, check `card_type`
-- If `card_type === 'cloze'`: use `cloze_text` as the `front` field for comparison (and keep `back` as the `extra` or back field)
-- If `card_type === 'normal'` or undefined: use `front`/`back` as before
+1. **Grouping logic (line 36)** — When building the `front`/`back` strings for each card, check `card_type`:
+   - If `cloze`: use `cloze_text` for front, `extra` for back
+   - Otherwise: use `front`/`back` as before
 
-```
-// Instead of:
-front: (r.content as FlashcardContent).front || ''
+2. **Front-side label (line 187)** — Show "Cloze" instead of "Question" when the card is a cloze type, so admins can visually distinguish card types at a glance.
 
-// Use:
-front: content.card_type === 'cloze' 
-  ? (content.cloze_text || '') 
-  : (content.front || '')
-```
-
-Apply the same logic to both `existingForComparison` and `parsedForComparison` arrays (lines ~127-136).
-
-### No other files need changes
-The core `isFlashcardDuplicate` function in `duplicateDetection.ts` is fine — it correctly compares whatever `front`/`back` strings it receives. The bug is solely in how those strings are extracted from cloze card content.
+No other files need changes.
 
