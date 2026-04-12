@@ -23,6 +23,11 @@ export interface ContentCounts {
   matchingTotal: number;
   essayTotal: number;
   caseScenarioTotal: number;
+  mcqAttempted: number;
+  osceAttempted: number;
+  matchingAttempted: number;
+  essayAttempted: number;
+  caseAttempted: number;
 }
 
 interface UseNeedsPracticeResult {
@@ -45,6 +50,11 @@ const EMPTY_COUNTS: ContentCounts = {
   matchingTotal: 0,
   essayTotal: 0,
   caseScenarioTotal: 0,
+  mcqAttempted: 0,
+  osceAttempted: 0,
+  matchingAttempted: 0,
+  essayAttempted: 0,
+  caseAttempted: 0,
 };
 
 export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
