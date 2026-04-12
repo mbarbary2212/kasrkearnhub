@@ -1,36 +1,31 @@
 
 
-## Plan: Bulk Convert Card Type (Classic ↔ Cloze)
+## Plan: Support CSV and Excel (.xlsx) Uploads for Flashcards
 
-### Problem
-You uploaded cloze flashcards into a classic cards interface. Currently, changing card type requires editing one card at a time.
-
-### Solution
-Add a **"Change Type"** bulk action button next to the existing bulk Delete and Assign Section buttons in `FlashcardsTab.tsx`. When selected cards are chosen, the button lets you convert them between Classic and Cloze format.
-
-### How it works
-
-1. Select multiple cards using the existing checkboxes
-2. Click new **"Convert to Cloze"** or **"Convert to Classic"** button
-3. A confirmation dialog shows how many cards will be converted
-4. On confirm, each selected card's `content` JSON is updated:
-   - **Classic → Cloze**: Sets `card_type: 'cloze'`, moves `front` text to `cloze_text` field
-   - **Cloze → Classic**: Sets `card_type: 'normal'`, clears `cloze_text`
+### Approach
+Intercept file selection in `StudyBulkUploadModal`. If the file is `.xlsx`, parse it using the existing `readExcelToArray` from `src/lib/excel.ts`, convert the 2D array into CSV text, then feed it into the existing `processCSV` pipeline. No separate Excel import logic needed.
 
 ### Files to change
 
-**1. `src/components/study/FlashcardsTab.tsx`**
-- Add a dropdown or two buttons in the bulk actions bar (where Delete and Assign Section already are)
-- Options: "Convert to Cloze" / "Convert to Classic"
-- On click, open confirmation dialog, then call mutation
+**1. `src/components/study/StudyBulkUploadModal.tsx`**
+- Update `handleFileSelect` to check file extension
+- For `.xlsx`: read as `ArrayBuffer`, call `readExcelToArray()`, join rows into CSV string, pass to `processCSV()`
+- For `.csv`: keep existing `readAsText` flow
+- Update `DragDropZone` props: `accept=".csv,.xlsx"` and `acceptedTypes={['.csv', '.xlsx']}`
+- Update format help text from "CSV Format" to "CSV / Excel Format"
 
-**2. `src/hooks/useStudyResources.ts`**
-- Add a `useBulkConvertCardType` mutation that:
-  - Fetches selected cards
-  - Updates each card's `content` JSON with the new `card_type`
-  - Uses individual `.update()` calls (content is JSONB, no batch update for JSON fields)
-  - Invalidates query cache on success
+**2. `src/components/ui/drag-drop-zone.tsx`**
+- Update default props from `.csv` to `.csv,.xlsx` (minor, mostly driven by parent props)
 
-### UI placement
-The button appears in the existing bulk actions toolbar (visible when cards are selected), between "Assign Section" and "Delete".
+### How Excel → CSV conversion works
+```
+.xlsx file → ArrayBuffer → readExcelToArray() → string[][] → join with commas (quote fields containing commas) → CSV string → processCSV()
+```
+
+The existing `readExcelToArray` in `src/lib/excel.ts` already handles header rows and data extraction from the first sheet.
+
+### Validation
+- Same validation as CSV: `text` required, others optional, empty rows skipped
+- Preview shows first N rows with missing field highlighting (already exists)
+- File type and size validation handled by `DragDropZone`
 

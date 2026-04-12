@@ -12,7 +12,7 @@ import { useFlashcardStars } from '@/hooks/useFlashcardStars';
 import { useFlashcardSettings } from '@/hooks/useFlashcardSettings';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Layers, PenLine, LayoutGrid, Star, Filter, RotateCcw, Trash2, X, RefreshCw } from 'lucide-react';
+import { Layers, PenLine, LayoutGrid, Star, Filter, RotateCcw, Trash2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
-import { useBulkDeleteContent, useBulkConvertCardType } from '@/hooks/useContentBulkOperations';
+import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 import { toast } from 'sonner';
 
 interface FlashcardsTabProps {
@@ -54,12 +54,10 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
   const [adminViewMode, setAdminViewMode] = useState<ViewMode>('cards');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [convertTarget, setConvertTarget] = useState<'cloze' | 'normal' | null>(null);
   
   // Synced stars across devices - supports both chapter and topic
   const { starredIds, toggleStar } = useFlashcardStars({ chapterId, topicId });
   const bulkDelete = useBulkDeleteContent('study_resources');
-  const bulkConvert = useBulkConvertCardType();
   
   // Persisted settings - supports both chapter and topic
   const {
@@ -101,24 +99,6 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
       toast.error('Failed to delete flashcards');
     } finally {
       setBulkDeleteOpen(false);
-    }
-  };
-
-  const handleBulkConvert = async () => {
-    if (!convertTarget) return;
-    try {
-      await bulkConvert.mutateAsync({
-        ids: Array.from(selectedIds),
-        targetType: convertTarget,
-        chapterId,
-        topicId,
-      });
-      toast.success(`Converted ${selectedIds.size} cards to ${convertTarget === 'cloze' ? 'Cloze' : 'Classic'}`);
-      clearSelection();
-    } catch (error) {
-      toast.error('Failed to convert cards');
-    } finally {
-      setConvertTarget(null);
     }
   };
 
@@ -193,24 +173,6 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
                   />
                 )}
                 <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-7 gap-1">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Convert Type
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => setConvertTarget('cloze')}>
-                      <PenLine className="h-3.5 w-3.5 mr-2" />
-                      Convert to Cloze
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setConvertTarget('normal')}>
-                      <Layers className="h-3.5 w-3.5 mr-2" />
-                      Convert to Classic
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
                 <Button
                   variant="destructive"
                   size="sm"
@@ -262,34 +224,6 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {bulkDelete.isPending ? 'Deleting...' : 'Delete'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* Bulk Convert Confirmation */}
-        <AlertDialog open={convertTarget !== null} onOpenChange={(open) => { if (!open) setConvertTarget(null); }}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>
-                Convert {selectedIds.size} cards to {convertTarget === 'cloze' ? 'Cloze' : 'Classic'}?
-              </AlertDialogTitle>
-              <AlertDialogDescription>
-                {convertTarget === 'cloze'
-                  ? 'The front text of each card will be used as the cloze text. You may need to add {{c1::...}} markers afterwards.'
-                  : 'Cards will be switched to classic (front/back) format. Cloze text will be preserved in the front field.'}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={bulkConvert.isPending}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleBulkConvert();
-                }}
-                disabled={bulkConvert.isPending}
-              >
-                {bulkConvert.isPending ? 'Converting...' : 'Convert'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
