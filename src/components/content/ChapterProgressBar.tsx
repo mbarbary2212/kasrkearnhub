@@ -2,9 +2,15 @@ import { useState } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { ChapterProgressBarSkeleton } from '@/components/ui/skeletons';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Video, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Circle } from 'lucide-react';
+import { GraduationCap, Video, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Circle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Collapsible,
   CollapsibleContent,

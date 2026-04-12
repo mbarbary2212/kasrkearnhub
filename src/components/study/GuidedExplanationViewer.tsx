@@ -250,7 +250,7 @@ export function GuidedExplanationViewer({
               onClick={() => {
                 setCurrentIndex(0);
                 setIsComplete(false);
-                setRevealedAnswers(new Set());
+                updateRevealedAnswers(() => new Set());
                 setShowHint(false);
               }}
               className="w-full"
