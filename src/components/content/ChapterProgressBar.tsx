@@ -90,6 +90,16 @@ export function ChapterProgressBar({
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <span className="font-medium">Your progress in this chapter</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[220px] text-xs">
+                    Progress combines Practice (60%) and Videos (40%). A single video can significantly impact your progress.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {/* Mastery Badge */}
               {showMastery && config && (
                 <Badge 
