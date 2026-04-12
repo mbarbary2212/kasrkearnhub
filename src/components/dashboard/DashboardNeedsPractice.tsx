@@ -66,12 +66,20 @@ export function DashboardNeedsPractice({
   }
 
   // Check if all content is complete (for "all clear" state)
-  const allMcqsComplete = counts.mcqTotal > 0 && mcqNeedsPractice.length === 0;
-  const allOsceComplete = counts.osceTotal > 0 && osceNeedsPractice.length === 0;
+  // IMPORTANT: require attemptedCount > 0 to avoid showing "mastered" on fresh accounts
+  const allMcqsComplete = counts.mcqTotal > 0 && mcqNeedsPractice.length === 0 && counts.mcqAttempted > 0;
+  const allOsceComplete = counts.osceTotal > 0 && osceNeedsPractice.length === 0 && counts.osceAttempted > 0;
   const allVideosComplete = counts.videoTotal > 0 && videosToComplete.length === 0;
-  const allMatchingComplete = counts.matchingTotal > 0 && matchingToComplete.length === 0;
-  const allEssaysComplete = counts.essayTotal > 0 && essaysToReview.length === 0;
-  const allCasesComplete = counts.caseScenarioTotal > 0 && casesToReview.length === 0;
+  const allMatchingComplete = counts.matchingTotal > 0 && matchingToComplete.length === 0 && counts.matchingAttempted > 0;
+  const allEssaysComplete = counts.essayTotal > 0 && essaysToReview.length === 0 && counts.essayAttempted > 0;
+  const allCasesComplete = counts.caseScenarioTotal > 0 && casesToReview.length === 0 && counts.caseAttempted > 0;
+
+  // "Not started" states — content exists but zero attempts
+  const mcqNotStarted = counts.mcqTotal > 0 && mcqNeedsPractice.length === 0 && counts.mcqAttempted === 0;
+  const osceNotStarted = counts.osceTotal > 0 && osceNeedsPractice.length === 0 && counts.osceAttempted === 0;
+  const matchingNotStarted = counts.matchingTotal > 0 && matchingToComplete.length === 0 && counts.matchingAttempted === 0;
+  const essayNotStarted = counts.essayTotal > 0 && essaysToReview.length === 0 && counts.essayAttempted === 0;
+  const caseNotStarted = counts.caseScenarioTotal > 0 && casesToReview.length === 0 && counts.caseAttempted === 0;
 
   // Only show sections with content
   const showMcq = counts.mcqTotal > 0;
