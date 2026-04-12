@@ -16,7 +16,7 @@ interface FlashcardsAdminGridProps {
 
 interface GroupedDeck {
   title: string;
-  cards: { front: string; back: string; resource: StudyResource }[];
+  cards: { front: string; back: string; isCloze: boolean; resource: StudyResource }[];
 }
 
 const TIMING_OPTIONS = [
@@ -28,12 +28,18 @@ const TIMING_OPTIONS = [
 export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds = new Set(), onToggleSelection }: FlashcardsAdminGridProps) {
   // Group flashcards by title
   const groups = useMemo(() => {
-    const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
+    const map = new Map<string, { front: string; back: string; isCloze: boolean; resource: StudyResource }[]>();
     for (const resource of resources) {
       const content = resource.content as FlashcardContent;
       const title = resource.title;
+      const isCloze = content.card_type === 'cloze';
       if (!map.has(title)) map.set(title, []);
-      map.get(title)!.push({ front: content.front, back: content.back, resource });
+      map.get(title)!.push({
+        front: isCloze ? (content.cloze_text || '') : (content.front || ''),
+        back: isCloze ? (content.extra || '') : (content.back || ''),
+        isCloze,
+        resource,
+      });
     }
     return Array.from(map.entries()).map(([title, cards]) => ({
       title,
@@ -68,7 +74,7 @@ export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds 
 
 interface FlashcardDeckGroupProps {
   deckTitle: string;
-  cards: { front: string; back: string; resource: StudyResource }[];
+  cards: { front: string; back: string; isCloze: boolean; resource: StudyResource }[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
   selectedIds?: Set<string>;
@@ -184,7 +190,7 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, selectedIds =
         >
           {/* Front */}
           <div className="absolute inset-0 backface-hidden rounded-lg border bg-primary/5 p-4 flex flex-col items-center justify-center text-center">
-            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Question</div>
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">{current.isCloze ? 'Cloze' : 'Question'}</div>
             <div className="text-sm font-medium text-foreground line-clamp-4">{current.front}</div>
           </div>
           {/* Back */}
