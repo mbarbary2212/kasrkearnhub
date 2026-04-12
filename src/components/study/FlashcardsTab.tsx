@@ -266,6 +266,34 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Bulk Convert Confirmation */}
+        <AlertDialog open={convertTarget !== null} onOpenChange={(open) => { if (!open) setConvertTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Convert {selectedIds.size} cards to {convertTarget === 'cloze' ? 'Cloze' : 'Classic'}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {convertTarget === 'cloze'
+                  ? 'The front text of each card will be used as the cloze text. You may need to add {{c1::...}} markers afterwards.'
+                  : 'Cards will be switched to classic (front/back) format. Cloze text will be preserved in the front field.'}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={bulkConvert.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBulkConvert();
+                }}
+                disabled={bulkConvert.isPending}
+              >
+                {bulkConvert.isPending ? 'Converting...' : 'Convert'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
