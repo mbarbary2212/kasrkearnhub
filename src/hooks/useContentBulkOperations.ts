@@ -212,3 +212,58 @@ export function useBulkCopyToChapter(tableName: ContentTableName) {
     },
   });
 }
+
+// Bulk convert flashcard type (Classic ↔ Cloze)
+export function useBulkConvertCardType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, targetType, chapterId, topicId }: {
+      ids: string[];
+      targetType: 'cloze' | 'normal';
+      chapterId?: string;
+      topicId?: string;
+    }) => {
+      // Fetch current content for each card
+      const { data: rows, error: fetchError } = await supabase
+        .from('study_resources')
+        .select('id, content')
+        .in('id', ids);
+
+      if (fetchError) throw fetchError;
+      if (!rows || rows.length === 0) throw new Error('No cards found');
+
+      // Update each card's content JSON
+      const updates = rows.map(row => {
+        const content = row.content as Record<string, unknown>;
+        const newContent = targetType === 'cloze'
+          ? { ...content, card_type: 'cloze', cloze_text: (content.front as string) || '' }
+          : { ...content, card_type: 'normal' };
+        return supabase
+          .from('study_resources')
+          .update({ content: newContent } as never)
+          .eq('id', row.id);
+      });
+
+      const results = await Promise.all(updates);
+      const failed = results.filter(r => r.error);
+      if (failed.length > 0) throw failed[0].error;
+
+      return { count: rows.length, chapterId, topicId };
+    },
+    onSuccess: (_, variables) => {
+      const patterns = QUERY_INVALIDATION_MAP['study_resources'];
+      patterns.forEach(pattern => {
+        if (variables.chapterId) {
+          queryClient.invalidateQueries({ queryKey: [pattern, variables.chapterId] });
+        }
+        if (variables.topicId) {
+          queryClient.invalidateQueries({ queryKey: [pattern, variables.topicId] });
+        }
+        queryClient.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && shouldInvalidate(q.queryKey, 'study_resources')
+        });
+      });
+    },
+  });
+}
