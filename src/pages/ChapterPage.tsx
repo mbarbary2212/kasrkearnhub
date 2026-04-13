@@ -147,6 +147,10 @@ export default function ChapterPage() {
   const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
   const [selectedAdminRole, setSelectedAdminRole] = useState<'module' | 'topic'>('module');
 
+  // Needs Attention banner state — resets when chapter changes
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  useEffect(() => { setBannerDismissed(false); }, [chapterId]);
+
   const showAddControls = !!(
     auth.isAdmin ||
     auth.isModuleAdmin ||
