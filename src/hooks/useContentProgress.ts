@@ -29,6 +29,8 @@ interface ContentProgressData {
   resourcesTotal: number;
   completedItems: number;
   totalItems: number;
+  /** Chapter readiness status from the centralised calculator */
+  status?: string;
 }
 
 interface RpcProgressResult {
@@ -180,6 +182,7 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         resourcesTotal: videosTotal,
         completedItems: practiceCompleted + videosCompleted,
         totalItems: practiceTotal + videosTotal,
+        status: readinessResult.status,
       };
     },
     enabled: !!user?.id && !!containerId,
