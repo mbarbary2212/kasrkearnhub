@@ -66,7 +66,6 @@ const navItems: NavItem[] = [
 
 // Bottom items with role-based visibility
 const studentBottomItems: NavItem[] = [
-  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content', hideForAdmin: true },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
   { id: 'take-tour', label: 'Tour', icon: Compass },
   { id: 'how-to-use', label: 'Guide', icon: BookOpenCheck },
