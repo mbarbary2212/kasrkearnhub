@@ -20,7 +20,7 @@ import { useCheckBadges } from '@/hooks/useBadges';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCaseReasoningProfile } from '@/hooks/useCaseReasoningProfile';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 
 interface LearningHubOverviewProps {
   dashboard: DashboardData;
