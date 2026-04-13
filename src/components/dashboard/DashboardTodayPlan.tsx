@@ -269,6 +269,59 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
             <p className="text-xs text-foreground/80 leading-relaxed">{insight}</p>
           </div>
         )}
+
+        {/* Refresh Plan */}
+        {onRefreshPlan && (
+          <div className="pt-2 border-t border-border space-y-2">
+            {showConfirm ? (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
+                <button
+                  onClick={async () => {
+                    setShowConfirm(false);
+                    await onRefreshPlan();
+                  }}
+                  disabled={isRefreshing}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Confirm
+                </button>
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="text-xs font-medium text-muted-foreground hover:underline"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  const hasIncomplete = suggestions.some(s => {
+                    const status = getTaskStatus(dailyPlan, s.chapterId);
+                    return status === 'pending' || status === 'partial';
+                  });
+                  if (hasIncomplete) {
+                    setShowConfirm(true);
+                  } else {
+                    onRefreshPlan();
+                  }
+                }}
+                disabled={isRefreshing}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                {isRefreshing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                {isRefreshing ? 'Refreshing...' : 'Refresh plan'}
+              </button>
+            )}
+            {!showConfirm && (
+              <p className="text-[10px] text-muted-foreground">Completed everything? Get a new set of tasks.</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
