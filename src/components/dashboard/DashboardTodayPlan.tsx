@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock } from 'lucide-react';
+import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock, RefreshCw, Loader2 } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
 import type { DailyPlan } from '@/hooks/useDailyStudyPlan';
