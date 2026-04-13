@@ -595,35 +595,29 @@ function LoggedInHome() {
 
         {/* ==================== RIGHT COLUMN (40%) ==================== */}
         <div className="md:col-span-2 space-y-4">
-          {/* Stat Cards */}
+          {/* Compact Stats Strip */}
           {isStudent && (
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <Card className="p-2.5 md:p-3 text-center">
-                <p className="text-base md:text-lg font-bold">🔥 {streak}</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground">Day Streak</p>
-              </Card>
-              <Card className="p-2.5 md:p-3 text-center">
-                <p className="text-base md:text-lg font-bold">📊 {Math.round(readiness)}%</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground">{readinessText}</p>
-              </Card>
-            </div>
-          )}
-
-          {/* Classification Dashboard — Year-level intelligence */}
-          {isStudent && yearClassification && (
-            <Card data-tour="today-plan">
-              <CardContent className="py-4 px-4">
-                <p className="text-[10px] text-muted-foreground/70 mb-2">Your daily priorities</p>
-                <ClassificationDashboard
-                  classification={yearClassification.classification}
-                  chapterTitleMap={yearClassification.chapterTitleMap}
-                  moduleNameMap={yearClassification.moduleNameMap}
-                  onNavigate={(moduleId, chapterId, tab) => {
-                    const tabParam = tab ? `?tab=${tab}` : '';
-                    navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
-                  }}
-                />
-              </CardContent>
+            <Card className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-center flex-1">
+                  <p className="text-base font-bold">🔥 {streak}</p>
+                  <p className="text-[10px] text-muted-foreground">Day Streak</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center flex-1">
+                  <p className="text-base font-bold">📊 {Math.round(readiness)}%</p>
+                  <p className="text-[10px] text-muted-foreground">{readinessText}</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <button
+                  className="text-center flex-1 hover:opacity-70 transition-opacity"
+                  onClick={() => navigate('/achievements')}
+                  title={`${earned} of ${total} badges earned`}
+                >
+                  <p className="text-base font-bold">🏆 {earned}</p>
+                  <p className="text-[10px] text-muted-foreground">Badges</p>
+                </button>
+              </div>
             </Card>
           )}
 
