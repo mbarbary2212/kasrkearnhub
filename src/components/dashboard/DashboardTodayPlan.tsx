@@ -14,6 +14,8 @@ interface DashboardTodayPlanProps {
   yesterdayAdherence?: { completed: number; total: number } | null;
   availableMinutes?: number;
   onAvailableMinutesChange?: (minutes: number) => void;
+  onRefreshPlan?: () => Promise<void>;
+  isRefreshing?: boolean;
 }
 
 /** Maps study mode keys to icons */
