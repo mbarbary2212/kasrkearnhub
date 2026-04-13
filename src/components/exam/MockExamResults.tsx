@@ -45,6 +45,16 @@ export function MockExamResults({
   essayMaxScore = 0,
 }: MockExamResultsProps) {
   const navigate = useNavigate();
+
+  // FIX D — graceful empty state
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        No exam results available yet.
+      </div>
+    );
+  }
+
   const totalScore = score + essayScore;
   const totalMax = totalQuestions + essayMaxScore;
   const percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
