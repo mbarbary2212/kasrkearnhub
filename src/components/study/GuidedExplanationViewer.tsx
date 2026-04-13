@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ export function GuidedExplanationViewer({
   onComplete 
 }: GuidedExplanationViewerProps) {
   const storageKey = resourceId ? `guided_progress_${resourceId}` : null;
+  const hasTracked = useRef(false);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(() => {
@@ -46,6 +47,18 @@ export function GuidedExplanationViewer({
   const questions = content.guided_questions || [];
   const currentQuestion = questions[currentIndex];
   const progress = questions.length > 0 ? ((revealedAnswers.size / questions.length) * 100) : 0;
+
+  // Track completion when all questions have been answered
+  useEffect(() => {
+    if (
+      questions.length > 0 &&
+      revealedAnswers.size === questions.length &&
+      !hasTracked.current
+    ) {
+      hasTracked.current = true;
+      onComplete?.();
+    }
+  }, [revealedAnswers.size, questions.length, onComplete]);
 
   // Persist revealed answers to localStorage
   const updateRevealedAnswers = (updater: (prev: Set<number>) => Set<number>) => {
@@ -68,7 +81,6 @@ export function GuidedExplanationViewer({
       setCurrentIndex(currentIndex + 1);
     } else if (!isComplete) {
       setIsComplete(true);
-      onComplete?.();
     }
   };
 
