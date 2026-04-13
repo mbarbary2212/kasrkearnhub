@@ -5553,6 +5553,45 @@ export type Database = {
           },
         ]
       }
+      student_goals: {
+        Row: {
+          ambition_level: string | null
+          created_at: string
+          exam_schedule: Json | null
+          goals_onboarding_shown: boolean | null
+          id: string
+          rotation_schedule: Json | null
+          updated_at: string
+          user_id: string
+          weekday_hours: number | null
+          weekend_hours: number | null
+        }
+        Insert: {
+          ambition_level?: string | null
+          created_at?: string
+          exam_schedule?: Json | null
+          goals_onboarding_shown?: boolean | null
+          id?: string
+          rotation_schedule?: Json | null
+          updated_at?: string
+          user_id: string
+          weekday_hours?: number | null
+          weekend_hours?: number | null
+        }
+        Update: {
+          ambition_level?: string | null
+          created_at?: string
+          exam_schedule?: Json | null
+          goals_onboarding_shown?: boolean | null
+          id?: string
+          rotation_schedule?: Json | null
+          updated_at?: string
+          user_id?: string
+          weekday_hours?: number | null
+          weekend_hours?: number | null
+        }
+        Relationships: []
+      }
       student_last_position: {
         Row: {
           activity_position: Json | null

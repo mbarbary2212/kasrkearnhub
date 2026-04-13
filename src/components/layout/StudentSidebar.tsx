@@ -4,7 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
-  Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
+  Settings, FolderOpen, Sparkles, Lock,
   HelpCircle, MessageSquare, MessagesSquare, Users, BarChart3, Shield,
   Compass, BookOpenCheck,
 } from 'lucide-react';
@@ -66,7 +66,6 @@ const navItems: NavItem[] = [
 
 // Bottom items with role-based visibility
 const studentBottomItems: NavItem[] = [
-  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content', hideForAdmin: true },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
   { id: 'take-tour', label: 'Tour', icon: Compass },
   { id: 'how-to-use', label: 'Guide', icon: BookOpenCheck },
@@ -145,7 +144,7 @@ export function StudentSidebar() {
     if (item.id === 'connect') return location.pathname.startsWith('/connect/');
     if (item.id === 'formative') return location.pathname === '/formative';
     if (item.id === 'coach') return location.pathname === '/progress';
-    if (item.id === 'customize') return location.pathname === '/customize-content';
+    if (item.id === 'settings') return location.pathname === '/student-settings';
     if (item.id === 'settings') return location.pathname === '/student-settings';
     return false;
   }, [location.pathname, isChapterOrTopicPage, currentSection, isAdmin]);

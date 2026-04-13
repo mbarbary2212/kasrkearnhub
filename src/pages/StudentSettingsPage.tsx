@@ -1,54 +1,60 @@
+import { useSearchParams } from 'react-router-dom';
 import MainLayout from '@/components/layout/MainLayout';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Settings, BookOpen, GraduationCap, User } from 'lucide-react';
+import { Settings } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { GoalsAndScheduleTab } from '@/components/settings/GoalsAndScheduleTab';
+import { ContentPreferencesTab } from '@/components/settings/ContentPreferencesTab';
+import { AccountTab } from '@/components/settings/AccountTab';
+import { useStudentGoals, computeGoalsProgress } from '@/hooks/useStudentGoals';
 
 export default function StudentSettingsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') || 'goals';
+  const { data: goals } = useStudentGoals();
+  const progress = computeGoalsProgress(goals ?? null);
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
+
   return (
     <MainLayout>
-      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-        <div className="flex items-center gap-3">
-          <Settings className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-heading font-bold">Settings</h1>
+      <div className="max-w-2xl mx-auto space-y-5 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <Settings className="h-6 w-6 text-muted-foreground" />
+            <h1 className="text-2xl font-heading font-bold">Settings</h1>
+          </div>
+          {progress > 0 && (
+            <div className="flex items-center gap-2 min-w-[140px]">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">Plan {progress}%</span>
+              <Progress value={progress} className="h-2 flex-1" />
+            </div>
+          )}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <BookOpen className="h-4 w-4" />
-              Study Preferences
-            </CardTitle>
-            <CardDescription>Customize your study experience</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Study preference settings coming soon.</p>
-          </CardContent>
-        </Card>
+        {/* Tabs */}
+        <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="goals">Goals & Schedule</TabsTrigger>
+            <TabsTrigger value="content">Content</TabsTrigger>
+            <TabsTrigger value="account">Account</TabsTrigger>
+          </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <GraduationCap className="h-4 w-4" />
-              Module &amp; Year
-            </CardTitle>
-            <CardDescription>Manage your enrolled modules and year</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Module &amp; year settings coming soon.</p>
-          </CardContent>
-        </Card>
+          <TabsContent value="goals">
+            <GoalsAndScheduleTab />
+          </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-4 w-4" />
-              Account
-            </CardTitle>
-            <CardDescription>Manage your account details</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Account settings coming soon.</p>
-          </CardContent>
-        </Card>
+          <TabsContent value="content">
+            <ContentPreferencesTab />
+          </TabsContent>
+
+          <TabsContent value="account">
+            <AccountTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );
