@@ -239,11 +239,37 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
     },
   });
 
+  // Mutation to refresh (delete + regenerate) today's plan
+  const refreshPlanMutation = useMutation({
+    mutationFn: async () => {
+      const todaysPlanId = query.data?.id;
+      if (!user?.id || !todaysPlanId) return;
+
+      // Delete today's tasks first (FK constraint)
+      await supabase
+        .from('daily_study_plan_tasks' as any)
+        .delete()
+        .eq('plan_id', todaysPlanId);
+
+      // Delete today's plan record
+      await supabase
+        .from('daily_study_plans' as any)
+        .delete()
+        .eq('id', todaysPlanId);
+    },
+    onSuccess: () => {
+      // Re-fetch will trigger plan generation since no plan exists for today
+      queryClient.invalidateQueries({ queryKey: ['daily-study-plan'] });
+    },
+  });
+
   return {
     dailyPlan: query.data ?? null,
     isLoading: query.isLoading,
     availableMinutes,
     setAvailableMinutes,
+    refreshPlan: () => refreshPlanMutation.mutateAsync(),
+    isRefreshing: refreshPlanMutation.isPending,
     markTaskStatus: (taskId: string, status: DailyPlanTask['status']) =>
       updateTaskStatus.mutate({ taskId, status }),
   };
