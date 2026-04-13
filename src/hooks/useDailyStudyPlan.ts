@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -64,6 +65,7 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const { planInput, examDate, chapterMetrics } = options;
+  const [availableMinutes, setAvailableMinutes] = useState<number>(60);
 
   const query = useQuery({
     queryKey: ['daily-study-plan', user?.id, TODAY()],
@@ -116,9 +118,10 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
       const daysUntilExam = getDaysUntilExam(examDate);
       const examMode = classifyExamMode(daysUntilExam);
 
-      // Build plan with exam mode
+      // Build plan with exam mode and user's available minutes
       const adaptivePlan = buildAdaptiveStudyPlan({
         ...planInput,
+        availableMinutes,
         examDate: examDate ? new Date(examDate) : undefined,
       });
 
@@ -239,6 +242,8 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
   return {
     dailyPlan: query.data ?? null,
     isLoading: query.isLoading,
+    availableMinutes,
+    setAvailableMinutes,
     markTaskStatus: (taskId: string, status: DailyPlanTask['status']) =>
       updateTaskStatus.mutate({ taskId, status }),
   };
