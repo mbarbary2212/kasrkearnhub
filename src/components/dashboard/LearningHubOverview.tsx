@@ -19,6 +19,7 @@ import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCaseReasoningProfile } from '@/hooks/useCaseReasoningProfile';
+
 import { useEffect } from 'react';
 
 interface LearningHubOverviewProps {
@@ -44,6 +45,8 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
   const { mutate: checkBadges } = useCheckBadges();
   const { data: reasoningProfile } = useCaseReasoningProfile(user?.id, moduleId);
   
+
+
   useEffect(() => {
     if (moduleSelected && dashboard.coveragePercent > 0) {
       checkBadges({ moduleProgress: dashboard.coveragePercent });

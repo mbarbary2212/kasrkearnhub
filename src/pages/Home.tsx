@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { DashboardTodayPlan } from '@/components/dashboard/DashboardTodayPlan';
+import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, LayoutGrid, List, Lock, Stethoscope, FlaskConical, PenLine, Video, BookOpenCheck } from 'lucide-react';
@@ -268,6 +270,27 @@ function LoggedInHome() {
 
   // Total estimated time
   const totalEstimatedMinutes = suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
+
+  // Daily study plan hook — wired to DashboardTodayPlan component
+  const chapterMetrics = dashboard?.chapterMetrics ?? [];
+  const planInput = useMemo(() => ({
+    metrics: chapterMetrics,
+    chapters: (dashboard?.chapters ?? []).map(ch => ({
+      id: ch.id,
+      title: ch.title,
+      moduleId: ch.moduleId,
+      moduleName: ch.moduleName,
+      hasLectures: false,
+    })),
+  }), [chapterMetrics, dashboard?.chapters]);
+
+  const {
+    dailyPlan,
+    availableMinutes,
+    setAvailableMinutes,
+    refreshPlan,
+    isRefreshing,
+  } = useDailyStudyPlan({ planInput, chapterMetrics });
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
@@ -572,35 +595,29 @@ function LoggedInHome() {
 
         {/* ==================== RIGHT COLUMN (40%) ==================== */}
         <div className="md:col-span-2 space-y-4">
-          {/* Stat Cards */}
+          {/* Compact Stats Strip */}
           {isStudent && (
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <Card className="p-2.5 md:p-3 text-center">
-                <p className="text-base md:text-lg font-bold">🔥 {streak}</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground">Day Streak</p>
-              </Card>
-              <Card className="p-2.5 md:p-3 text-center">
-                <p className="text-base md:text-lg font-bold">📊 {Math.round(readiness)}%</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground">{readinessText}</p>
-              </Card>
-            </div>
-          )}
-
-          {/* Classification Dashboard — Year-level intelligence */}
-          {isStudent && yearClassification && (
-            <Card data-tour="today-plan">
-              <CardContent className="py-4 px-4">
-                <p className="text-[10px] text-muted-foreground/70 mb-2">Your daily priorities</p>
-                <ClassificationDashboard
-                  classification={yearClassification.classification}
-                  chapterTitleMap={yearClassification.chapterTitleMap}
-                  moduleNameMap={yearClassification.moduleNameMap}
-                  onNavigate={(moduleId, chapterId, tab) => {
-                    const tabParam = tab ? `?tab=${tab}` : '';
-                    navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
-                  }}
-                />
-              </CardContent>
+            <Card className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-center flex-1">
+                  <p className="text-base font-bold">🔥 {streak}</p>
+                  <p className="text-[10px] text-muted-foreground">Day Streak</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center flex-1">
+                  <p className="text-base font-bold">📊 {Math.round(readiness)}%</p>
+                  <p className="text-[10px] text-muted-foreground">{readinessText}</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <button
+                  className="text-center flex-1 hover:opacity-70 transition-opacity"
+                  onClick={() => navigate('/achievements')}
+                  title={`${earned} of ${total} badges earned`}
+                >
+                  <p className="text-base font-bold">🏆 {earned}</p>
+                  <p className="text-[10px] text-muted-foreground">Badges</p>
+                </button>
+              </div>
             </Card>
           )}
 
@@ -638,119 +655,52 @@ function LoggedInHome() {
             </Card>
           )}
 
-          {/* Weak Topics Alert */}
-          {isStudent && weakChapters.length > 0 && (
-            <DashboardWeakTopics
-              weakChapters={weakChapters}
-              onNavigate={(moduleId, chapterId, tab) => {
-                navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'practice'}&subtab=mcqs`);
-              }}
-            />
-          )}
-
-          {/* Today's Study Plan */}
-          {isStudent && suggestions.length > 0 && (
-            <div data-tour="study-plan" className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
-                  <p className="text-[10px] text-muted-foreground/70">Follow this step by step to stay organized</p>
-                </div>
-                {totalEstimatedMinutes > 0 && (
-                  <span className="text-xs text-muted-foreground">~{totalEstimatedMinutes} min total</span>
-                )}
-              </div>
-
-              {/* Start Here — Primary Action */}
-              {primarySuggestion && (
-                <Card
-                  className="p-3 cursor-pointer border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors group"
-                  onClick={() => {
-                    if (primarySuggestion.chapterId && primarySuggestion.moduleId) {
-                      const tab = primarySuggestion.type === 'mcq' || primarySuggestion.type === 'essay' ? 'practice' : 'resources';
-                      const subtab = primarySuggestion.subtab ? `&subtab=${primarySuggestion.subtab}` : '';
-                      navigate(`/module/${primarySuggestion.moduleId}/chapter/${primarySuggestion.chapterId}?section=${tab}${subtab}`);
-                    } else if (primarySuggestion.type === 'flashcard') {
-                      navigate('/review/flashcards');
-                    }
-                  }}
-                >
-                  <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">▶ Start Here</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      {(() => { const Icon = taskIcon[primarySuggestion.type] || BookOpen; return <Icon className="w-4 h-4 text-primary" />; })()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{primarySuggestion.title}</p>
-                      {primarySuggestion.reason && (
-                        <p className="text-xs text-muted-foreground">{primarySuggestion.reason} · ~{primarySuggestion.estimatedMinutes}m</p>
-                      )}
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+          {/* Where You Stand */}
+          {isStudent && (dashboard?.insights?.some(i => i.type === 'strong') || weakChapters.length > 0) && (
+            <Card>
+              <CardContent className="py-3 px-4 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Where you stand</p>
+                {dashboard?.insights?.filter(i => i.type === 'strong').slice(0, 2).map((insight, idx) => (
+                  <div key={`strong-${idx}`} className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium truncate">{insight.label}</p>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto flex-shrink-0">Strong ✓</span>
                   </div>
-                </Card>
-              )}
-
-              {/* Other Suggestions */}
-              <div className="space-y-1.5">
-                {otherSuggestions.map((item, i) => {
-                  const Icon = taskIcon[item.type] || BookOpen;
-                  return (
-                    <Card
-                      key={i}
-                      className="p-2.5 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => {
-                        if (item.type === 'flashcard') {
-                          navigate('/review/flashcards');
-                        } else if (item.chapterId && item.moduleId) {
-                          const tab = item.type === 'mcq' || item.type === 'essay' ? 'practice' : 'resources';
-                          const subtab = item.subtab ? `&subtab=${item.subtab}` : '';
-                          navigate(`/module/${item.moduleId}/chapter/${item.chapterId}?section=${tab}${subtab}`);
-                        }
-                      }}
-                    >
-                      <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        {item.reason && (
-                          <p className="text-xs text-muted-foreground truncate">{item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes}m` : ''}</p>
-                        )}
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Achievements Widget */}
-          {isStudent && (
-            <Card className="hover:shadow-md transition-all">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <Trophy className="w-5 h-5 text-accent-foreground" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Achievements</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {earned} of {total} badges earned
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="w-full bg-muted rounded-full h-2">
+                ))}
+                {weakChapters.slice(0, 2).map((ch, idx) => (
                   <div
-                    className="bg-accent h-2 rounded-full transition-all"
-                    style={{ width: `${total > 0 ? (earned / total) * 100 : 0}%` }}
-                  />
-                </div>
+                    key={`weak-${idx}`}
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                    onClick={() => navigate(`/module/${ch.moduleId}/chapter/${ch.chapterId}?section=practice&subtab=mcqs`)}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium truncate">{ch.chapterTitle}</p>
+                    <span className="text-[10px] text-destructive ml-auto flex-shrink-0">{Math.round(ch.accuracy)}% MCQ</span>
+                  </div>
+                ))}
               </CardContent>
             </Card>
+          )}
+
+          {/* Today's Study Plan — rendered via DashboardTodayPlan component */}
+          {isStudent && suggestions.length > 0 && (
+            <DashboardTodayPlan
+              suggestions={suggestions}
+              studyPlan={dashboard?.studyPlan ?? null}
+              dailyPlan={dailyPlan}
+              availableMinutes={availableMinutes}
+              onAvailableMinutesChange={setAvailableMinutes}
+              onRefreshPlan={refreshPlan}
+              isRefreshing={isRefreshing}
+              onNavigate={(moduleId, chapterId, tab, subtab) => {
+                if (!moduleId || !chapterId) {
+                  navigate('/review/flashcards');
+                  return;
+                }
+                const subtabParam = subtab ? `&subtab=${subtab}` : '';
+                navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
+              }}
+            />
           )}
         </div>
       </div>

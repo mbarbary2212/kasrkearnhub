@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock, RefreshCw, Loader2 } from 'lucide-react';
+import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ChevronDown, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock, RefreshCw, Loader2 } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
 import type { DailyPlan } from '@/hooks/useDailyStudyPlan';
@@ -81,10 +81,37 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
   return task?.is_carried_over ?? false;
 }
 
-const TIME_OPTIONS = [20, 45, 60, 90] as const;
+/** Extract just the chapter name from a suggestion */
+function getChapterName(item: SuggestedItem): string {
+  if (item.chapterTitle && !item.chapterTitle.includes(':')) return item.chapterTitle;
+  const parts = (item.title ?? '').split(' — ');
+  return parts[0].trim() || item.title || 'Chapter';
+}
+
+function getActivityLabel(item: SuggestedItem): string {
+  if (item.prescribedStudyMode?.label) return item.prescribedStudyMode.label;
+  return '';
+}
 
 export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange, onRefreshPlan, isRefreshing }: DashboardTodayPlanProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeChanged, setTimeChanged] = useState(false);
+
+  const handleRefresh = () => {
+    if (!onRefreshPlan) return;
+    const hasIncomplete = suggestions.some(s => {
+      const status = getTaskStatus(dailyPlan, s.chapterId);
+      return status === 'pending' || status === 'partial';
+    });
+    if (hasIncomplete) {
+      setShowConfirm(true);
+    } else {
+      setTimeChanged(false);
+      void onRefreshPlan();
+    }
+  };
+
   if (suggestions.length === 0) {
     return (
       <Card>
@@ -102,8 +129,6 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
 
   const primarySuggestion = suggestions.find(s => s.isPrimary);
   const otherSuggestions = suggestions.filter(s => !s.isPrimary);
-  const planLabel = studyPlan?.planLabel;
-  const rationale = studyPlan?.rationale;
   const totalMinutes = studyPlan?.totalEstimatedMinutes ?? suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
   const insight = studyPlan?.confidenceInsight ?? confidenceInsight;
   const examMode = studyPlan?.examMode;
@@ -116,12 +141,6 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           <div>
             <CardTitle className="text-lg font-heading">Today's Study Plan</CardTitle>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {planLabel && (
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  {planLabel}
-                </span>
-              )}
-              {/* Exam mode badge */}
               {examMode && examMode !== 'normal' && daysUntilExam !== null && daysUntilExam !== undefined && (
                 <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
                   examMode === 'intensive'
@@ -139,44 +158,86 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
               )}
             </div>
           </div>
+          <div className="flex items-center gap-1">
+            {/* Time picker dropdown */}
+            <div className="relative">
+              <button
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+                onClick={() => setShowTimePicker(v => !v)}
+                title="Change available time"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>{availableMinutes} min</span>
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showTimePicker ? 'rotate-180' : ''}`} />
+              </button>
+              {showTimePicker && (
+                <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-lg shadow-lg z-10 p-1 flex flex-col gap-0.5 min-w-[80px]">
+                  {[20, 45, 60, 90].map(mins => (
+                    <button
+                      key={mins}
+                      onClick={() => { onAvailableMinutesChange?.(mins); setShowTimePicker(false); setTimeChanged(true); }}
+                      className={`text-xs px-3 py-1.5 rounded-md text-left transition-colors ${
+                        availableMinutes === mins
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      {mins} min
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Refresh icon button */}
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title={timeChanged ? "Tap to apply your new time" : "Refresh plan"}
+              className={`p-1.5 rounded-md transition-all disabled:opacity-50 ${
+                timeChanged
+                  ? 'text-primary bg-primary/10 animate-pulse hover:bg-primary/20'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {isRefreshing
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <RefreshCw className={`w-3.5 h-3.5 ${timeChanged ? 'text-primary' : ''}`} />
+              }
+            </button>
+          </div>
         </div>
-        {rationale && (
-          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{rationale}</p>
-        )}
         {/* Yesterday adherence */}
         {yesterdayAdherence && yesterdayAdherence.total > 0 && (
           <p className="text-[10px] text-muted-foreground mt-1">
             Yesterday: {yesterdayAdherence.completed}/{yesterdayAdherence.total} completed
           </p>
         )}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Time available picker */}
-        {onAvailableMinutesChange && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-foreground">Time available today:</span>
-              <div className="flex gap-1.5">
-                {TIME_OPTIONS.map((mins) => (
-                  <button
-                    key={mins}
-                    onClick={() => onAvailableMinutesChange(mins)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      availableMinutes === mins
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
-                    }`}
-                  >
-                    {mins} min
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="text-[10px] text-muted-foreground">
-              Your plan for today is already set. This will apply tomorrow, or if you refresh your plan.
-            </p>
+        {/* Confirmation dialog inline */}
+        {showConfirm && (
+          <div className="flex items-center gap-2 text-xs mt-2">
+            <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
+            <button
+              type="button"
+              onClick={async () => {
+                setShowConfirm(false);
+                await onRefreshPlan?.();
+              }}
+              disabled={isRefreshing || !onRefreshPlan}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(false)}
+              className="text-xs font-medium text-muted-foreground hover:underline"
+            >
+              Cancel
+            </button>
           </div>
         )}
+      </CardHeader>
+      <CardContent className="space-y-3">
         {/* Start Here — Primary Action */}
         {primarySuggestion && (
           <div
@@ -199,15 +260,18 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                   </span>
                 )}
               </div>
-              <p className="font-medium truncate text-foreground">{primarySuggestion.title}</p>
-              {primarySuggestion.reason && (
-                <p className="text-xs text-muted-foreground">
+              <p className="font-medium truncate text-foreground">{getChapterName(primarySuggestion)}</p>
+              <p className="text-xs text-foreground/70">
+                {getActivityLabel(primarySuggestion)}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}
+              </p>
+              {primarySuggestion.reason && getActivityLabel(primarySuggestion) !== primarySuggestion.reason && (
+                <p className="text-[11px] text-muted-foreground">
                   {primarySuggestion.trend && primarySuggestion.trend !== 'stable' && (
                     <span className={`font-medium ${trendIndicator[primarySuggestion.trend]?.className || ''} mr-1`}>
                       {trendIndicator[primarySuggestion.trend]?.icon}
                     </span>
                   )}
-                  {primarySuggestion.reason}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}</p>
+                  {primarySuggestion.reason}</p>
               )}
             </div>
             <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
@@ -238,21 +302,24 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <TaskStatusDot status={taskStatus} />
-                      <p className="text-sm font-medium truncate text-foreground">{item.title}</p>
+                      <p className="text-sm font-medium truncate text-foreground">{getChapterName(item)}</p>
                       {carried && (
                         <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0">
                           <RotateCcw className="w-2.5 h-2.5" />carried
                         </span>
                       )}
                     </div>
-                    {item.reason && (
-                      <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-xs text-foreground/70">
+                      {getActivityLabel(item)}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}
+                    </p>
+                    {item.reason && getActivityLabel(item) !== item.reason && (
+                      <p className="text-[11px] text-muted-foreground truncate">
                         {item.trend && item.trend !== 'stable' && (
                           <span className={`font-medium ${trendIndicator[item.trend]?.className || ''} mr-1`}>
                             {trendIndicator[item.trend]?.icon}
                           </span>
                         )}
-                        {item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}</p>
+                        {item.reason}</p>
                     )}
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
@@ -267,59 +334,6 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           <div className="flex items-start gap-2.5 p-2.5 rounded-lg bg-accent/50 border border-accent">
             <Lightbulb className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-xs text-foreground/80 leading-relaxed">{insight}</p>
-          </div>
-        )}
-
-        {/* Refresh Plan */}
-        {onRefreshPlan && (
-          <div className="pt-2 border-t border-border space-y-2">
-            {showConfirm ? (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
-                <button
-                  onClick={async () => {
-                    setShowConfirm(false);
-                    await onRefreshPlan();
-                  }}
-                  disabled={isRefreshing}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="text-xs font-medium text-muted-foreground hover:underline"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  const hasIncomplete = suggestions.some(s => {
-                    const status = getTaskStatus(dailyPlan, s.chapterId);
-                    return status === 'pending' || status === 'partial';
-                  });
-                  if (hasIncomplete) {
-                    setShowConfirm(true);
-                  } else {
-                    onRefreshPlan();
-                  }
-                }}
-                disabled={isRefreshing}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-              >
-                {isRefreshing ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5" />
-                )}
-                {isRefreshing ? 'Refreshing...' : 'Refresh plan'}
-              </button>
-            )}
-            {!showConfirm && (
-              <p className="text-[10px] text-muted-foreground">Completed everything? Get a new set of tasks.</p>
-            )}
           </div>
         )}
       </CardContent>
