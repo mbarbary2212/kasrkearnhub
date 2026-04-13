@@ -11,6 +11,8 @@ interface DashboardTodayPlanProps {
   confidenceInsight?: string | null;
   dailyPlan?: DailyPlan | null;
   yesterdayAdherence?: { completed: number; total: number } | null;
+  availableMinutes?: number;
+  onAvailableMinutesChange?: (minutes: number) => void;
 }
 
 /** Maps study mode keys to icons */
@@ -76,7 +78,9 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
   return task?.is_carried_over ?? false;
 }
 
-export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence }: DashboardTodayPlanProps) {
+const TIME_OPTIONS = [20, 45, 60, 90] as const;
+
+export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
       <Card>
