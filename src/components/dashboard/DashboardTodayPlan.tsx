@@ -83,7 +83,8 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
 
 const TIME_OPTIONS = [20, 45, 60, 90] as const;
 
-export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange }: DashboardTodayPlanProps) {
+export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange, onRefreshPlan, isRefreshing }: DashboardTodayPlanProps) {
+  const [showConfirm, setShowConfirm] = useState(false);
   if (suggestions.length === 0) {
     return (
       <Card>
