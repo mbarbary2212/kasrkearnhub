@@ -8,6 +8,7 @@ import {
   Pencil, 
   Trash2,
   BookOpen,
+  CheckCircle2,
 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { StudyResource, GuidedExplanationContent } from '@/hooks/useStudyResources';
@@ -17,6 +18,9 @@ import { AdminViewToggle, type ViewMode } from '@/components/admin/AdminViewTogg
 import { useChapterSections } from '@/hooks/useSections';
 import { cn } from '@/lib/utils';
 import { useTrackContentView } from '@/hooks/useTrackContentView';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface GuidedExplanationListProps {
   resources: StudyResource[];
@@ -40,19 +44,47 @@ export function GuidedExplanationList({
   const [selectedResource, setSelectedResource] = useState<StudyResource | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const trackView = useTrackContentView();
+  const { user } = useAuthContext();
   
   // Fetch sections for admin table - use prop or fall back to first resource
   const resolvedChapterId = chapterId || resources[0]?.chapter_id;
   const { data: sections = [] } = useChapterSections(resolvedChapterId);
 
+  // Fetch completed guided explanation IDs for this user
+  const { data: completedIds = new Set<string>(), refetch: refetchCompletedViews } = useQuery({
+    queryKey: ['guided-explanation-completed', user?.id, chapterId, topicId],
+    queryFn: async () => {
+      if (!user?.id) return new Set<string>();
+      let query = supabase
+        .from('content_views')
+        .select('content_id')
+        .eq('user_id', user.id)
+        .eq('content_type', 'guided_explanation');
+      
+      if (chapterId) {
+        query = query.eq('chapter_id', chapterId);
+      }
+      
+      const { data } = await query;
+      return new Set((data ?? []).map(d => d.content_id));
+    },
+    enabled: !!user?.id,
+  });
+
   const handleSelectResource = (resource: StudyResource) => {
+    // Do NOT track view on open — tracking happens only on completion
     setSelectedResource(resource);
+  };
+
+  const handleComplete = () => {
+    if (!selectedResource) return;
     trackView.mutate({
       contentType: 'guided_explanation',
-      contentId: resource.id,
-      chapterId: chapterId || resource.chapter_id || undefined,
-      topicId: topicId || resource.topic_id || undefined,
+      contentId: selectedResource.id,
+      chapterId: chapterId || selectedResource.chapter_id || undefined,
+      topicId: topicId || selectedResource.topic_id || undefined,
     });
+    refetchCompletedViews();
   };
 
   if (resources.length === 0) {
@@ -96,6 +128,7 @@ export function GuidedExplanationList({
           {resources.map((resource) => {
             const content = resource.content as GuidedExplanationContent;
             const questionCount = content.guided_questions?.length || 0;
+            const isCompleted = completedIds.has(resource.id);
 
             return (
               <Card
@@ -159,10 +192,17 @@ export function GuidedExplanationList({
                       <BookOpen className="w-4 h-4" />
                       <span>{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
                     </div>
-                    <Badge variant="secondary" className="gap-1">
-                      Start
-                      <ChevronRight className="w-3 h-3" />
-                    </Badge>
+                    {isCompleted ? (
+                      <Badge variant="secondary" className="gap-1 bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Review
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="gap-1">
+                        Start
+                        <ChevronRight className="w-3 h-3" />
+                      </Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -182,6 +222,7 @@ export function GuidedExplanationList({
               title={selectedResource.title}
               content={selectedResource.content as GuidedExplanationContent}
               resourceId={selectedResource.id}
+              onComplete={handleComplete}
             />
           )}
         </DialogContent>
