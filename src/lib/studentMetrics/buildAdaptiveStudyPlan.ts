@@ -388,8 +388,28 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       .slice(0, 2); // max 2 case practice tasks
 
     for (const domain of weakDomains) {
-      // Find a chapter that has case scenarios (use first available chapter with some activity)
-      const targetChapter = chapters[0]; // Simple: assign to first chapter; could be smarter later
+      // Find the chapter most relevant to the weak reasoning domain.
+      // Strategy: prefer a chapter whose title or module name contains the domain label (case-insensitive).
+      // If no title match, fall back to the chapter with the lowest MCQ accuracy in metrics.
+      // If metrics are empty, fall back to chapters[0] as a last resort.
+      const domainLabel = domain.label?.toLowerCase() ?? '';
+
+      const titleMatch = chapters.find(c =>
+        c.title?.toLowerCase().includes(domainLabel) ||
+        c.moduleName?.toLowerCase().includes(domainLabel)
+      );
+
+      const lowestAccuracyChapter = titleMatch
+        ? null
+        : [...chapters].sort((a, b) => {
+            const mA = input.metrics.find(m => m.chapter_id === a.id);
+            const mB = input.metrics.find(m => m.chapter_id === b.id);
+            const accA = mA?.mcq_accuracy ?? 100;
+            const accB = mB?.mcq_accuracy ?? 100;
+            return accA - accB;
+          })[0] ?? null;
+
+      const targetChapter = titleMatch ?? lowestAccuracyChapter ?? chapters[0];
       const taskDetail = domain.criticalMissRate > 40
         ? `critical miss recovery — ${domain.label}`
         : `focused ${domain.label} practice`;
