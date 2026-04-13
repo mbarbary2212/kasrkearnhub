@@ -81,6 +81,13 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
   return task?.is_carried_over ?? false;
 }
 
+/** Extract just the chapter name from a suggestion */
+function getChapterName(item: SuggestedItem): string {
+  if (item.chapterTitle) return item.chapterTitle;
+  const parts = item.title.split(' — ');
+  return parts[0] ?? item.title;
+}
+
 const TIME_OPTIONS = [20, 45, 60, 90] as const;
 
 export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange, onRefreshPlan, isRefreshing }: DashboardTodayPlanProps) {
@@ -174,7 +181,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground">
-            Your plan for today is already set. This will apply tomorrow, or if you refresh your plan.
+            Tap Refresh below to apply a new time to your plan.
           </p>
         </div>
         {/* Start Here — Primary Action */}
@@ -199,15 +206,18 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                   </span>
                 )}
               </div>
-              <p className="font-medium truncate text-foreground">{primarySuggestion.title}</p>
+              <p className="font-medium truncate text-foreground">{getChapterName(primarySuggestion)}</p>
+              <p className="text-xs text-foreground/80">
+                {primarySuggestion.prescribedStudyMode?.label ?? 'Study'}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}
+              </p>
               {primarySuggestion.reason && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   {primarySuggestion.trend && primarySuggestion.trend !== 'stable' && (
                     <span className={`font-medium ${trendIndicator[primarySuggestion.trend]?.className || ''} mr-1`}>
                       {trendIndicator[primarySuggestion.trend]?.icon}
                     </span>
                   )}
-                  {primarySuggestion.reason}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}</p>
+                  {primarySuggestion.reason}</p>
               )}
             </div>
             <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
@@ -238,21 +248,24 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <TaskStatusDot status={taskStatus} />
-                      <p className="text-sm font-medium truncate text-foreground">{item.title}</p>
+                      <p className="text-sm font-medium truncate text-foreground">{getChapterName(item)}</p>
                       {carried && (
                         <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0">
                           <RotateCcw className="w-2.5 h-2.5" />carried
                         </span>
                       )}
                     </div>
+                    <p className="text-xs text-foreground/70">
+                      {item.prescribedStudyMode?.label ?? 'Study'}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}
+                    </p>
                     {item.reason && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-[11px] text-muted-foreground truncate">
                         {item.trend && item.trend !== 'stable' && (
                           <span className={`font-medium ${trendIndicator[item.trend]?.className || ''} mr-1`}>
                             {trendIndicator[item.trend]?.icon}
                           </span>
                         )}
-                        {item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}</p>
+                        {item.reason}</p>
                     )}
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
