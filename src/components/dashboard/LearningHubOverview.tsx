@@ -19,7 +19,8 @@ import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCaseReasoningProfile } from '@/hooks/useCaseReasoningProfile';
-import { useEffect } from 'react';
+import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
+import { useEffect, useMemo } from 'react';
 
 interface LearningHubOverviewProps {
   dashboard: DashboardData;
