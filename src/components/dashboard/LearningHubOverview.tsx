@@ -45,17 +45,6 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
   const { mutate: checkBadges } = useCheckBadges();
   const { data: reasoningProfile } = useCaseReasoningProfile(user?.id, moduleId);
   
-  // Build planInput for useDailyStudyPlan from dashboard data
-  const planInput = useMemo(() => ({
-    metrics: dashboard.chapterMetrics,
-    chapters: dashboard.chapters.map(ch => ({
-      id: ch.id,
-      title: ch.title,
-      moduleId: ch.moduleId,
-      moduleName: ch.moduleName,
-      hasLectures: false,
-    })),
-  }), [dashboard.chapterMetrics, dashboard.chapters]);
 
 
   useEffect(() => {
