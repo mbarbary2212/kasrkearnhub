@@ -19,7 +19,7 @@ import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCaseReasoningProfile } from '@/hooks/useCaseReasoningProfile';
-import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
+
 import { useEffect, useMemo } from 'react';
 
 interface LearningHubOverviewProps {
@@ -57,16 +57,6 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
     })),
   }), [dashboard.chapterMetrics, dashboard.chapters]);
 
-  const {
-    dailyPlan,
-    availableMinutes,
-    setAvailableMinutes,
-    refreshPlan,
-    isRefreshing,
-  } = useDailyStudyPlan({
-    planInput,
-    chapterMetrics: dashboard.chapterMetrics,
-  });
 
   useEffect(() => {
     if (moduleSelected && dashboard.coveragePercent > 0) {
