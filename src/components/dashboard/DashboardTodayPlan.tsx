@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock, RefreshCw, Loader2 } from 'lucide-react';
+import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ChevronDown, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock, RefreshCw, Loader2 } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
 import type { DailyPlan } from '@/hooks/useDailyStudyPlan';
@@ -96,6 +96,7 @@ function getActivityLabel(item: SuggestedItem): string {
 export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange, onRefreshPlan, isRefreshing }: DashboardTodayPlanProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeChanged, setTimeChanged] = useState(false);
 
   const handleRefresh = () => {
     if (!onRefreshPlan) return;
@@ -106,6 +107,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
     if (hasIncomplete) {
       setShowConfirm(true);
     } else {
+      setTimeChanged(false);
       void onRefreshPlan();
     }
   };
@@ -166,13 +168,14 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
               >
                 <Clock className="w-3.5 h-3.5" />
                 <span>{availableMinutes} min</span>
+                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showTimePicker ? 'rotate-180' : ''}`} />
               </button>
               {showTimePicker && (
                 <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-lg shadow-lg z-10 p-1 flex flex-col gap-0.5 min-w-[80px]">
                   {[20, 45, 60, 90].map(mins => (
                     <button
                       key={mins}
-                      onClick={() => { onAvailableMinutesChange?.(mins); setShowTimePicker(false); }}
+                      onClick={() => { onAvailableMinutesChange?.(mins); setShowTimePicker(false); setTimeChanged(true); }}
                       className={`text-xs px-3 py-1.5 rounded-md text-left transition-colors ${
                         availableMinutes === mins
                           ? 'bg-primary text-primary-foreground'
@@ -189,12 +192,16 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-              title="Refresh plan"
+              title={timeChanged ? "Tap to apply your new time" : "Refresh plan"}
+              className={`p-1.5 rounded-md transition-all disabled:opacity-50 ${
+                timeChanged
+                  ? 'text-primary bg-primary/10 animate-pulse hover:bg-primary/20'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
             >
               {isRefreshing
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <RefreshCw className="w-3.5 h-3.5" />
+                : <RefreshCw className={`w-3.5 h-3.5 ${timeChanged ? 'text-primary' : ''}`} />
               }
             </button>
           </div>
