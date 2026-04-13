@@ -4,7 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
-  Settings, FolderOpen, Sparkles, SlidersHorizontal, Lock,
+  Settings, FolderOpen, Sparkles, Lock,
   HelpCircle, MessageSquare, MessagesSquare, Users, BarChart3, Shield,
   Compass, BookOpenCheck,
 } from 'lucide-react';

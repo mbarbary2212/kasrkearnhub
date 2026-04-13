@@ -4,7 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MoreHorizontal,
-  MessageCircle, ClipboardCheck, SlidersHorizontal, Settings,
+  MessageCircle, ClipboardCheck, Settings,
   HelpCircle, MessageSquare, MessagesSquare, Users,
   FileText, Gamepad2, PenLine, ListChecks, BarChart3, Shield,
   Compass, BookOpenCheck,
