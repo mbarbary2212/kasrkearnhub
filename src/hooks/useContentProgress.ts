@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput } from '@/lib/video';
+import { calculateChapterProgress, type ChapterProgressInput } from '@/lib/progress/calculateChapterProgress';
 
 /**
  * Unified Content Progress Hook
@@ -140,19 +141,31 @@ export function useContentProgress({ chapterId, topicId }: ContentProgressParams
         ? Math.round(totalVideoProgress / videosTotal) 
         : 0;
 
-      // Weighted total
-      let totalProgress: number;
-      if (practiceTotal === 0 && videosTotal === 0) {
-        totalProgress = 0;
-      } else if (practiceTotal === 0) {
-        totalProgress = videoProgress;
-      } else if (videosTotal === 0) {
-        totalProgress = practiceProgress;
-      } else {
-        totalProgress = Math.round(
-          PRACTICE_WEIGHT * practiceProgress + VIDEO_WEIGHT * videoProgress
-        );
-      }
+      // Build input for the centralised calculator
+      const progressInput: ChapterProgressInput = {
+        chapterId: containerId!,
+        videosWatched: videosCompleted,
+        totalVideos: videosTotal,
+        textsRead: 0,
+        totalTexts: 0,
+        flashcardsReviewed: 0,
+        totalFlashcardSessions: 0,
+        practiceSessions: practiceCompleted,
+        totalPracticeSessions: practiceTotal,
+        mcqAttempts: rpc.mcq_completed,
+        mcqCorrect: rpc.mcq_completed,
+        osceAttempts: rpc.osce_completed,
+        osceAvgScore: rpc.osce_completed > 0 ? 3 : 0,
+        reviewSessionsCompleted: 0,
+        reviewSessionsScheduled: 0,
+        daysSinceLastActivity: null,
+        studyDaysInLast14: 0,
+        socratesCompleted: 0,
+        socratesTotal: 0,
+      };
+
+      const readinessResult = calculateChapterProgress(progressInput);
+      const totalProgress = readinessResult.readiness;
 
       return {
         totalProgress,

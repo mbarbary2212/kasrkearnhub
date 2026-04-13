@@ -2,6 +2,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { extractYouTubeId, extractGoogleDriveId, normalizeVideoInput } from '@/lib/video';
+import { calculateChapterProgress, type ChapterProgressInput } from '@/lib/progress/calculateChapterProgress';
 
 /**
  * Progress Tracking System
@@ -194,18 +195,31 @@ export function useChapterProgress(chapterId?: string) {
         ? Math.round(totalVideoProgress / videosTotal)
         : 0;
 
-      let totalProgress: number;
-      if (practiceTotal === 0 && videosTotal === 0) {
-        totalProgress = 0;
-      } else if (practiceTotal === 0) {
-        totalProgress = videoProgress;
-      } else if (videosTotal === 0) {
-        totalProgress = practiceProgress;
-      } else {
-        totalProgress = Math.round(
-          PRACTICE_WEIGHT * practiceProgress + VIDEO_WEIGHT * videoProgress
-        );
-      }
+      // Build input for the centralised calculator
+      const progressInput: ChapterProgressInput = {
+        chapterId: chapterId!,
+        videosWatched: videosCompleted,
+        totalVideos: videosTotal,
+        textsRead: rpc.reference_viewed,
+        totalTexts: rpc.reference_total,
+        flashcardsReviewed: rpc.flashcard_reviewed,
+        totalFlashcardSessions: rpc.flashcard_total,
+        practiceSessions: practiceCompleted,
+        totalPracticeSessions: practiceTotal,
+        mcqAttempts: rpc.mcq_completed,
+        mcqCorrect: rpc.mcq_completed, // RPC only gives completion counts; accuracy not available here
+        osceAttempts: rpc.osce_completed,
+        osceAvgScore: rpc.osce_completed > 0 ? 3 : 0, // neutral default — no per-score data from RPC
+        reviewSessionsCompleted: 0,
+        reviewSessionsScheduled: 0,
+        daysSinceLastActivity: null,
+        studyDaysInLast14: 0,
+        socratesCompleted: rpc.guided_viewed,
+        socratesTotal: rpc.guided_total,
+      };
+
+      const readinessResult = calculateChapterProgress(progressInput);
+      const totalProgress = readinessResult.readiness;
 
       return {
         totalProgress,
