@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { DashboardTodayPlan } from '@/components/dashboard/DashboardTodayPlan';
+import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, LayoutGrid, List, Lock, Stethoscope, FlaskConical, PenLine, Video, BookOpenCheck } from 'lucide-react';
@@ -268,6 +270,27 @@ function LoggedInHome() {
 
   // Total estimated time
   const totalEstimatedMinutes = suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
+
+  // Daily study plan hook — wired to DashboardTodayPlan component
+  const chapterMetrics = dashboard?.chapterMetrics ?? [];
+  const planInput = useMemo(() => ({
+    metrics: chapterMetrics,
+    chapters: (dashboard?.chapters ?? []).map(ch => ({
+      id: ch.id,
+      title: ch.title,
+      moduleId: ch.moduleId,
+      moduleName: ch.moduleName,
+      hasLectures: false,
+    })),
+  }), [chapterMetrics, dashboard?.chapters]);
+
+  const {
+    dailyPlan,
+    availableMinutes,
+    setAvailableMinutes,
+    refreshPlan,
+    isRefreshing,
+  } = useDailyStudyPlan({ planInput, chapterMetrics });
 
   return (
     <div className="animate-fade-in max-w-6xl mx-auto">
