@@ -83,25 +83,33 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
 
 /** Extract just the chapter name from a suggestion */
 function getChapterName(item: SuggestedItem): string {
-  // chapterTitle is the cleanest source if populated
-  if (item.chapterTitle && !item.chapterTitle.includes('—')) return item.chapterTitle;
-  // title field contains "Chapter Name — Activity Label (details)"
-  // extract just the chapter name part before the " — "
-  const titleParts = (item.title ?? '').split(' — ');
-  return titleParts[0].trim() || item.title || 'Chapter';
+  if (item.chapterTitle && !item.chapterTitle.includes(':')) return item.chapterTitle;
+  const parts = (item.title ?? '').split(' — ');
+  return parts[0].trim() || item.title || 'Chapter';
 }
 
 function getActivityLabel(item: SuggestedItem): string {
-  // Use the prescribed study mode label if available (e.g. "MCQ Practice", "Case Scenarios")
   if (item.prescribedStudyMode?.label) return item.prescribedStudyMode.label;
-  // Fall back to the reason text
-  return item.reason ?? '';
+  return '';
 }
-
-const TIME_OPTIONS = [20, 45, 60, 90] as const;
 
 export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange, onRefreshPlan, isRefreshing }: DashboardTodayPlanProps) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
+  const handleRefresh = () => {
+    if (!onRefreshPlan) return;
+    const hasIncomplete = suggestions.some(s => {
+      const status = getTaskStatus(dailyPlan, s.chapterId);
+      return status === 'pending' || status === 'partial';
+    });
+    if (hasIncomplete) {
+      setShowConfirm(true);
+    } else {
+      void onRefreshPlan();
+    }
+  };
+
   if (suggestions.length === 0) {
     return (
       <Card>
@@ -119,8 +127,6 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
 
   const primarySuggestion = suggestions.find(s => s.isPrimary);
   const otherSuggestions = suggestions.filter(s => !s.isPrimary);
-  const planLabel = studyPlan?.planLabel;
-  const rationale = studyPlan?.rationale;
   const totalMinutes = studyPlan?.totalEstimatedMinutes ?? suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
   const insight = studyPlan?.confidenceInsight ?? confidenceInsight;
   const examMode = studyPlan?.examMode;
@@ -133,12 +139,6 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
           <div>
             <CardTitle className="text-lg font-heading">Today's Study Plan</CardTitle>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {planLabel && (
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  {planLabel}
-                </span>
-              )}
-              {/* Exam mode badge */}
               {examMode && examMode !== 'normal' && daysUntilExam !== null && daysUntilExam !== undefined && (
                 <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full flex items-center gap-1 ${
                   examMode === 'intensive'
@@ -156,44 +156,81 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
               )}
             </div>
           </div>
+          <div className="flex items-center gap-1">
+            {/* Time picker dropdown */}
+            <div className="relative">
+              <button
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+                onClick={() => setShowTimePicker(v => !v)}
+                title="Change available time"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>{availableMinutes} min</span>
+              </button>
+              {showTimePicker && (
+                <div className="absolute right-0 top-full mt-1 bg-popover border border-border rounded-lg shadow-lg z-10 p-1 flex flex-col gap-0.5 min-w-[80px]">
+                  {[20, 45, 60, 90].map(mins => (
+                    <button
+                      key={mins}
+                      onClick={() => { onAvailableMinutesChange?.(mins); setShowTimePicker(false); }}
+                      className={`text-xs px-3 py-1.5 rounded-md text-left transition-colors ${
+                        availableMinutes === mins
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      {mins} min
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Refresh icon button */}
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              title="Refresh plan"
+            >
+              {isRefreshing
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <RefreshCw className="w-3.5 h-3.5" />
+              }
+            </button>
+          </div>
         </div>
-        {rationale && (
-          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{rationale}</p>
-        )}
         {/* Yesterday adherence */}
         {yesterdayAdherence && yesterdayAdherence.total > 0 && (
           <p className="text-[10px] text-muted-foreground mt-1">
             Yesterday: {yesterdayAdherence.completed}/{yesterdayAdherence.total} completed
           </p>
         )}
+        {/* Confirmation dialog inline */}
+        {showConfirm && (
+          <div className="flex items-center gap-2 text-xs mt-2">
+            <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
+            <button
+              type="button"
+              onClick={async () => {
+                setShowConfirm(false);
+                await onRefreshPlan?.();
+              }}
+              disabled={isRefreshing || !onRefreshPlan}
+              className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(false)}
+              className="text-xs font-medium text-muted-foreground hover:underline"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Time available picker */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-medium text-foreground">Time available today:</span>
-            <div className="flex gap-1.5">
-              {TIME_OPTIONS.map((mins) => (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => onAvailableMinutesChange?.(mins)}
-                  disabled={!onAvailableMinutesChange}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    availableMinutes === mins
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
-                  }`}
-                >
-                  {mins} min
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            Tap Refresh below to apply a new time to your plan.
-          </p>
-        </div>
         {/* Start Here — Primary Action */}
         {primarySuggestion && (
           <div
@@ -292,61 +329,6 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
             <p className="text-xs text-foreground/80 leading-relaxed">{insight}</p>
           </div>
         )}
-
-        {/* Refresh Plan */}
-        <div className="pt-2 border-t border-border space-y-2">
-          {showConfirm ? (
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
-              <button
-                type="button"
-                onClick={async () => {
-                  setShowConfirm(false);
-                  await onRefreshPlan?.();
-                }}
-                disabled={isRefreshing || !onRefreshPlan}
-                className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Confirm
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowConfirm(false)}
-                className="text-xs font-medium text-muted-foreground hover:underline"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (!onRefreshPlan) return;
-                const hasIncomplete = suggestions.some(s => {
-                  const status = getTaskStatus(dailyPlan, s.chapterId);
-                  return status === 'pending' || status === 'partial';
-                });
-                if (hasIncomplete) {
-                  setShowConfirm(true);
-                } else {
-                  void onRefreshPlan();
-                }
-              }}
-              disabled={isRefreshing || !onRefreshPlan}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isRefreshing ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
-              )}
-              {isRefreshing ? 'Refreshing...' : 'Refresh plan'}
-            </button>
-          )}
-          {!showConfirm && (
-            <p className="text-[10px] text-muted-foreground">Completed everything? Get a new set of tasks.</p>
-          )}
-        </div>
       </CardContent>
     </Card>
   );
