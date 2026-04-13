@@ -29,7 +29,7 @@ export function GuidedExplanationViewer({
   onComplete 
 }: GuidedExplanationViewerProps) {
   const storageKey = resourceId ? `guided_progress_${resourceId}` : null;
-  const hasTracked = useRef(false);
+  const hasTracked = useRef<boolean>(false);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(() => {
@@ -50,13 +50,11 @@ export function GuidedExplanationViewer({
 
   // Track completion when all questions have been answered
   useEffect(() => {
-    if (
-      questions.length > 0 &&
-      revealedAnswers.size === questions.length &&
-      !hasTracked.current
-    ) {
-      hasTracked.current = true;
-      onComplete?.();
+    if (questions.length > 0 && revealedAnswers.size === questions.length) {
+      if (!hasTracked.current) {
+        hasTracked.current = true;
+        onComplete?.();
+      }
     }
   }, [revealedAnswers.size, questions.length, onComplete]);
 

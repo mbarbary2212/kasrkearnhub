@@ -50,41 +50,30 @@ export function GuidedExplanationList({
   const resolvedChapterId = chapterId || resources[0]?.chapter_id;
   const { data: sections = [] } = useChapterSections(resolvedChapterId);
 
-  // Fetch completed guided explanation IDs for this user
-  const { data: completedIds = new Set<string>(), refetch: refetchCompletedViews } = useQuery({
-    queryKey: ['guided-explanation-completed', user?.id, chapterId, topicId],
+  const { data: completedViewsData = [], refetch: refetchCompletedViews } = useQuery<string[]>({
+    queryKey: ['guided-completed-views', user?.id, chapterId, topicId],
     queryFn: async () => {
-      if (!user?.id) return new Set<string>();
-      let query = supabase
+      if (!user?.id) return [];
+
+      let q = supabase
         .from('content_views')
         .select('content_id')
         .eq('user_id', user.id)
         .eq('content_type', 'guided_explanation');
-      
+
       if (chapterId) {
-        query = query.eq('chapter_id', chapterId);
+        q = q.eq('chapter_id', chapterId);
       }
-      
-      const { data } = await query;
-      return new Set((data ?? []).map(d => d.content_id));
+
+      const { data } = await q;
+      return (data ?? []).map((v) => v.content_id);
     },
     enabled: !!user?.id,
   });
+  const completedIds = new Set(completedViewsData);
 
   const handleSelectResource = (resource: StudyResource) => {
-    // Do NOT track view on open — tracking happens only on completion
     setSelectedResource(resource);
-  };
-
-  const handleComplete = () => {
-    if (!selectedResource) return;
-    trackView.mutate({
-      contentType: 'guided_explanation',
-      contentId: selectedResource.id,
-      chapterId: chapterId || selectedResource.chapter_id || undefined,
-      topicId: topicId || selectedResource.topic_id || undefined,
-    });
-    refetchCompletedViews();
   };
 
   if (resources.length === 0) {
@@ -128,8 +117,6 @@ export function GuidedExplanationList({
           {resources.map((resource) => {
             const content = resource.content as GuidedExplanationContent;
             const questionCount = content.guided_questions?.length || 0;
-            const isCompleted = completedIds.has(resource.id);
-
             return (
               <Card
                 key={resource.id}
@@ -192,8 +179,8 @@ export function GuidedExplanationList({
                       <BookOpen className="w-4 h-4" />
                       <span>{questionCount} question{questionCount !== 1 ? 's' : ''}</span>
                     </div>
-                    {isCompleted ? (
-                      <Badge variant="secondary" className="gap-1 bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30">
+                    {completedIds.has(resource.id) ? (
+                      <Badge variant="default" className="gap-1 bg-green-600 hover:bg-green-700 text-white">
                         <CheckCircle2 className="w-3 h-3" />
                         Review
                       </Badge>
@@ -222,7 +209,15 @@ export function GuidedExplanationList({
               title={selectedResource.title}
               content={selectedResource.content as GuidedExplanationContent}
               resourceId={selectedResource.id}
-              onComplete={handleComplete}
+              onComplete={() => {
+                trackView.mutate({
+                  contentType: 'guided_explanation',
+                  contentId: selectedResource.id,
+                  chapterId: chapterId || selectedResource.chapter_id || undefined,
+                  topicId: topicId || selectedResource.topic_id || undefined,
+                });
+                refetchCompletedViews();
+              }}
             />
           )}
         </DialogContent>
