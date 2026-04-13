@@ -152,31 +152,31 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Time available picker */}
-        {onAvailableMinutesChange && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-medium text-foreground">Time available today:</span>
-              <div className="flex gap-1.5">
-                {TIME_OPTIONS.map((mins) => (
-                  <button
-                    key={mins}
-                    onClick={() => onAvailableMinutesChange(mins)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      availableMinutes === mins
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
-                    }`}
-                  >
-                    {mins} min
-                  </button>
-                ))}
-              </div>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-foreground">Time available today:</span>
+            <div className="flex gap-1.5">
+              {TIME_OPTIONS.map((mins) => (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => onAvailableMinutesChange?.(mins)}
+                  disabled={!onAvailableMinutesChange}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    availableMinutes === mins
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
+                  }`}
+                >
+                  {mins} min
+                </button>
+              ))}
             </div>
-            <p className="text-[10px] text-muted-foreground">
-              Your plan for today is already set. This will apply tomorrow, or if you refresh your plan.
-            </p>
           </div>
-        )}
+          <p className="text-[10px] text-muted-foreground">
+            Your plan for today is already set. This will apply tomorrow, or if you refresh your plan.
+          </p>
+        </div>
         {/* Start Here — Primary Action */}
         {primarySuggestion && (
           <div
@@ -271,57 +271,59 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
         )}
 
         {/* Refresh Plan */}
-        {onRefreshPlan && (
-          <div className="pt-2 border-t border-border space-y-2">
-            {showConfirm ? (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
-                <button
-                  onClick={async () => {
-                    setShowConfirm(false);
-                    await onRefreshPlan();
-                  }}
-                  disabled={isRefreshing}
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  className="text-xs font-medium text-muted-foreground hover:underline"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
+        <div className="pt-2 border-t border-border space-y-2">
+          {showConfirm ? (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">You still have unfinished tasks. Refresh anyway?</span>
               <button
-                onClick={() => {
-                  const hasIncomplete = suggestions.some(s => {
-                    const status = getTaskStatus(dailyPlan, s.chapterId);
-                    return status === 'pending' || status === 'partial';
-                  });
-                  if (hasIncomplete) {
-                    setShowConfirm(true);
-                  } else {
-                    onRefreshPlan();
-                  }
+                type="button"
+                onClick={async () => {
+                  setShowConfirm(false);
+                  await onRefreshPlan?.();
                 }}
-                disabled={isRefreshing}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                disabled={isRefreshing || !onRefreshPlan}
+                className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isRefreshing ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5" />
-                )}
-                {isRefreshing ? 'Refreshing...' : 'Refresh plan'}
+                Confirm
               </button>
-            )}
-            {!showConfirm && (
-              <p className="text-[10px] text-muted-foreground">Completed everything? Get a new set of tasks.</p>
-            )}
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="text-xs font-medium text-muted-foreground hover:underline"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (!onRefreshPlan) return;
+                const hasIncomplete = suggestions.some(s => {
+                  const status = getTaskStatus(dailyPlan, s.chapterId);
+                  return status === 'pending' || status === 'partial';
+                });
+                if (hasIncomplete) {
+                  setShowConfirm(true);
+                } else {
+                  void onRefreshPlan();
+                }
+              }}
+              disabled={isRefreshing || !onRefreshPlan}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRefreshing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              {isRefreshing ? 'Refreshing...' : 'Refresh plan'}
+            </button>
+          )}
+          {!showConfirm && (
+            <p className="text-[10px] text-muted-foreground">Completed everything? Get a new set of tasks.</p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
