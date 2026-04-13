@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BulkSectionAssignment } from '@/components/sections/BulkSectionAssignment';
+import { AutoTagSectionsButton } from '@/components/sections';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
@@ -50,7 +51,8 @@ import { useMcqContentProcessor } from '@/hooks/useMcqContentProcessor';
 import { supabase } from '@/integrations/supabase/client';
 import { adaptiveReorder } from '@/lib/adaptiveDifficulty';
 import { computeResurfaceScores, applyResurfacing } from '@/lib/mcqResurfacing';
-import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
+import { useStudentChapterMetrics } from '@/hooks/useStudentChapterMetrics';
+import { classifyFromMetrics } from '@/lib/readiness';
 import type { Json } from '@/integrations/supabase/types';
 import { isMcqDuplicate, findDuplicates, type DuplicateResult } from '@/lib/duplicateDetection';
 import { DragDropZone } from '@/components/ui/drag-drop-zone';
@@ -134,17 +136,7 @@ export function McqList({
     if (isAdmin || !_chapterMetricsForDifficulty || !chapterId) return undefined;
     const metric = _chapterMetricsForDifficulty.find(m => m.chapter_id === chapterId);
     if (!metric) return 'not_started' as const;
-    return classifyChapterState({
-      coverage_percent: metric.coverage_percent,
-      mcq_attempts: metric.mcq_attempts,
-      mcq_accuracy: metric.mcq_accuracy,
-      recent_mcq_accuracy: metric.recent_mcq_accuracy,
-      readiness_score: metric.readiness_score,
-      flashcards_due: metric.flashcards_due,
-      flashcards_overdue: metric.flashcards_overdue,
-      last_activity_at: metric.last_activity_at,
-      confidence_mismatch_rate: metric.confidence_mismatch_rate,
-    });
+    return classifyFromMetrics(metric);
   }, [isAdmin, _chapterMetricsForDifficulty, chapterId]);
 
   const [editingMcq, setEditingMcq] = useState<Mcq | null>(null);
@@ -769,6 +761,7 @@ export function McqList({
                   contentTable="mcqs"
                   onComplete={clearSelection}
                 />
+                <AutoTagSectionsButton chapterId={chapterId ?? undefined} topicId={topicId ?? undefined} />
               </>
             )}
             

@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ContentAdminTable, type ColumnConfig } from '@/components/admin/ContentAdminTable';
 import { StudyResource, FlashcardContent } from '@/hooks/useStudyResources';
 import { useChapterSections } from '@/hooks/useSections';
 import { FLASHCARD_EXPORT_COLUMNS } from '@/lib/csvExport';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 interface FlashcardsAdminTableProps {
   resources: StudyResource[];
@@ -19,7 +21,19 @@ interface FlashcardRow {
   front: string;
   back: string;
   section_id: string | null;
+  cardType: 'classic' | 'cloze';
   resource: StudyResource;
+}
+
+type CardTypeFilter = 'all' | 'classic' | 'cloze';
+
+const CLOZE_REGEX = /\{\{c\d+::(.+?)\}\}/;
+
+function detectCardType(content: FlashcardContent): 'classic' | 'cloze' {
+  if (content.card_type === 'cloze' && content.cloze_text && CLOZE_REGEX.test(content.cloze_text)) {
+    return 'cloze';
+  }
+  return 'classic';
 }
 
 export function FlashcardsAdminTable({
@@ -30,9 +44,10 @@ export function FlashcardsAdminTable({
   onDelete,
 }: FlashcardsAdminTableProps) {
   const { data: sections = [] } = useChapterSections(chapterId);
+  const [cardTypeFilter, setCardTypeFilter] = useState<CardTypeFilter>('all');
 
   // Transform resources to flat rows for the table
-  const rows = useMemo((): FlashcardRow[] => {
+  const allRows = useMemo((): FlashcardRow[] => {
     return resources.map(resource => {
       const content = resource.content as FlashcardContent;
       return {
@@ -41,10 +56,19 @@ export function FlashcardsAdminTable({
         front: content?.front || '',
         back: content?.back || '',
         section_id: resource.section_id || null,
+        cardType: detectCardType(content),
         resource,
       };
     });
   }, [resources]);
+
+  const rows = useMemo(() => {
+    if (cardTypeFilter === 'all') return allRows;
+    return allRows.filter(r => r.cardType === cardTypeFilter);
+  }, [allRows, cardTypeFilter]);
+
+  const classicCount = useMemo(() => allRows.filter(r => r.cardType === 'classic').length, [allRows]);
+  const clozeCount = useMemo(() => allRows.filter(r => r.cardType === 'cloze').length, [allRows]);
 
   const columns: ColumnConfig<FlashcardRow>[] = [
     {
@@ -76,6 +100,16 @@ export function FlashcardsAdminTable({
       ),
     },
     {
+      key: 'cardType' as keyof FlashcardRow,
+      header: 'Type',
+      className: 'w-24',
+      render: (item) => (
+        <Badge variant={item.cardType === 'cloze' ? 'default' : 'secondary'} className="text-xs">
+          {item.cardType === 'cloze' ? 'Cloze' : 'Classic'}
+        </Badge>
+      ),
+    },
+    {
       key: 'section',
       header: 'Section',
       className: 'w-32',
@@ -97,19 +131,33 @@ export function FlashcardsAdminTable({
   }, [rows]);
 
   return (
-    <ContentAdminTable
-      data={rows}
-      columns={columns}
-      contentTable="study_resources"
-      chapterId={chapterId}
-      sections={sections}
-      onEdit={onEdit ? (row) => onEdit(row.resource) : undefined}
-      onDelete={onDelete ? (row) => onDelete(row.resource) : undefined}
-      csvExportConfig={{
-        filename: `flashcards-${chapterId || 'export'}`,
-        columns: FLASHCARD_EXPORT_COLUMNS as any,
-      }}
-      emptyMessage="No flashcards available"
-    />
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Select value={cardTypeFilter} onValueChange={(v) => setCardTypeFilter(v as CardTypeFilter)}>
+          <SelectTrigger className="w-40 h-8 text-xs">
+            <SelectValue placeholder="Card type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types ({allRows.length})</SelectItem>
+            <SelectItem value="classic">Classic ({classicCount})</SelectItem>
+            <SelectItem value="cloze">Cloze ({clozeCount})</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <ContentAdminTable
+        data={rows}
+        columns={columns}
+        contentTable="study_resources"
+        chapterId={chapterId}
+        sections={sections}
+        onEdit={onEdit ? (row) => onEdit(row.resource) : undefined}
+        onDelete={onDelete ? (row) => onDelete(row.resource) : undefined}
+        csvExportConfig={{
+          filename: `flashcards-${chapterId || 'export'}`,
+          columns: FLASHCARD_EXPORT_COLUMNS as any,
+        }}
+        emptyMessage="No flashcards available"
+      />
+    </div>
   );
 }

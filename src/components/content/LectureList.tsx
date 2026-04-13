@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LecturesAdminTable } from './LecturesAdminTable';
@@ -533,6 +533,7 @@ export function LectureList({
                 {chapterId && (
                   <BulkSectionAssignment chapterId={chapterId} selectedIds={Array.from(selectedIds)} contentTable="lectures" onComplete={clearSelection} />
                 )}
+                <AutoTagSectionsButton chapterId={chapterId} />
                 <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-7 gap-1">
                   <Trash2 className="h-3.5 w-3.5" />Delete
                 </Button>

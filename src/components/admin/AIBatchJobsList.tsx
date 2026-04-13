@@ -65,7 +65,7 @@ const CONTENT_TYPE_LABELS: Record<string, string> = {
   mcq: 'MCQs',
   flashcard: 'Flashcards',
   osce: 'OSCE Questions',
-  essay: 'Essays',
+  essay: 'Short Questions',
   matching: 'Matching Questions',
   clinical_case: 'Interactive Cases',
   virtual_patient: 'Interactive Cases',

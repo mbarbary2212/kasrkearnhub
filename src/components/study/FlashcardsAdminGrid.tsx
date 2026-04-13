@@ -16,7 +16,7 @@ interface FlashcardsAdminGridProps {
 
 interface GroupedDeck {
   title: string;
-  cards: { front: string; back: string; resource: StudyResource }[];
+  cards: { front: string; back: string; isCloze: boolean; resource: StudyResource }[];
 }
 
 const TIMING_OPTIONS = [
@@ -25,15 +25,25 @@ const TIMING_OPTIONS = [
   { value: '7000', label: '7s' },
 ];
 
+type CardTypeFilter = 'all' | 'classic' | 'cloze';
+
 export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds = new Set(), onToggleSelection }: FlashcardsAdminGridProps) {
+  const [cardTypeFilter, setCardTypeFilter] = useState<CardTypeFilter>('all');
+
   // Group flashcards by title
-  const groups = useMemo(() => {
-    const map = new Map<string, { front: string; back: string; resource: StudyResource }[]>();
+  const allGroups = useMemo(() => {
+    const map = new Map<string, { front: string; back: string; isCloze: boolean; resource: StudyResource }[]>();
     for (const resource of resources) {
       const content = resource.content as FlashcardContent;
       const title = resource.title;
+      const isCloze = content.card_type === 'cloze';
       if (!map.has(title)) map.set(title, []);
-      map.get(title)!.push({ front: content.front, back: content.back, resource });
+      map.get(title)!.push({
+        front: isCloze ? (content.cloze_text || '') : (content.front || ''),
+        back: isCloze ? (content.extra || '') : (content.back || ''),
+        isCloze,
+        resource,
+      });
     }
     return Array.from(map.entries()).map(([title, cards]) => ({
       title,
@@ -41,7 +51,18 @@ export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds 
     }));
   }, [resources]);
 
-  if (groups.length === 0) {
+  const classicCount = useMemo(() => resources.filter(r => (r.content as FlashcardContent).card_type !== 'cloze').length, [resources]);
+  const clozeCount = useMemo(() => resources.filter(r => (r.content as FlashcardContent).card_type === 'cloze').length, [resources]);
+
+  const groups = useMemo(() => {
+    if (cardTypeFilter === 'all') return allGroups;
+    const isClozeFilter = cardTypeFilter === 'cloze';
+    return allGroups
+      .map(g => ({ ...g, cards: g.cards.filter(c => c.isCloze === isClozeFilter) }))
+      .filter(g => g.cards.length > 0);
+  }, [allGroups, cardTypeFilter]);
+
+  if (resources.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
         No flashcards available
@@ -50,25 +71,39 @@ export function FlashcardsAdminGrid({ resources, canManage, onEdit, selectedIds 
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {groups.map((group) => (
-        <FlashcardDeckGroup
-          key={group.title}
-          deckTitle={group.title}
-          cards={group.cards}
-          canManage={canManage}
-          onEdit={onEdit}
-          selectedIds={selectedIds}
-          onToggleSelection={onToggleSelection}
-        />
-      ))}
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Select value={cardTypeFilter} onValueChange={(v) => setCardTypeFilter(v as CardTypeFilter)}>
+          <SelectTrigger className="w-40 h-8 text-xs">
+            <SelectValue placeholder="Card type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types ({resources.length})</SelectItem>
+            <SelectItem value="classic">Classic ({classicCount})</SelectItem>
+            <SelectItem value="cloze">Cloze ({clozeCount})</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {groups.map((group) => (
+          <FlashcardDeckGroup
+            key={group.title}
+            deckTitle={group.title}
+            cards={group.cards}
+            canManage={canManage}
+            onEdit={onEdit}
+            selectedIds={selectedIds}
+            onToggleSelection={onToggleSelection}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 interface FlashcardDeckGroupProps {
   deckTitle: string;
-  cards: { front: string; back: string; resource: StudyResource }[];
+  cards: { front: string; back: string; isCloze: boolean; resource: StudyResource }[];
   canManage?: boolean;
   onEdit?: (resource: StudyResource) => void;
   selectedIds?: Set<string>;
@@ -184,13 +219,18 @@ function FlashcardDeckGroup({ deckTitle, cards, canManage, onEdit, selectedIds =
         >
           {/* Front */}
           <div className="absolute inset-0 backface-hidden rounded-lg border bg-primary/5 p-4 flex flex-col items-center justify-center text-center">
-            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Question</div>
+            <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">{current.isCloze ? 'Cloze' : 'Question'}</div>
             <div className="text-sm font-medium text-foreground line-clamp-4">{current.front}</div>
           </div>
           {/* Back */}
-          <div className="absolute inset-0 backface-hidden rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-4 flex flex-col items-center justify-center text-center rotate-y-180">
+          <div className="absolute inset-0 backface-hidden rounded-lg border bg-emerald-50 dark:bg-emerald-950/30 p-4 flex flex-col items-center justify-center text-center rotate-y-180 overflow-y-auto">
             <div className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Answer</div>
-            <div className="text-sm font-medium text-foreground line-clamp-4">{current.back}</div>
+            <div className="text-sm font-medium text-foreground line-clamp-3">{current.back}</div>
+            {(current.resource.content as FlashcardContent)?.extra && (
+              <div className="mt-1.5 w-full p-1.5 bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-500 rounded text-left">
+                <div className="text-[10px] text-amber-700 dark:text-amber-400 line-clamp-2">{(current.resource.content as FlashcardContent).extra}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>

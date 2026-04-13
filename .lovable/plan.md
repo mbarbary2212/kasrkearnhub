@@ -1,56 +1,51 @@
 
 
-# Fix Guided Tour UX Issues
+## 4-Session Plan to Fix Progress & Counter Inconsistencies
 
-## Problems Identified
+### Session 1: Fix False "Mastered" on Fresh Accounts (Critical)
 
-From the screenshot: both the **FirstLoginModal** and the **driver.js tour** are showing simultaneously. The tour auto-starts on its own (via `useTour` auto-start logic) regardless of whether the user chose "Take a quick tour" from the modal. Additionally, the overlay is too dark (0.6 opacity), and there's no "don't show again" checkbox.
+**Root cause**: `useNeedsPractice.ts` only tracks items the user got *wrong*. Zero attempts = zero wrong = "All mastered!"
 
-## Changes
+**Changes**:
+- `src/hooks/useNeedsPractice.ts` — add `attemptedCounts` to the return type. Query distinct `question_id` counts from `question_attempts` for MCQ and OSCE (not just incorrect ones). Add `mcqAttempted`, `osceAttempted` to `ContentCounts`. For matching/essay/cases, count from `userProgress` completed entries.
+- `src/components/dashboard/DashboardNeedsPractice.tsx` — line 69-74: change each "all complete" check to require `attemptedCount > 0`. When `attemptedCount === 0`, show "Not started yet" with a neutral style instead of `AllClearBadge`.
 
-### 1. Stop tour from auto-starting — let FirstLoginModal control it
+---
 
-**File: `src/hooks/useTour.ts`**
+### Session 2: Fix Socrates Counter + Persistence
 
-- **Remove** the auto-start logic (the two `useEffect` blocks that check `hasSeen` and set `tourReady`). The tour should only start when explicitly triggered: either from the FirstLoginModal "Take a quick tour" button, or from the sidebar "Take a Tour" menu item.
-- Keep the `kalm:start-tour` event listener for manual triggers.
-- This fixes the double-popup issue (modal + tour firing together).
+**Root cause**: The tab badge (ChapterPage line 776) shows `guidedViewed/guidedTotal` — this counts **sets viewed** via `content_views`, not individual questions. Users read "1/24" as "1 question of 24" when it means "1 set of 24 sets."
 
-### 2. Add "Don't show again" checkbox to the FirstLoginModal
+**Changes**:
+- `src/pages/ChapterPage.tsx` line ~820 — append " sets" to the counter label for `guided_explanations` tab so it reads "1/24 sets"
+- `src/components/study/GuidedExplanationViewer.tsx` — persist `revealedAnswers` to `localStorage` keyed by resource ID so reopening a set restores prior progress instead of resetting to 0
+- Same fix needed in `src/pages/TopicDetailPage.tsx` for the equivalent Socrates tab counter
 
-**File: `src/components/guidance/FirstLoginModal.tsx`**
+---
 
-- Add a checkbox: "Don't show this again" above the Skip button.
-- When checked and user clicks Skip (or closes), set `kalm_tour_student_done` / `kalm_tour_admin_done` in addition to the first-login key — this prevents the modal from ever reappearing AND prevents any future tour auto-trigger.
-- Change "Skip for now" text to just "Skip" when checkbox is checked.
+### Session 3: Fix Chapter Count Mismatch (29 vs ~45)
 
-### 3. Reduce overlay darkness
+**Root cause**: `useStudentDashboard.ts` line 304 filters out chapters with `totalItems === 0` for the coach count. But the student module page shows ALL chapters including empty ones.
 
-**File: `src/hooks/useTour.ts`**
+**Changes**:
+- In the module page chapter list component (ModulePage.tsx), filter out chapters with zero content items from the student view (not admin). This aligns what students see with what the coach counts.
+- The merged surgery config (`expandModuleIds`) already handles SUR-423/523 correctly — no changes needed there.
 
-- Change `overlayColor` from `'rgba(0, 0, 0, 0.6)'` to `'rgba(0, 0, 0, 0.3)'` — lighter dimming so users can still see the app behind the tour.
-- Increase `stagePadding` from 8 to 12 for better visual clarity of highlighted elements.
+---
 
-### 4. Add "Don't show again" button to the tour popover
+### Session 4: Progress Weighting Clarity + Thumbnail Fallbacks
 
-**File: `src/hooks/useTour.ts`**
+**Progress bar jump**: By design (40% video weight), but confusing without context.
 
-- Add `doneBtnText: "Finish"` and a custom `onNextClick` or use driver.js's built-in `popoverClass` to add a "Don't show again" link in the final step.
-- Simpler approach: The tour already marks done on close/complete via `markDone()`. Add `showButtons: ['next', 'previous', 'close']` config. The existing `onDestroyStarted` already calls `markDone()`, so closing/completing the tour = won't show again. This is already working — the real issue is that the tour auto-fires without user consent.
+**Changes**:
+- `src/components/content/ChapterProgressBar.tsx` — add a small info icon with tooltip next to "Your progress in this chapter" that explains: "Progress = 60% Practice + 40% Videos. A single video can significantly impact your progress."
+- Chapter card components — add a gradient + icon fallback for chapters without `image_url`, using a deterministic color based on chapter title hash (similar to existing module gradient system).
 
-## Summary of Behavior After Fix
+---
 
-1. **First visit**: FirstLoginModal appears. User picks "Take a tour", "Learn how to use", or "Skip".
-2. **If "Take a tour"**: Modal closes, tour starts with light overlay.
-3. **If "Skip" + "Don't show again" checked**: Modal never shows again, tour never auto-fires.
-4. **If "Skip" without checkbox**: Modal won't show again (first-login key set), but user can still trigger tour from sidebar.
-5. **Tour overlay**: Light enough to see the app clearly behind it.
-
-## Files Modified (3)
-
-| File | Change |
-|------|--------|
-| `src/hooks/useTour.ts` | Remove auto-start effects, reduce overlay opacity |
-| `src/components/guidance/FirstLoginModal.tsx` | Add "Don't show again" checkbox, wire it to tour keys |
-| `src/pages/Home.tsx` | No changes needed (already wired correctly) |
+### Priority Order
+1. Session 1 — false "mastered" is most misleading
+2. Session 2 — Socrates counter confusion
+3. Session 3 — chapter count alignment
+4. Session 4 — polish (tooltips + thumbnails)
 

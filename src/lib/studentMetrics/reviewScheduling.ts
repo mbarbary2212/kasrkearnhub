@@ -40,15 +40,15 @@ export function calculateReviewStrength(m: StudentChapterMetric): number {
 }
 
 /**
- * Get the suggested review type based on chapter state and learning pattern.
+ * Get the suggested review type based on chapter status and learning pattern.
  */
 export function getReviewType(
-  state: string,
+  status: string,
   learningPattern?: string,
 ): 'mcq' | 'flashcard' | 'video' | 'read' {
   if (learningPattern === 'misconception') return 'video'; // review content first
-  if (state === 'weak') return 'mcq'; // MCQ + explanation
-  if (state === 'strong' || state === 'in_progress') return 'flashcard'; // quick review
+  if (status === 'needs_attention') return 'mcq'; // MCQ + explanation
+  if (status === 'strong' || status === 'building' || status === 'ready') return 'flashcard'; // quick review
   return 'mcq';
 }
 

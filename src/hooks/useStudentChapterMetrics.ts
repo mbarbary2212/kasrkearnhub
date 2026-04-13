@@ -2,9 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
-// Re-export shared classifier for convenience
+// Re-export legacy classifier (deprecated) for backward compat
+/** @deprecated Use classifyFromMetrics from '@/lib/readiness' instead */
 export { classifyChapterState, getModuleStatusFromMetrics } from '@/lib/studentMetrics';
 export type { ChapterState, ChapterMetricsInput } from '@/lib/studentMetrics';
+
+// Re-export new canonical classifier
+export { classifyFromMetrics } from '@/lib/readiness';
+export type { ChapterStatus } from '@/lib/readiness';
 
 export interface StudentChapterMetric {
   id: string;

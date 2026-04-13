@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { useBulkDeleteContent, useBulkUpdateSection, type ContentTableName } from '@/hooks/useContentBulkOperations';
 import { exportToCsv, type ExportColumn } from '@/lib/csvExport';
 import type { Section } from '@/hooks/useSections';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { MoveToChapterModal } from '@/components/admin/MoveToChapterModal';
 export interface ColumnConfig<T> {
   key: keyof T | 'actions' | 'select' | 'section';
@@ -320,6 +320,7 @@ export function ContentAdminTable<T extends { id: string; section_id?: string | 
                   onComplete={clearSelection}
                 />
               )}
+              <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
               {chapterId && moduleId && (
                 <Button
                   variant="outline"

@@ -13,8 +13,29 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_ITEMS_PER_BATCH = 50;
+const MAX_ITEMS_PER_BATCH = 20;
 const MAX_TOTAL_ITEMS = 200;
+
+/** Attempt to extract valid assignments from truncated JSON */
+function repairAndExtractAssignments(raw: string): Record<string, any> | null {
+  // Try direct parse first
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    // Fall through to repair
+  }
+
+  // Extract individual entries using regex
+  const results: Record<string, any> = {};
+  const entryPattern = /"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"\s*:\s*\{\s*"section_id"\s*:\s*"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"\s*,\s*"confidence"\s*:\s*"(high|medium|low)"\s*\}/g;
+  
+  let match;
+  while ((match = entryPattern.exec(raw)) !== null) {
+    results[match[1]] = { section_id: match[2], confidence: match[3] };
+  }
+
+  return Object.keys(results).length > 0 ? results : null;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -22,7 +43,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -50,10 +70,8 @@ serve(async (req) => {
     }
 
     const userId = claimsData.claims.sub as string;
-
     const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check user role
     const { data: roleRow } = await serviceClient
       .from("user_roles")
       .select("role")
@@ -72,10 +90,7 @@ serve(async (req) => {
     if (!isAdmin) {
       return new Response(
         JSON.stringify({ error: "Only admins can use AI auto-tagging" }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -84,21 +99,15 @@ serve(async (req) => {
     if (!items?.length || !sections?.length) {
       return new Response(
         JSON.stringify({ assignments: {}, message: "No items or sections" }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Cap items
     const cappedItems = items.slice(0, MAX_TOTAL_ITEMS);
 
-    // Get AI settings and provider
     const settings = await getAISettings(serviceClient);
     const provider = getAIProvider(settings);
 
-    // Override to use fast model for this task
     const fastProvider = {
       ...provider,
       model:
@@ -107,26 +116,21 @@ serve(async (req) => {
           : provider.model,
     };
 
-    // Resolve API key
-    const keyResult = await resolveApiKey(
-      serviceClient,
-      userId,
-      userRole,
-      settings
-    );
+    const keyResult = await resolveApiKey(serviceClient, userId, userRole, settings);
     if (keyResult.error) {
       return new Response(
         JSON.stringify({ error: keyResult.error, errorCode: keyResult.errorCode }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Build section list string
+    // Build section list with ILOs if available
     const sectionList = sections
-      .map((s: any) => `- ID: "${s.id}" | Name: "${s.name}"`)
+      .map((s: any) => {
+        let line = `- ID: "${s.id}" | Name: "${s.name}"`;
+        if (s.ilo) line += ` | ILO: "${s.ilo}"`;
+        return line;
+      })
       .join("\n");
 
     const systemPrompt = `You are a curriculum organizer for a medical education platform. You will be given a list of SECTIONS and a list of CONTENT ITEMS. Your task is to assign each content item to the most relevant section.
@@ -136,18 +140,17 @@ ${sectionList}
 
 RULES:
 1. Consider medical topic relationships, synonyms, hierarchical concepts, and abbreviations.
-2. For example, "Primary intention healing" belongs to a section about "Wound healing".
-3. "Femoral triangle boundaries" belongs to a section about "Lower limb anatomy".
-4. If NO section is a reasonable match for an item, assign null.
-5. Return ONLY a JSON object mapping item IDs to section IDs (or null).
-6. Do NOT include any explanation or markdown formatting. Return raw JSON only.
+2. Match based on clinical concept and learning objective (ILO) alignment.
+3. Prefer the MOST SPECIFIC matching section.
+4. You MUST assign every item to a section. NEVER return null. If uncertain, pick the closest match.
+5. For each assignment, provide a confidence level: "high", "medium", or "low".
+6. Return ONLY a JSON object. No explanation, no markdown.
 
 RESPONSE FORMAT (raw JSON, no markdown):
-{"item-id-1": "section-id-1", "item-id-2": "section-id-2", "item-id-3": null}`;
+{"item-id-1": {"section_id": "section-id-1", "confidence": "high"}, "item-id-2": {"section_id": "section-id-2", "confidence": "medium"}}`;
 
-    const allAssignments: Record<string, string | null> = {};
+    const allAssignments: Record<string, { section_id: string; confidence: string } | null> = {};
 
-    // Process in batches
     for (let i = 0; i < cappedItems.length; i += MAX_ITEMS_PER_BATCH) {
       const batch = cappedItems.slice(i, i + MAX_ITEMS_PER_BATCH);
 
@@ -155,20 +158,16 @@ RESPONSE FORMAT (raw JSON, no markdown):
         .map((item: any) => `- ID: "${item.id}" | Content: "${item.content || item.title || ''}"`)
         .join("\n");
 
-      const userPrompt = `Assign each content item below to the most relevant section based on its content. Return raw JSON only.\n\nCONTENT ITEMS:\n${itemList}`;
+      const userPrompt = `Assign each content item below to the most relevant section. You MUST assign every item — never skip. Return raw JSON only.\n\nCONTENT ITEMS:\n${itemList}`;
 
       let result;
 
-      // Call AI based on provider
       if (fastProvider.name === "lovable") {
         const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
         if (!lovableApiKey) {
           return new Response(
             JSON.stringify({ error: "LOVABLE_API_KEY not configured" }),
-            {
-              status: 500,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
@@ -194,23 +193,17 @@ RESPONSE FORMAT (raw JSON, no markdown):
         if (!response.ok) {
           const errText = await response.text();
           console.error(`AI gateway error (${response.status}):`, errText);
-          // Graceful fallback - return what we have so far
           break;
         }
 
         const aiResult = await response.json();
         result = aiResult.choices?.[0]?.message?.content;
       } else {
-        // Gemini direct
-        const googleApiKey =
-          keyResult.apiKey || Deno.env.get("GOOGLE_API_KEY");
+        const googleApiKey = keyResult.apiKey || Deno.env.get("GOOGLE_API_KEY");
         if (!googleApiKey) {
           return new Response(
             JSON.stringify({ error: "No AI API key available" }),
-            {
-              status: 500,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
@@ -226,14 +219,12 @@ RESPONSE FORMAT (raw JSON, no markdown):
               contents: [
                 {
                   role: "user",
-                  parts: [
-                    { text: `${systemPrompt}\n\n${userPrompt}` },
-                  ],
+                  parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
                 },
               ],
               generationConfig: {
                 temperature: 0.1,
-                maxOutputTokens: 8192,
+                maxOutputTokens: 16384,
               },
             }),
           }
@@ -246,8 +237,7 @@ RESPONSE FORMAT (raw JSON, no markdown):
         }
 
         const aiResult = await response.json();
-        result =
-          aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
+        result = aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
       }
 
       if (!result) {
@@ -255,7 +245,6 @@ RESPONSE FORMAT (raw JSON, no markdown):
         continue;
       }
 
-      // Parse the JSON response - strip markdown fences if present
       let cleaned = result.trim();
       if (cleaned.startsWith("```")) {
         cleaned = cleaned
@@ -263,22 +252,31 @@ RESPONSE FORMAT (raw JSON, no markdown):
           .replace(/\n?```\s*$/, "");
       }
 
-      try {
-        const batchAssignments = JSON.parse(cleaned);
-        // Validate: only accept known section IDs
-        const sectionIds = new Set(sections.map((s: any) => s.id));
-        for (const [itemId, sectionId] of Object.entries(batchAssignments)) {
-          if (sectionId === null || sectionIds.has(sectionId as string)) {
-            allAssignments[itemId] = sectionId as string | null;
+      const batchAssignments = repairAndExtractAssignments(cleaned);
+      if (!batchAssignments) {
+        console.error("Failed to parse or repair AI response, skipping batch", i);
+        continue;
+      }
+
+      const sectionIds = new Set(sections.map((s: any) => s.id));
+      
+      for (const [itemId, value] of Object.entries(batchAssignments)) {
+        if (typeof value === 'string') {
+          if (sectionIds.has(value)) {
+            allAssignments[itemId] = { section_id: value, confidence: 'medium' };
+          }
+        } else if (value && typeof value === 'object') {
+          const v = value as { section_id?: string; confidence?: string };
+          if (v.section_id && sectionIds.has(v.section_id)) {
+            allAssignments[itemId] = {
+              section_id: v.section_id,
+              confidence: v.confidence || 'medium',
+            };
           }
         }
-      } catch (parseErr) {
-        console.error("Failed to parse AI response:", cleaned, parseErr);
-        continue;
       }
     }
 
-    // Log usage
     await logAIUsage(
       serviceClient,
       userId,
@@ -289,21 +287,13 @@ RESPONSE FORMAT (raw JSON, no markdown):
 
     return new Response(
       JSON.stringify({ assignments: allAssignments }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("ai-auto-tag-sections error:", err);
     return new Response(
-      JSON.stringify({
-        error: err instanceof Error ? err.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

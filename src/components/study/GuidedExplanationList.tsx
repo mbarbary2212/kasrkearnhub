@@ -181,6 +181,7 @@ export function GuidedExplanationList({
             <GuidedExplanationViewer
               title={selectedResource.title}
               content={selectedResource.content as GuidedExplanationContent}
+              resourceId={selectedResource.id}
             />
           )}
         </DialogContent>

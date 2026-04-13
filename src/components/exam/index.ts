@@ -14,6 +14,8 @@ export { EssayAnswerQuestion } from './EssayAnswerQuestion';
 export { ExamCoverPage } from './ExamCoverPage';
 export { BlueprintExamRunner } from './BlueprintExamRunner';
 export { EssayResultsSection } from './EssayResultsSection';
+export { ShortEssayExam } from './ShortEssayExam';
+export { ShortEssayResult } from './ShortEssayResult';
 export { RecheckRequestModal } from './RecheckRequestModal';
 export { AdminExamResultsTab } from './AdminExamResultsTab';
 export { AdminAttemptDetailModal } from './AdminAttemptDetailModal';

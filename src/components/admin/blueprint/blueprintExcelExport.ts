@@ -34,7 +34,7 @@ function levelFill(level: string): ExcelJS.Fill | undefined {
 }
 
 export async function exportBlueprintToExcel(
-  chapters: { id: string; chapter_number: number; title: string }[],
+  chapters: { id: string; chapter_number: number; title: string; module_id: string }[],
   configs: ChapterBlueprintConfig[],
   moduleName: string,
 ) {
@@ -43,7 +43,7 @@ export async function exportBlueprintToExcel(
     cfgMap.set(configKey(c.chapter_id, c.section_id, c.component_type), c);
   }
 
-  // Fetch ALL sections for all chapters (not just those with configs)
+  // Fetch ALL sections for all chapters
   const chapterIds = chapters.map(ch => ch.id);
   const sectionsByChapter = new Map<string, { id: string; name: string; section_number: string | null }[]>();
   if (chapterIds.length > 0) {
@@ -63,26 +63,33 @@ export async function exportBlueprintToExcel(
         sectionsByChapter.set(s.chapter_id, list);
       }
     }
-    console.log(`Blueprint export: ${sections?.length ?? 0} sections across ${sectionsByChapter.size} chapters`);
   }
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Blueprint');
 
-  // Header
-  const headers = ['Chapter', ...COMPONENT_COLUMNS.map(c => c.label)];
+  // Headers — include hidden ID columns for safe re-import
+  const headers = ['Chapter', ...COMPONENT_COLUMNS.map(c => c.label), 'chapter_id', 'section_id'];
   const headerRow = ws.addRow(headers);
   headerRow.font = { bold: true };
-  headerRow.eachCell(cell => {
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-    cell.border = { bottom: { style: 'thin' } };
-    cell.alignment = { horizontal: 'center' };
+  headerRow.eachCell((cell, colNum) => {
+    if (colNum <= COMPONENT_COLUMNS.length + 1) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+      cell.border = { bottom: { style: 'thin' } };
+      cell.alignment = { horizontal: 'center' };
+    }
   });
   headerRow.getCell(1).alignment = { horizontal: 'left' };
 
+  // Hide the ID columns
+  const chapterIdColIdx = COMPONENT_COLUMNS.length + 2;
+  const sectionIdColIdx = COMPONENT_COLUMNS.length + 3;
+  ws.getColumn(chapterIdColIdx).hidden = true;
+  ws.getColumn(sectionIdColIdx).hidden = true;
+
   // Data rows
   for (const ch of chapters) {
-    const rowData = [`Ch ${ch.chapter_number}: ${ch.title}`];
+    const rowData: (string)[] = [`Ch ${ch.chapter_number}: ${ch.title}`];
     const levels: (string | undefined)[] = [];
     for (const col of COMPONENT_COLUMNS) {
       const cfg = cfgMap.get(configKey(ch.id, null, col.key));
@@ -90,6 +97,9 @@ export async function exportBlueprintToExcel(
       rowData.push(lv ? levelText(lv, cfg?.question_types) : '');
       levels.push(lv);
     }
+    rowData.push(ch.id); // chapter_id
+    rowData.push('');     // section_id (null for chapter rows)
+
     const row = ws.addRow(rowData);
     row.getCell(1).font = { bold: true };
 
@@ -102,11 +112,11 @@ export async function exportBlueprintToExcel(
       }
     });
 
-    // Section rows — show ALL sections for this chapter
+    // Section rows
     const chapterSections = sectionsByChapter.get(ch.id) || [];
     for (const sec of chapterSections) {
       const secLabel = `  → ${sec.section_number ? sec.section_number + '. ' : ''}${sec.name}`;
-      const secRowData = [secLabel];
+      const secRowData: string[] = [secLabel];
       const secLevels: (string | undefined)[] = [];
       for (const col of COMPONENT_COLUMNS) {
         const cfg = cfgMap.get(configKey(ch.id, sec.id, col.key));
@@ -114,6 +124,9 @@ export async function exportBlueprintToExcel(
         secRowData.push(lv ? levelText(lv, cfg?.question_types) : '');
         secLevels.push(lv);
       }
+      secRowData.push(ch.id); // chapter_id
+      secRowData.push(sec.id); // section_id
+
       const secRow = ws.addRow(secRowData);
       secRow.getCell(1).font = { italic: true };
       secLevels.forEach((lv, i) => {
@@ -129,7 +142,7 @@ export async function exportBlueprintToExcel(
 
   // Column widths
   ws.getColumn(1).width = 40;
-  for (let i = 2; i <= headers.length; i++) {
+  for (let i = 2; i <= COMPONENT_COLUMNS.length + 1; i++) {
     ws.getColumn(i).width = 14;
   }
 

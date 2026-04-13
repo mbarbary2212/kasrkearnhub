@@ -1,9 +1,8 @@
 import {
-  classifyChapterState,
   getPerformanceTrend,
-  type ChapterState,
   type PerformanceTrend,
 } from './classifyChapterState';
+import { classifyFromMetrics, type ChapterStatus } from '@/lib/readiness';
 import { classifyLearningPattern, getPatternPriorityBoost } from './classifyLearningPattern';
 import { getRevisionState, getReviewType, type RevisionState } from './reviewScheduling';
 import type { StudentChapterMetric } from '@/hooks/useStudentChapterMetrics';
@@ -49,10 +48,10 @@ interface BuildSuggestionsInput {
 }
 
 function getTrendReason(baseReason: string, trend: PerformanceTrend, state: string): string {
-  if (trend === 'declining' && state !== 'not_started' && state !== 'early') {
+  if (trend === 'declining' && state !== 'not_started' && state !== 'started') {
     return 'Performance dropping';
   }
-  if (trend === 'improving' && state !== 'not_started' && state !== 'early') {
+  if (trend === 'improving' && state !== 'not_started' && state !== 'started') {
     return 'Keep momentum';
   }
   return baseReason;
@@ -77,7 +76,7 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
   for (const chapter of chapters) {
     const m = metricsMap.get(chapter.id);
 
-    const state: ChapterState = m ? classifyChapterState(m) : 'not_started';
+    const state: ChapterStatus = m ? classifyFromMetrics(m) : 'not_started';
     if (state === 'strong' && (!m || getRevisionState(m) === 'scheduled' || getRevisionState(m) === 'none')) continue;
 
     const trend: PerformanceTrend = m ? getPerformanceTrend(m) : 'stable';
@@ -93,7 +92,7 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
       if (revState === 'overdue' || revState === 'due') {
         const reviewType = getReviewType(state, patternLabel);
         const isOverdue = revState === 'overdue';
-        const weakBoost = state === 'weak' ? 10 : 0;
+        const weakBoost = state === 'needs_attention' ? 10 : 0;
 
         let reason = isOverdue ? 'Overdue revision' : 'Due today';
         if (patternResult?.pattern === 'misconception') {
@@ -153,8 +152,8 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
       }
     }
 
-    // === Not started / early ===
-    if (state === 'not_started' || state === 'early') {
+    // === Not started / started ===
+    if (state === 'not_started' || state === 'started') {
       if (chapter.hasLectures) {
         scored.push({
           type: 'video',
@@ -200,8 +199,8 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
       continue;
     }
 
-    // === Weak ===
-    if (state === 'weak') {
+    // === Needs attention ===
+    if (state === 'needs_attention') {
       let reason = getTrendReason('Low recent accuracy', trend, state);
       if (patternResult?.pattern === 'misconception') reason = patternResult.label;
 
@@ -241,8 +240,8 @@ export function buildDashboardSuggestions(input: BuildSuggestionsInput): Dashboa
       continue;
     }
 
-    // === Unstable ===
-    if (state === 'unstable') {
+    // === Building ===
+    if (state === 'building') {
       let reason = getTrendReason('Needs reinforcement', trend, state);
       if (patternResult?.pattern === 'hesitant') reason = patternResult.label;
 

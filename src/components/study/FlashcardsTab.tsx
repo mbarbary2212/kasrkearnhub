@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 import { toast } from 'sonner';
 
@@ -172,6 +172,7 @@ export function FlashcardsTab({ resources, canManage, onEdit, chapterId, topicId
                     onComplete={clearSelection}
                   />
                 )}
+                <AutoTagSectionsButton chapterId={chapterId} topicId={topicId} />
                 <Button
                   variant="destructive"
                   size="sm"

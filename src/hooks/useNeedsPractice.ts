@@ -23,6 +23,11 @@ export interface ContentCounts {
   matchingTotal: number;
   essayTotal: number;
   caseScenarioTotal: number;
+  mcqAttempted: number;
+  osceAttempted: number;
+  matchingAttempted: number;
+  essayAttempted: number;
+  caseAttempted: number;
 }
 
 interface UseNeedsPracticeResult {
@@ -45,6 +50,11 @@ const EMPTY_COUNTS: ContentCounts = {
   matchingTotal: 0,
   essayTotal: 0,
   caseScenarioTotal: 0,
+  mcqAttempted: 0,
+  osceAttempted: 0,
+  matchingAttempted: 0,
+  essayAttempted: 0,
+  caseAttempted: 0,
 };
 
 export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
@@ -70,6 +80,8 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
       const [
         mcqAttemptsRes,
         osceAttemptsRes,
+        allMcqAttemptsRes,
+        allOsceAttemptsRes,
         chaptersRes,
         mcqsRes,
         oscesRes,
@@ -100,6 +112,20 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .eq('question_type', 'osce')
           .lte('score', 3)
           .order('score', { ascending: true }),
+        // All MCQ attempts (for attempted count)
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('module_id', moduleId)
+          .eq('question_type', 'mcq'),
+        // All OSCE attempts (for attempted count)
+        supabase
+          .from('question_attempts')
+          .select('question_id')
+          .eq('user_id', user.id)
+          .eq('module_id', moduleId)
+          .eq('question_type', 'osce'),
         // Chapters for this module
         supabase
           .from('module_chapters')
@@ -171,6 +197,8 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
       const osces = oscesRes.data || [];
       const mcqAttempts = mcqAttemptsRes.data || [];
       const osceAttempts = osceAttemptsRes.data || [];
+      const allMcqAttempts = allMcqAttemptsRes.data || [];
+      const allOsceAttempts = allOsceAttemptsRes.data || [];
       const lectures = lecturesRes.data || [];
       const videoProgress = videoProgressRes.data || [];
       const flashcards = flashcardsRes.data || [];
@@ -195,6 +223,13 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .map(s => s.card_id)
       );
 
+      // Compute attempted counts (distinct question IDs)
+      const mcqAttemptedCount = new Set(allMcqAttempts.map(a => a.question_id)).size;
+      const osceAttemptedCount = new Set(allOsceAttempts.map(a => a.question_id)).size;
+      const matchingAttemptedCount = matchingQuestions.filter(mq => completedContent.has(`matching:${mq.id}`)).length;
+      const essayAttemptedCount = essays.filter(e => completedContent.has(`essay:${e.id}`)).length;
+      const caseAttemptedCount = cases.filter(c => completedContent.has(`case_scenario:${c.id}`)).length;
+
       // Content counts (zero-count rule)
       const counts: ContentCounts = {
         mcqTotal: mcqs.length,
@@ -204,6 +239,11 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         matchingTotal: matchingQuestions.length,
         essayTotal: essays.length,
         caseScenarioTotal: cases.length,
+        mcqAttempted: mcqAttemptedCount,
+        osceAttempted: osceAttemptedCount,
+        matchingAttempted: matchingAttemptedCount,
+        essayAttempted: essayAttemptedCount,
+        caseAttempted: caseAttemptedCount,
       };
 
       // --- MCQ Needs Practice ---

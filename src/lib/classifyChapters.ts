@@ -124,6 +124,9 @@ function isClassifiable(row: ChapterMetricRow): boolean {
 
 // ─── Single-row classifier ────────────────────────────────────
 
+/**
+ * @deprecated Use classifyFromMetrics() from '@/lib/readiness' instead.
+ */
 export function classifyChapter(row: ChapterMetricRow): ClassifiedChapter {
   const base: Omit<ClassifiedChapter, 'category' | 'review_due'> = {
     chapter_id: row.chapter_id,
@@ -159,6 +162,9 @@ export function classifyChapter(row: ChapterMetricRow): ClassifiedChapter {
 
 // ─── Module-level aggregation ──────────────────────────────────
 
+/**
+ * @deprecated Use readiness engine for module-level aggregation.
+ */
 export function classifyByModule(rows: ChapterMetricRow[]): ModuleClassification[] {
   const classified = rows.map(classifyChapter);
 

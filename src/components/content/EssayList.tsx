@@ -24,7 +24,7 @@ import ContentItemActions from '@/components/admin/ContentItemActions';
 import { EssayDetailModal } from './EssayDetailModal';
 import { EssaysAdminTable } from './EssaysAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
-import { BulkSectionAssignment } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
 import { cn } from '@/lib/utils';
 import { useContentDelete } from '@/hooks/useContentDelete';
@@ -34,7 +34,6 @@ interface Essay {
   id: string;
   title: string;
   question: string;
-  model_answer?: string | null;
   rating?: number | null;
   max_points?: number | null;
   keywords?: string[] | null;
@@ -169,12 +168,6 @@ export default function EssayList({
           <div class="section-label">Question:</div>
           <div class="section-content">${essay.question}</div>
         </div>
-        ${essay.model_answer ? `
-        <div class="section">
-          <div class="section-label">Answer:</div>
-          <div class="section-content">${essay.model_answer}</div>
-        </div>
-        ` : ''}
       </body>
       </html>
     `;
@@ -233,6 +226,7 @@ export default function EssayList({
                       onComplete={clearSelection}
                     />
                   )}
+                  <AutoTagSectionsButton chapterId={chapterId} />
                   <Button
                     variant="destructive"
                     size="sm"
@@ -408,7 +402,7 @@ export default function EssayList({
                                 id={essay.id}
                                 title={essay.title}
                                 description={essay.question}
-                                modelAnswer={essay.model_answer}
+                                modelAnswer={undefined}
                                 rating={essay.rating}
                                 maxPoints={essay.max_points}
                                 keywords={essay.keywords}

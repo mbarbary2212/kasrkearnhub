@@ -129,7 +129,7 @@ export function EssayAnswerQuestion({
       {/* Question header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-muted-foreground">
-          Essay {questionIndex + 1} of {totalQuestions}
+          Question {questionIndex + 1} of {totalQuestions}
         </span>
         <Badge variant="outline">{maxPoints} marks</Badge>
       </div>

@@ -24,6 +24,7 @@ import { ChapterProgressBar } from '@/components/content/ChapterProgressBar';
 import { MobileSectionDropdown } from '@/components/content/MobileSectionDropdown';
 import { ResourcesDeleteManager, ResourceKind, requestResourceDelete } from '@/components/content/ResourcesDeleteManager';
 import { FlashcardsTab } from '@/components/study/FlashcardsTab';
+import { AIFlashcardGenerateButton } from '@/components/flashcards/AIFlashcardGenerateButton';
 import { StudyResourceFormModal } from '@/components/study/StudyResourceFormModal';
 import { StudyBulkUploadModal } from '@/components/study/StudyBulkUploadModal';
 import { ClinicalToolsSection } from '@/components/study/ClinicalToolsSection';
@@ -607,6 +608,10 @@ export default function TopicDetailPage() {
                           <Upload className="w-3 h-3 mr-1" />
                           Bulk Upload
                         </Button>
+                        <AIFlashcardGenerateButton
+                          topicId={topicId}
+                          moduleId={moduleId}
+                        />
                       </div>
                     )}
                     {flashcardsLoading ? (

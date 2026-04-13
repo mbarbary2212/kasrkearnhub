@@ -1,9 +1,8 @@
 import {
-  classifyChapterState,
   getPerformanceTrend,
-  type ChapterState,
   type PerformanceTrend,
 } from './classifyChapterState';
+import { classifyFromMetrics, type ChapterStatus } from '@/lib/readiness';
 import { classifyLearningPattern, type LearningPattern } from './classifyLearningPattern';
 import { getRevisionState, getReviewType, type RevisionState } from './reviewScheduling';
 import { generateConfidenceInsight } from './classifyLearningPattern';
@@ -37,6 +36,7 @@ const STUDY_MODE_TASK_CONFIG: Record<string, StudyModeTaskConfig> = {
   mcq_practice:      { detail: '10–20 questions',    estimatedMinutes: 15 },
   recall_practice:   { detail: 'structured recall',  estimatedMinutes: 15 },
   case_scenarios:    { detail: '1–2 clinical cases',  estimatedMinutes: 20 },
+  case_practice:     { detail: 'focused clinical cases', estimatedMinutes: 20 },
   clinical_practice: { detail: 'OSCE / case walkthrough', estimatedMinutes: 25 },
   visual_practice:   { detail: 'images & pathology',  estimatedMinutes: 15 },
   review:            { detail: 'flashcards',           estimatedMinutes: 10 },
@@ -48,15 +48,15 @@ function getTaskConfig(mode: StudyMode): StudyModeTaskConfig {
 
 // ─── Mode-aware task config ──────────────────────────────────
 
-function getModeAwareTaskConfig(state: ChapterState): { modeConfig: ModeConfig; primaryMode: LearningMode } {
-  const primaryMode = getPrimaryMode(state);
-  const modeConfig = getModeConfigForState(state);
+function getModeAwareTaskConfig(status: ChapterStatus): { modeConfig: ModeConfig; primaryMode: LearningMode } {
+  const primaryMode = getPrimaryMode(status);
+  const modeConfig = getModeConfigForState(status);
   return { modeConfig, primaryMode };
 }
 
 // ─── Public Types ─────────────────────────────────────────────
 
-export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'clinical_practice' | 'visual_practice' | 'review';
+export type TaskStudyModeKey = 'mcq_practice' | 'recall_practice' | 'case_scenarios' | 'case_practice' | 'clinical_practice' | 'visual_practice' | 'review';
 
 export interface PlannedTask {
   /** @deprecated Use prescribedStudyMode.key instead */
@@ -108,6 +108,8 @@ export interface AdaptivePlanInput {
   examWeightMap?: Map<string, ChapterExamWeight>;
   /** Exam date from study_plans configuration */
   examDate?: Date;
+  /** Optional reasoning profile for case practice tasks */
+  reasoningProfile?: { domain: string; label: string; avgPercentage: number; attemptCount: number; criticalMissRate: number; trend: string }[];
 }
 
 // ─── Slot types for balanced daily plan ───────────────────────
@@ -188,7 +190,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
 
   for (const chapter of chapters) {
     const m = metricsMap.get(chapter.id);
-    const state: ChapterState = m ? classifyChapterState(m) : 'not_started';
+    const state: ChapterStatus = m ? classifyFromMetrics(m) : 'not_started';
     const trend: PerformanceTrend = m ? getPerformanceTrend(m) : 'stable';
     const patternResult = m ? classifyLearningPattern(m) : null;
     const patternLabel = patternResult?.pattern;
@@ -201,7 +203,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     // ── review_due slot: overdue/due revision or flashcards ──
     if (m && (revState === 'overdue' || revState === 'due')) {
       const isOverdue = revState === 'overdue';
-      const weakBoost = state === 'weak' ? 10 : 0;
+      const weakBoost = state === 'needs_attention' ? 10 : 0;
 
       let reason = isOverdue ? 'Overdue revision' : 'Due today';
       if (patternResult?.pattern === 'misconception') {
@@ -254,9 +256,9 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       });
     }
 
-    // ── progress slot: not started / early ──
+    // ── progress slot: not started / started ──
     // Phase 2.5: Always assign learning mode for new chapters
-    if (state === 'not_started' || state === 'early') {
+    if (state === 'not_started' || state === 'started') {
       const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       candidates.push({
         slot: 'progress',
@@ -281,12 +283,12 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     // Phase 2.5: strong chapters get assessment mode tasks via review_due slot above
     if (state === 'strong') continue;
 
-    // ── weakness slot: weak / unstable ──
-    // Phase 2.5: weak → learning mode; unstable → practice mode
-    if (state === 'weak' || state === 'unstable') {
+    // ── weakness slot: needs_attention / building ──
+    // needs_attention → learning mode; building → practice mode
+    if (state === 'needs_attention' || state === 'building') {
       const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
 
-      let reason = state === 'weak' ? 'Review with Socrates first' : 'Needs more practice';
+      let reason = state === 'needs_attention' ? 'Review with Socrates first' : 'Needs more practice';
       if (patternResult?.pattern === 'misconception') reason = 'Confident mistakes detected';
       else if (patternResult?.pattern === 'hesitant') reason = 'You know this, but hesitate';
       else if (trend === 'declining') reason = 'Performance dropping';
@@ -295,7 +297,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       const pBoost = patternResult?.pattern === 'misconception' ? 20
         : patternResult?.pattern === 'hesitant' ? 10 : 0;
 
-      const basePriority = (state === 'weak' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost;
+      const basePriority = (state === 'needs_attention' ? 90 : 75) + (trend === 'declining' ? 15 : 0) + pBoost;
 
       candidates.push({
         slot: 'weakness',
@@ -318,8 +320,8 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       continue;
     }
 
-    // ── weakness slot (light): in-progress chapters ──
-    // Phase 2.5: in_progress → mix of practice + assessment
+    // ── weakness slot (light): ready / remaining chapters ──
+    // ready → mix of practice + assessment
     {
       const { modeConfig, primaryMode } = getModeAwareTaskConfig(state);
       let reason = 'Continue where you left';
@@ -347,6 +349,41 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
         prescribedStudyMode: studyMode,
         learningMode: primaryMode,
       });
+    }
+  }
+
+  // ── Case practice tasks from reasoning profile weaknesses ──
+  if (input.reasoningProfile && input.reasoningProfile.length > 0) {
+    const weakDomains = input.reasoningProfile
+      .filter(d => (d.avgPercentage < 50 || d.criticalMissRate > 30) && d.attemptCount >= 3)
+      .slice(0, 2); // max 2 case practice tasks
+
+    for (const domain of weakDomains) {
+      // Find a chapter that has case scenarios (use first available chapter with some activity)
+      const targetChapter = chapters[0]; // Simple: assign to first chapter; could be smarter later
+      const taskDetail = domain.criticalMissRate > 40
+        ? `critical miss recovery — ${domain.label}`
+        : `focused ${domain.label} practice`;
+
+      candidates.push({
+        slot: 'weakness',
+        type: 'case_practice',
+        title: `Case Qs — ${domain.label} (${taskDetail})`,
+        chapterTitle: targetChapter?.moduleName,
+        reason: domain.criticalMissRate > 40
+          ? `${domain.criticalMissRate}% critical miss rate in ${domain.label}`
+          : `${domain.label} averaging ${domain.avgPercentage}%`,
+        detail: taskDetail,
+        estimatedMinutes: 20,
+        moduleId: targetChapter?.moduleId,
+        chapterId: targetChapter?.id,
+        tab: 'practice',
+        subtab: 'case_scenario',
+        priority: domain.criticalMissRate > 40 ? 92 : 82,
+        state: 'building',
+        trend: domain.trend === 'declining' ? 'declining' : domain.trend === 'improving' ? 'improving' : 'stable',
+        prescribedStudyMode: { key: 'case_practice', label: 'Case Practice', tab: 'practice' },
+      } as SlottedTask);
     }
   }
 

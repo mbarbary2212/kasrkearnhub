@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useMergedModuleConfig, expandModuleIds, buildEffectiveModuleMap, getEffectiveModuleId, type MergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import {
   calculatePerformance,
   calculateImprovement,
@@ -138,10 +139,10 @@ interface DashboardFilters {
  */
 export function useStudentDashboard(filters?: DashboardFilters, testProgress?: TestProgressData) {
   const { user } = useAuthContext();
+  const { data: mergedConfig } = useMergedModuleConfig();
 
   return useQuery({
-    // Include testProgress in queryKey so results update when it arrives
-    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId, testProgress ? 'withTP' : 'noTP'],
+    queryKey: ['student-dashboard', user?.id, filters?.yearId, filters?.moduleId, testProgress ? 'withTP' : 'noTP', mergedConfig?.enabled ? 'merged' : 'normal'],
     queryFn: async (): Promise<DashboardData> => {
       if (!user?.id) {
         return getEmptyDashboard();
@@ -162,9 +163,12 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // Get module IDs to filter chapters
       let moduleIds = modules.map(m => m.id);
       
-      // If specific module is selected, use only that
+      // Expand with merged guest modules (e.g. SUR-423 into SUR-523)
+      moduleIds = expandModuleIds(moduleIds, mergedConfig);
+      
+      // If specific module is selected, use only that (but still expand)
       if (filters?.moduleId) {
-        moduleIds = [filters.moduleId];
+        moduleIds = expandModuleIds([filters.moduleId], mergedConfig);
       }
 
       // If no modules match the filter, return empty
@@ -218,8 +222,22 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       const caseScenarios = vpCasesRes.data || [];
       const lectures = lecturesRes.data || [];
 
+      // Build effective module map for chapter context override
+      const effectiveModMap = buildEffectiveModuleMap(chapters, mergedConfig);
+
       // Create module lookup
       const moduleMap = new Map(modules.map(m => [m.id, m.name]));
+      // Add merged guest modules to moduleMap so their chapters get proper names
+      if (mergedConfig?.enabled) {
+        for (const [hostId, guestIds] of Object.entries(mergedConfig.chapterMerge)) {
+          const hostName = moduleMap.get(hostId) || 'Surgery';
+          for (const guestId of guestIds) {
+            if (!moduleMap.has(guestId)) {
+              moduleMap.set(guestId, hostName);
+            }
+          }
+        }
+      }
 
       // Create completed content set
       const completedIds = new Set(
@@ -251,13 +269,15 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           status = 'in_progress';
         }
 
+        const effModuleId = getEffectiveModuleId(chapter.id, chapter.module_id, effectiveModMap);
+
         return {
           id: chapter.id,
           title: chapter.title,
           chapterNumber: chapter.chapter_number,
           bookLabel: chapter.book_label,
-          moduleId: chapter.module_id,
-          moduleName: moduleMap.get(chapter.module_id) || 'Unknown Module',
+          moduleId: effModuleId,
+          moduleName: moduleMap.get(effModuleId) || moduleMap.get(chapter.module_id) || 'Unknown Module',
           status,
           progress,
           totalItems,
@@ -371,8 +391,16 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       // ============================================================================
       // Use real chapter metrics for suggestions and weak chapters
       // ============================================================================
-      const realMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
+      const rawMetrics = ((chapterMetricsRes.data || []) as unknown as StudentChapterMetric[])
         .filter(m => moduleIds.includes(m.module_id));
+      
+      // Remap module_id in metrics to effective context (without mutating originals)
+      const realMetrics: StudentChapterMetric[] = effectiveModMap
+        ? rawMetrics.map(m => {
+            const effId = effectiveModMap.get(m.chapter_id);
+            return effId && effId !== m.module_id ? { ...m, module_id: effId } : m;
+          })
+        : rawMetrics;
 
       // ============================================================================
       // Fetch exam weights for priority boosting + prescribed study modes
@@ -448,14 +476,17 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
       }
 
       // Build chapter info for suggestion builder
-      const chapterInfos = chapters.map(ch => ({
-        id: ch.id,
-        title: ch.title,
-        moduleId: ch.module_id,
-        moduleName: moduleMap.get(ch.module_id) || 'Unknown Module',
-        hasLectures: lectures.some(l => l.chapter_id === ch.id),
-        firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
-      }));
+      const chapterInfos = chapters.map(ch => {
+        const effModId = getEffectiveModuleId(ch.id, ch.module_id, effectiveModMap);
+        return {
+          id: ch.id,
+          title: ch.title,
+          moduleId: effModId,
+          moduleName: moduleMap.get(effModId) || moduleMap.get(ch.module_id) || 'Unknown Module',
+          hasLectures: lectures.some(l => l.chapter_id === ch.id),
+          firstLectureTitle: lectures.find(l => l.chapter_id === ch.id)?.title,
+        };
+      });
 
       // Build adaptive study plan from real metrics + exam weights
       const studyPlan = buildAdaptiveStudyPlan({
@@ -499,6 +530,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
           strength: 'strong',
           confidence: 'missed',
           time_balance: 'attention',
+          safety_alert: 'attention',
+          reasoning_weakness: 'attention',
+          reasoning_trend: 'attention',
         };
         return {
           type: typeMap[ci.type] || 'attention',
@@ -507,6 +541,9 @@ export function useStudentDashboard(filters?: DashboardFilters, testProgress?: T
             : ci.type === 'trend' ? 'Trend Alert'
             : ci.type === 'strength' ? 'Strength'
             : ci.type === 'time_balance' ? 'Time Balance'
+            : ci.type === 'safety_alert' ? '⚠ Safety Alert'
+            : ci.type === 'reasoning_weakness' ? 'Clinical Reasoning'
+            : ci.type === 'reasoning_trend' ? 'Reasoning Trend'
             : 'Confidence',
           detail: ci.message,
           action: ci.action,

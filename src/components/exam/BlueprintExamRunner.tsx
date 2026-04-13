@@ -24,7 +24,8 @@ import {
 import { Clock, AlertTriangle, FileText, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDuration, useCreateMockExamAttempt, useSubmitMockExam } from '@/hooks/useMockExam';
-import { gradeWithRubric } from '@/lib/rubricMarking';
+import { gradeWithRubric, gradeWithStructuredRubric } from '@/lib/rubricMarking';
+import { parseRubric } from '@/types/essayRubric';
 import { VPRubric } from '@/types/virtualPatient';
 import { ModuleChapter } from '@/hooks/useChapters';
 import { toast } from '@/hooks/use-toast';
@@ -33,7 +34,6 @@ interface Essay {
   id: string;
   title: string;
   question: string;
-  model_answer: string | null;
   keywords: string[] | null;
   chapter_id: string | null;
   rubric_json?: Record<string, unknown> | null;
@@ -323,17 +323,58 @@ export function BlueprintExamRunner({
       const answerText = answer?.typed_text || answer?.typed_summary || '';
       const maxPoints = essay.max_points ?? paper.components.essay_points;
 
-      // Prefer per-essay rubric_json, fall back to keywords
+      // Prefer structured rubric (v1), then legacy VPRubric, then keywords
       const hasRubric = essay.rubric_json && typeof essay.rubric_json === 'object';
       const hasKeywords = essay.keywords && essay.keywords.length > 0;
 
-      if ((hasRubric || hasKeywords) && answerText.trim()) {
-        const rubric: VPRubric = hasRubric
-          ? (essay.rubric_json as unknown as VPRubric)
-          : {
-              required_concepts: essay.keywords!,
-              optional_concepts: [],
-            };
+      if (hasRubric && answerText.trim()) {
+        // Try structured rubric first
+        const parsed = parseRubric(essay.rubric_json);
+        if (parsed && parsed.rubric_version === 1) {
+          const result = gradeWithStructuredRubric(answerText, parsed);
+          const points = Math.round((result.percentage / 100) * maxPoints);
+          essayScore += points;
+
+          essayMarkingRows.push({
+            question_id: item.id,
+            score: points,
+            max_score: maxPoints,
+            marking_feedback: {
+              matched_required: result.matched_points,
+              missing_required: result.missed_points,
+              missing_critical: result.missing_critical_points,
+              matched_optional: [],
+              rubric_score: result.percentage / 100,
+              confidence_score: result.confidence_score,
+            },
+            marked_at: new Date().toISOString(),
+          });
+        } else {
+          // @deprecated Legacy VPRubric fallback — will be removed once all essays are migrated to v1
+          console.warn(`[rubric-upgrade] Essay "${essay.id}" uses legacy rubric format. Needs migration to v1.`);
+          const rubric = essay.rubric_json as unknown as VPRubric;
+          const result = gradeWithRubric(answerText, rubric);
+          const points = Math.round(result.score * maxPoints);
+          essayScore += points;
+
+          essayMarkingRows.push({
+            question_id: item.id,
+            score: points,
+            max_score: maxPoints,
+            marking_feedback: {
+              matched_required: result.matched_required,
+              missing_required: result.missing_required,
+              matched_optional: result.matched_optional,
+              rubric_score: result.score,
+            },
+            marked_at: new Date().toISOString(),
+          });
+        }
+      } else if (hasKeywords && answerText.trim()) {
+        const rubric: VPRubric = {
+          required_concepts: essay.keywords!,
+          optional_concepts: [],
+        };
         const result = gradeWithRubric(answerText, rubric);
         const points = Math.round(result.score * maxPoints);
         essayScore += points;

@@ -46,6 +46,7 @@ import { useChapterProgress } from "@/hooks/useChapterProgress";
 import { useChapterMatchingQuestions, useChapterMatchingCount } from "@/hooks/useMatchingQuestions";
 import { useClinicalCases } from "@/hooks/useClinicalCases";
 import { FlashcardsTab } from "@/components/study/FlashcardsTab";
+import { AIFlashcardGenerateButton } from "@/components/flashcards/AIFlashcardGenerateButton";
 import { StudyResourceFormModal } from "@/components/study/StudyResourceFormModal";
 import { StudyBulkUploadModal } from "@/components/study/StudyBulkUploadModal";
 import { ClinicalToolsSection } from "@/components/study/ClinicalToolsSection";
@@ -124,7 +125,8 @@ import { ChapterAdminAvatars } from '@/components/content/ChapterAdminAvatars';
 import type { ContentAdmin } from '@/hooks/useContentAdmins';
 import InquiryModal from '@/components/feedback/InquiryModal';
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
-import { useStudentChapterMetrics, classifyChapterState } from '@/hooks/useStudentChapterMetrics';
+import { useStudentChapterMetrics } from '@/hooks/useStudentChapterMetrics';
+import { classifyFromMetrics } from '@/lib/readiness';
 import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
 import { getRecommendedPath } from '@/lib/recommendedPath';
 
@@ -307,17 +309,7 @@ export default function ChapterPage() {
     if (!isStudent || !chapterMetrics || !chapterId) return undefined;
     const metric = chapterMetrics.find(m => m.chapter_id === chapterId);
     if (!metric) return 'not_started' as const;
-    return classifyChapterState({
-      coverage_percent: metric.coverage_percent,
-      mcq_attempts: metric.mcq_attempts,
-      mcq_accuracy: metric.mcq_accuracy,
-      recent_mcq_accuracy: metric.recent_mcq_accuracy,
-      readiness_score: metric.readiness_score,
-      flashcards_due: metric.flashcards_due,
-      flashcards_overdue: metric.flashcards_overdue,
-      last_activity_at: metric.last_activity_at,
-      confidence_mismatch_rate: metric.confidence_mismatch_rate,
-    });
+    return classifyFromMetrics(metric);
   }, [isStudent, chapterMetrics, chapterId]);
 
   // Build a map of section_id → display_order for sorting
@@ -825,7 +817,7 @@ export default function ChapterPage() {
                     <span className="sm:hidden">{activeTabConfig?.label || "Select"}</span>
                     {triggerCounts.total > 0 && (
                       <span className="text-[10px] font-semibold opacity-70 tabular-nums">
-                        {triggerCounts.completed}/{triggerCounts.total}
+                        {triggerCounts.completed}/{triggerCounts.total}{currentSubTab === 'guided_explanations' ? ' sets' : ''}
                       </span>
                     )}
                     <ChevronDown className="w-4 h-4 opacity-60" />
@@ -922,7 +914,7 @@ export default function ChapterPage() {
         {/* Recommended Study Path — students only */}
         {isStudent && currentChapterState && (
           <RecommendedPathBanner
-            chapterState={currentChapterState}
+            chapterStatus={currentChapterState}
             activeSection={activeSection}
             onNavigateSection={(s) => setActiveSection(s as SectionMode)}
           />
@@ -993,6 +985,10 @@ export default function ChapterPage() {
                           <Upload className="w-3 h-3 mr-1" />
                           Bulk Upload
                         </Button>
+                        <AIFlashcardGenerateButton
+                          chapterId={chapterId}
+                          moduleId={contentModuleId || moduleId}
+                        />
                       </div>
                     )}
                     {studyResourcesLoading ? (

@@ -95,12 +95,12 @@ export const TEMPLATE_SCHEMAS: Record<string, TemplateSchema> = {
     ],
   },
   flashcard: {
-    columns: ['title', 'front', 'back', 'section_name', 'section_number'],
+    columns: ['title', 'front', 'back', 'extra', 'section_name', 'section_number'],
     required: ['title', 'front', 'back'],
-    optional: ['section_name', 'section_number'],
+    optional: ['extra', 'section_name', 'section_number'],
     examples: [
-      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Heart Basics', '1'],
-      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', 'Heart Basics', '1'],
+      ['Cardiac Physiology', 'What is the normal ejection fraction?', '55-70%', 'Measured via echocardiography', 'Heart Basics', '1'],
+      ['Cardiac Anatomy', 'Name the 4 chambers of the heart', 'Left/Right Atrium, Left/Right Ventricle', '', 'Heart Basics', '1'],
     ],
   },
   cloze_flashcard: {
@@ -304,6 +304,13 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
     icon: 'spreadsheet',
   },
   {
+    id: 'cloze_flashcard',
+    title: 'Cloze Flashcards Template',
+    description: 'Fill-in-the-blank cloze cards with {{c1::answer}} syntax',
+    format: 'csv',
+    icon: 'spreadsheet',
+  },
+  {
     id: 'table',
     title: 'Key Tables Template',
     description: 'Study tables with headers and rows',
@@ -340,8 +347,8 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
   },
   {
     id: 'essay',
-    title: 'Short Essay Questions Template',
-    description: 'Essay-type questions with scenario, model answer, and keywords',
+    title: 'Short Questions Template',
+    description: 'Short question-type content with scenario, model answer, and keywords',
     format: 'csv',
     icon: 'spreadsheet',
   },
@@ -899,6 +906,7 @@ function generateTemplateDownload(templateId: string) {
   switch (templateId) {
     case 'mcq':
     case 'flashcard':
+    case 'cloze_flashcard':
     case 'table':
     case 'algorithm':
     case 'exam_tip':

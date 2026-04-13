@@ -68,19 +68,37 @@ Deno.serve(async (req) => {
 
 Return ONLY valid JSON with this exact structure (no markdown, no code fences):
 {
-  "required_concepts": ["concept 1", "concept 2"],
-  "optional_concepts": ["bonus concept 1"],
-  "critical_omissions": ["critical item if missing = auto fail"],
-  "pass_threshold": 60,
-  "acceptable_phrases": { "term": ["synonym1", "synonym2"] }
+  "rubric_version": 1,
+  "expected_points": <integer — number of distinct points the student should cover. If the question explicitly asks for a number (e.g. "List 5 complications"), use that number. Otherwise infer a sensible count, typically 3-6>,
+  "required_concepts": [
+    {
+      "label": "<concise concept name>",
+      "description": "<what the student should mention for this point>",
+      "is_critical": <boolean — true only for safety-critical or core educational points>,
+      "acceptable_phrases": ["<synonym1>", "<synonym2>"]
+    }
+  ],
+  "optional_concepts": [
+    {
+      "label": "<bonus concept>",
+      "description": "<explanation>",
+      "acceptable_phrases": []
+    }
+  ],
+  "grading_notes": "<internal notes for grading, not shown to students>",
+  "model_structure": ["<expected answer structure, e.g. Definition>", "<Main points>", "<Conclusion>"],
+  "rubric_source": "ai",
+  "rubric_status": "draft",
+  "pass_threshold": <integer 40-80, default 60>
 }
 
 Guidelines:
-- required_concepts: Key ideas the student MUST mention. Extract from the model answer and keywords. Typically 4-8 items.
+- required_concepts: Key ideas the student MUST mention. Extract from the model answer and keywords. Typically 4-8 items. Each must have a label, description, is_critical flag, and acceptable_phrases array.
+- Mark is_critical: true ONLY for safety-critical clinical points or core educational concepts that are absolutely essential. Usually 0-2 items.
 - optional_concepts: Bonus points ideas. Typically 1-3 items.
-- critical_omissions: Items so important that missing them means automatic failure. Typically 0-2 items. Only include truly critical safety/clinical items.
-- pass_threshold: Percentage of required_concepts needed to pass (integer 40-80, default 60).
-- acceptable_phrases: Map of medical terms to their acceptable synonyms/abbreviations.`;
+- expected_points: Match the number of required_concepts unless the question explicitly requests a different count.
+- acceptable_phrases: Map medical terms to their acceptable synonyms/abbreviations for each concept.
+- Questions should be answerable in structured bullet points, not vague open-ended essays.`;
 
     const userPrompt = `Question: ${question}
 ${model_answer ? `\nModel Answer: ${model_answer}` : ''}
@@ -97,7 +115,6 @@ Generate the marking rubric JSON.`;
     // Parse the AI response
     let rubric;
     try {
-      // Strip markdown code fences if present
       let content = result.content!.trim();
       if (content.startsWith('```')) {
         content = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
@@ -110,6 +127,14 @@ Generate the marking rubric JSON.`;
     // Validate shape
     if (!Array.isArray(rubric.required_concepts)) {
       return new Response(JSON.stringify({ error: 'Invalid rubric structure from AI' }), { status: 500, headers: corsHeaders });
+    }
+
+    // Ensure required fields
+    rubric.rubric_version = 1;
+    rubric.rubric_source = 'ai';
+    rubric.rubric_status = 'draft';
+    if (typeof rubric.expected_points !== 'number' || rubric.expected_points < 1) {
+      rubric.expected_points = rubric.required_concepts.length;
     }
 
     // Log usage

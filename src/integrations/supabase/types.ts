@@ -1203,6 +1203,75 @@ export type Database = {
         }
         Relationships: []
       }
+      case_attempt_details: {
+        Row: {
+          case_id: string
+          chapter_id: string | null
+          completed_at: string
+          confidence_score: number | null
+          created_at: string
+          id: string
+          max_score: number
+          missing_critical_points: Json | null
+          module_id: string | null
+          percentage: number
+          question_id: string
+          reasoning_domain: string | null
+          score: number
+          topic_id: string | null
+          user_id: string
+        }
+        Insert: {
+          case_id: string
+          chapter_id?: string | null
+          completed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          max_score?: number
+          missing_critical_points?: Json | null
+          module_id?: string | null
+          percentage?: number
+          question_id: string
+          reasoning_domain?: string | null
+          score?: number
+          topic_id?: string | null
+          user_id: string
+        }
+        Update: {
+          case_id?: string
+          chapter_id?: string | null
+          completed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          max_score?: number
+          missing_critical_points?: Json | null
+          module_id?: string | null
+          percentage?: number
+          question_id?: string
+          reasoning_domain?: string | null
+          score?: number
+          topic_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_attempt_details_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "case_scenarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_attempt_details_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "case_scenario_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_reference_documents: {
         Row: {
           case_id: string | null
@@ -1268,6 +1337,8 @@ export type Database = {
           model_answer: string | null
           question_text: string
           question_type: Database["public"]["Enums"]["case_question_type"]
+          reasoning_domain: string | null
+          rubric_json: Json | null
         }
         Insert: {
           case_id: string
@@ -1279,6 +1350,8 @@ export type Database = {
           model_answer?: string | null
           question_text: string
           question_type?: Database["public"]["Enums"]["case_question_type"]
+          reasoning_domain?: string | null
+          rubric_json?: Json | null
         }
         Update: {
           case_id?: string
@@ -1290,6 +1363,8 @@ export type Database = {
           model_answer?: string | null
           question_text?: string
           question_type?: Database["public"]["Enums"]["case_question_type"]
+          reasoning_domain?: string | null
+          rubric_json?: Json | null
         }
         Relationships: [
           {
@@ -1311,6 +1386,7 @@ export type Database = {
           id: string
           is_deleted: boolean
           module_id: string | null
+          section_id: string | null
           stem: string
           tags: string[] | null
           topic_id: string | null
@@ -1326,6 +1402,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           stem: string
           tags?: string[] | null
           topic_id?: string | null
@@ -1341,6 +1418,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean
           module_id?: string | null
+          section_id?: string | null
           stem?: string
           tags?: string[] | null
           topic_id?: string | null
@@ -1360,6 +1438,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_scenarios_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
             referencedColumns: ["id"]
           },
           {
@@ -5554,51 +5639,94 @@ export type Database = {
       }
       student_readiness_cache: {
         Row: {
+          calculation_version: string
           cap_type: string | null
+          chapter_id: string | null
+          chapter_status: string
+          component_scores: Json
           consistency_score: number
           coverage_score: number
           created_at: string
+          evidence_level: string
           exam_readiness: number
           id: string
           improvement_score: number
+          insight_message: string
+          is_stale: boolean
           last_calculated_at: string
           module_id: string
+          next_best_action: string
           performance_score: number
           raw_score: number
+          readiness_score: number
+          review_reason: string
+          review_urgency: string
+          risk_flags: Json
           updated_at: string
           user_id: string
         }
         Insert: {
+          calculation_version?: string
           cap_type?: string | null
+          chapter_id?: string | null
+          chapter_status?: string
+          component_scores?: Json
           consistency_score?: number
           coverage_score?: number
           created_at?: string
+          evidence_level?: string
           exam_readiness?: number
           id?: string
           improvement_score?: number
+          insight_message?: string
+          is_stale?: boolean
           last_calculated_at?: string
           module_id: string
+          next_best_action?: string
           performance_score?: number
           raw_score?: number
+          readiness_score?: number
+          review_reason?: string
+          review_urgency?: string
+          risk_flags?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
+          calculation_version?: string
           cap_type?: string | null
+          chapter_id?: string | null
+          chapter_status?: string
+          component_scores?: Json
           consistency_score?: number
           coverage_score?: number
           created_at?: string
+          evidence_level?: string
           exam_readiness?: number
           id?: string
           improvement_score?: number
+          insight_message?: string
+          is_stale?: boolean
           last_calculated_at?: string
           module_id?: string
+          next_best_action?: string
           performance_score?: number
           raw_score?: number
+          readiness_score?: number
+          review_reason?: string
+          review_urgency?: string
+          risk_flags?: Json
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "student_readiness_cache_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "module_chapters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "student_readiness_cache_module_id_fkey"
             columns: ["module_id"]
