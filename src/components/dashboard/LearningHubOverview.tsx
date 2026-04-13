@@ -19,8 +19,8 @@ import { useNeedsPractice } from '@/hooks/useNeedsPractice';
 import { useCheckBadges } from '@/hooks/useBadges';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCaseReasoningProfile } from '@/hooks/useCaseReasoningProfile';
-import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
-import { useEffect, useMemo } from 'react';
+
+import { useEffect } from 'react';
 
 interface LearningHubOverviewProps {
   dashboard: DashboardData;
@@ -45,28 +45,7 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
   const { mutate: checkBadges } = useCheckBadges();
   const { data: reasoningProfile } = useCaseReasoningProfile(user?.id, moduleId);
   
-  // Build planInput for useDailyStudyPlan from dashboard data
-  const planInput = useMemo(() => ({
-    metrics: dashboard.chapterMetrics,
-    chapters: dashboard.chapters.map(ch => ({
-      id: ch.id,
-      title: ch.title,
-      moduleId: ch.moduleId,
-      moduleName: ch.moduleName,
-      hasLectures: false,
-    })),
-  }), [dashboard.chapterMetrics, dashboard.chapters]);
 
-  const {
-    dailyPlan,
-    availableMinutes,
-    setAvailableMinutes,
-    refreshPlan,
-    isRefreshing,
-  } = useDailyStudyPlan({
-    planInput,
-    chapterMetrics: dashboard.chapterMetrics,
-  });
 
   useEffect(() => {
     if (moduleSelected && dashboard.coveragePercent > 0) {
@@ -114,11 +93,6 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         suggestions={dashboard.suggestions}
         studyPlan={dashboard.studyPlan}
         confidenceInsight={dashboard.confidenceInsight}
-        dailyPlan={dailyPlan}
-        availableMinutes={availableMinutes}
-        onAvailableMinutesChange={setAvailableMinutes}
-        onRefreshPlan={refreshPlan}
-        isRefreshing={isRefreshing}
         onNavigate={(moduleId, chapterId, tab, subtab) => {
           if (chapterId && moduleId) {
             onNavigate(moduleId, chapterId, tab);
