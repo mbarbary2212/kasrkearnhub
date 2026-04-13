@@ -460,6 +460,7 @@ export default function TopicDetailPage() {
             videosCompleted={topicProgress?.videosCompleted || 0}
             videosTotal={topicProgress?.videosTotal || 0}
             isLoading={progressLoading}
+            status={topicProgress?.status}
           />
         )}
 

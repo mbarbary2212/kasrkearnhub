@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -64,6 +65,7 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
   const { planInput, examDate, chapterMetrics } = options;
+  const [availableMinutes, setAvailableMinutes] = useState<number>(60);
 
   const query = useQuery({
     queryKey: ['daily-study-plan', user?.id, TODAY()],
@@ -116,9 +118,10 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
       const daysUntilExam = getDaysUntilExam(examDate);
       const examMode = classifyExamMode(daysUntilExam);
 
-      // Build plan with exam mode
+      // Build plan with exam mode and user's available minutes
       const adaptivePlan = buildAdaptiveStudyPlan({
         ...planInput,
+        availableMinutes,
         examDate: examDate ? new Date(examDate) : undefined,
       });
 
@@ -236,9 +239,37 @@ export function useDailyStudyPlan(options: UseDailyStudyPlanOptions = {}) {
     },
   });
 
+  // Mutation to refresh (delete + regenerate) today's plan
+  const refreshPlanMutation = useMutation({
+    mutationFn: async () => {
+      const todaysPlanId = query.data?.id;
+      if (!user?.id || !todaysPlanId) return;
+
+      // Delete today's tasks first (FK constraint)
+      await supabase
+        .from('daily_study_plan_tasks' as any)
+        .delete()
+        .eq('plan_id', todaysPlanId);
+
+      // Delete today's plan record
+      await supabase
+        .from('daily_study_plans' as any)
+        .delete()
+        .eq('id', todaysPlanId);
+    },
+    onSuccess: () => {
+      // Re-fetch will trigger plan generation since no plan exists for today
+      queryClient.invalidateQueries({ queryKey: ['daily-study-plan'] });
+    },
+  });
+
   return {
     dailyPlan: query.data ?? null,
     isLoading: query.isLoading,
+    availableMinutes,
+    setAvailableMinutes,
+    refreshPlan: () => refreshPlanMutation.mutateAsync(),
+    isRefreshing: refreshPlanMutation.isPending,
     markTaskStatus: (taskId: string, status: DailyPlanTask['status']) =>
       updateTaskStatus.mutate({ taskId, status }),
   };

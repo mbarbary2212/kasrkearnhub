@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { MIN_ATTEMPTS_FOR_IMPROVEMENT } from '@/lib/readinessCalculator';
+import { useMergedModuleConfig, expandModuleIds } from '@/hooks/useMergedModuleConfig';
 
 export interface TestProgressData {
   mcq: {
@@ -38,9 +39,11 @@ const RECENT_OSCE_ATTEMPTS = 5;
  */
 export function useTestProgress(moduleId?: string) {
   const { user } = useAuthContext();
+  const { data: mergedConfig } = useMergedModuleConfig();
+  const expandedIds = moduleId ? expandModuleIds([moduleId], mergedConfig ?? null) : [];
 
   return useQuery({
-    queryKey: ['test-progress', moduleId, user?.id],
+    queryKey: ['test-progress', moduleId, user?.id, mergedConfig?.chapterMerge],
     queryFn: async (): Promise<TestProgressData> => {
       if (!user?.id) {
         return getEmptyProgress();
@@ -54,14 +57,19 @@ export function useTestProgress(moduleId?: string) {
         .order('created_at', { ascending: false })
         .limit(100); // Only need ~20 for improvement calc, 100 gives accurate aggregates
 
-      // If moduleId provided, we need to filter by chapters in that module
+      // If moduleId provided, we need to filter by chapters in that module (expanded)
       let chapterIds: string[] = [];
-      if (moduleId) {
+      if (moduleId && expandedIds.length > 0) {
         const { data: chapters } = await supabase
           .from('module_chapters')
           .select('id')
-          .eq('module_id', moduleId);
+          .in('module_id', expandedIds);
         chapterIds = chapters?.map(c => c.id) || [];
+      }
+
+      // Apply chapter filter when we have chapter IDs
+      if (chapterIds.length > 0) {
+        query = query.in('chapter_id', chapterIds);
       }
 
       const { data: attempts, error } = await query;

@@ -147,6 +147,10 @@ export default function ChapterPage() {
   const [selectedAdmin, setSelectedAdmin] = useState<ContentAdmin | null>(null);
   const [selectedAdminRole, setSelectedAdminRole] = useState<'module' | 'topic'>('module');
 
+  // Needs Attention banner state — resets when chapter changes
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  useEffect(() => { setBannerDismissed(false); }, [chapterId]);
+
   const showAddControls = !!(
     auth.isAdmin ||
     auth.isModuleAdmin ||
@@ -920,6 +924,34 @@ export default function ChapterPage() {
           />
         )}
 
+        {/* Chapter Progress Bar - hidden for admins */}
+        {!canManageContent && (
+          <ChapterProgressBar
+            totalProgress={chapterProgress?.totalProgress || 0}
+            practiceProgress={chapterProgress?.practiceProgress || 0}
+            videoProgress={chapterProgress?.videoProgress || 0}
+            practiceCompleted={chapterProgress?.practiceCompleted || 0}
+            practiceTotal={chapterProgress?.practiceTotal || 0}
+            videosCompleted={chapterProgress?.videosCompleted || 0}
+            videosTotal={chapterProgress?.videosTotal || 0}
+            isLoading={progressLoading}
+            status={chapterProgress?.status}
+          />
+        )}
+
+        {/* Needs Attention Banner */}
+        {chapterProgress?.status === 'needs_attention' && !bannerDismissed && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <span>Your accuracy here is low — focus on this chapter before moving on.</span>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="ml-4 text-red-600 hover:text-red-800 dark:text-red-400"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Inline Sections Manager - Admin only */}
         {canManageContent && chapterId && <SectionsManager chapterId={chapterId} canManage={canManageContent} />}

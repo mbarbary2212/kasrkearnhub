@@ -175,8 +175,29 @@ function getMaxTasks(availableMinutes: number | undefined): number {
 
 // ─── Main Builder ─────────────────────────────────────────────
 
+// ─── Status-based priority multiplier ─────────────────────
+const STATUS_PRIORITY: Record<string, number> = {
+  needs_attention: 10,
+  not_started: 8,
+  started: 6,
+  building: 4,
+  ready: 2,
+  strong: 1,
+};
+
 export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyPlan {
   const { metrics, chapters, availableMinutes, examWeightMap, examDate } = input;
+
+  // FIX D — fallback when no chapter data
+  if (!chapters || chapters.length === 0) {
+    return {
+      tasks: [],
+      totalEstimatedMinutes: 0,
+      planLabel: 'No data',
+      rationale: 'No chapter data available to build a study plan.',
+    };
+  }
+
   const maxTasks = getMaxTasks(availableMinutes);
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
 
@@ -184,6 +205,13 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   const daysUntilExam = getDaysUntilExam(examDate ?? null);
   const examMode = classifyExamMode(daysUntilExam);
   const multipliers = EXAM_MODE_MULTIPLIERS[examMode];
+
+  // FIX C — detect if any non-strong chapters exist
+  const hasNonStrongChapters = chapters.some(ch => {
+    const m = metricsMap.get(ch.id);
+    const s: ChapterStatus = m ? classifyFromMetrics(m) : 'not_started';
+    return s !== 'strong';
+  });
 
   // Collect candidates into slots
   const candidates: SlottedTask[] = [];
@@ -280,8 +308,9 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       continue;
     }
 
+    // FIX C — skip strong chapters when non-strong ones remain
     // Phase 2.5: strong chapters get assessment mode tasks via review_due slot above
-    if (state === 'strong') continue;
+    if (state === 'strong' && hasNonStrongChapters) continue;
 
     // ── weakness slot: needs_attention / building ──
     // needs_attention → learning mode; building → practice mode
@@ -359,8 +388,28 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
       .slice(0, 2); // max 2 case practice tasks
 
     for (const domain of weakDomains) {
-      // Find a chapter that has case scenarios (use first available chapter with some activity)
-      const targetChapter = chapters[0]; // Simple: assign to first chapter; could be smarter later
+      // Find the chapter most relevant to the weak reasoning domain.
+      // Strategy: prefer a chapter whose title or module name contains the domain label (case-insensitive).
+      // If no title match, fall back to the chapter with the lowest MCQ accuracy in metrics.
+      // If metrics are empty, fall back to chapters[0] as a last resort.
+      const domainLabel = domain.label?.toLowerCase() ?? '';
+
+      const titleMatch = chapters.find(c =>
+        c.title?.toLowerCase().includes(domainLabel) ||
+        c.moduleName?.toLowerCase().includes(domainLabel)
+      );
+
+      const lowestAccuracyChapter = titleMatch
+        ? null
+        : [...chapters].sort((a, b) => {
+            const mA = input.metrics.find(m => m.chapter_id === a.id);
+            const mB = input.metrics.find(m => m.chapter_id === b.id);
+            const accA = mA?.mcq_accuracy ?? 100;
+            const accB = mB?.mcq_accuracy ?? 100;
+            return accA - accB;
+          })[0] ?? null;
+
+      const targetChapter = titleMatch ?? lowestAccuracyChapter ?? chapters[0];
       const taskDetail = domain.criticalMissRate > 40
         ? `critical miss recovery — ${domain.label}`
         : `focused ${domain.label} practice`;
@@ -396,7 +445,9 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     // Cap exam weight boost based on exam mode
     const cappedExamBoost = Math.min(examBoost, multipliers.weightCap);
 
-    c.priority = Math.min(PRIORITY_CAP, c.priority * cappedExamBoost * engagementFactor);
+    // FIX A — apply status-based priority multiplier
+    const statusMult = STATUS_PRIORITY[c.state ?? 'not_started'] ?? 6;
+    c.priority = Math.min(PRIORITY_CAP, c.priority * cappedExamBoost * engagementFactor * (statusMult / 6));
   }
 
   // ── Sort strictly by priority ──
@@ -420,9 +471,12 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   }
 
   // Pass 2: Fill remaining slots from any candidates by priority
+  // FIX B — cap daily session time at 120 minutes
   for (const c of candidates) {
     if (plan.length >= maxTasks) break;
     if (usedChapters.has(c.chapterId || '')) continue;
+    const dayMinutes = plan.reduce((sum, s) => sum + (s.estimatedMinutes ?? 30), 0);
+    if (dayMinutes >= 120) break;
     plan.push(c);
     usedChapters.add(c.chapterId || '');
   }
