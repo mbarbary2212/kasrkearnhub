@@ -45,6 +45,8 @@ interface ChapterProgressData {
   totalItems: number;
   pathwayViewed: number;
   pathwayTotal: number;
+  /** Chapter readiness status from the centralised calculator */
+  status?: string;
   // Per-type breakdowns
   mcqCompleted: number;
   mcqTotal: number;
@@ -236,6 +238,7 @@ export function useChapterProgress(chapterId?: string) {
         totalItems: practiceTotal + videosTotal,
         pathwayViewed: rpc.pathway_viewed,
         pathwayTotal: rpc.pathway_total,
+        status: readinessResult.status,
         mcqCompleted: rpc.mcq_completed,
         mcqTotal: rpc.mcq_total,
         essayCompleted: rpc.essay_completed,
