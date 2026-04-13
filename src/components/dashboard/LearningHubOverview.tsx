@@ -114,6 +114,11 @@ export function LearningHubOverview({ dashboard, moduleSelected, moduleId, onNav
         suggestions={dashboard.suggestions}
         studyPlan={dashboard.studyPlan}
         confidenceInsight={dashboard.confidenceInsight}
+        dailyPlan={dailyPlan}
+        availableMinutes={availableMinutes}
+        onAvailableMinutesChange={setAvailableMinutes}
+        onRefreshPlan={refreshPlan}
+        isRefreshing={isRefreshing}
         onNavigate={(moduleId, chapterId, tab, subtab) => {
           if (chapterId && moduleId) {
             onNavigate(moduleId, chapterId, tab);
