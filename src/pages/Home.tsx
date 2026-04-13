@@ -655,14 +655,31 @@ function LoggedInHome() {
             </Card>
           )}
 
-          {/* Weak Topics Alert */}
-          {isStudent && weakChapters.length > 0 && (
-            <DashboardWeakTopics
-              weakChapters={weakChapters}
-              onNavigate={(moduleId, chapterId, tab) => {
-                navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'practice'}&subtab=mcqs`);
-              }}
-            />
+          {/* Where You Stand */}
+          {isStudent && (dashboard?.insights?.some(i => i.type === 'strong') || weakChapters.length > 0) && (
+            <Card>
+              <CardContent className="py-3 px-4 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Where you stand</p>
+                {dashboard?.insights?.filter(i => i.type === 'strong').slice(0, 2).map((insight, idx) => (
+                  <div key={`strong-${idx}`} className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium truncate">{insight.label}</p>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto flex-shrink-0">Strong ✓</span>
+                  </div>
+                ))}
+                {weakChapters.slice(0, 2).map((ch, idx) => (
+                  <div
+                    key={`weak-${idx}`}
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                    onClick={() => navigate(`/module/${ch.moduleId}/chapter/${ch.chapterId}?section=practice&subtab=mcqs`)}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium truncate">{ch.chapterTitle}</p>
+                    <span className="text-[10px] text-destructive ml-auto flex-shrink-0">{Math.round(ch.accuracy)}% MCQ</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
 
           {/* Today's Study Plan — rendered via DashboardTodayPlan component */}
@@ -684,33 +701,6 @@ function LoggedInHome() {
                 navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
               }}
             />
-          )}
-
-          {/* Achievements Widget */}
-          {isStudent && (
-            <Card className="hover:shadow-md transition-all">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <Trophy className="w-5 h-5 text-accent-foreground" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Achievements</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {earned} of {total} badges earned
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-accent h-2 rounded-full transition-all"
-                    style={{ width: `${total > 0 ? (earned / total) * 100 : 0}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
           )}
         </div>
       </div>
