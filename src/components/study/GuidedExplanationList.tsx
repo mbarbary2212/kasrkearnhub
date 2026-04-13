@@ -73,7 +73,6 @@ export function GuidedExplanationList({
   const completedIds = new Set(completedViewsData);
 
   const handleSelectResource = (resource: StudyResource) => {
-    // NO tracking here — tracking happens only in onComplete callback
     setSelectedResource(resource);
   };
 
