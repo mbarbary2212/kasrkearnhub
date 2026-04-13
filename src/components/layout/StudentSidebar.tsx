@@ -144,7 +144,7 @@ export function StudentSidebar() {
     if (item.id === 'connect') return location.pathname.startsWith('/connect/');
     if (item.id === 'formative') return location.pathname === '/formative';
     if (item.id === 'coach') return location.pathname === '/progress';
-    if (item.id === 'customize') return location.pathname === '/customize-content';
+    if (item.id === 'settings') return location.pathname === '/student-settings';
     if (item.id === 'settings') return location.pathname === '/student-settings';
     return false;
   }, [location.pathname, isChapterOrTopicPage, currentSection, isAdmin]);

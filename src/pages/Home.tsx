@@ -32,6 +32,7 @@ import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
+import { GoalsNudgeBanner } from '@/components/dashboard/GoalsNudgeBanner';
 import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
