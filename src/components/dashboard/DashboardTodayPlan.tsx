@@ -83,9 +83,19 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
 
 /** Extract just the chapter name from a suggestion */
 function getChapterName(item: SuggestedItem): string {
-  if (item.chapterTitle) return item.chapterTitle;
-  const parts = item.title.split(' — ');
-  return parts[0] ?? item.title;
+  // chapterTitle is the cleanest source if populated
+  if (item.chapterTitle && !item.chapterTitle.includes('—')) return item.chapterTitle;
+  // title field contains "Chapter Name — Activity Label (details)"
+  // extract just the chapter name part before the " — "
+  const titleParts = (item.title ?? '').split(' — ');
+  return titleParts[0].trim() || item.title || 'Chapter';
+}
+
+function getActivityLabel(item: SuggestedItem): string {
+  // Use the prescribed study mode label if available (e.g. "MCQ Practice", "Case Scenarios")
+  if (item.prescribedStudyMode?.label) return item.prescribedStudyMode.label;
+  // Fall back to the reason text
+  return item.reason ?? '';
 }
 
 const TIME_OPTIONS = [20, 45, 60, 90] as const;
@@ -207,10 +217,10 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                 )}
               </div>
               <p className="font-medium truncate text-foreground">{getChapterName(primarySuggestion)}</p>
-              <p className="text-xs text-foreground/80">
-                {primarySuggestion.prescribedStudyMode?.label ?? 'Study'}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}
+              <p className="text-xs text-foreground/70">
+                {getActivityLabel(primarySuggestion)}{primarySuggestion.estimatedMinutes ? ` · ~${primarySuggestion.estimatedMinutes} min` : ''}
               </p>
-              {primarySuggestion.reason && (
+              {primarySuggestion.reason && getActivityLabel(primarySuggestion) !== primarySuggestion.reason && (
                 <p className="text-[11px] text-muted-foreground">
                   {primarySuggestion.trend && primarySuggestion.trend !== 'stable' && (
                     <span className={`font-medium ${trendIndicator[primarySuggestion.trend]?.className || ''} mr-1`}>
@@ -256,9 +266,9 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                       )}
                     </div>
                     <p className="text-xs text-foreground/70">
-                      {item.prescribedStudyMode?.label ?? 'Study'}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}
+                      {getActivityLabel(item)}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes} min` : ''}
                     </p>
-                    {item.reason && (
+                    {item.reason && getActivityLabel(item) !== item.reason && (
                       <p className="text-[11px] text-muted-foreground truncate">
                         {item.trend && item.trend !== 'stable' && (
                           <span className={`font-medium ${trendIndicator[item.trend]?.className || ''} mr-1`}>
