@@ -671,82 +671,25 @@ function LoggedInHome() {
             />
           )}
 
-          {/* Today's Study Plan */}
+          {/* Today's Study Plan — rendered via DashboardTodayPlan component */}
           {isStudent && suggestions.length > 0 && (
-            <div data-tour="study-plan" className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
-                  <p className="text-[10px] text-muted-foreground/70">Follow this step by step to stay organized</p>
-                </div>
-                {totalEstimatedMinutes > 0 && (
-                  <span className="text-xs text-muted-foreground">~{totalEstimatedMinutes} min total</span>
-                )}
-              </div>
-
-              {/* Start Here — Primary Action */}
-              {primarySuggestion && (
-                <Card
-                  className="p-3 cursor-pointer border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors group"
-                  onClick={() => {
-                    if (primarySuggestion.chapterId && primarySuggestion.moduleId) {
-                      const tab = primarySuggestion.type === 'mcq' || primarySuggestion.type === 'essay' ? 'practice' : 'resources';
-                      const subtab = primarySuggestion.subtab ? `&subtab=${primarySuggestion.subtab}` : '';
-                      navigate(`/module/${primarySuggestion.moduleId}/chapter/${primarySuggestion.chapterId}?section=${tab}${subtab}`);
-                    } else if (primarySuggestion.type === 'flashcard') {
-                      navigate('/review/flashcards');
-                    }
-                  }}
-                >
-                  <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-1">▶ Start Here</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                      {(() => { const Icon = taskIcon[primarySuggestion.type] || BookOpen; return <Icon className="w-4 h-4 text-primary" />; })()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{primarySuggestion.title}</p>
-                      {primarySuggestion.reason && (
-                        <p className="text-xs text-muted-foreground">{primarySuggestion.reason} · ~{primarySuggestion.estimatedMinutes}m</p>
-                      )}
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-primary group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-                  </div>
-                </Card>
-              )}
-
-              {/* Other Suggestions */}
-              <div className="space-y-1.5">
-                {otherSuggestions.map((item, i) => {
-                  const Icon = taskIcon[item.type] || BookOpen;
-                  return (
-                    <Card
-                      key={i}
-                      className="p-2.5 flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => {
-                        if (item.type === 'flashcard') {
-                          navigate('/review/flashcards');
-                        } else if (item.chapterId && item.moduleId) {
-                          const tab = item.type === 'mcq' || item.type === 'essay' ? 'practice' : 'resources';
-                          const subtab = item.subtab ? `&subtab=${item.subtab}` : '';
-                          navigate(`/module/${item.moduleId}/chapter/${item.chapterId}?section=${tab}${subtab}`);
-                        }
-                      }}
-                    >
-                      <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
-                        <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.title}</p>
-                        {item.reason && (
-                          <p className="text-xs text-muted-foreground truncate">{item.reason}{item.estimatedMinutes ? ` · ~${item.estimatedMinutes}m` : ''}</p>
-                        )}
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
+            <DashboardTodayPlan
+              suggestions={suggestions}
+              studyPlan={dashboard?.studyPlan ?? null}
+              dailyPlan={dailyPlan}
+              availableMinutes={availableMinutes}
+              onAvailableMinutesChange={setAvailableMinutes}
+              onRefreshPlan={refreshPlan}
+              isRefreshing={isRefreshing}
+              onNavigate={(moduleId, chapterId, tab, subtab) => {
+                if (!moduleId || !chapterId) {
+                  navigate('/review/flashcards');
+                  return;
+                }
+                const subtabParam = subtab ? `&subtab=${subtab}` : '';
+                navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
+              }}
+            />
           )}
 
           {/* Achievements Widget */}
