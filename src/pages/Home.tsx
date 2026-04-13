@@ -315,6 +315,8 @@ function LoggedInHome() {
       <FirstLoginModal role="student" onStartTour={startTour} onOpenWorkflow={() => setWorkflowOpen(true)} />
       <WorkflowGuide open={workflowOpen} onOpenChange={setWorkflowOpen} mode="student" />
 
+      {isStudent && <GoalsNudgeBanner />}
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}
         <div className="md:col-span-3 space-y-5">
