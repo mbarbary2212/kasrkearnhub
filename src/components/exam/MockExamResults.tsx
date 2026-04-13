@@ -73,6 +73,15 @@ export function MockExamResults({
       .slice(0, 3);
   }, [questions, userAnswers, chapters]);
 
+  // FIX D — graceful empty state (after all hooks)
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        No exam results available yet.
+      </div>
+    );
+  }
+
   const getScoreColor = () => {
     if (percentage >= 80) return 'text-green-600';
     if (percentage >= 60) return 'text-yellow-600';
