@@ -595,35 +595,29 @@ function LoggedInHome() {
 
         {/* ==================== RIGHT COLUMN (40%) ==================== */}
         <div className="md:col-span-2 space-y-4">
-          {/* Stat Cards */}
+          {/* Compact Stats Strip */}
           {isStudent && (
-            <div className="grid grid-cols-2 gap-2 md:gap-3">
-              <Card className="p-2.5 md:p-3 text-center">
-                <p className="text-base md:text-lg font-bold">🔥 {streak}</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground">Day Streak</p>
-              </Card>
-              <Card className="p-2.5 md:p-3 text-center">
-                <p className="text-base md:text-lg font-bold">📊 {Math.round(readiness)}%</p>
-                <p className="text-[10px] md:text-xs text-muted-foreground">{readinessText}</p>
-              </Card>
-            </div>
-          )}
-
-          {/* Classification Dashboard — Year-level intelligence */}
-          {isStudent && yearClassification && (
-            <Card data-tour="today-plan">
-              <CardContent className="py-4 px-4">
-                <p className="text-[10px] text-muted-foreground/70 mb-2">Your daily priorities</p>
-                <ClassificationDashboard
-                  classification={yearClassification.classification}
-                  chapterTitleMap={yearClassification.chapterTitleMap}
-                  moduleNameMap={yearClassification.moduleNameMap}
-                  onNavigate={(moduleId, chapterId, tab) => {
-                    const tabParam = tab ? `?tab=${tab}` : '';
-                    navigate(`/module/${moduleId}/chapter/${chapterId}${tabParam}`);
-                  }}
-                />
-              </CardContent>
+            <Card className="p-3">
+              <div className="flex items-center justify-between">
+                <div className="text-center flex-1">
+                  <p className="text-base font-bold">🔥 {streak}</p>
+                  <p className="text-[10px] text-muted-foreground">Day Streak</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <div className="text-center flex-1">
+                  <p className="text-base font-bold">📊 {Math.round(readiness)}%</p>
+                  <p className="text-[10px] text-muted-foreground">{readinessText}</p>
+                </div>
+                <div className="w-px h-8 bg-border" />
+                <button
+                  className="text-center flex-1 hover:opacity-70 transition-opacity"
+                  onClick={() => navigate('/achievements')}
+                  title={`${earned} of ${total} badges earned`}
+                >
+                  <p className="text-base font-bold">🏆 {earned}</p>
+                  <p className="text-[10px] text-muted-foreground">Badges</p>
+                </button>
+              </div>
             </Card>
           )}
 
@@ -661,14 +655,31 @@ function LoggedInHome() {
             </Card>
           )}
 
-          {/* Weak Topics Alert */}
-          {isStudent && weakChapters.length > 0 && (
-            <DashboardWeakTopics
-              weakChapters={weakChapters}
-              onNavigate={(moduleId, chapterId, tab) => {
-                navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'practice'}&subtab=mcqs`);
-              }}
-            />
+          {/* Where You Stand */}
+          {isStudent && (dashboard?.insights?.some(i => i.type === 'strong') || weakChapters.length > 0) && (
+            <Card>
+              <CardContent className="py-3 px-4 space-y-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Where you stand</p>
+                {dashboard?.insights?.filter(i => i.type === 'strong').slice(0, 2).map((insight, idx) => (
+                  <div key={`strong-${idx}`} className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium truncate">{insight.label}</p>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 ml-auto flex-shrink-0">Strong ✓</span>
+                  </div>
+                ))}
+                {weakChapters.slice(0, 2).map((ch, idx) => (
+                  <div
+                    key={`weak-${idx}`}
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                    onClick={() => navigate(`/module/${ch.moduleId}/chapter/${ch.chapterId}?section=practice&subtab=mcqs`)}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium truncate">{ch.chapterTitle}</p>
+                    <span className="text-[10px] text-destructive ml-auto flex-shrink-0">{Math.round(ch.accuracy)}% MCQ</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
 
           {/* Today's Study Plan — rendered via DashboardTodayPlan component */}
@@ -690,33 +701,6 @@ function LoggedInHome() {
                 navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
               }}
             />
-          )}
-
-          {/* Achievements Widget */}
-          {isStudent && (
-            <Card className="hover:shadow-md transition-all">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <Trophy className="w-5 h-5 text-accent-foreground" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base">Achievements</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {earned} of {total} badges earned
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-accent h-2 rounded-full transition-all"
-                    style={{ width: `${total > 0 ? (earned / total) * 100 : 0}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
           )}
         </div>
       </div>
