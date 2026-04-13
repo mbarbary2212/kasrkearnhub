@@ -11,6 +11,8 @@ interface DashboardTodayPlanProps {
   confidenceInsight?: string | null;
   dailyPlan?: DailyPlan | null;
   yesterdayAdherence?: { completed: number; total: number } | null;
+  availableMinutes?: number;
+  onAvailableMinutesChange?: (minutes: number) => void;
 }
 
 /** Maps study mode keys to icons */
@@ -76,7 +78,9 @@ function isCarriedOver(dailyPlan: DailyPlan | null | undefined, chapterId?: stri
   return task?.is_carried_over ?? false;
 }
 
-export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence }: DashboardTodayPlanProps) {
+const TIME_OPTIONS = [20, 45, 60, 90] as const;
+
+export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confidenceInsight, dailyPlan, yesterdayAdherence, availableMinutes = 60, onAvailableMinutesChange }: DashboardTodayPlanProps) {
   if (suggestions.length === 0) {
     return (
       <Card>
@@ -143,6 +147,32 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
         )}
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Time available picker */}
+        {onAvailableMinutesChange && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-medium text-foreground">Time available today:</span>
+              <div className="flex gap-1.5">
+                {TIME_OPTIONS.map((mins) => (
+                  <button
+                    key={mins}
+                    onClick={() => onAvailableMinutesChange(mins)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      availableMinutes === mins
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80 border border-border'
+                    }`}
+                  >
+                    {mins} min
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Your plan for today is already set. This will apply tomorrow, or if you refresh your plan.
+            </p>
+          </div>
+        )}
         {/* Start Here — Primary Action */}
         {primarySuggestion && (
           <div
