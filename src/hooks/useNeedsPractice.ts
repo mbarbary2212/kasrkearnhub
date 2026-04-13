@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useMergedModuleConfig, expandModuleIds } from '@/hooks/useMergedModuleConfig';
 
 export interface NeedsPracticeItem {
   id: string;
@@ -59,9 +60,11 @@ const EMPTY_COUNTS: ContentCounts = {
 
 export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
   const { user } = useAuthContext();
+  const { data: mergedConfig } = useMergedModuleConfig();
+  const expandedIds = moduleId ? expandModuleIds([moduleId], mergedConfig ?? null) : [];
 
   const { data, isLoading } = useQuery({
-    queryKey: ['needs-practice', user?.id, moduleId],
+    queryKey: ['needs-practice', user?.id, moduleId, mergedConfig?.chapterMerge],
     queryFn: async () => {
       if (!user?.id || !moduleId) {
         return {
@@ -99,7 +102,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .from('question_attempts')
           .select('*')
           .eq('user_id', user.id)
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('question_type', 'mcq')
           .eq('is_correct', false)
           .order('updated_at', { ascending: false }),
@@ -108,7 +111,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .from('question_attempts')
           .select('*')
           .eq('user_id', user.id)
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('question_type', 'osce')
           .lte('score', 3)
           .order('score', { ascending: true }),
@@ -117,37 +120,37 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('question_type', 'mcq'),
         // All OSCE attempts (for attempted count)
         supabase
           .from('question_attempts')
           .select('question_id')
           .eq('user_id', user.id)
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('question_type', 'osce'),
-        // Chapters for this module
+        // Chapters for this module (expanded)
         supabase
           .from('module_chapters')
           .select('id, title')
-          .eq('module_id', moduleId),
+          .in('module_id', expandedIds),
         // MCQs for this module
         supabase
           .from('mcqs')
           .select('id, stem, chapter_id')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false),
         // OSCEs for this module
         supabase
           .from('osce_questions')
           .select('id, history_text, chapter_id')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false),
         // Lectures (videos) for this module
         supabase
           .from('lectures')
           .select('id, title, chapter_id, video_url')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false)
           .not('video_url', 'is', null),
         // Video progress for user
@@ -159,7 +162,7 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('flashcards')
           .select('id, front, chapter_id, topic_id')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false),
         // User's starred flashcards
         supabase
@@ -170,19 +173,19 @@ export function useNeedsPractice(moduleId?: string): UseNeedsPracticeResult {
         supabase
           .from('matching_questions')
           .select('id, instruction, chapter_id')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false),
         // Essays for this module
         supabase
           .from('essays')
           .select('id, title, chapter_id')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false),
         // Virtual patient cases for this module
         supabase
           .from('virtual_patient_cases')
           .select('id, title, chapter_id')
-          .eq('module_id', moduleId)
+          .in('module_id', expandedIds)
           .eq('is_deleted', false),
         // User progress for all content types
         supabase
