@@ -66,8 +66,10 @@ export function useExtractSections() {
       queryClient.invalidateQueries({ queryKey: ['sections', 'chapter', chapterId] });
 
       const method = data?.method === 'ai' ? 'AI' : 'PDF structure';
-      toast.success(`Extracted ${sections.length} sections from ${method}`);
-      return sections.length;
+      const skipped = sections.length - newSections.length;
+      const skippedMsg = skipped > 0 ? ` (${skipped} duplicates skipped)` : '';
+      toast.success(`Extracted ${newSections.length} sections from ${method}${skippedMsg}`);
+      return newSections.length;
     } catch (err) {
       console.error('Section extraction failed:', err);
       toast.error('Failed to extract sections from PDF');

@@ -285,6 +285,39 @@ export function useDeleteSection() {
   });
 }
 
+// Detect sections with duplicate section_number values (informational warning)
+export function useSectionDuplicateWarnings(chapterId?: string) {
+  return useQuery({
+    queryKey: ['section-number-warnings', chapterId],
+    queryFn: async () => {
+      if (!chapterId) return new Set<string>();
+      
+      const { data, error } = await supabase
+        .from('sections')
+        .select('id, section_number')
+        .eq('chapter_id', chapterId)
+        .not('section_number', 'is', null);
+
+      if (error) throw error;
+      
+      // Find section_numbers that appear more than once
+      const numCounts = new Map<string, string[]>();
+      for (const s of data || []) {
+        if (!s.section_number) continue;
+        const key = s.section_number.trim();
+        if (!numCounts.has(key)) numCounts.set(key, []);
+        numCounts.get(key)!.push(s.id);
+      }
+      
+      const warningIds = new Set<string>();
+      for (const ids of numCounts.values()) {
+        if (ids.length > 1) ids.forEach(id => warningIds.add(id));
+      }
+      return warningIds;
+    },
+    enabled: !!chapterId,
+  });
+}
 // Reorder sections (update display_order for each)
 export function useReorderSections() {
   const queryClient = useQueryClient();
