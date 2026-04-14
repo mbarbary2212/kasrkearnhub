@@ -20,6 +20,7 @@ import { Plus, Layers, ChevronDown, Wand2, Loader2, FileCheck, FileX, Copy } fro
 import { useAutoTagSections } from '@/hooks/useAutoTagSections';
 import { useExtractSections } from '@/hooks/useExtractSections';
 import { supabase } from '@/integrations/supabase/client';
+import { SectionReassignDialog } from './SectionReassignDialog';
 import { useQuery } from '@tanstack/react-query';
 import {
   DndContext,
@@ -183,8 +184,9 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
       });
       setNewSectionName('');
       toast.success('Section created');
-    } catch {
-      toast.error('Failed to create section');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to create section';
+      toast.error(msg);
     }
   };
   
@@ -420,27 +422,15 @@ export function SectionsManager({ chapterId, topicId, canManage }: SectionsManag
         </CollapsibleContent>
       </Card>
       
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={!!deletingSection} onOpenChange={() => setDeletingSection(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Section</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deletingSection?.name}"? 
-              Content assigned to this section will become unassigned.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteSection}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Reassign & Delete dialog */}
+      <SectionReassignDialog
+        open={!!deletingSection}
+        onOpenChange={(open) => { if (!open) setDeletingSection(null); }}
+        section={deletingSection}
+        allSections={sections || []}
+        mode="delete"
+        onConfirm={handleDeleteSection}
+      />
     </Collapsible>
   );
 }
