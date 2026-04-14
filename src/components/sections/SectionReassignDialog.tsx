@@ -183,7 +183,7 @@ export function SectionReassignDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {totalContent > 0 && <AlertTriangle className="h-5 w-5 text-amber-500" />}
+            {totalContent > 0 && <AlertTriangle className="h-5 w-5 text-warning" />}
             {mode === 'delete' ? 'Delete' : 'Edit'} Section: {section?.name}
           </DialogTitle>
           <DialogDescription>
