@@ -373,12 +373,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         {/* Shared Sidebar - desktop only */}
         {showSharedNav && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
+        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden overflow-y-auto", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
           <div className={showSharedNav ? 'container mx-auto' : ''}>
             {children}
             {user && <AppCredits />}
