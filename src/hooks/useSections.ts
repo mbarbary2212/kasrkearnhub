@@ -148,6 +148,30 @@ export function useCreateSection() {
   
   return useMutation({
     mutationFn: async ({ name, chapter_id, topic_id }: CreateSectionData) => {
+      // Check for existing section with the same normalized name
+      const trimmedName = name.trim();
+      if (chapter_id) {
+        const { data: existing } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('chapter_id', chapter_id)
+          .ilike('name', trimmedName)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          throw new Error('A section with this name already exists in this chapter');
+        }
+      } else if (topic_id) {
+        const { data: existing } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('topic_id', topic_id)
+          .ilike('name', trimmedName)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          throw new Error('A section with this name already exists in this topic');
+        }
+      }
+
       // Get the next display order
       let maxOrder = 0;
       
@@ -172,7 +196,7 @@ export function useCreateSection() {
       const { data, error } = await supabase
         .from('sections')
         .insert({
-          name,
+          name: trimmedName,
           chapter_id: chapter_id || null,
           topic_id: topic_id || null,
           display_order: maxOrder + 1,
@@ -180,7 +204,12 @@ export function useCreateSection() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('A section with this name already exists');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
