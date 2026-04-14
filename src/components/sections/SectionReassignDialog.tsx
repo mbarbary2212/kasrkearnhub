@@ -130,43 +130,36 @@ export function SectionReassignDialog({
       try {
         // Reassign all content from this section to the target
         for (const { table } of counts) {
-          if (table === 'lecture_sections') {
-            // For junction table: delete rows that would conflict, then update
-            if (targetSectionId !== 'unassign') {
-              // Delete lecture_sections that already link to target (avoid dupe)
+            // For junction table: reassign lecture links
+            if (table === 'lecture_sections') {
               const { data: existing } = await supabase
                 .from('lecture_sections')
                 .select('lecture_id')
                 .eq('section_id', section.id);
 
               if (existing?.length) {
-                const lectureIds = existing.map((r) => r.lecture_id);
-                // Remove conflicts
+                // Delete old links
                 await supabase
                   .from('lecture_sections')
                   .delete()
-                  .eq('section_id', section.id)
-                  .in('lecture_id', lectureIds);
+                  .eq('section_id', section.id);
 
-                // Insert new links (ignore conflicts)
-                const inserts = lectureIds.map((lid) => ({
-                  lecture_id: lid,
-                  section_id: targetSectionId,
-                }));
-                // Use upsert-like approach: insert and ignore existing
-                for (const ins of inserts) {
-                  await supabase
+                // Insert new links, skip conflicts
+                for (const row of existing) {
+                  const { error } = await supabase
                     .from('lecture_sections')
-                    .upsert(ins, { onConflict: 'lecture_id,section_id' });
+                    .insert({ lecture_id: row.lecture_id, section_id: targetSectionId });
+                  // Ignore unique constraint violations (already linked)
+                  if (error && error.code !== '23505') throw error;
                 }
               }
+            } else {
+              const { error } = await supabase
+                .from(table as 'mcqs')
+                .update({ section_id: targetSectionId } as any)
+                .eq('section_id', section.id);
+              if (error) throw error;
             }
-          } else {
-            await supabase
-              .from(table)
-              .update({ section_id: targetSectionId })
-              .eq('section_id', section.id);
-          }
         }
 
         toast.success(`Reassigned ${totalContent} items to the selected section`);
