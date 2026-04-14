@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DashboardData } from '@/hooks/useStudentDashboard';
 import { LearningHubOverview } from './LearningHubOverview';
 import { LearningHubStudyPlan } from './LearningHubStudyPlan';
-import { LearningHubUnlocks } from './LearningHubUnlocks';
+
 
 interface Module {
   id: string;
