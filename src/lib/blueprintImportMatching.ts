@@ -55,6 +55,16 @@ export function normalizeText(raw: string): string {
     .toLowerCase();
 }
 
+/**
+ * Extract a leading section number like "2.1" from a label.
+ * Returns null if no numeric prefix found.
+ */
+export function extractSectionNumber(raw: string): string | null {
+  const cleaned = raw.replace(EMOJI_RE, '').replace(/^[→→•·\-–—]\s*/, '').trim();
+  const m = cleaned.match(/^(\d+(?:\.\d+)+)\.?\s/);
+  return m ? m[1] : null;
+}
+
 // ─── Simple similarity scoring ─────────────────────────────────────
 /** Token-overlap Jaccard-like similarity 0..1 */
 export function wordSimilarity(a: string, b: string): number {
@@ -73,7 +83,6 @@ export function editSimilarity(a: string, b: string): number {
   const la = a.length, lb = b.length;
   if (la === 0 || lb === 0) return 0;
   const maxLen = Math.max(la, lb);
-  // Use a simple row-based Levenshtein
   let prev = Array.from({ length: lb + 1 }, (_, i) => i);
   for (let i = 1; i <= la; i++) {
     const curr = [i];
@@ -100,7 +109,7 @@ export function isHeaderRow(cells: string[]): boolean {
   for (const c of cells) {
     if (KNOWN_HEADERS.has(c.trim().toLowerCase())) matches++;
   }
-  return matches >= 2; // at least 2 known header words
+  return matches >= 2;
 }
 
 /** Returns true if this row is a non-data filler (blank, repeated header, title). */
@@ -130,7 +139,6 @@ export function matchChapter(
   chapters: ChapterCandidate[],
   chapterIdHint?: string,
 ): MatchResult<ChapterCandidate> {
-  // Priority 1: hidden ID
   if (chapterIdHint) {
     const byId = chapters.find(c => c.id === chapterIdHint);
     if (byId) return { match: byId, score: 1, ambiguous: false };
@@ -176,19 +184,26 @@ export function matchSection(
     if (byId) return { match: byId, score: 1, ambiguous: false };
   }
 
+  if (!label.trim() || sections.length === 0) return { match: null, score: 0, ambiguous: false };
+
+  // Priority: try to match by visible section number first (e.g. "2.1")
+  const labelSecNum = extractSectionNumber(label);
+  if (labelSecNum) {
+    const byNum = sections.filter(s => s.section_number === labelSecNum);
+    if (byNum.length === 1) {
+      return { match: byNum[0], score: 0.98, ambiguous: false };
+    }
+  }
+
   const norm = normalizeText(label);
-  if (!norm || sections.length === 0) return { match: null, score: 0, ambiguous: false };
+  if (!norm) return { match: null, score: 0, ambiguous: false };
 
   type Scored = { sec: SectionCandidate; score: number };
   const scored: Scored[] = sections.map(sec => {
     const normName = normalizeText(sec.name);
-    // Exact normalized match
     if (norm === normName) return { sec, score: 1 };
-    // Section number match (e.g. "1.1")
     if (sec.section_number && normalizeText(sec.section_number) === norm) return { sec, score: 0.95 };
-    // Contains
     if (norm.includes(normName) || normName.includes(norm)) return { sec, score: 0.85 };
-    // Word similarity + edit similarity
     const ws = wordSimilarity(norm, normName);
     const es = editSimilarity(norm, normName);
     return { sec, score: Math.max(ws, es) };
