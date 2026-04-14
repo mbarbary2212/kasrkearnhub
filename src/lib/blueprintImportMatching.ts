@@ -214,6 +214,8 @@ export function matchSection(
     return { match: null, score: 0, ambiguous: false };
   }
   const best = scored[0];
-  const ambiguous = scored.length > 1 && scored[1].score > 0.7 && (best.score - scored[1].score) < 0.1;
+  // Only flag ambiguous for fuzzy matches — if the best is an exact (1.0) match,
+  // the first candidate (by display_order) wins deterministically.
+  const ambiguous = best.score < 1.0 && scored.length > 1 && scored[1].score > 0.7 && (best.score - scored[1].score) < 0.1;
   return { match: best.sec, score: best.score, ambiguous };
 }
