@@ -49,10 +49,10 @@ export function normalizeText(raw: string): string {
     .replace(PREFIX_RE, '')
     .replace(/^[→→•·\-–—]\s*/, '')
     .replace(HIERARCHICAL_PREFIX_RE, '')
+    .toLowerCase()
     .replace(NOISE_RE, ' ')
     .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+    .trim();
 }
 
 function normalizeSectionNumber(raw: string | null | undefined): string | null {
