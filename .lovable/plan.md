@@ -1,56 +1,59 @@
 
 
-## Three fixes for the Blueprint page
+## Blueprint Import: "Replace All" erases data even when import produces 0 rows
 
-### Issue 1 — Sticky table header
-The `<thead>` in `ChapterBlueprintSubtab.tsx` (line 390-398) has no sticky positioning. When you scroll down, "Chapter / MCQ / Recall / Case / OSCE / Long Case / Paraclinical" disappears.
+### Root cause
 
-**Fix**: Add `sticky top-0 z-10 bg-background` to the `<thead>` element so it stays pinned while the table body scrolls.
+The `importBlueprintFromExcel` function in `blueprintExcelImport.ts` has a dangerous sequence when `replaceAll=true`:
 
-**File**: `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`
+1. Parse all rows from Excel
+2. Collect `affectedChapterIds` from successfully parsed rows
+3. **DELETE all existing configs** for those chapters (line 253-264)
+4. INSERT the new parsed rows (line 312-317)
 
----
+The problem: if the Excel cells contain values that chapters match on (so `processCells` runs and `affectedChapterIds` gets populated via the `clears` path or even a few valid cells), but the INSERT step fails (DB constraint error, or the parsed values don't produce valid rows), the DELETE has already wiped the data. Result: 0 imported, all old data gone.
 
-### Issue 2 — Changes not visible until refresh
-This is a **query key mismatch** bug. When you click a cell and set a level (H/A/L), the mutation in `useChapterBlueprintConfig.ts` invalidates:
-```
-['chapter-blueprint-config', variables.module_id]
-```
+From your screenshot: "Imported (0 imported) with 123 issue(s)" — the 123 issues are ambiguous section matches. The chapters matched (triggering deletes), but something about the cell values or insert failed, leaving 0 rows imported.
 
-But the table in `ChapterBlueprintSubtab.tsx` fetches configs using a **different** query key:
-```
-['chapter-blueprint-config-multi', ...configModuleIds]
-```
+### The fix
 
-Since the keys don't match, the table never refetches after a change. You have to manually refresh the page.
+Add a **safety check** before the delete step: if `replaceAll` is true but `rows.length === 0` (nothing valid to insert), abort the operation and return an error instead of deleting everything.
 
-**Fix**: Update the `onSuccess` callbacks in both `useUpsertChapterBlueprintConfig` and `useDeleteChapterBlueprintConfig` to also invalidate the `-multi` variant:
+Additionally, restructure the Replace All flow to **insert first, then delete old rows** that weren't just inserted. This way, if inserts fail, old data survives.
+
+### File: `src/components/admin/blueprint/blueprintExcelImport.ts`
+
+**Change 1** — After row parsing (line 248), before the delete block (line 253), add a guard:
+
 ```typescript
-qc.invalidateQueries({ queryKey: ['chapter-blueprint-config'] }); // invalidate all variants
+// Safety: if Replace All but nothing to insert, abort — don't wipe data
+if (replaceAll && rows.length === 0) {
+  result.errors.push('No valid data rows found in file. Existing data was NOT deleted.');
+  return result;
+}
 ```
 
-**File**: `src/hooks/useChapterBlueprintConfig.ts`
+**Change 2** — Restructure Replace All to be insert-then-delete:
 
----
+Instead of deleting all configs first and then inserting, do:
+1. Insert all new rows first (with a unique `import_batch` or just collect their IDs)
+2. Only after inserts succeed, delete the old rows that weren't part of this import
 
-### Issue 3 — Tab resets on refresh/return
-`AdminPage.tsx` reads the `?tab=` URL param on load, but when you navigate within tabs, the URL doesn't update. So refreshing or returning drops you back to the default tab.
+Since we can't easily track "old vs new" without transactions, the simpler safe approach is:
+- Keep the current delete-then-insert order BUT only proceed with the delete if `rows.length > 0`
+- Add a secondary check: if all inserts fail (upserted stays 0 after the insert loop), log a prominent error
 
-**Fix**: 
-- When `activeTab` changes, update the URL search param (`?tab=blueprint`) using `setSearchParams` so the browser remembers it.
-- This way, refreshing or navigating back restores the last active tab automatically — no localStorage needed, the URL is the source of truth.
+**Change 3** — In `ChapterBlueprintSubtab.tsx`, improve the toast for the 0-imported case:
 
-**File**: `src/pages/AdminPage.tsx`
+When `result.upserted === 0 && replaceAll`, show a clear error: "Import failed — no rows were imported. Check your file format."
 
----
+### Summary
 
-### Summary of changes
+| What | Where |
+|------|-------|
+| Add `rows.length === 0` guard before delete | `blueprintExcelImport.ts` line ~251 |
+| Add post-insert check for 0 upserted after delete | `blueprintExcelImport.ts` line ~318 |
+| Improve error toast for 0-imported Replace All | `ChapterBlueprintSubtab.tsx` line ~288 |
 
-| File | Change |
-|------|--------|
-| `ChapterBlueprintSubtab.tsx` | Add `sticky top-0 z-10 bg-background` to `<thead>` |
-| `useChapterBlueprintConfig.ts` | Broaden query invalidation to cover all `chapter-blueprint-config` variants |
-| `AdminPage.tsx` | Sync `activeTab` to URL `?tab=` param on change |
-
-Three small, targeted fixes. No new files needed.
+Two small changes that prevent data loss. No schema changes, no new files.
 
