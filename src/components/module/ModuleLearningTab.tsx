@@ -78,10 +78,6 @@ interface ModuleLearningTabProps {
   selectedDepartmentId?: string | null;
   /** When provided (from ModulePage), student pill filtering is handled externally */
   externalActiveBookLabel?: string | null;
-  /** When true, chapters with zero content items are hidden from the list */
-  hideEmptyChapters?: boolean;
-  /** Chapter status data from dashboard — used to determine which chapters have content */
-  chapterContentMap?: Array<{ id: string; totalItems: number }>;
 }
 
 // Sortable book card component
@@ -580,17 +576,8 @@ export function ModuleLearningTab({
   canManageChapters = false,
   selectedDepartmentId,
   externalActiveBookLabel,
-  hideEmptyChapters = false,
-  chapterContentMap,
 }: ModuleLearningTabProps) {
-  // Filter out empty chapters for students when dashboard data is available
-  const chapters = useMemo(() => {
-    if (!hideEmptyChapters || !chapterContentMap || !rawChapters) return rawChapters;
-    const contentChapterIds = new Set(
-      chapterContentMap.filter(c => c.totalItems > 0).map(c => c.id)
-    );
-    return rawChapters.filter(ch => contentChapterIds.has(ch.id));
-  }, [hideEmptyChapters, chapterContentMap, rawChapters]);
+  const chapters = rawChapters;
 
   const navigate = useNavigate();
   const auth = useAuthContext();
