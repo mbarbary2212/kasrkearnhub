@@ -24,6 +24,7 @@ interface ParsedRow {
   inclusion_level: string;
   question_types: string[];
   exam_type: string;
+  sourceRow: number; // track source for error reporting
 }
 
 interface ClearRow {
@@ -54,6 +55,11 @@ function parseCell(value: string | undefined | null): { level: string; types: st
   const level = m[1].toLowerCase();
   const types = m[3] ? m[3].split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : [];
   return { level, types };
+}
+
+/** Composite key for deduplication */
+function rowKey(r: { chapter_id: string; section_id: string | null; component_type: string; exam_type: string }) {
+  return `${r.chapter_id}|${r.section_id ?? ''}|${r.component_type}|${r.exam_type}`;
 }
 
 // ─── Main import function ──────────────────────────────────────────
@@ -124,7 +130,6 @@ export async function importBlueprintFromExcel(
     if (lc === 'chapter_id') { chapterIdCol = colNum; return; }
     if (lc === 'section_id') { sectionIdCol = colNum; return; }
 
-    // Try exact label match first, then alias
     for (const col of COMPONENT_COLUMNS) {
       if (lc === col.label.toLowerCase() || lc === col.key) {
         colMap.set(colNum, col.key);
@@ -139,12 +144,10 @@ export async function importBlueprintFromExcel(
       return;
     }
 
-    // Ignore known non-component headers
     if (['chapter', 'section', 'topic', 'chapter_id', 'section_id'].includes(lc)) return;
     if (colNum > 1) unmatchedHeaders.push(val);
   });
 
-  // Warn about expected columns that were not found
   for (const col of COMPONENT_COLUMNS) {
     if (!matchedKeys.has(col.key)) {
       result.warnings.push(`Column "${col.label}" not found in Excel. ` +
@@ -152,7 +155,7 @@ export async function importBlueprintFromExcel(
           ? `Unmatched headers: ${unmatchedHeaders.join(', ')}`
           : 'No extra headers found.'));
       result.unmatchedColumns.push(col.label);
-      break; // one warning is enough
+      break;
     }
   }
 
@@ -160,9 +163,11 @@ export async function importBlueprintFromExcel(
   const rows: ParsedRow[] = [];
   const clears: ClearRow[] = [];
   let currentChapter: { id: string; module_id: string } | null = null;
+  let hasAmbiguousMatch = false;
 
   function processCells(
     row: ExcelJS.Row,
+    rowNum: number,
     chapterId: string,
     moduleId: string,
     sectionId: string | null,
@@ -174,7 +179,7 @@ export async function importBlueprintFromExcel(
         rows.push({
           chapter_id: chapterId, module_id: moduleId, section_id: sectionId,
           component_type: compKey, inclusion_level: parsed.level,
-          question_types: parsed.types, exam_type: examType,
+          question_types: parsed.types, exam_type: examType, sourceRow: rowNum,
         });
       } else if (!cellVal || cellVal === '—' || cellVal === '-') {
         clears.push({
@@ -190,13 +195,11 @@ export async function importBlueprintFromExcel(
     const rawLabel = String(row.getCell(1).value ?? '').trim();
     if (!rawLabel) continue;
 
-    // Skip repeated header rows / filler
     if (isSkippableRow(rawLabel)) { result.skippedRows++; continue; }
 
     const rowChapterId = chapterIdCol ? String(row.getCell(chapterIdCol).value ?? '').trim() : '';
     const rowSectionId = sectionIdCol ? String(row.getCell(sectionIdCol).value ?? '').trim() : '';
 
-    // Determine if this is a section row
     const isSection = rawLabel.startsWith('→') || rawLabel.startsWith('→');
     const isSectionByContext = !isSection && (
       (rowSectionId && rowSectionId.length > 10) ||
@@ -218,10 +221,11 @@ export async function importBlueprintFromExcel(
         continue;
       }
       if (chRes.ambiguous) {
+        hasAmbiguousMatch = true;
         result.warnings.push(`Row ${r}: Chapter "${rawLabel}" matched ambiguously to "${chRes.match.title}" (score ${(chRes.score * 100).toFixed(0)}%)`);
       }
       currentChapter = { id: chRes.match.id, module_id: chRes.match.module_id };
-      processCells(row, chRes.match.id, chRes.match.module_id, null);
+      processCells(row, r, chRes.match.id, chRes.match.module_id, null);
     } else {
       // ── Section row ──
       if (!currentChapter) {
@@ -240,32 +244,67 @@ export async function importBlueprintFromExcel(
         continue;
       }
       if (secRes.ambiguous) {
+        hasAmbiguousMatch = true;
         result.warnings.push(`Row ${r}: Section "${cleanLabel}" matched ambiguously to "${secRes.match.name}" (score ${(secRes.score * 100).toFixed(0)}%)`);
       }
-      processCells(row, currentChapter.id, currentChapter.module_id, secRes.match.id);
+      processCells(row, r, currentChapter.id, currentChapter.module_id, secRes.match.id);
     }
   }
 
-  // ── Step 4: Batch DB operations ──────────────────────────────────
-  // Preload all existing configs for affected chapters
+  // ── Step 4: Preflight validation ─────────────────────────────────
+
+  // 4a: Abort if no valid rows
+  if (rows.length === 0) {
+    result.errors.push('No valid data rows found in file. Existing data was NOT changed.');
+    return result;
+  }
+
+  // 4b: Abort Replace All if ambiguous matches detected
+  if (replaceAll && hasAmbiguousMatch) {
+    result.errors.push(
+      'Import blocked — ambiguous chapter/section matches detected. ' +
+      'For Replace All, every row must match exactly one chapter/section. ' +
+      'Use the downloaded template with hidden ID columns for reliable matching. ' +
+      'No data was changed.'
+    );
+    return result;
+  }
+
+  // 4c: Detect duplicate resolved keys (same chapter+section+component+exam)
+  const keyCount = new Map<string, number[]>(); // key → source rows
+  for (const r of rows) {
+    const k = rowKey(r);
+    const existing = keyCount.get(k) || [];
+    existing.push(r.sourceRow);
+    keyCount.set(k, existing);
+  }
+  const duplicateKeys = [...keyCount.entries()].filter(([, rows]) => rows.length > 1);
+  if (duplicateKeys.length > 0) {
+    // Deduplicate: keep last occurrence (latest row wins)
+    const seen = new Map<string, number>(); // key → index in rows[]
+    const deduped: ParsedRow[] = [];
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const k = rowKey(rows[i]);
+      if (!seen.has(k)) {
+        seen.set(k, i);
+        deduped.unshift(rows[i]);
+      }
+    }
+    const removedCount = rows.length - deduped.length;
+    rows.length = 0;
+    rows.push(...deduped);
+    result.warnings.push(
+      `${removedCount} duplicate row(s) detected and auto-merged (last value kept). ` +
+      `Affected rows: ${duplicateKeys.map(([, r]) => r.join(',')).join('; ')}`
+    );
+  }
+
+  // ── Step 5: Safe DB operations ───────────────────────────────────
   const affectedChapterIds = [...new Set(rows.map(r => r.chapter_id))];
 
-  if (replaceAll && affectedChapterIds.length > 0) {
-    for (let i = 0; i < affectedChapterIds.length; i += 50) {
-      const batch = affectedChapterIds.slice(i, i + 50);
-      const { count, error } = await supabase
-        .from('chapter_blueprint_config')
-        .delete()
-        .in('chapter_id', batch)
-        .eq('exam_type', examType);
-      if (error) result.errors.push(`Failed to clear existing configs: ${error.message}`);
-      else result.replaced += count ?? 0;
-    }
-  }
-
-  // Build existing config lookup for merge mode
+  // Load existing configs for ALL affected chapters
   const existingMap = new Map<string, string>(); // composite key → id
-  if (!replaceAll && affectedChapterIds.length > 0) {
+  if (affectedChapterIds.length > 0) {
     for (let i = 0; i < affectedChapterIds.length; i += 50) {
       const batch = affectedChapterIds.slice(i, i + 50);
       const { data: existing } = await supabase
@@ -282,41 +321,27 @@ export async function importBlueprintFromExcel(
     }
   }
 
-  // Batch inserts and updates
+  // Separate into updates vs inserts
   const toInsert: any[] = [];
   const toUpdate: { id: string; inclusion_level: string; question_types: string[] }[] = [];
+  const touchedExistingIds = new Set<string>(); // track which existing rows we touched
 
   for (const r of rows) {
-    if (replaceAll) {
+    const key = rowKey(r);
+    const existingId = existingMap.get(key);
+    if (existingId) {
+      toUpdate.push({ id: existingId, inclusion_level: r.inclusion_level, question_types: r.question_types });
+      touchedExistingIds.add(existingId);
+    } else {
       toInsert.push({
         chapter_id: r.chapter_id, module_id: r.module_id, section_id: r.section_id,
         exam_type: r.exam_type, component_type: r.component_type,
         inclusion_level: r.inclusion_level, question_types: r.question_types,
       });
-    } else {
-      const key = `${r.chapter_id}|${r.section_id ?? ''}|${r.component_type}|${r.exam_type}`;
-      const existingId = existingMap.get(key);
-      if (existingId) {
-        toUpdate.push({ id: existingId, inclusion_level: r.inclusion_level, question_types: r.question_types });
-      } else {
-        toInsert.push({
-          chapter_id: r.chapter_id, module_id: r.module_id, section_id: r.section_id,
-          exam_type: r.exam_type, component_type: r.component_type,
-          inclusion_level: r.inclusion_level, question_types: r.question_types,
-        });
-      }
     }
   }
 
-  // Batch insert in chunks of 200
-  for (let i = 0; i < toInsert.length; i += 200) {
-    const batch = toInsert.slice(i, i + 200);
-    const { error } = await supabase.from('chapter_blueprint_config').insert(batch);
-    if (error) result.errors.push(`Batch insert failed (rows ${i}-${i + batch.length}): ${error.message}`);
-    else result.upserted += batch.length;
-  }
-
-  // Batch update — still individual calls but much fewer than before
+  // Execute updates
   for (const u of toUpdate) {
     const { error } = await supabase
       .from('chapter_blueprint_config')
@@ -326,11 +351,48 @@ export async function importBlueprintFromExcel(
     else result.upserted++;
   }
 
+  // Execute inserts in chunks
+  for (let i = 0; i < toInsert.length; i += 200) {
+    const batch = toInsert.slice(i, i + 200);
+    const { error } = await supabase.from('chapter_blueprint_config').insert(batch);
+    if (error) {
+      result.errors.push(`Insert failed (rows ${i + 1}-${i + batch.length}): ${error.message}`);
+    } else {
+      result.upserted += batch.length;
+    }
+  }
+
+  // Replace All: only delete stale rows AFTER successful writes
+  if (replaceAll && result.upserted > 0) {
+    // Stale = existing rows for affected chapters that we did NOT update
+    const staleIds: string[] = [];
+    for (const [key, id] of existingMap) {
+      const chId = key.split('|')[0];
+      if (affectedChapterIds.includes(chId) && !touchedExistingIds.has(id)) {
+        staleIds.push(id);
+      }
+    }
+    if (staleIds.length > 0) {
+      for (let i = 0; i < staleIds.length; i += 200) {
+        const batch = staleIds.slice(i, i + 200);
+        const { error, count } = await supabase
+          .from('chapter_blueprint_config')
+          .delete()
+          .in('id', batch);
+        if (error) result.errors.push(`Cleanup of stale rows failed: ${error.message}`);
+        else result.replaced += count ?? batch.length;
+      }
+    }
+  } else if (replaceAll && result.upserted === 0) {
+    // All writes failed — don't delete anything
+    result.errors.push('All inserts/updates failed. Existing data was NOT deleted to prevent data loss.');
+  }
+
   // Handle clears in merge mode
   if (!replaceAll) {
     const toDelete: string[] = [];
     for (const c of clears) {
-      const key = `${c.chapter_id}|${c.section_id ?? ''}|${c.component_type}|${c.exam_type}`;
+      const key = rowKey(c);
       const existingId = existingMap.get(key);
       if (existingId) toDelete.push(existingId);
     }

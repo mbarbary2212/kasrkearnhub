@@ -264,14 +264,17 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       queryClient.invalidateQueries({ queryKey: ['chapter-blueprint-config-multi'] });
 
       const parts = [
-        replaceAll && result.replaced > 0 ? `${result.replaced} old entries removed` : '',
+        replaceAll && result.replaced > 0 ? `${result.replaced} stale entries cleaned` : '',
         `${result.upserted} imported`,
         result.cleared > 0 ? `${result.cleared} cleared` : '',
         result.skippedRows > 0 ? `${result.skippedRows} rows skipped` : '',
       ].filter(Boolean).join(', ');
 
-      // Build detailed description
+      // Build detailed description — show DB/validation errors FIRST
       const details: string[] = [];
+      if (result.errors.length > 0) {
+        details.push(...result.errors.slice(0, 3));
+      }
       if (result.unmatchedChapters.length > 0) {
         details.push(`Unmatched chapters: ${result.unmatchedChapters.slice(0, 3).join(', ')}${result.unmatchedChapters.length > 3 ? ` (+${result.unmatchedChapters.length - 3} more)` : ''}`);
       }
@@ -285,13 +288,21 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
         details.push(...result.warnings.slice(0, 2));
       }
 
-      const hasIssues = result.errors.length > 0 || result.warnings.length > 0 ||
-        result.unmatchedChapters.length > 0 || result.unmatchedSections.length > 0;
-
-      if (hasIssues) {
-        toast.warning(`Imported (${parts}) with ${result.errors.length + result.warnings.length} issue(s)`, {
+      // Determine toast level
+      if (result.upserted === 0) {
+        toast.error('Import blocked — no data was changed', {
+          description: details.slice(0, 4).join('. ') || 'Check your file format and column headers. Tip: use the downloaded template with hidden ID columns.',
+          duration: 15000,
+        });
+      } else if (result.errors.length > 0) {
+        toast.warning(`Import partially applied (${parts})`, {
           description: details.slice(0, 4).join('. '),
           duration: 12000,
+        });
+      } else if (result.warnings.length > 0) {
+        toast.warning(`Imported (${parts}) with ${result.warnings.length} warning(s)`, {
+          description: details.slice(0, 4).join('. '),
+          duration: 10000,
         });
       } else {
         toast.success(`Blueprint import complete: ${parts}`);

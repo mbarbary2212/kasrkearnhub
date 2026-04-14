@@ -5555,8 +5555,10 @@ export type Database = {
       }
       student_goals: {
         Row: {
+          ambition_hint_dismissed: boolean
           ambition_level: string | null
           created_at: string
+          daily_hours: number | null
           exam_schedule: Json | null
           goals_onboarding_shown: boolean | null
           id: string
@@ -5567,8 +5569,10 @@ export type Database = {
           weekend_hours: number | null
         }
         Insert: {
+          ambition_hint_dismissed?: boolean
           ambition_level?: string | null
           created_at?: string
+          daily_hours?: number | null
           exam_schedule?: Json | null
           goals_onboarding_shown?: boolean | null
           id?: string
@@ -5579,8 +5583,10 @@ export type Database = {
           weekend_hours?: number | null
         }
         Update: {
+          ambition_hint_dismissed?: boolean
           ambition_level?: string | null
           created_at?: string
+          daily_hours?: number | null
           exam_schedule?: Json | null
           goals_onboarding_shown?: boolean | null
           id?: string

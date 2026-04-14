@@ -25,6 +25,16 @@ setupVersionGuard();
 // Triggers one-time reload if core UI failed to initialize
 setupStartupHealthCheck(defaultHealthCheck, 3000);
 
+// Apply appearance preferences before first render to avoid flash
+const _density = localStorage.getItem('kalm_density_preference');
+if (_density === 'compact') {
+  document.documentElement.classList.add('density-compact');
+}
+const _fontScale = localStorage.getItem('kalm_font_size');
+if (_fontScale) {
+  document.documentElement.style.setProperty('--app-font-scale', _fontScale);
+}
+
 // Initialize Sentry + Better Stack error monitoring (production only)
 initSentry();
 

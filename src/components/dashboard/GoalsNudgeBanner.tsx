@@ -24,7 +24,7 @@ export function GoalsNudgeBanner() {
         </p>
       </div>
       <button
-        onClick={() => navigate('/student-settings?tab=goals')}
+        onClick={() => navigate('/progress?tab=goals')}
         className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 whitespace-nowrap"
       >
         Go to Settings <ArrowRight className="w-3.5 h-3.5" />

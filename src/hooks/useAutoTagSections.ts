@@ -22,7 +22,8 @@ type ContentTable = typeof CONTENT_TABLES[number];
 
 /** Columns to fetch per table for rich AI content analysis */
 const CONTENT_COLUMNS: Record<ContentTable, string[]> = {
-  lectures: ['title'],
+  // Also fetch video_url + youtube_video_id for YouTube-aware section analysis in the edge function
+  lectures: ['title', 'video_url', 'youtube_video_id'],
   resources: ['title'],
   study_resources: ['title'],
   mcqs: ['stem', 'explanation'],
@@ -46,6 +47,7 @@ interface UnmatchedItem {
   id: string;
   content: string;
   table: string;
+  youtube_video_id?: string;
 }
 
 /** Build a select string that includes id + all content columns */
@@ -54,12 +56,16 @@ function buildSelect(table: ContentTable): string {
   return ['id', ...cols].join(', ');
 }
 
+/** Columns that should be excluded from the text content string (used as structured fields instead) */
+const NON_CONTENT_COLS = new Set(['video_url', 'youtube_video_id']);
+
 /** Concatenate content columns from a row into a single string */
 function extractContent(row: any, table: ContentTable): string {
   const cols = CONTENT_COLUMNS[table];
   const parts: string[] = [];
 
   for (const col of cols) {
+    if (NON_CONTENT_COLS.has(col)) continue;
     const val = row[col];
     if (val && typeof val === 'string' && val.trim()) {
       parts.push(val.trim());
@@ -74,6 +80,20 @@ function extractContent(row: any, table: ContentTable): string {
   }
 
   return parts.join(' | ').substring(0, 500);
+}
+
+/** Extract a YouTube video ID from a row (prefers explicit field, falls back to URL parsing) */
+function extractYouTubeId(row: any): string | null {
+  if (row.youtube_video_id && typeof row.youtube_video_id === 'string') {
+    return row.youtube_video_id.trim();
+  }
+  const url: string = row.video_url || '';
+  if (!url) return null;
+  // Match standard YouTube URL patterns
+  const m = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  return m ? m[1] : null;
 }
 
 export function useAutoTagSections() {
@@ -132,10 +152,12 @@ export function useAutoTagSections() {
         for (const item of items) {
           const content = extractContent(item, table);
           if (content) {
+            const ytId = table === 'lectures' ? extractYouTubeId(item) : null;
             allUnmatched.push({
               id: item.id,
               content: content.substring(0, 500),
               table,
+              ...(ytId ? { youtube_video_id: ytId } : {}),
             });
           }
         }
@@ -144,7 +166,12 @@ export function useAutoTagSections() {
       // ── AI matching pass ──
       let aiTagged = 0;
       if (allUnmatched.length > 0) {
-        setProgress(`AI analyzing ${allUnmatched.length} items...`);
+        const ytCount = allUnmatched.filter(i => i.youtube_video_id).length;
+        const progressMsg = ytCount > 0
+          ? `Analyzing ${ytCount} YouTube video${ytCount > 1 ? 's' : ''} + ${allUnmatched.length - ytCount} other items with AI...`
+          : `AI analyzing ${allUnmatched.length} items...`;
+        setProgress(progressMsg);
+
 
         try {
           const response = await supabase.functions.invoke('ai-auto-tag-sections', {

@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { BulkSectionAssignment, AutoTagSectionsButton } from '@/components/sections';
+import { BulkSectionAssignment, AutoTagSectionsButton, AutoTagYouTubeButton } from '@/components/sections';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LecturesAdminTable } from './LecturesAdminTable';
@@ -513,7 +513,7 @@ export function LectureList({
         </div>
       )}
 
-      {/* Admin View Toggle */}
+      {/* Admin View Toggle + YouTube AI Assign button */}
       {canManage && (
         <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <div className="flex items-center gap-2">
@@ -540,7 +540,10 @@ export function LectureList({
               </>
             )}
           </div>
-          <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+          <div className="flex items-center gap-2">
+            {chapterId && <AutoTagYouTubeButton chapterId={chapterId} lectures={filteredLectures} />}
+            <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
+          </div>
         </div>
       )}
 

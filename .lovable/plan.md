@@ -1,56 +1,45 @@
 
 
-## Three fixes for the Blueprint page
+## Remove duplicate sections and prevent future duplicates
 
-### Issue 1 — Sticky table header
-The `<thead>` in `ChapterBlueprintSubtab.tsx` (line 390-398) has no sticky positioning. When you scroll down, "Chapter / MCQ / Recall / Case / OSCE / Long Case / Paraclinical" disappears.
+### Current state
 
-**Fix**: Add `sticky top-0 z-10 bg-background` to the `<thead>` element so it stays pinned while the table body scrolls.
+There are **45 duplicate section groups** across multiple chapters — same name in the same chapter. The duplicate (later-created) sections have real content attached: 111 MCQs, 4 blueprint configs, 1 mind map, and 4 study resources. This content must be reassigned to the keeper section before deleting duplicates.
 
-**File**: `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`
+Additionally, some chapters have multiple different sections sharing the same `section_number` (e.g., chapter `81aa5e42` has 6 different sections all numbered "7.1"). These are not name-duplicates but numbering collisions — they need flagging, not deletion.
 
----
+### Plan
 
-### Issue 2 — Changes not visible until refresh
-This is a **query key mismatch** bug. When you click a cell and set a level (H/A/L), the mutation in `useChapterBlueprintConfig.ts` invalidates:
-```
-['chapter-blueprint-config', variables.module_id]
-```
+**Step 1 — Migration: Reassign content and delete duplicates**
 
-But the table in `ChapterBlueprintSubtab.tsx` fetches configs using a **different** query key:
-```
-['chapter-blueprint-config-multi', ...configModuleIds]
-```
+A single SQL migration that:
+1. For each duplicate group (same `chapter_id` + `LOWER(TRIM(name))`), keeps the earliest-created section as the "keeper"
+2. Reassigns all child records from duplicate sections to the keeper: `mcqs`, `chapter_blueprint_config`, `mind_maps`, `study_resources`, `case_scenarios`, `concepts`, `essays`, `matching_questions`, `mcq_sets`, `osce_questions`, `practicals`, `resources`, `true_false_questions`, `virtual_patient_cases`, `interactive_algorithms`, `lecture_sections`, `lectures`
+3. Deletes the duplicate sections
+4. Adds a **unique index** on `sections(chapter_id, LOWER(TRIM(name)))` to prevent future name duplicates within a chapter
+5. Same for topic sections: unique index on `sections(topic_id, LOWER(TRIM(name)))` where `topic_id IS NOT NULL`
 
-Since the keys don't match, the table never refetches after a change. You have to manually refresh the page.
+**Step 2 — Frontend: duplicate guard on section creation**
 
-**Fix**: Update the `onSuccess` callbacks in both `useUpsertChapterBlueprintConfig` and `useDeleteChapterBlueprintConfig` to also invalidate the `-multi` variant:
-```typescript
-qc.invalidateQueries({ queryKey: ['chapter-blueprint-config'] }); // invalidate all variants
-```
+File: `src/hooks/useSections.ts`
 
-**File**: `src/hooks/useChapterBlueprintConfig.ts`
+In `useCreateSection`, before inserting, query for an existing section with the same normalized name in the same chapter/topic. If found, show a toast error "A section with this name already exists" and abort.
 
----
+File: `src/hooks/useExtractSections.ts`
 
-### Issue 3 — Tab resets on refresh/return
-`AdminPage.tsx` reads the `?tab=` URL param on load, but when you navigate within tabs, the URL doesn't update. So refreshing or returning drops you back to the default tab.
+In the AI/PDF extraction insert flow, add a conflict-handling approach: filter out sections whose names already exist in the chapter before inserting.
 
-**Fix**: 
-- When `activeTab` changes, update the URL search param (`?tab=blueprint`) using `setSearchParams` so the browser remembers it.
-- This way, refreshing or navigating back restores the last active tab automatically — no localStorage needed, the URL is the source of truth.
+**Step 3 — Admin UI: flag potential duplicates (section number collisions)**
 
-**File**: `src/pages/AdminPage.tsx`
+File: `src/hooks/useSections.ts`
 
----
+Add a utility hook `useSectionDuplicateWarnings(chapterId)` that returns section IDs with duplicate `section_number` values. This is informational only — shown as a warning icon in the section list.
 
-### Summary of changes
+### Files to modify
 
 | File | Change |
 |------|--------|
-| `ChapterBlueprintSubtab.tsx` | Add `sticky top-0 z-10 bg-background` to `<thead>` |
-| `useChapterBlueprintConfig.ts` | Broaden query invalidation to cover all `chapter-blueprint-config` variants |
-| `AdminPage.tsx` | Sync `activeTab` to URL `?tab=` param on change |
-
-Three small, targeted fixes. No new files needed.
+| New migration SQL | Reassign content, delete dupes, add unique indexes |
+| `src/hooks/useSections.ts` | Duplicate name check before insert; duplicate-number warning hook |
+| `src/hooks/useExtractSections.ts` | Filter duplicates before bulk insert |
 
