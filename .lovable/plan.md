@@ -1,59 +1,54 @@
 
+Current diagnosis
 
-## Blueprint Import: "Replace All" erases data even when import produces 0 rows
+- The importer is still unsafe in Replace All mode. In `src/components/admin/blueprint/blueprintExcelImport.ts`, it deletes existing `chapter_blueprint_config` rows first, then tries to insert the new rows.
+- Your screenshot points to a second bug in matching: `src/lib/blueprintImportMatching.ts` strips numeric prefixes before section matching, so labels like `2.1. Electrolyte Imbalance` and `Electrolyte imbalance` can collapse to the same normalized text. That can make two Excel rows resolve to the same `(chapter_id, section_id, exam_type, component_type)` key.
+- The table has a unique index on that composite key, so one duplicate target row can make the whole insert batch fail. Because Replace All already deleted the old rows, the chapter ends up blank.
+- The toast in `ChapterBlueprintSubtab.tsx` currently favors warnings/details over the real DB failure, so you mainly see the ambiguity messages instead of the actual insert error.
 
-### Root cause
+Plan to fix
 
-The `importBlueprintFromExcel` function in `blueprintExcelImport.ts` has a dangerous sequence when `replaceAll=true`:
+1. Make section matching deterministic
+- Update `matchSection()` to extract and prefer visible section numbers from the label before aggressive normalization.
+- Keep using hidden `section_id` when it exists, but make the visible label robust enough that edited/re-uploaded files still match correctly.
+- If a section is still ambiguous, treat it as a hard validation error for Replace All instead of a warning.
 
-1. Parse all rows from Excel
-2. Collect `affectedChapterIds` from successfully parsed rows
-3. **DELETE all existing configs** for those chapters (line 253-264)
-4. INSERT the new parsed rows (line 312-317)
+2. Add a preflight validation pass before any writes
+- In `blueprintExcelImport.ts`, build a `desiredMap` keyed by `chapter_id|section_id|component_type|exam_type`.
+- Detect duplicate resolved keys inside the uploaded file and report the exact source rows causing the collision.
+- If Replace All has any ambiguous matches, duplicate resolved keys, or zero valid rows, abort immediately with “no data changed”.
 
-The problem: if the Excel cells contain values that chapters match on (so `processCells` runs and `affectedChapterIds` gets populated via the `clears` path or even a few valid cells), but the INSERT step fails (DB constraint error, or the parsed values don't produce valid rows), the DELETE has already wiped the data. Result: 0 imported, all old data gone.
+3. Rewrite Replace All so it is not destructive
+- Remove the delete-first flow.
+- Load existing configs for the affected chapters first.
+- For each desired key: update existing rows when the key already exists, insert only genuinely new rows.
+- Only after successful writes for a chapter, delete stale rows that are not present in the uploaded file.
+- If any chapter fails validation or write operations, skip deletion for that chapter so existing data stays intact.
 
-From your screenshot: "Imported (0 imported) with 123 issue(s)" — the 123 issues are ambiguous section matches. The chapters matched (triggering deletes), but something about the cell values or insert failed, leaving 0 rows imported.
+4. Fix user feedback
+- In `ChapterBlueprintSubtab.tsx`, show real validation/database errors first, not just fuzzy-match warnings.
+- Change the failure copy so it distinguishes:
+  - “Import blocked — no data was changed”
+  - vs. “Import partially applied”
+- Add a short note in the upload flow that the safest workflow is to edit the downloaded template and keep the hidden ID columns intact.
 
-### The fix
+5. Verify against the exact failure you hit
+- Re-test with the same workbook that produced rows 10 and 11 ambiguity.
+- Test these cases:
+  - exported file re-uploaded unchanged
+  - exported file with edited values
+  - Replace All with an ambiguous/duplicate section name
+  - Merge with partial edits
+- Confirm that failed imports leave existing blueprint data untouched.
 
-Add a **safety check** before the delete step: if `replaceAll` is true but `rows.length === 0` (nothing valid to insert), abort the operation and return an error instead of deleting everything.
+Files to update
 
-Additionally, restructure the Replace All flow to **insert first, then delete old rows** that weren't just inserted. This way, if inserts fail, old data survives.
+- `src/lib/blueprintImportMatching.ts`
+- `src/components/admin/blueprint/blueprintExcelImport.ts`
+- `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`
 
-### File: `src/components/admin/blueprint/blueprintExcelImport.ts`
+Expected result
 
-**Change 1** — After row parsing (line 248), before the delete block (line 253), add a guard:
-
-```typescript
-// Safety: if Replace All but nothing to insert, abort — don't wipe data
-if (replaceAll && rows.length === 0) {
-  result.errors.push('No valid data rows found in file. Existing data was NOT deleted.');
-  return result;
-}
-```
-
-**Change 2** — Restructure Replace All to be insert-then-delete:
-
-Instead of deleting all configs first and then inserting, do:
-1. Insert all new rows first (with a unique `import_batch` or just collect their IDs)
-2. Only after inserts succeed, delete the old rows that weren't part of this import
-
-Since we can't easily track "old vs new" without transactions, the simpler safe approach is:
-- Keep the current delete-then-insert order BUT only proceed with the delete if `rows.length > 0`
-- Add a secondary check: if all inserts fail (upserted stays 0 after the insert loop), log a prominent error
-
-**Change 3** — In `ChapterBlueprintSubtab.tsx`, improve the toast for the 0-imported case:
-
-When `result.upserted === 0 && replaceAll`, show a clear error: "Import failed — no rows were imported. Check your file format."
-
-### Summary
-
-| What | Where |
-|------|-------|
-| Add `rows.length === 0` guard before delete | `blueprintExcelImport.ts` line ~251 |
-| Add post-insert check for 0 upserted after delete | `blueprintExcelImport.ts` line ~318 |
-| Improve error toast for 0-imported Replace All | `ChapterBlueprintSubtab.tsx` line ~288 |
-
-Two small changes that prevent data loss. No schema changes, no new files.
-
+- Re-uploading a valid edited blueprint will import correctly.
+- Ambiguous or duplicate files will be rejected before any delete happens.
+- Replace All will no longer wipe existing blueprint data when the new file is invalid.
