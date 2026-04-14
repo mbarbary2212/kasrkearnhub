@@ -25,11 +25,11 @@ interface LearningHubTabsProps {
 export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYearName, selectedYearId, selectedModuleId, onNavigate }: LearningHubTabsProps) {
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const defaultTab = (tabFromUrl && ['overview', 'study-plan', 'unlocks'].includes(tabFromUrl)) ? tabFromUrl : 'overview';
+  const defaultTab = (tabFromUrl && ['overview', 'study-plan'].includes(tabFromUrl)) ? tabFromUrl : 'overview';
 
   return (
     <Tabs defaultValue={defaultTab} className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-6 bg-transparent p-1 gap-2">
+      <TabsList className="grid w-full grid-cols-2 mb-6 bg-transparent p-1 gap-2">
         <TabsTrigger 
           value="overview" 
           className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
@@ -40,13 +40,7 @@ export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYe
           value="study-plan"
           className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
         >
-          Study Plan
-        </TabsTrigger>
-        <TabsTrigger 
-          value="unlocks"
-          className="bg-primary/10 text-muted-foreground border border-primary/20 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
-        >
-          Unlocks
+          Daily Coach
         </TabsTrigger>
       </TabsList>
 
@@ -69,12 +63,6 @@ export function LearningHubTabs({ dashboard, moduleSelected, modules, selectedYe
         />
       </TabsContent>
 
-      <TabsContent value="unlocks" className="space-y-6">
-        <LearningHubUnlocks 
-          dashboard={dashboard} 
-          moduleSelected={moduleSelected}
-        />
-      </TabsContent>
     </Tabs>
   );
 }
