@@ -130,11 +130,10 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
 
         // Write to lecture_sections junction table
         // Delete existing then re-insert (same pattern as useSetLectureSections)
-        await supabase.from('lecture_sections').delete().eq('lecture_id', item.id);
+        await (supabase.from as any)('lecture_sections').delete().eq('lecture_id', item.id);
 
         if (validSectionIds.length > 0) {
-          await supabase
-            .from('lecture_sections')
+          await (supabase.from as any)('lecture_sections')
             .insert(validSectionIds.map((section_id) => ({ lecture_id: item.id, section_id })));
         }
 
