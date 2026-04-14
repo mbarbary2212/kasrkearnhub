@@ -288,7 +288,12 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       const hasIssues = result.errors.length > 0 || result.warnings.length > 0 ||
         result.unmatchedChapters.length > 0 || result.unmatchedSections.length > 0;
 
-      if (hasIssues) {
+      if (result.upserted === 0 && replaceAll) {
+        toast.error('Import failed — no rows were imported. Existing data may have been cleared. Check your file format and column headers.', {
+          description: details.slice(0, 4).join('. ') || result.errors.slice(0, 2).join('. '),
+          duration: 15000,
+        });
+      } else if (hasIssues) {
         toast.warning(`Imported (${parts}) with ${result.errors.length + result.warnings.length} issue(s)`, {
           description: details.slice(0, 4).join('. '),
           duration: 12000,

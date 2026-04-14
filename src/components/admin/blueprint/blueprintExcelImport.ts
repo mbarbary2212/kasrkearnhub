@@ -247,6 +247,13 @@ export async function importBlueprintFromExcel(
   }
 
   // ── Step 4: Batch DB operations ──────────────────────────────────
+
+  // Safety: if Replace All but nothing valid to insert, abort — don't wipe data
+  if (replaceAll && rows.length === 0) {
+    result.errors.push('No valid data rows found in file. Existing data was NOT deleted.');
+    return result;
+  }
+
   // Preload all existing configs for affected chapters
   const affectedChapterIds = [...new Set(rows.map(r => r.chapter_id))];
 
