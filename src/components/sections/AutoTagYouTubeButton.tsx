@@ -84,7 +84,13 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
       });
 
       if (response.error) {
-        throw new Error(response.error.message ?? 'Edge function error');
+        const errorCode = (response.data as any)?.errorCode;
+        if (errorCode === 'NO_GOOGLE_API_KEY') {
+          toast.error('YouTube analysis requires a Google API key. Ask your platform admin to set GOOGLE_API_KEY in Supabase Edge Function secrets.');
+        } else {
+          throw new Error(response.error.message ?? 'Edge function error');
+        }
+        return;
       }
 
       // assignments can be:
@@ -145,7 +151,7 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
 
       if (assigned === 0) {
         toast.warning(
-          `Gemini couldn't confidently assign any of the ${ytLectures.length} videos. Try assigning manually.`
+          `Gemini analyzed ${ytLectures.length} video${ytLectures.length > 1 ? 's' : ''} but couldn't match them to your sections. Check that section names relate to the video topics.`
         );
       } else {
         toast.success(
@@ -154,7 +160,7 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
       }
     } catch (err) {
       console.error('[AutoTagYouTube] Error:', err);
-      toast.error('Failed to assign sections to YouTube lectures.');
+      toast.error('Could not reach the AI service. Check the browser console for details.');
     } finally {
       setIsRunning(false);
       setProgress('');
