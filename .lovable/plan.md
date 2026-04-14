@@ -1,54 +1,45 @@
 
-Current diagnosis
 
-- The importer is still unsafe in Replace All mode. In `src/components/admin/blueprint/blueprintExcelImport.ts`, it deletes existing `chapter_blueprint_config` rows first, then tries to insert the new rows.
-- Your screenshot points to a second bug in matching: `src/lib/blueprintImportMatching.ts` strips numeric prefixes before section matching, so labels like `2.1. Electrolyte Imbalance` and `Electrolyte imbalance` can collapse to the same normalized text. That can make two Excel rows resolve to the same `(chapter_id, section_id, exam_type, component_type)` key.
-- The table has a unique index on that composite key, so one duplicate target row can make the whole insert batch fail. Because Replace All already deleted the old rows, the chapter ends up blank.
-- The toast in `ChapterBlueprintSubtab.tsx` currently favors warnings/details over the real DB failure, so you mainly see the ambiguity messages instead of the actual insert error.
+## Remove duplicate sections and prevent future duplicates
 
-Plan to fix
+### Current state
 
-1. Make section matching deterministic
-- Update `matchSection()` to extract and prefer visible section numbers from the label before aggressive normalization.
-- Keep using hidden `section_id` when it exists, but make the visible label robust enough that edited/re-uploaded files still match correctly.
-- If a section is still ambiguous, treat it as a hard validation error for Replace All instead of a warning.
+There are **45 duplicate section groups** across multiple chapters — same name in the same chapter. The duplicate (later-created) sections have real content attached: 111 MCQs, 4 blueprint configs, 1 mind map, and 4 study resources. This content must be reassigned to the keeper section before deleting duplicates.
 
-2. Add a preflight validation pass before any writes
-- In `blueprintExcelImport.ts`, build a `desiredMap` keyed by `chapter_id|section_id|component_type|exam_type`.
-- Detect duplicate resolved keys inside the uploaded file and report the exact source rows causing the collision.
-- If Replace All has any ambiguous matches, duplicate resolved keys, or zero valid rows, abort immediately with “no data changed”.
+Additionally, some chapters have multiple different sections sharing the same `section_number` (e.g., chapter `81aa5e42` has 6 different sections all numbered "7.1"). These are not name-duplicates but numbering collisions — they need flagging, not deletion.
 
-3. Rewrite Replace All so it is not destructive
-- Remove the delete-first flow.
-- Load existing configs for the affected chapters first.
-- For each desired key: update existing rows when the key already exists, insert only genuinely new rows.
-- Only after successful writes for a chapter, delete stale rows that are not present in the uploaded file.
-- If any chapter fails validation or write operations, skip deletion for that chapter so existing data stays intact.
+### Plan
 
-4. Fix user feedback
-- In `ChapterBlueprintSubtab.tsx`, show real validation/database errors first, not just fuzzy-match warnings.
-- Change the failure copy so it distinguishes:
-  - “Import blocked — no data was changed”
-  - vs. “Import partially applied”
-- Add a short note in the upload flow that the safest workflow is to edit the downloaded template and keep the hidden ID columns intact.
+**Step 1 — Migration: Reassign content and delete duplicates**
 
-5. Verify against the exact failure you hit
-- Re-test with the same workbook that produced rows 10 and 11 ambiguity.
-- Test these cases:
-  - exported file re-uploaded unchanged
-  - exported file with edited values
-  - Replace All with an ambiguous/duplicate section name
-  - Merge with partial edits
-- Confirm that failed imports leave existing blueprint data untouched.
+A single SQL migration that:
+1. For each duplicate group (same `chapter_id` + `LOWER(TRIM(name))`), keeps the earliest-created section as the "keeper"
+2. Reassigns all child records from duplicate sections to the keeper: `mcqs`, `chapter_blueprint_config`, `mind_maps`, `study_resources`, `case_scenarios`, `concepts`, `essays`, `matching_questions`, `mcq_sets`, `osce_questions`, `practicals`, `resources`, `true_false_questions`, `virtual_patient_cases`, `interactive_algorithms`, `lecture_sections`, `lectures`
+3. Deletes the duplicate sections
+4. Adds a **unique index** on `sections(chapter_id, LOWER(TRIM(name)))` to prevent future name duplicates within a chapter
+5. Same for topic sections: unique index on `sections(topic_id, LOWER(TRIM(name)))` where `topic_id IS NOT NULL`
 
-Files to update
+**Step 2 — Frontend: duplicate guard on section creation**
 
-- `src/lib/blueprintImportMatching.ts`
-- `src/components/admin/blueprint/blueprintExcelImport.ts`
-- `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx`
+File: `src/hooks/useSections.ts`
 
-Expected result
+In `useCreateSection`, before inserting, query for an existing section with the same normalized name in the same chapter/topic. If found, show a toast error "A section with this name already exists" and abort.
 
-- Re-uploading a valid edited blueprint will import correctly.
-- Ambiguous or duplicate files will be rejected before any delete happens.
-- Replace All will no longer wipe existing blueprint data when the new file is invalid.
+File: `src/hooks/useExtractSections.ts`
+
+In the AI/PDF extraction insert flow, add a conflict-handling approach: filter out sections whose names already exist in the chapter before inserting.
+
+**Step 3 — Admin UI: flag potential duplicates (section number collisions)**
+
+File: `src/hooks/useSections.ts`
+
+Add a utility hook `useSectionDuplicateWarnings(chapterId)` that returns section IDs with duplicate `section_number` values. This is informational only — shown as a warning icon in the section list.
+
+### Files to modify
+
+| File | Change |
+|------|--------|
+| New migration SQL | Reassign content, delete dupes, add unique indexes |
+| `src/hooks/useSections.ts` | Duplicate name check before insert; duplicate-number warning hook |
+| `src/hooks/useExtractSections.ts` | Filter duplicates before bulk insert |
+
