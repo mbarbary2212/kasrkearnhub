@@ -36,7 +36,7 @@ export function resolveColumnAlias(rawHeader: string): string | null {
 // ─── Text normalization ────────────────────────────────────────────
 const EMOJI_RE = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}\u2705\u274C\u26A0\uFE0F✅❌⚠️🔴🟢🟡✓✔☑️→→]/gu;
 const PREFIX_RE = /^(ch\.?\s*\d+\s*[:\-–—]\s*)/i;
-const NUMERIC_PREFIX_RE = /^\d+(\.\d+)*\.?\s*/;
+const HIERARCHICAL_PREFIX_RE = /^\d+(?:\.(?:\d+|[a-z]+))*\.?\s*/i;
 const NOISE_RE = /[^a-z0-9\s]/g;
 
 /**
@@ -48,11 +48,16 @@ export function normalizeText(raw: string): string {
     .replace(EMOJI_RE, '')
     .replace(PREFIX_RE, '')
     .replace(/^[→→•·\-–—]\s*/, '')
-    .replace(NUMERIC_PREFIX_RE, '')
+    .replace(HIERARCHICAL_PREFIX_RE, '')
     .replace(NOISE_RE, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+function normalizeSectionNumber(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  return raw.trim().replace(/\.$/, '').toLowerCase();
 }
 
 /**
@@ -61,8 +66,8 @@ export function normalizeText(raw: string): string {
  */
 export function extractSectionNumber(raw: string): string | null {
   const cleaned = raw.replace(EMOJI_RE, '').replace(/^[→→•·\-–—]\s*/, '').trim();
-  const m = cleaned.match(/^(\d+(?:\.\d+)+)\.?\s/);
-  return m ? m[1] : null;
+  const m = cleaned.match(/^(\d+(?:\.(?:\d+|[A-Za-z]+))+)\.?\s/i);
+  return normalizeSectionNumber(m?.[1] ?? null);
 }
 
 // ─── Simple similarity scoring ─────────────────────────────────────
@@ -189,9 +194,14 @@ export function matchSection(
   // Priority: try to match by visible section number first (e.g. "2.1")
   const labelSecNum = extractSectionNumber(label);
   if (labelSecNum) {
-    const byNum = sections.filter(s => s.section_number === labelSecNum);
+    const byNum = sections.filter(s => normalizeSectionNumber(s.section_number) === labelSecNum);
     if (byNum.length === 1) {
       return { match: byNum[0], score: 0.98, ambiguous: false };
+    }
+
+    const exactNameMatch = byNum.find(s => normalizeText(s.name) === normalizeText(label));
+    if (exactNameMatch) {
+      return { match: exactNameMatch, score: 0.99, ambiguous: false };
     }
   }
 
