@@ -20,6 +20,8 @@ export interface StudentGoals {
   ambition_level: string | null;
   weekday_hours: number | null;
   weekend_hours: number | null;
+  daily_hours: number | null;
+  ambition_hint_dismissed: boolean;
   exam_schedule: ExamEntry[];
   rotation_schedule: RotationEntry[];
   goals_onboarding_shown: boolean;
@@ -48,6 +50,8 @@ export function useStudentGoals() {
         exam_schedule: (data.exam_schedule as unknown as ExamEntry[]) ?? [],
         rotation_schedule: (data.rotation_schedule as unknown as RotationEntry[]) ?? [],
         goals_onboarding_shown: data.goals_onboarding_shown ?? false,
+        daily_hours: (data as any).daily_hours ?? null,
+        ambition_hint_dismissed: (data as any).ambition_hint_dismissed ?? false,
       } as StudentGoals;
     },
   });
@@ -78,7 +82,7 @@ export function computeGoalsProgress(goals: StudentGoals | null): number {
   if (!goals) return 0;
   let pct = 0;
   if (goals.ambition_level) pct += 30;
-  if (goals.weekday_hours != null && goals.weekend_hours != null) pct += 30;
+  if (goals.daily_hours != null) pct += 30;
   if (goals.exam_schedule.length > 0) pct += 20;
   if (goals.rotation_schedule.length > 0) pct += 20;
   return pct;

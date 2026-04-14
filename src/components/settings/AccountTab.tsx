@@ -1,9 +1,32 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Mail, KeyRound } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function AccountTab() {
-  const { user } = useAuthContext();
+  const { user, profile } = useAuthContext();
+  const [resetCooldown, setResetCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+    const timer = setInterval(() => setResetCooldown(prev => prev - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resetCooldown]);
+
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+      if (error) throw error;
+      toast.success('Check your inbox for a reset link');
+      setResetCooldown(60);
+    } catch {
+      toast.error('Failed to send reset email');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -15,12 +38,35 @@ export function AccountTab() {
           </CardTitle>
           <CardDescription>Your account details</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Full name</p>
+            <p className="text-sm font-medium">{profile?.full_name ?? '—'}</p>
+          </div>
           <div>
             <p className="text-xs text-muted-foreground">Email</p>
             <p className="text-sm font-medium">{user?.email ?? '—'}</p>
           </div>
-          <p className="text-sm text-muted-foreground">More account settings coming soon.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <KeyRound className="h-4 w-4" />
+            Password
+          </CardTitle>
+          <CardDescription>Reset your password via email</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            onClick={handleResetPassword}
+            disabled={resetCooldown > 0 || !user?.email}
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            {resetCooldown > 0 ? `Sent — wait ${resetCooldown}s` : 'Send Password Reset Email'}
+          </Button>
         </CardContent>
       </Card>
     </div>
