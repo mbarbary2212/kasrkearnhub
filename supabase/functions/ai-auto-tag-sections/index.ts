@@ -86,23 +86,22 @@ async function analyzeYouTubeVideos(
   for (const item of ytItems) {
     const youtubeUrl = `https://www.youtube.com/watch?v=${item.youtube_video_id}`;
 
-    const prompt = `You are a curriculum organizer for a medical education platform.
-
-Watch this YouTube video and determine which ONE section from the list below best describes the primary topic of the video.
+    const prompt = `You are a medical curriculum expert.
+Watch this YouTube video and determine which existing sections from the list below are covered IN DETAIL.
 
 SECTIONS:
 ${sectionList}
 
 RULES:
-1. Watch the video carefully and understand its main medical/educational content.
-2. Pick the SINGLE most relevant section. If the video clearly spans multiple sections, pick the PRIMARY one.
-3. Consider the clinical concept, medical topic, and learning objectives when matching.
-4. You MUST assign the video to a section. Never return null.
+1. Watch the video carefully. Focus on clinical and educational depth.
+2. DETAILED COVERAGE ONLY: Only include a section if it is a primary topic of discussion. If the video spends significant time explaining or demonstrating the section's topic, include it.
+3. EXCLUDE BRIEF MENTIONS: If a section's topic is only mentioned in passing, as a side-note, or as a quick comparison, DO NOT include it.
+4. If a video is actually a comprehensive review covering multiple sections (e.g., 5-6 topics) with significant detail for each, you SHOULD include all of them.
 5. Provide a confidence level: "high", "medium", or "low".
-6. Return ONLY a JSON object. No explanation, no markdown.
+6. Return raw JSON only.
 
-RESPONSE FORMAT (raw JSON):
-{"section_id": "the-section-uuid-here", "confidence": "high"}`;
+RESPONSE FORMAT:
+{"section_ids": ["uuid-1", "uuid-2"], "confidence": "high"}`;
 
     try {
       const response = await fetch(
@@ -129,7 +128,7 @@ RESPONSE FORMAT (raw JSON):
               },
             ],
             generationConfig: {
-              temperature: 0.1,
+              temperature: 0,
               maxOutputTokens: 256,
             },
           }),
@@ -159,31 +158,29 @@ RESPONSE FORMAT (raw JSON):
         cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
       }
 
-      let parsed: { section_id?: string; confidence?: string } | null = null;
+      let parsed: { section_ids?: string[]; section_id?: string; confidence?: string } | null = null;
       try {
         parsed = JSON.parse(cleaned);
       } catch {
-        // Try to extract with regex
-        const m = cleaned.match(/"section_id"\s*:\s*"([^"]+)"/) ;
-        const c = cleaned.match(/"confidence"\s*:\s*"(high|medium|low)"/);
-        if (m) parsed = { section_id: m[1], confidence: c?.[1] ?? "medium" };
+        // Simple fallback
+        const m = cleaned.match(/"section_ids"\s*:\s*\[([^\]]+)\]/);
+        if (m) {
+          const ids = m[1].replace(/["\s]/g, "").split(",");
+          parsed = { section_ids: ids, confidence: "medium" };
+        }
       }
 
-      if (parsed?.section_id) {
-        const validSection = sections.find((s) => s.id === parsed!.section_id);
-        if (validSection) {
-          assignments[item.id] = {
-            section_id: parsed.section_id,
-            confidence: parsed.confidence ?? "medium",
-          };
-          console.log(
-            `[youtube-analysis] Assigned video ${item.youtube_video_id} → section "${validSection.name}" (${parsed.confidence})`
-          );
-        } else {
-          console.warn(
-            `[youtube-analysis] Invalid section_id returned for video ${item.youtube_video_id}: ${parsed.section_id}`
-          );
-        }
+      const validIds = (parsed?.section_ids || (parsed?.section_id ? [parsed.section_id] : []))
+        .filter(sid => sections.some(s => s.id === sid));
+
+      if (validIds.length > 0) {
+        assignments[item.id] = {
+          section_ids: validIds,
+          confidence: parsed?.confidence ?? "medium",
+        } as any;
+        console.log(
+          `[youtube-analysis] Assigned video ${item.youtube_video_id} → ${validIds.length} sections`
+        );
       }
     } catch (err) {
       console.error(
@@ -341,21 +338,20 @@ serve(async (req) => {
         })
         .join("\n");
 
-      const systemPrompt = `You are a curriculum organizer for a medical education platform. You will be given a list of SECTIONS and a list of CONTENT ITEMS. Your task is to assign each content item to the most relevant section.
+      const systemPrompt = `You are a medical curriculum organizer. Assign CONTENT ITEMS to the SINGLE most relevant SECTION.
 
 SECTIONS:
 ${sectionList}
 
 RULES:
-1. Consider medical topic relationships, synonyms, hierarchical concepts, and abbreviations.
-2. Match based on clinical concept and learning objective (ILO) alignment.
-3. Prefer the MOST SPECIFIC matching section.
-4. You MUST assign every item to a section. NEVER return null. If uncertain, pick the closest match.
-5. For each assignment, provide a confidence level: "high", "medium", or "low".
-6. Return ONLY a JSON object. No explanation, no markdown.
+1. Match based on clinical concept and learning objective (ILO) alignment.
+2. Be CONSERVATIVE: Only match if there is a strong relationship.
+3. Pick ONLY the primary section. Do not return multiple sections for one item.
+4. Provide a confidence level: "high", "medium", or "low".
+5. Return raw JSON without markdown formatting.
 
-RESPONSE FORMAT (raw JSON, no markdown):
-{"item-id-1": {"section_id": "section-id-1", "confidence": "high"}, "item-id-2": {"section_id": "section-id-2", "confidence": "medium"}}`;
+RESPONSE FORMAT:
+{"item-id": {"section_id": "section-uuid", "confidence": "high"}}`;
 
       for (let i = 0; i < textItems.length; i += MAX_ITEMS_PER_BATCH) {
         const batch = textItems.slice(i, i + MAX_ITEMS_PER_BATCH);
@@ -389,7 +385,7 @@ RESPONSE FORMAT (raw JSON, no markdown):
                   { role: "system", content: systemPrompt },
                   { role: "user", content: userPrompt },
                 ],
-                temperature: 0.1,
+                temperature: 0,
               }),
             }
           );
@@ -425,7 +421,7 @@ RESPONSE FORMAT (raw JSON, no markdown):
                   },
                 ],
                 generationConfig: {
-                  temperature: 0.1,
+                  temperature: 0,
                   maxOutputTokens: 16384,
                 },
               }),
