@@ -341,20 +341,21 @@ serve(async (req) => {
         })
         .join("\n");
 
-      const systemPrompt = `You are a medical curriculum organizer. Assign CONTENT ITEMS to the SINGLE most relevant SECTION.
+      const systemPrompt = `You are a medical curriculum organizer. Watch each content item below and determine which existing sections from the list below are covered IN DETAIL.
 
 SECTIONS:
 ${sectionList}
 
 RULES:
 1. Match based on clinical concept and learning objective (ILO) alignment.
-2. Be CONSERVATIVE: Only match if there is a strong relationship.
-3. Pick ONLY the primary section. Do not return multiple sections for one item.
-4. Provide a confidence level: "high", "medium", or "low".
-5. Return raw JSON without markdown formatting.
+2. DETAILED COVERAGE ONLY: Only include a section if it is a primary topic of discussion.
+3. EXCLUDE BRIEF MENTIONS: If a section's topic is only mentioned in passing, DO NOT include it.
+4. If an item covers multiple sections with significant detail for each, you SHOULD include all of them.
+5. Provide a confidence level: "high", "medium", or "low".
+6. Return raw JSON without markdown formatting.
 
 RESPONSE FORMAT:
-{"item-id": {"section_id": "section-uuid", "confidence": "high"}}`;
+{"item-id": {"section_ids": ["uuid-1", "uuid-2"], "confidence": "high"}}`;
 
       for (let i = 0; i < textItems.length; i += MAX_ITEMS_PER_BATCH) {
         const batch = textItems.slice(i, i + MAX_ITEMS_PER_BATCH);
@@ -363,7 +364,7 @@ RESPONSE FORMAT:
           .map((item: any) => `- ID: "${item.id}" | Content: "${item.content || item.title || ''}"`)
           .join("\n");
 
-        const userPrompt = `Assign each content item below to the most relevant section. You MUST assign every item — never skip. Return raw JSON only.\n\nCONTENT ITEMS:\n${itemList}`;
+        const userPrompt = `Assign each content item below to all relevant sections. You MUST assign every item if possible. Return raw JSON only.\n\nCONTENT ITEMS:\n${itemList}`;
 
         let result;
 
@@ -462,15 +463,14 @@ RESPONSE FORMAT:
         const sectionIds = new Set(sections.map((s: any) => s.id));
 
         for (const [itemId, value] of Object.entries(batchAssignments)) {
-          if (typeof value === "string") {
-            if (sectionIds.has(value)) {
-              allAssignments[itemId] = { section_id: value, confidence: "medium" };
-            }
-          } else if (value && typeof value === "object") {
-            const v = value as { section_id?: string; confidence?: string };
-            if (v.section_id && sectionIds.has(v.section_id)) {
+          if (value && typeof value === "object") {
+            const v = value as { section_ids?: string[]; section_id?: string; confidence?: string };
+            const ids = v.section_ids || (v.section_id ? [v.section_id] : []);
+            const validIds = ids.filter((id) => sectionIds.has(id));
+            
+            if (validIds.length > 0) {
               allAssignments[itemId] = {
-                section_id: v.section_id,
+                section_ids: validIds,
                 confidence: v.confidence || "medium",
               };
             }

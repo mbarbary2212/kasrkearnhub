@@ -55,7 +55,12 @@ export function AutoTagYouTubeButton({ chapterId, lectures: propsLectures }: Aut
       }).map(l => {
         const url = l.video_url || l.videoUrl || '';
         const ytId = l.youtube_video_id || url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
-        return { id: l.id, title: l.title, youtube_video_id: ytId };
+        return { 
+          id: l.id, 
+          title: l.title || 'Untitled Lecture', 
+          youtube_video_id: ytId,
+          table: 'lectures'
+        };
       }).filter(l => l.youtube_video_id);
 
       if (ytItems.length === 0) {
@@ -73,7 +78,12 @@ export function AutoTagYouTubeButton({ chapterId, lectures: propsLectures }: Aut
 
         const { data, error: invokeError } = await supabase.functions.invoke('ai-auto-tag-sections', {
           body: { 
-            items: [ { id: item.id, content: item.title, youtube_video_id: item.youtube_video_id } ],
+            items: [ { 
+              id: item.id, 
+              content: item.title, 
+              youtube_video_id: item.youtube_video_id,
+              table: 'lectures' 
+            } ],
             sections: sections.map(s => ({ id: s.id, name: s.name }))
           }
         });
