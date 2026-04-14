@@ -14,7 +14,7 @@ interface AutoTagYouTubeButtonProps {
  * Admin-only button that uses Gemini to watch each YouTube lecture in this chapter
  * and automatically assigns it to one or more of the chapter's EXISTING sections.
  *
- * - Processes ALL YouTube lectures in the chapter (not just untagged ones)
+ * - Only processes lectures with no section assigned yet
  * - A video can be assigned to MULTIPLE sections
  * - Uses the lecture_sections junction table (same as manual section assignment)
  * - Never creates new sections — only assigns from existing ones
@@ -42,14 +42,21 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
         .eq('chapter_id', chapterId)
         .is('section_id', null);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[AutoTagYouTube] DB query error:', error);
+        throw error;
+      }
 
-      // Filter to only YouTube lectures
+      console.log('[AutoTagYouTube] Found lectures:', lectures?.length, lectures?.map(l => ({ id: l.id, title: l.title, yt: l.youtube_video_id, url: l.video_url?.substring(0, 50) })));
+
+      // Filter to only YouTube lectures (those with a video ID or a YouTube URL)
       const ytLectures = (lectures ?? []).filter((l) => {
         if (l.youtube_video_id) return true;
         const url = l.video_url ?? '';
         return /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(url);
       });
+
+      console.log('[AutoTagYouTube] YouTube lectures after filter:', ytLectures.length);
 
       if (ytLectures.length === 0) {
         toast.info('All YouTube lectures in this chapter already have sections assigned.');
@@ -58,7 +65,7 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
 
       setProgress(`Asking Gemini to analyze ${ytLectures.length} video${ytLectures.length > 1 ? 's' : ''}...`);
 
-      // Build items payload — extract youtube_video_id if not stored explicitly
+      // Build items payload — extract youtube_video_id from URL if not stored explicitly
       const items = ytLectures.map((l) => {
         const ytId =
           l.youtube_video_id ||
@@ -74,21 +81,29 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
         };
       });
 
+      console.log('[AutoTagYouTube] Sending items to edge function:', items.length, items.map(i => ({ id: i.id, yt: (i as any).youtube_video_id })));
+      console.log('[AutoTagYouTube] Sections:', sections.map(s => ({ id: s.id, name: s.name })));
+
       const response = await supabase.functions.invoke('ai-auto-tag-sections', {
         body: {
           items,
           sections: sections.map((s) => ({ id: s.id, name: s.name, ilo: (s as any).ilo })),
-          // Signal to the edge function that we want multiple sections per video
           multi_section: true,
         },
       });
 
+      console.log('[AutoTagYouTube] Edge function response:', { error: response.error, data: response.data });
+
       if (response.error) {
-        const errorCode = (response.data as any)?.errorCode;
+        // When Supabase returns non-2xx, response.data may still contain our JSON body
+        const errorData = response.data;
+        const errorCode = errorData?.errorCode;
+        console.error('[AutoTagYouTube] Edge function error:', response.error, 'errorCode:', errorCode, 'data:', errorData);
+
         if (errorCode === 'NO_GOOGLE_API_KEY') {
-          toast.error('YouTube analysis requires a Google API key. Ask your platform admin to set GOOGLE_API_KEY in Supabase Edge Function secrets.');
+          toast.error('YouTube analysis requires a Google API key. Set GOOGLE_API_KEY in Supabase Edge Function secrets.');
         } else {
-          throw new Error(response.error.message ?? 'Edge function error');
+          toast.error(`AI auto-tag failed: ${errorData?.error || response.error?.message || 'Unknown error'}`);
         }
         return;
       }
@@ -102,6 +117,8 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
         | string
         | null
       > = response.data?.assignments ?? {};
+
+      console.log('[AutoTagYouTube] Assignments received:', assignments);
 
       let assigned = 0;
 
@@ -126,7 +143,12 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
         const validSectionIds = sectionIds.filter((sid) =>
           sections.some((s) => s.id === sid)
         );
-        if (validSectionIds.length === 0) continue;
+        if (validSectionIds.length === 0) {
+          console.warn(`[AutoTagYouTube] No valid section IDs for lecture ${item.id}. Returned:`, sectionIds);
+          continue;
+        }
+
+        console.log(`[AutoTagYouTube] Assigning lecture ${item.id} -> sections:`, validSectionIds);
 
         // Write to lecture_sections junction table
         // Delete existing then re-insert (same pattern as useSetLectureSections)
@@ -158,7 +180,7 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
         );
       }
     } catch (err) {
-      console.error('[AutoTagYouTube] Error:', err);
+      console.error('[AutoTagYouTube] Uncaught error:', err);
       toast.error('Could not reach the AI service. Check the browser console for details.');
     } finally {
       setIsRunning(false);
