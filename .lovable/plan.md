@@ -1,51 +1,98 @@
 
+Goal: make the Assessment Blueprint Excel import much more forgiving, smarter about wording, and less likely to fail on larger files or imperfect spreadsheets.
 
-## 4-Session Plan to Fix Progress & Counter Inconsistencies
+What is wrong today
+- The import runs in the browser and does a lot of Supabase calls one-by-one, so big uploads can feel slow and may hit practical limits.
+- It assumes row 1 is the real header and matches component columns very strictly.
+- Chapter matching is only moderately tolerant.
+- Section matching is still fragile: it mainly works by hidden `section_id`, exact name, or simple “contains” matching within the current chapter.
+- If the Excel wording differs from the app wording, especially in section labels, rows are skipped with warnings.
 
-### Session 1: Fix False "Mastered" on Fresh Accounts (Critical)
+Unified update plan
 
-**Root cause**: `useNeedsPractice.ts` only tracks items the user got *wrong*. Zero attempts = zero wrong = "All mastered!"
+1. Harden the Excel parser
+- Accept common alternate headers, not just exact labels:
+  - e.g. “Anatomy/pathology/Xray” -> `paraclinical`
+  - plural/spacing variants like “Long cases”, “OSCEs”, etc.
+- Auto-skip non-data rows:
+  - top title row
+  - repeated header rows
+  - blank spacer rows
+- Detect the real header row instead of assuming it is always row 1.
 
-**Changes**:
-- `src/hooks/useNeedsPractice.ts` — add `attemptedCounts` to the return type. Query distinct `question_id` counts from `question_attempts` for MCQ and OSCE (not just incorrect ones). Add `mcqAttempted`, `osceAttempted` to `ContentCounts`. For matching/essay/cases, count from `userProgress` completed entries.
-- `src/components/dashboard/DashboardNeedsPractice.tsx` — line 69-74: change each "all complete" check to require `attemptedCount > 0`. When `attemptedCount === 0`, show "Not started yet" with a neutral style instead of `AllClearBadge`.
+2. Make chapter matching more intelligent
+- Keep hidden `chapter_id` as top priority when present.
+- Add stronger text normalization for visible labels:
+  - ignore `Ch 1:`
+  - ignore punctuation, emoji, arrows, numbering noise
+  - compare normalized chapter title text
+- Add safer fuzzy matching so minor wording differences or typos still map correctly.
+- If multiple chapters are plausible matches, return a clear warning instead of silently picking the wrong one.
 
----
+3. Make section matching wording-based, not numbering-dependent
+- Match sections using a scoring approach inside the current chapter:
+  - hidden `section_id` first
+  - exact normalized name
+  - exact normalized `section_number`
+  - combined patterns like `1.1 Section Name`
+  - wording match on the text part alone
+  - fuzzy match for minor spelling differences
+- Strip formatting noise such as arrows, bullets, prefixes, duplicated numbering, punctuation, extra spaces.
+- Support labels even when users delete or change the numeric prefixes.
+- Keep matching constrained to the current chapter so “Diagnosis” in one chapter does not attach to another chapter.
 
-### Session 2: Fix Socrates Counter + Persistence
+4. Improve import performance so time limits are less of a problem
+- Refactor the importer to avoid per-cell / per-row round trips wherever possible.
+- Preload all existing blueprint configs for the selected chapters once.
+- Build in-memory maps, then do batched inserts/updates/deletes instead of sequential `maybeSingle()` checks for every cell.
+- Keep “Replace all” as a bulk delete + bulk insert path.
+- If needed, move the heavy import logic into a Supabase Edge Function so the browser only uploads the file and receives a processed result summary.
 
-**Root cause**: The tab badge (ChapterPage line 776) shows `guidedViewed/guidedTotal` — this counts **sets viewed** via `content_views`, not individual questions. Users read "1/24" as "1 question of 24" when it means "1 set of 24 sets."
+5. Improve user feedback during import
+- Show a better result summary:
+  - imported count
+  - cleared count
+  - skipped rows
+  - unmatched chapters
+  - unmatched sections
+  - unmatched column headers
+- Distinguish between:
+  - harmless warnings
+  - rows skipped due to ambiguity
+  - actual fatal failure
+- Include plain-English guidance like:
+  - “This row could not be matched because the chapter wording did not closely match any chapter in this module.”
+  - “This section name exists in the app, but not under the chapter currently selected in the spreadsheet.”
 
-**Changes**:
-- `src/pages/ChapterPage.tsx` line ~820 — append " sets" to the counter label for `guided_explanations` tab so it reads "1/24 sets"
-- `src/components/study/GuidedExplanationViewer.tsx` — persist `revealedAnswers` to `localStorage` keyed by resource ID so reopening a set restores prior progress instead of resetting to 0
-- Same fix needed in `src/pages/TopicDetailPage.tsx` for the equivalent Socrates tab counter
+6. Keep the export/import workflow compatible
+- Preserve the hidden `chapter_id` and `section_id` columns because they are the most reliable path.
+- Continue supporting hand-edited files even if the IDs are lost or labels are rewritten.
+- Make the exported template clearer so users know:
+  - keep the real header row at the top
+  - wording can vary somewhat
+  - hidden IDs help accuracy
 
----
+Files likely involved
+- `src/components/admin/blueprint/blueprintExcelImport.ts` — main logic overhaul
+- `src/components/admin/blueprint/ChapterBlueprintSubtab.tsx` — improved upload feedback/toasts
+- `src/components/admin/blueprint/blueprintExcelExport.ts` — optional template guidance tweaks
+- Possibly a new shared helper such as `src/lib/blueprintImportMatching.ts` for normalization/scoring
+- If we move heavy work server-side: a new Supabase Edge Function for blueprint import processing
 
-### Session 3: Fix Chapter Count Mismatch (29 vs ~45)
+Technical notes
+- Current bottleneck: the importer already preloads sections, but still does sequential DB lookups and writes for each config cell.
+- Current section matching is too simple for messy Excel wording.
+- The data model already supports this improvement:
+  - `chapter_blueprint_config` stores `chapter_id`, `section_id`, `component_type`
+  - `sections` already has `name` and `section_number` as text
+- Best matching strategy:
+  - normalize text aggressively
+  - score candidates
+  - only auto-accept when confidence is high
+  - otherwise warn and skip rather than mis-assign
 
-**Root cause**: `useStudentDashboard.ts` line 304 filters out chapters with `totalItems === 0` for the coach count. But the student module page shows ALL chapters including empty ones.
-
-**Changes**:
-- In the module page chapter list component (ModulePage.tsx), filter out chapters with zero content items from the student view (not admin). This aligns what students see with what the coach counts.
-- The merged surgery config (`expandModuleIds`) already handles SUR-423/523 correctly — no changes needed there.
-
----
-
-### Session 4: Progress Weighting Clarity + Thumbnail Fallbacks
-
-**Progress bar jump**: By design (40% video weight), but confusing without context.
-
-**Changes**:
-- `src/components/content/ChapterProgressBar.tsx` — add a small info icon with tooltip next to "Your progress in this chapter" that explains: "Progress = 60% Practice + 40% Videos. A single video can significantly impact your progress."
-- Chapter card components — add a gradient + icon fallback for chapters without `image_url`, using a deterministic color based on chapter title hash (similar to existing module gradient system).
-
----
-
-### Priority Order
-1. Session 1 — false "mastered" is most misleading
-2. Session 2 — Socrates counter confusion
-3. Session 3 — chapter count alignment
-4. Session 4 — polish (tooltips + thumbnails)
-
+Expected outcome
+- Uploads will be much more forgiving when people edit wording.
+- Section matching will work even if numbering like `1`, `1.1`, etc. is missing or altered.
+- Large files will import more reliably and faster.
+- Admins will get clearer explanations when something still cannot be matched.
