@@ -541,7 +541,7 @@ export function LectureList({
             )}
           </div>
           <div className="flex items-center gap-2">
-            {chapterId && <AutoTagYouTubeButton chapterId={chapterId} />}
+            {chapterId && <AutoTagYouTubeButton chapterId={chapterId} lectures={filteredLectures} />}
             <AdminViewToggle viewMode={adminViewMode} onViewModeChange={setAdminViewMode} />
           </div>
         </div>

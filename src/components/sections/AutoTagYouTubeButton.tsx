@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 interface AutoTagYouTubeButtonProps {
   chapterId: string;
+  lectures?: any[];
 }
 
 /**
@@ -16,7 +17,7 @@ interface AutoTagYouTubeButtonProps {
  * 
  * v180: Sequential processing to prevent 504 Timeouts.
  */
-export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
+export function AutoTagYouTubeButton({ chapterId, lectures: propsLectures }: AutoTagYouTubeButtonProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState('');
   const queryClient = useQueryClient();
@@ -31,21 +32,29 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
     setProgress('Finding YouTube lectures...');
 
     try {
-      // 1. Fetch only untagged lectures
-      const { data: lectures, error } = await supabase
-        .from('lectures')
-        .select('id, title, video_url, youtube_video_id')
-        .eq('chapter_id', chapterId)
-        .is('section_id', null);
+      let activeLectures = propsLectures;
 
-      if (error) throw error;
+      // If no lectures passed in, fetch them all for this chapter
+      if (!activeLectures) {
+        const { data, error } = await supabase
+          .from('lectures')
+          .select('id, title, video_url, youtube_video_id, section_id')
+          .eq('chapter_id', chapterId)
+          .eq('is_deleted', false);
+        
+        if (error) throw error;
+        activeLectures = data || [];
+      }
+
+      console.log(`[AutoTagYouTube] Considering ${activeLectures.length} total lectures in UI state...`);
 
       // 2. Filter to only YouTube
-      const ytItems = (lectures || []).filter((l) => {
-        const url = l.video_url ?? '';
+      const ytItems = activeLectures.filter((l) => {
+        const url = l.video_url || l.videoUrl || '';
         return l.youtube_video_id || /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(url);
       }).map(l => {
-        const ytId = l.youtube_video_id || (l.video_url ?? '').match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+        const url = l.video_url || l.videoUrl || '';
+        const ytId = l.youtube_video_id || url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
         return { id: l.id, title: l.title, youtube_video_id: ytId };
       }).filter(l => l.youtube_video_id);
 
