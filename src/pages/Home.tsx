@@ -32,6 +32,7 @@ import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
+import { GoalsNudgeBanner } from '@/components/dashboard/GoalsNudgeBanner';
 import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
@@ -313,6 +314,8 @@ function LoggedInHome() {
       {/* First login modal + workflow guide */}
       <FirstLoginModal role="student" onStartTour={startTour} onOpenWorkflow={() => setWorkflowOpen(true)} />
       <WorkflowGuide open={workflowOpen} onOpenChange={setWorkflowOpen} mode="student" />
+
+      {isStudent && <GoalsNudgeBanner />}
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6">
         {/* ==================== LEFT COLUMN (60%) ==================== */}

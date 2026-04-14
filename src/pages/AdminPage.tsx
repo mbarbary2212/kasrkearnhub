@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAdminData } from '@/hooks/useAdminData';
@@ -27,7 +27,7 @@ import { PerfLogsTab } from '@/components/admin/PerfLogsTab';
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const { data: adminData, isLoading: adminDataLoading } = useAdminData(!!isAdmin);
   const years = adminData?.years ?? [];
@@ -137,7 +137,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); setSearchParams({ tab }, { replace: true }); }} className="space-y-4">
           <AdminTabsNavigation
             defaultTab={defaultTab}
             isSuperAdmin={isSuperAdmin}

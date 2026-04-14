@@ -267,12 +267,31 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
         replaceAll && result.replaced > 0 ? `${result.replaced} old entries removed` : '',
         `${result.upserted} imported`,
         result.cleared > 0 ? `${result.cleared} cleared` : '',
+        result.skippedRows > 0 ? `${result.skippedRows} rows skipped` : '',
       ].filter(Boolean).join(', ');
 
-      if (result.errors.length > 0) {
-        toast.warning(`Imported (${parts}) with ${result.errors.length} warning(s)`, {
-          description: result.errors.slice(0, 3).join('; '),
-          duration: 8000,
+      // Build detailed description
+      const details: string[] = [];
+      if (result.unmatchedChapters.length > 0) {
+        details.push(`Unmatched chapters: ${result.unmatchedChapters.slice(0, 3).join(', ')}${result.unmatchedChapters.length > 3 ? ` (+${result.unmatchedChapters.length - 3} more)` : ''}`);
+      }
+      if (result.unmatchedSections.length > 0) {
+        details.push(`Unmatched sections: ${result.unmatchedSections.slice(0, 3).join(', ')}${result.unmatchedSections.length > 3 ? ` (+${result.unmatchedSections.length - 3} more)` : ''}`);
+      }
+      if (result.unmatchedColumns.length > 0) {
+        details.push(`Missing columns: ${result.unmatchedColumns.join(', ')}`);
+      }
+      if (result.warnings.length > 0) {
+        details.push(...result.warnings.slice(0, 2));
+      }
+
+      const hasIssues = result.errors.length > 0 || result.warnings.length > 0 ||
+        result.unmatchedChapters.length > 0 || result.unmatchedSections.length > 0;
+
+      if (hasIssues) {
+        toast.warning(`Imported (${parts}) with ${result.errors.length + result.warnings.length} issue(s)`, {
+          description: details.slice(0, 4).join('. '),
+          duration: 12000,
         });
       } else {
         toast.success(`Blueprint import complete: ${parts}`);
@@ -368,7 +387,7 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
         <ScrollArea className="w-full">
           <div className="min-w-[600px]">
             <table className="w-full border-collapse text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground w-[200px]">Chapter</th>
                   {COMPONENT_COLUMNS.map(col => (

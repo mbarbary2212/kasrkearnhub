@@ -4,7 +4,7 @@ import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MoreHorizontal,
-  MessageCircle, ClipboardCheck, SlidersHorizontal, Settings,
+  MessageCircle, ClipboardCheck, Settings,
   HelpCircle, MessageSquare, MessagesSquare, Users,
   FileText, Gamepad2, PenLine, ListChecks, BarChart3, Shield,
   Compass, BookOpenCheck,
@@ -69,7 +69,6 @@ const connectItems = [
 
 const studentMoreItems: SubItem[] = [
   { id: 'formative', label: 'Formative', icon: ClipboardCheck, path: '/formative' },
-  { id: 'customize', label: 'Customize', icon: SlidersHorizontal, path: '/customize-content' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/student-settings' },
   { id: 'take-tour', label: 'Take a Tour', icon: Compass },
   { id: 'how-to-use', label: 'How to Use', icon: BookOpenCheck },
