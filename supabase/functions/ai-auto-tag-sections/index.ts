@@ -85,6 +85,7 @@ async function analyzeYouTubeVideos(
 
   for (const item of ytItems) {
     const youtubeUrl = `https://www.youtube.com/watch?v=${item.youtube_video_id}`;
+    console.log(`[youtube-analysis] Processing: "${item.title}" (${item.youtube_video_id})`);
 
     const prompt = `You are a medical curriculum expert.
 Watch this YouTube video and determine which existing sections from the list below are covered IN DETAIL.
@@ -148,9 +149,11 @@ RESPONSE FORMAT:
       const raw = aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!raw) {
-        console.error(`[youtube-analysis] Empty response for video ${item.youtube_video_id}`);
+        console.error(`[youtube-analysis] Empty response for "${item.title}"`);
         continue;
       }
+
+      console.log(`[youtube-analysis] Raw AI response for "${item.title}":`, raw);
 
       // Clean markdown fences if present
       let cleaned = raw.trim();
