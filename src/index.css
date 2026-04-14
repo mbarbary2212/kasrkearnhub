@@ -106,6 +106,7 @@
   body {
     @apply text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-size: calc(1rem * var(--app-font-scale, 1));
     background: hsl(var(--background));
   }
 
@@ -234,4 +235,19 @@ body.kalmhub-hide-nav [data-navbar] {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Display Density — compact overrides scoped to main content only */
+.density-compact main .card {
+  padding: 0.75rem;
+}
+.density-compact main .space-y-6 > * + * {
+  margin-top: 1rem;
+}
+.density-compact main .space-y-4 > * + * {
+  margin-top: 0.5rem;
+}
+.density-compact main h2,
+.density-compact main h3 {
+  margin-block: 0.25rem;
 }
