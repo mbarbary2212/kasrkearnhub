@@ -93,6 +93,7 @@ export function AutoTagYouTubeButton({ chapterId }: AutoTagYouTubeButtonProps) {
       });
 
       console.log('[AutoTagYouTube] Edge function response:', { error: response.error, data: response.data });
+      console.log('[AutoTagYouTube] Debug info:', response.data?.debug);
 
       if (response.error) {
         // When Supabase returns non-2xx, response.data may still contain our JSON body
