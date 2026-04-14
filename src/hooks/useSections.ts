@@ -148,6 +148,30 @@ export function useCreateSection() {
   
   return useMutation({
     mutationFn: async ({ name, chapter_id, topic_id }: CreateSectionData) => {
+      // Check for existing section with the same normalized name
+      const trimmedName = name.trim();
+      if (chapter_id) {
+        const { data: existing } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('chapter_id', chapter_id)
+          .ilike('name', trimmedName)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          throw new Error('A section with this name already exists in this chapter');
+        }
+      } else if (topic_id) {
+        const { data: existing } = await supabase
+          .from('sections')
+          .select('id')
+          .eq('topic_id', topic_id)
+          .ilike('name', trimmedName)
+          .limit(1);
+        if (existing && existing.length > 0) {
+          throw new Error('A section with this name already exists in this topic');
+        }
+      }
+
       // Get the next display order
       let maxOrder = 0;
       
@@ -172,7 +196,7 @@ export function useCreateSection() {
       const { data, error } = await supabase
         .from('sections')
         .insert({
-          name,
+          name: trimmedName,
           chapter_id: chapter_id || null,
           topic_id: topic_id || null,
           display_order: maxOrder + 1,
@@ -180,7 +204,12 @@ export function useCreateSection() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('A section with this name already exists');
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -256,6 +285,39 @@ export function useDeleteSection() {
   });
 }
 
+// Detect sections with duplicate section_number values (informational warning)
+export function useSectionDuplicateWarnings(chapterId?: string) {
+  return useQuery({
+    queryKey: ['section-number-warnings', chapterId],
+    queryFn: async () => {
+      if (!chapterId) return new Set<string>();
+      
+      const { data, error } = await supabase
+        .from('sections')
+        .select('id, section_number')
+        .eq('chapter_id', chapterId)
+        .not('section_number', 'is', null);
+
+      if (error) throw error;
+      
+      // Find section_numbers that appear more than once
+      const numCounts = new Map<string, string[]>();
+      for (const s of data || []) {
+        if (!s.section_number) continue;
+        const key = s.section_number.trim();
+        if (!numCounts.has(key)) numCounts.set(key, []);
+        numCounts.get(key)!.push(s.id);
+      }
+      
+      const warningIds = new Set<string>();
+      for (const ids of numCounts.values()) {
+        if (ids.length > 1) ids.forEach(id => warningIds.add(id));
+      }
+      return warningIds;
+    },
+    enabled: !!chapterId,
+  });
+}
 // Reorder sections (update display_order for each)
 export function useReorderSections() {
   const queryClient = useQueryClient();

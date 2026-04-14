@@ -29,9 +29,28 @@ export function useExtractSections() {
         return 0;
       }
 
-      // Bulk insert sections
-      const inserts = sections.map((s, i) => ({
-        name: s.name,
+      // Fetch existing section names to filter out duplicates
+      const { data: existingSections } = await supabase
+        .from('sections')
+        .select('name')
+        .eq('chapter_id', chapterId);
+      
+      const existingNames = new Set(
+        (existingSections || []).map((s: { name: string }) => s.name.trim().toLowerCase())
+      );
+
+      const newSections = sections.filter(
+        (s) => !existingNames.has(s.name.trim().toLowerCase())
+      );
+
+      if (newSections.length === 0) {
+        toast.info('All extracted sections already exist in this chapter');
+        return 0;
+      }
+
+      // Bulk insert only new sections
+      const inserts = newSections.map((s, i) => ({
+        name: s.name.trim(),
         section_number: s.section_number || null,
         chapter_id: chapterId,
         display_order: i,
@@ -47,8 +66,10 @@ export function useExtractSections() {
       queryClient.invalidateQueries({ queryKey: ['sections', 'chapter', chapterId] });
 
       const method = data?.method === 'ai' ? 'AI' : 'PDF structure';
-      toast.success(`Extracted ${sections.length} sections from ${method}`);
-      return sections.length;
+      const skipped = sections.length - newSections.length;
+      const skippedMsg = skipped > 0 ? ` (${skipped} duplicates skipped)` : '';
+      toast.success(`Extracted ${newSections.length} sections from ${method}${skippedMsg}`);
+      return newSections.length;
     } catch (err) {
       console.error('Section extraction failed:', err);
       toast.error('Failed to extract sections from PDF');
