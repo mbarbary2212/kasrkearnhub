@@ -186,7 +186,8 @@ const STATUS_PRIORITY: Record<string, number> = {
 };
 
 export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyPlan {
-  const { metrics, chapters, availableMinutes, examWeightMap, examDate } = input;
+  const { metrics, chapters, examWeightMap, examDate } = input;
+  const availableMinutes = input.availableMinutes ?? 60;
 
   // FIX D — fallback when no chapter data
   if (!chapters || chapters.length === 0) {
