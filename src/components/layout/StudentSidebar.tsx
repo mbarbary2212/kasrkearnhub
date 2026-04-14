@@ -354,7 +354,7 @@ export function StudentSidebar() {
     <aside
       ref={sidebarRef}
       className={cn(
-        'hidden sm:flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)] sticky top-14 md:top-16 z-30 shrink-0 relative',
+        'hidden sm:flex flex-col sticky top-0 z-30 shrink-0 relative h-full',
         'w-20 sm:w-[88px] md:w-20',
         'bg-card/50 dark:bg-white/[0.02] backdrop-blur-sm border-r border-border dark:border-white/10'
       )}
