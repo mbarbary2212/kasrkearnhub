@@ -129,8 +129,8 @@ export function useUpsertChapterBlueprintConfig() {
         return data;
       }
     },
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['chapter-blueprint-config', variables.module_id] });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chapter-blueprint-config'] });
     },
     onError: (err: Error) => {
       toast.error('Failed to save: ' + err.message);
@@ -148,8 +148,8 @@ export function useDeleteChapterBlueprintConfig() {
         .eq('id', input.id);
       if (error) throw error;
     },
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: ['chapter-blueprint-config', variables.module_id] });
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['chapter-blueprint-config'] });
     },
     onError: (err: Error) => {
       toast.error('Failed to remove: ' + err.message);

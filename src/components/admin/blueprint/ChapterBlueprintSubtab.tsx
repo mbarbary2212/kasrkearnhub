@@ -387,7 +387,7 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
         <ScrollArea className="w-full">
           <div className="min-w-[600px]">
             <table className="w-full border-collapse text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground w-[200px]">Chapter</th>
                   {COMPONENT_COLUMNS.map(col => (
