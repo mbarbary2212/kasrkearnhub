@@ -168,9 +168,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const showSharedNav = isStudent || isAdmin;
 
   return (
-    <div className="min-h-screen bg-background dark:bg-transparent flex flex-col">
+    <div className="flex h-[100dvh] min-h-screen flex-col overflow-hidden bg-background dark:bg-transparent">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-card/80 dark:bg-white/[0.03] dark:backdrop-blur-xl border-b border-border dark:border-white/10">
+      <header className="sticky top-0 z-50 shrink-0 border-b border-border bg-card/80 dark:border-white/10 dark:bg-white/[0.03] dark:backdrop-blur-xl">
         <div className="container mx-auto px-3 md:px-4 h-14 md:h-16 flex items-center justify-between">
           <TooltipProvider delayDuration={300}>
           <div className="flex items-center gap-2">
@@ -373,12 +373,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Shared Sidebar - desktop only */}
         {showSharedNav && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 px-2 md:px-4 py-4 md:py-8 overflow-x-hidden overflow-y-auto", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
+        <main className={cn("flex-1 min-h-0 overflow-x-hidden overflow-y-auto px-2 py-4 md:px-4 md:py-8", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
           <div className={showSharedNav ? 'container mx-auto' : ''}>
             {children}
             {user && <AppCredits />}

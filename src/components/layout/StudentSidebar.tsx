@@ -354,12 +354,12 @@ export function StudentSidebar() {
     <aside
       ref={sidebarRef}
       className={cn(
-        'hidden sm:flex flex-col sticky top-0 z-30 shrink-0 relative h-full',
+        'hidden sm:flex flex-col sticky top-0 z-30 shrink-0 self-stretch min-h-0 relative h-full',
         'w-20 sm:w-[88px] md:w-20',
         'bg-card/50 dark:bg-white/[0.02] backdrop-blur-sm border-r border-border dark:border-white/10'
       )}
     >
-      <nav className="flex flex-col gap-0.5 px-2 pt-3 pb-2 overflow-y-auto">
+      <nav className="flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 pt-3 pb-2">
         {filteredNavItems.map((item) => renderNavButton(item))}
         <div className="mt-1 flex flex-col gap-0.5">
           {bottomItems.map((item) => renderNavButton(item))}
