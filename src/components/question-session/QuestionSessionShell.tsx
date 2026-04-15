@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, SkipForward, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RightInsightPanel } from './RightInsightPanel';
 import { McqAnswerArea } from './McqAnswerArea';
+import { MCQFSRSRatingButtons } from './MCQFSRSRatingButtons';
 import { OsceAnswerArea } from './OsceAnswerArea';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 import type { OsceQuestion } from '@/hooks/useOsceQuestions';
