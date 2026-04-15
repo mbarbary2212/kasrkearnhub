@@ -111,10 +111,13 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
     : 'border-orange-500/30 bg-orange-500/5';
 
   // ── Task navigation helper ────────────────────────────────────
-  const startTask = (moduleId?: string, chapterId?: string, tab?: string) => {
-    if (!moduleId || !chapterId) return;
-    const route = `/chapter/${moduleId}/${chapterId}${tab ? `?tab=${tab}` : ''}`;
-    navigate(route);
+  const startTask = (moduleId?: string, chapterId?: string, tab?: string, subtab?: string) => {
+    if (!moduleId || !chapterId) {
+      navigate('/review/flashcards');
+      return;
+    }
+    const subtabParam = subtab ? `&subtab=${subtab}` : '';
+    navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
   };
 
   return (
@@ -211,7 +214,10 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
                     variant="outline"
                     className="h-7 text-xs gap-1"
                     disabled={!canStart}
-                    onClick={() => startTask(task.moduleId, task.chapterId, task.tab)}
+                    onClick={() => {
+                      const tab = task.prescribedStudyMode?.tab || task.tab || 'resources';
+                      startTask(task.moduleId, task.chapterId, tab, task.subtab);
+                    }}
                   >
                     Start <ArrowRight className="h-3 w-3" />
                   </Button>
