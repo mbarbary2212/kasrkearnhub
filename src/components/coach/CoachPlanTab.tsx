@@ -174,6 +174,55 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
         </div>
       )}
 
+      {/* ── Exam Countdown Card ─────────────────────────────────── */}
+      {nearestExam && (
+        <Card className={
+          nearestExam.daysLeft <= 7
+            ? 'border-rose-400/40 bg-rose-500/5'
+            : nearestExam.daysLeft <= 14
+            ? 'border-orange-400/40 bg-orange-500/5'
+            : nearestExam.daysLeft <= 30
+            ? 'border-amber-400/40 bg-amber-500/5'
+            : 'border-primary/20 bg-primary/5'
+        }>
+          <CardContent className="py-4 px-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+                  {activeModuleName ?? nearestExam.name}
+                </p>
+                <div className="flex items-baseline gap-1.5">
+                  <span className={`text-3xl font-bold tabular-nums ${
+                    nearestExam.daysLeft <= 7 ? 'text-rose-600 dark:text-rose-400' :
+                    nearestExam.daysLeft <= 14 ? 'text-orange-600 dark:text-orange-400' :
+                    nearestExam.daysLeft <= 30 ? 'text-amber-600 dark:text-amber-400' :
+                    'text-primary'
+                  }`}>
+                    {nearestExam.daysLeft}
+                  </span>
+                  <span className="text-sm text-muted-foreground">days to exam</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {nearestExam.daysLeft <= 7
+                    ? '🔴 Final stretch — prioritise weak chapters'
+                    : nearestExam.daysLeft <= 14
+                    ? '🟠 Two weeks out — increase intensity'
+                    : nearestExam.daysLeft <= 30
+                    ? '🟡 One month — build consistency now'
+                    : '🟢 Good runway — lock in the fundamentals'}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-xs text-muted-foreground">Exam date</p>
+                <p className="text-sm font-semibold">
+                  {nearestExam.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Today's Plan ────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-2">
