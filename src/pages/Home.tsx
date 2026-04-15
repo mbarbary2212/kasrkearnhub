@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { useDueCards } from '@/hooks/useFSRS';
+import { useDueMCQCount } from '@/hooks/useMCQFSRS';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useModules } from '@/hooks/useModules';
