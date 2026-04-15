@@ -126,6 +126,37 @@ function structuralSimilarity(a: string, b: string): number {
   );
 }
 
+function isTokenBoundaryPrefix(full: string, part: string): boolean {
+  return full === part || full.startsWith(`${part} `);
+}
+
+function containmentSimilarity(labelRaw: string, candidateRaw: string): number {
+  const rawLabel = normalizeText(labelRaw);
+  const rawCandidate = normalizeText(candidateRaw);
+  const label = normalizeForMatch(labelRaw);
+  const candidate = normalizeForMatch(candidateRaw);
+
+  if (!rawLabel || !rawCandidate || !label || !candidate) return 0;
+
+  if (
+    isTokenBoundaryPrefix(rawCandidate, rawLabel) ||
+    isTokenBoundaryPrefix(candidate, label) ||
+    isTokenBoundaryPrefix(rawLabel, rawCandidate) ||
+    isTokenBoundaryPrefix(label, candidate)
+  ) {
+    return 0.95;
+  }
+
+  if (
+    rawCandidate.includes(rawLabel) || rawLabel.includes(rawCandidate) ||
+    candidate.includes(label) || label.includes(candidate)
+  ) {
+    return 0.85;
+  }
+
+  return 0;
+}
+
 /**
  * Extract a leading section number like "2.1" from a label.
  * Returns null if no numeric prefix found.
@@ -224,10 +255,8 @@ export function matchChapter(
     const rawNormTitle = normalizeText(ch.title);
     const normTitle = normalizeForMatch(ch.title);
     if (rawNorm === rawNormTitle || norm === normTitle) return { ch, score: 1 };
-    if (
-      rawNorm.includes(rawNormTitle) || rawNormTitle.includes(rawNorm) ||
-      norm.includes(normTitle) || normTitle.includes(norm)
-    ) return { ch, score: 0.85 };
+    const containment = containmentSimilarity(label, ch.title);
+    if (containment > 0) return { ch, score: containment };
     const ws = wordSimilarity(norm, normTitle);
     const es = editSimilarity(norm, normTitle);
     const ss = structuralSimilarity(label, ch.title);
@@ -287,10 +316,8 @@ export function matchSection(
     const normName = normalizeForMatch(sec.name);
     if (rawNorm === rawNormName || norm === normName) return { sec, score: 1 };
     if (sec.section_number && normalizeText(sec.section_number) === rawNorm) return { sec, score: 0.95 };
-    if (
-      rawNorm.includes(rawNormName) || rawNormName.includes(rawNorm) ||
-      norm.includes(normName) || normName.includes(norm)
-    ) return { sec, score: 0.85 };
+    const containment = containmentSimilarity(label, sec.name);
+    if (containment > 0) return { sec, score: containment };
     const ws = wordSimilarity(norm, normName);
     const es = editSimilarity(norm, normName);
     const ss = structuralSimilarity(label, sec.name);
