@@ -140,11 +140,16 @@ function containmentSimilarity(labelRaw: string, candidateRaw: string): number {
 
   if (
     isTokenBoundaryPrefix(rawCandidate, rawLabel) ||
-    isTokenBoundaryPrefix(candidate, label) ||
+    isTokenBoundaryPrefix(candidate, label)
+  ) {
+    return 0.97;
+  }
+
+  if (
     isTokenBoundaryPrefix(rawLabel, rawCandidate) ||
     isTokenBoundaryPrefix(label, candidate)
   ) {
-    return 0.95;
+    return 0.9;
   }
 
   if (
