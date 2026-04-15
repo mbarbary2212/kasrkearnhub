@@ -272,6 +272,18 @@ export function QuestionSessionShell({
               </Button>
             </div>
           )}
+
+          {/* FSRS rating buttons — shown after MCQ/SBA answer is revealed */}
+          {isSubmitted && questionType !== 'osce' && (
+            <MCQFSRSRatingButtons
+              mcqId={currentQuestion.id}
+              onRated={() => {
+                if (currentIndex < questions.length - 1) {
+                  goNext();
+                }
+              }}
+            />
+          )}
         </div>
 
         {/* Navigation bar - pinned to bottom */}
