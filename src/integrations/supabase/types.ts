@@ -4086,6 +4086,39 @@ export type Database = {
           },
         ]
       }
+      mcq_review_logs: {
+        Row: {
+          created_at: string
+          elapsed_days: number
+          id: string
+          mcq_id: string
+          rating: string
+          reviewed_at: string
+          scheduled_days: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          elapsed_days: number
+          id?: string
+          mcq_id: string
+          rating: string
+          reviewed_at?: string
+          scheduled_days: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          elapsed_days?: number
+          id?: string
+          mcq_id?: string
+          rating?: string
+          reviewed_at?: string
+          scheduled_days?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       mcq_sets: {
         Row: {
           chapter_id: string | null
@@ -4181,6 +4214,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mcq_states: {
+        Row: {
+          created_at: string
+          difficulty: number
+          due: string
+          elapsed_days: number
+          id: string
+          lapses: number
+          last_review: string | null
+          learning_steps: number
+          mcq_id: string
+          reps: number
+          scheduled_days: number
+          stability: number
+          state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: number
+          due?: string
+          elapsed_days?: number
+          id?: string
+          lapses?: number
+          last_review?: string | null
+          learning_steps?: number
+          mcq_id: string
+          reps?: number
+          scheduled_days?: number
+          stability?: number
+          state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: number
+          due?: string
+          elapsed_days?: number
+          id?: string
+          lapses?: number
+          last_review?: string | null
+          learning_steps?: number
+          mcq_id?: string
+          reps?: number
+          scheduled_days?: number
+          stability?: number
+          state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       mcqs: {
         Row: {
