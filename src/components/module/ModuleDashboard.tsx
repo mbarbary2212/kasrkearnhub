@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 import { useDueCards } from '@/hooks/useFSRS';
+import { useDueMCQCount } from '@/hooks/useMCQFSRS';
 import { LastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { DashboardData, SuggestedItem } from '@/hooks/useStudentDashboard';
 import { ArrowRight, BookOpen, FlaskConical, PenLine, Play as PlayIcon, Video, GalleryHorizontal, BookOpenCheck, ChevronRight } from 'lucide-react';
@@ -48,6 +49,7 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
   
   const { data: dueCards } = useDueCards();
   const dueCount = dueCards?.length ?? 0;
+  const { data: dueMCQCount = 0 } = useDueMCQCount();
 
   const firstName = getFirstName(profile?.full_name);
   const greeting = getGreeting();
@@ -128,7 +130,19 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
         </Card>
       )}
 
-      {/* 5. Today's Study Plan */}
+      {/* 4b. MCQ widget */}
+      {dueMCQCount > 0 ? (
+        <Card
+          className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => navigate('/progress?tab=plan')}
+        >
+          <div className="flex items-center gap-2 text-sm">
+            <span>🧠</span>
+            <span className="font-medium">{dueMCQCount} MCQ{dueMCQCount === 1 ? '' : 's'} due today →</span>
+          </div>
+        </Card>
+      ) : null}
+
       {suggestions.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Today's Study Plan</h3>
