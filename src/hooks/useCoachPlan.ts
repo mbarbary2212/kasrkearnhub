@@ -30,12 +30,24 @@ export interface DaySchedule {
   daysUntilExam?: number;
 }
 
+export interface MaintenanceTask {
+  chapterId: string;
+  chapterTitle: string;
+  moduleId: string;
+  moduleName: string;
+  reviewType: 'flashcard' | 'mcq';
+  estimatedMinutes: number;
+  reason: string;
+}
+
 export interface CoachPlanResult {
   plan: AdaptiveStudyPlan | null;
   isOnRotation: boolean;
   rotationDept: string | null;
   nearestExam: { name: string; date: Date; daysLeft: number } | null;
   weekSchedule: DaySchedule[];
+  maintenanceTasks: MaintenanceTask[];
+  activeModuleName: string | null;
   /** True when daily_hours has been set — minimum needed for a meaningful plan */
   goalsComplete: boolean;
   isLoading: boolean;
@@ -135,6 +147,53 @@ export function useCoachPlan(): CoachPlanResult {
 
   const examWeightsQuery = useChapterExamWeights(moduleIds);
 
+  const activeModuleId = useMemo(() => {
+    const goals = goalsQuery.data;
+    if (!goals?.exam_schedule?.length) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const upcoming = goals.exam_schedule
+      .map(e => ({ ...e, parsedDate: new Date(e.exam_date) }))
+      .filter(e => e.parsedDate >= today)
+      .sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
+    return upcoming[0]?.module_id ?? null;
+  }, [goalsQuery.data]);
+
+  const activeModuleName = useMemo(() => {
+    if (!activeModuleId || !goalsQuery.data?.exam_schedule) return null;
+    return goalsQuery.data.exam_schedule.find(e => e.module_id === activeModuleId)?.module_name ?? null;
+  }, [activeModuleId, goalsQuery.data]);
+
+  const maintenanceTasks = useMemo((): MaintenanceTask[] => {
+    const dashboard = dashboardQuery.data;
+    if (!dashboard || !activeModuleId) return [];
+    const MAINTENANCE_CAP_MINUTES = 15;
+    const metricsMap = new Map(dashboard.chapterMetrics.map(m => [m.chapter_id, m]));
+    const nonActiveChapters = dashboard.chapters.filter(ch => ch.moduleId !== activeModuleId);
+    const tasks: MaintenanceTask[] = [];
+    let usedMinutes = 0;
+    for (const chapter of nonActiveChapters) {
+      if (usedMinutes >= MAINTENANCE_CAP_MINUTES) break;
+      const m = metricsMap.get(chapter.id);
+      if (!m) continue;
+      const hasOverdueFlashcards = (m.flashcards_overdue ?? 0) > 0;
+      const hasDueFlashcards = (m.flashcards_due ?? 0) > 0;
+      if ((hasOverdueFlashcards || hasDueFlashcards) && usedMinutes + 5 <= MAINTENANCE_CAP_MINUTES) {
+        tasks.push({
+          chapterId: chapter.id,
+          chapterTitle: chapter.title,
+          moduleId: chapter.moduleId,
+          moduleName: chapter.moduleName,
+          reviewType: 'flashcard',
+          estimatedMinutes: 5,
+          reason: hasOverdueFlashcards ? 'Overdue flashcards' : 'Flashcards due today',
+        });
+        usedMinutes += 5;
+      }
+    }
+    return tasks;
+  }, [dashboardQuery.data, activeModuleId]);
+
   const planResult = useMemo(() => {
     const goals = goalsQuery.data;
     const dashboard = dashboardQuery.data;
@@ -149,6 +208,10 @@ export function useCoachPlan(): CoachPlanResult {
       hasLectures: ch.totalItems > 0,
       firstLectureTitle: undefined,
     }));
+
+    const planChapters = activeModuleId
+      ? chapters.filter(ch => ch.moduleId === activeModuleId)
+      : chapters;
 
     // Find nearest upcoming exam
     const today = new Date();
@@ -177,7 +240,7 @@ export function useCoachPlan(): CoachPlanResult {
 
     const plan = buildAdaptiveStudyPlan({
       metrics: dashboard.chapterMetrics,
-      chapters,
+      chapters: planChapters,
       availableMinutes,
       examWeightMap: examWeightsQuery.data,
       examDate: nearestExamEntry?.parsedDate,
@@ -191,7 +254,7 @@ export function useCoachPlan(): CoachPlanResult {
       rotationDept: activeRotation?.department ?? null,
       nearestExam,
     };
-  }, [goalsQuery.data, dashboardQuery.data, examWeightsQuery.data]);
+  }, [goalsQuery.data, dashboardQuery.data, examWeightsQuery.data, activeModuleId]);
 
   const weekSchedule = useMemo(
     () => (goalsQuery.data ? generateWeekSchedule(goalsQuery.data) : []),
@@ -204,6 +267,8 @@ export function useCoachPlan(): CoachPlanResult {
     rotationDept: planResult?.rotationDept ?? null,
     nearestExam: planResult?.nearestExam ?? null,
     weekSchedule,
+    maintenanceTasks,
+    activeModuleName,
     goalsComplete: !!(goalsQuery.data?.daily_hours),
     isLoading: goalsQuery.isLoading || dashboardQuery.isLoading,
     error: goalsQuery.error ?? dashboardQuery.error,
