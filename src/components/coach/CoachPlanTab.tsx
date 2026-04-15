@@ -1,3 +1,4 @@
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCoachPlan, type MaintenanceTask } from '@/hooks/useCoachPlan';
 import { computeGoalsProgress } from '@/hooks/useStudentGoals';
@@ -38,6 +39,24 @@ const MODE_STYLE: Record<string, { colour: string; icon: React.ReactNode }> = {
 
 const DEFAULT_STYLE = { colour: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300', icon: <BookOpen className="h-3.5 w-3.5" /> };
 
+// ── localStorage helpers for started tasks ────────────────────────
+function getTodayKey() {
+  return new Date().toISOString().split('T')[0];
+}
+function getStartedTasks(): Set<string> {
+  try {
+    const raw = localStorage.getItem(`kalm_started_${getTodayKey()}`);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+function markTaskStarted(chapterId: string) {
+  try {
+    const started = getStartedTasks();
+    started.add(chapterId);
+    localStorage.setItem(`kalm_started_${getTodayKey()}`, JSON.stringify([...started]));
+  } catch {}
+}
+
 // ── Day mode colours for the week strip ───────────────────────────
 const DAY_MODE_STYLE: Record<DayMode, { dot: string; label: string }> = {
   normal:    { dot: 'bg-emerald-500',  label: '' },
@@ -48,6 +67,7 @@ const DAY_MODE_STYLE: Record<DayMode, { dot: string; label: string }> = {
 
 export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
   const navigate = useNavigate();
+  const [startedTasks, setStartedTasks] = React.useState<Set<string>>(() => getStartedTasks());
   const { data: goals } = useStudentGoals();
   const {
     plan,
@@ -114,6 +134,10 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
 
   // ── Task navigation helper ────────────────────────────────────
   const startTask = (moduleId?: string, chapterId?: string, tab?: string, subtab?: string) => {
+    if (chapterId) {
+      markTaskStarted(chapterId);
+      setStartedTasks(getStartedTasks());
+    }
     if (!moduleId || !chapterId) {
       navigate('/review/flashcards');
       return;
@@ -166,6 +190,43 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
         </CardHeader>
 
         <CardContent className="space-y-3">
+          {plan && plan.tasks.length > 0 && (() => {
+            const doneCount = plan.tasks.filter(t => t.chapterId && startedTasks.has(t.chapterId)).length;
+            const total = plan.tasks.length;
+            const allDone = doneCount === total;
+            const nextTask = plan.tasks.find(t => t.chapterId && !startedTasks.has(t.chapterId));
+            return (
+              <div className="space-y-2 pb-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{doneCount}/{total} tasks done</span>
+                  {allDone ? (
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">🎉 Plan complete!</span>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => {
+                        if (nextTask) {
+                          const tab = nextTask.prescribedStudyMode?.tab || nextTask.tab || 'resources';
+                          startTask(nextTask.moduleId, nextTask.chapterId, tab, nextTask.subtab);
+                        }
+                      }}
+                    >
+                      {doneCount === 0 ? 'Start Session' : 'Continue Session'}
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${(doneCount / total) * 100}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
+
           {(!plan || plan.tasks.length === 0) && (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No tasks could be generated — make sure you have module content available.
@@ -175,18 +236,16 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
           {plan?.tasks.map((task, idx) => {
             const modeKey = task.prescribedStudyMode?.key ?? task.type ?? 'review';
             const style = MODE_STYLE[modeKey] ?? DEFAULT_STYLE;
-            // Strip the " — Mode (detail)" suffix to show only the chapter name
             const chapterName = task.title.split(' — ')[0];
             const modeLabel = task.prescribedStudyMode?.label ?? modeKey;
-            const canStart = !!(task.moduleId && task.chapterId);
+            const isDone = !!(task.chapterId && startedTasks.has(task.chapterId));
 
             return (
               <div
                 key={`${task.chapterId}-${idx}`}
-                className="flex items-start justify-between gap-3 rounded-lg border p-3 hover:bg-muted/30 transition-colors"
+                className={`flex items-start justify-between gap-3 rounded-lg border p-3 transition-colors ${isDone ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/10 dark:border-emerald-900/30 opacity-70' : 'hover:bg-muted/30'}`}
               >
                 <div className="space-y-1.5 min-w-0 flex-1">
-                  {/* Mode pill */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="secondary" className={`text-[11px] gap-1 ${style.colour}`}>
                       {style.icon}
@@ -199,9 +258,7 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
                       </Badge>
                     )}
                   </div>
-                  {/* Chapter name */}
                   <p className="text-sm font-medium truncate">{chapterName}</p>
-                  {/* Reason */}
                   {task.reason && (
                     <p className="text-xs text-muted-foreground">{task.reason}</p>
                   )}
@@ -213,15 +270,14 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
                   </span>
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="h-7 text-xs gap-1"
-                    disabled={!canStart}
+                    variant={isDone ? "secondary" : "outline"}
+                    className={`h-7 text-xs gap-1 ${isDone ? 'text-emerald-600 dark:text-emerald-400' : ''}`}
                     onClick={() => {
                       const tab = task.prescribedStudyMode?.tab || task.tab || 'resources';
                       startTask(task.moduleId, task.chapterId, tab, task.subtab);
                     }}
                   >
-                    Start <ArrowRight className="h-3 w-3" />
+                    {isDone ? '✓ Done' : <> Start <ArrowRight className="h-3 w-3" /> </>}
                   </Button>
                 </div>
               </div>
