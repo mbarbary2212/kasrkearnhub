@@ -1,4 +1,5 @@
 import React from 'react';
+import { useWeeklyActivity } from '@/hooks/useWeeklyActivity';
 import { useNavigate } from 'react-router-dom';
 import { useCoachPlan, type MaintenanceTask } from '@/hooks/useCoachPlan';
 import { computeGoalsProgress } from '@/hooks/useStudentGoals';
@@ -80,6 +81,7 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
     maintenanceTasks,
     activeModuleName,
   } = useCoachPlan();
+  const { data: activeDates } = useWeeklyActivity();
 
   // ── Loading state ─────────────────────────────────────────────
   if (isLoading) {
@@ -395,6 +397,46 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
             <CardTitle className="text-sm">This Week</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Weekly habit dots */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">Last 7 days</span>
+                {activeDates && (
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    {activeDates.size}/7 days active
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between gap-1">
+                {Array.from({ length: 7 }, (_, i) => {
+                  const d = new Date();
+                  d.setDate(d.getDate() - (6 - i));
+                  const dateStr = d.toISOString().split('T')[0];
+                  const isToday = i === 6;
+                  const wasActive = activeDates?.has(dateStr) ?? false;
+                  const dayLabel = isToday ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
+                  return (
+                    <div key={dateStr} className="flex flex-col items-center gap-1">
+                      <div
+                        className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                          wasActive
+                            ? 'bg-emerald-500 text-white'
+                            : isToday
+                            ? 'bg-muted ring-1 ring-primary/30 text-muted-foreground'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {wasActive ? '✓' : isToday ? '·' : ''}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {dayLabel}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="overflow-x-auto -mx-2">
               <div className="flex gap-1 px-2 min-w-max">
                 {weekSchedule.map((day, idx) => {
