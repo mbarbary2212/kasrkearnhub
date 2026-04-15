@@ -38,6 +38,22 @@ const EMOJI_RE = /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}
 const PREFIX_RE = /^(ch\.?\s*\d+\s*[:\-–—]\s*)/i;
 const HIERARCHICAL_PREFIX_RE = /^\d+(?:\.(?:\d+|[a-z]+))*\.?\s*/i;
 const NOISE_RE = /[^a-z0-9\s]/g;
+const MATCH_STOP_WORDS = new Set(['a', 'an', 'the', 'of', 'and', 'or', 'to', 'for', 'with', 'without', 'in', 'on']);
+const MATCH_TEXT_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bgi\b/g, 'gastrointestinal'],
+  [/\bpr\b/g, 'per rectum'],
+  [/\bomental\b/g, 'omentum'],
+  [/\bbleeding\b/g, 'hemorrhage'],
+  [/\bhaemorrhage\b/g, 'hemorrhage'],
+  [/\bhaematemesis\b/g, 'hematemesis'],
+  [/\bhaematochezia\b/g, 'per rectum hemorrhage'],
+  [/\bmelaena\b/g, 'melena'],
+  [/\banatomical\b/g, 'anatomy'],
+  [/\bphysiological\b/g, 'physiology'],
+  [/\bneoplasms?\b/g, 'tumor'],
+  [/\btumours?\b/g, 'tumor'],
+  [/\btumors?\b/g, 'tumor'],
+];
 
 /**
  * Aggressively normalise text for comparison:
@@ -58,6 +74,92 @@ export function normalizeText(raw: string): string {
 function normalizeSectionNumber(raw: string | null | undefined): string | null {
   if (!raw) return null;
   return raw.trim().replace(/\.$/, '').toLowerCase();
+}
+
+function canonicalizeMatchToken(rawToken: string): string | null {
+  let token = rawToken.trim();
+  if (!token) return null;
+  if (MATCH_STOP_WORDS.has(token)) return null;
+  if (token.endsWith('ies') && token.length > 4) {
+    token = `${token.slice(0, -3)}y`;
+  }
+  if (token.endsWith('al') && token.length > 5) {
+    const stem = token.slice(0, -2);
+    if (stem.endsWith('ic')) token = stem;
+  }
+  return token || null;
+}
+
+function normalizeForMatch(raw: string): string {
+  let normalized = normalizeText(raw);
+  for (const [pattern, replacement] of MATCH_TEXT_REPLACEMENTS) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+  return normalized
+    .split(/\s+/)
+    .map(canonicalizeMatchToken)
+    .filter((token): token is string => Boolean(token))
+    .join(' ');
+}
+
+function sortedTokenSignature(raw: string): string {
+  return normalizeForMatch(raw)
+    .split(/\s+/)
+    .filter(Boolean)
+    .sort()
+    .join(' ');
+}
+
+function structuralSimilarity(a: string, b: string): number {
+  const normA = normalizeForMatch(a);
+  const normB = normalizeForMatch(b);
+  if (!normA || !normB) return 0;
+
+  const sigA = sortedTokenSignature(a);
+  const sigB = sortedTokenSignature(b);
+
+  return Math.max(
+    wordSimilarity(normA, normB),
+    editSimilarity(normA, normB),
+    wordSimilarity(sigA, sigB),
+    editSimilarity(sigA, sigB),
+  );
+}
+
+function isTokenBoundaryPrefix(full: string, part: string): boolean {
+  return full === part || full.startsWith(`${part} `);
+}
+
+function containmentSimilarity(labelRaw: string, candidateRaw: string): number {
+  const rawLabel = normalizeText(labelRaw);
+  const rawCandidate = normalizeText(candidateRaw);
+  const label = normalizeForMatch(labelRaw);
+  const candidate = normalizeForMatch(candidateRaw);
+
+  if (!rawLabel || !rawCandidate || !label || !candidate) return 0;
+
+  if (
+    isTokenBoundaryPrefix(rawCandidate, rawLabel) ||
+    isTokenBoundaryPrefix(candidate, label)
+  ) {
+    return 0.97;
+  }
+
+  if (
+    isTokenBoundaryPrefix(rawLabel, rawCandidate) ||
+    isTokenBoundaryPrefix(label, candidate)
+  ) {
+    return 0.9;
+  }
+
+  if (
+    rawCandidate.includes(rawLabel) || rawLabel.includes(rawCandidate) ||
+    candidate.includes(label) || label.includes(candidate)
+  ) {
+    return 0.85;
+  }
+
+  return 0;
 }
 
 /**
@@ -149,17 +251,21 @@ export function matchChapter(
     if (byId) return { match: byId, score: 1, ambiguous: false };
   }
 
-  const norm = normalizeText(label);
-  if (!norm) return { match: null, score: 0, ambiguous: false };
+  const rawNorm = normalizeText(label);
+  const norm = normalizeForMatch(label);
+  if (!rawNorm || !norm) return { match: null, score: 0, ambiguous: false };
 
   type Scored = { ch: ChapterCandidate; score: number };
   const scored: Scored[] = chapters.map(ch => {
-    const normTitle = normalizeText(ch.title);
-    if (norm === normTitle) return { ch, score: 1 };
-    if (norm.includes(normTitle) || normTitle.includes(norm)) return { ch, score: 0.85 };
+    const rawNormTitle = normalizeText(ch.title);
+    const normTitle = normalizeForMatch(ch.title);
+    if (rawNorm === rawNormTitle || norm === normTitle) return { ch, score: 1 };
+    const containment = containmentSimilarity(label, ch.title);
+    if (containment > 0) return { ch, score: containment };
     const ws = wordSimilarity(norm, normTitle);
     const es = editSimilarity(norm, normTitle);
-    return { ch, score: Math.max(ws, es) };
+    const ss = structuralSimilarity(label, ch.title);
+    return { ch, score: Math.max(ws, es, ss) };
   });
 
   scored.sort((a, b) => b.score - a.score);
@@ -199,24 +305,28 @@ export function matchSection(
       return { match: byNum[0], score: 0.98, ambiguous: false };
     }
 
-    const exactNameMatch = byNum.find(s => normalizeText(s.name) === normalizeText(label));
+    const exactNameMatch = byNum.find(s => normalizeForMatch(s.name) === normalizeForMatch(label));
     if (exactNameMatch) {
       return { match: exactNameMatch, score: 0.99, ambiguous: false };
     }
   }
 
-  const norm = normalizeText(label);
-  if (!norm) return { match: null, score: 0, ambiguous: false };
+  const rawNorm = normalizeText(label);
+  const norm = normalizeForMatch(label);
+  if (!rawNorm || !norm) return { match: null, score: 0, ambiguous: false };
 
   type Scored = { sec: SectionCandidate; score: number };
   const scored: Scored[] = sections.map(sec => {
-    const normName = normalizeText(sec.name);
-    if (norm === normName) return { sec, score: 1 };
-    if (sec.section_number && normalizeText(sec.section_number) === norm) return { sec, score: 0.95 };
-    if (norm.includes(normName) || normName.includes(norm)) return { sec, score: 0.85 };
+    const rawNormName = normalizeText(sec.name);
+    const normName = normalizeForMatch(sec.name);
+    if (rawNorm === rawNormName || norm === normName) return { sec, score: 1 };
+    if (sec.section_number && normalizeText(sec.section_number) === rawNorm) return { sec, score: 0.95 };
+    const containment = containmentSimilarity(label, sec.name);
+    if (containment > 0) return { sec, score: containment };
     const ws = wordSimilarity(norm, normName);
     const es = editSimilarity(norm, normName);
-    return { sec, score: Math.max(ws, es) };
+    const ss = structuralSimilarity(label, sec.name);
+    return { sec, score: Math.max(ws, es, ss) };
   });
 
   scored.sort((a, b) => b.score - a.score);
