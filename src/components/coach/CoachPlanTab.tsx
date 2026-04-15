@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useCoachPlan } from '@/hooks/useCoachPlan';
+import { useCoachPlan, type MaintenanceTask } from '@/hooks/useCoachPlan';
 import { computeGoalsProgress } from '@/hooks/useStudentGoals';
 import { useStudentGoals } from '@/hooks/useStudentGoals';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +57,8 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
     weekSchedule,
     goalsComplete,
     isLoading,
+    maintenanceTasks,
+    activeModuleName,
   } = useCoachPlan();
 
   // ── Loading state ─────────────────────────────────────────────
@@ -233,6 +235,53 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Maintenance ─────────────────────────────────────── */}
+      {maintenanceTasks.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <RotateCcw className="h-4 w-4" />
+              Maintenance
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Keep previous modules from fading — 15 min included in your daily total
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {maintenanceTasks.map((task, idx) => (
+              <div
+                key={`${task.chapterId}-${idx}`}
+                className="flex items-start justify-between gap-3 rounded-lg border p-3 hover:bg-muted/30 transition-colors"
+              >
+                <div className="space-y-1.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="secondary" className="text-[11px] gap-1 bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      {task.reviewType === 'flashcard' ? 'Flashcards' : 'MCQ Review'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm font-medium truncate">{task.chapterTitle}</p>
+                  <p className="text-xs text-muted-foreground">{task.moduleName} · {task.reason}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {task.estimatedMinutes} min
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => navigate('/review/flashcards')}
+                  >
+                    Start <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── This Week ───────────────────────────────────────── */}
       {weekSchedule.length > 0 && (
