@@ -82,8 +82,6 @@ function canonicalizeMatchToken(rawToken: string): string | null {
   if (MATCH_STOP_WORDS.has(token)) return null;
   if (token.endsWith('ies') && token.length > 4) {
     token = `${token.slice(0, -3)}y`;
-  } else if (token.endsWith('s') && token.length > 3 && !token.endsWith('ss')) {
-    token = token.slice(0, -1);
   }
   if (token.endsWith('al') && token.length > 5) {
     const stem = token.slice(0, -2);
