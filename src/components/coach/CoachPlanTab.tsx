@@ -214,7 +214,10 @@ export function CoachPlanTab({ onSwitchToGoals }: CoachPlanTabProps) {
                     variant="outline"
                     className="h-7 text-xs gap-1"
                     disabled={!canStart}
-                    onClick={() => startTask(task.moduleId, task.chapterId, task.tab)}
+                    onClick={() => {
+                      const tab = task.prescribedStudyMode?.tab || task.tab || 'resources';
+                      startTask(task.moduleId, task.chapterId, tab, task.subtab);
+                    }}
                   >
                     Start <ArrowRight className="h-3 w-3" />
                   </Button>
