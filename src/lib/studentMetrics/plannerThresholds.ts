@@ -74,3 +74,28 @@ export function getDaysUntilExam(examDate: Date | string | null | undefined): nu
   const diff = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   return Math.max(0, diff);
 }
+
+// ── Ambition level multipliers ──────────────────────────────────
+
+export type AmbitionLevel =
+  | 'top_of_class'
+  | 'above_average'
+  | 'pass_comfortably'
+  | 'just_pass';
+
+export interface AmbitionMultipliers {
+  /** Scales all task priorities up or down */
+  priorityScale: number;
+  /** Added to the normal maxTasks cap (can be negative) */
+  maxTasksBonus: number;
+}
+
+export const AMBITION_MULTIPLIERS: Record<AmbitionLevel, AmbitionMultipliers> = {
+  top_of_class:    { priorityScale: 1.15, maxTasksBonus:  1 },
+  above_average:   { priorityScale: 1.05, maxTasksBonus:  0 },
+  pass_comfortably:{ priorityScale: 1.0,  maxTasksBonus:  0 },
+  just_pass:       { priorityScale: 0.85, maxTasksBonus: -1 },
+};
+
+/** Cap on available study minutes when the student is on clinical rotation */
+export const ROTATION_MINUTES_CAP = 45;
