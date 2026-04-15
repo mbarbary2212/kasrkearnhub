@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, SkipForward, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RightInsightPanel } from './RightInsightPanel';
 import { McqAnswerArea } from './McqAnswerArea';
+import { MCQFSRSRatingButtons } from './MCQFSRSRatingButtons';
 import { OsceAnswerArea } from './OsceAnswerArea';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
 import type { OsceQuestion } from '@/hooks/useOsceQuestions';
@@ -270,6 +271,18 @@ export function QuestionSessionShell({
                 Skip
               </Button>
             </div>
+          )}
+
+          {/* FSRS rating buttons — shown after MCQ/SBA answer is revealed */}
+          {isSubmitted && questionType !== 'osce' && (
+            <MCQFSRSRatingButtons
+              mcqId={currentQuestion.id}
+              onRated={() => {
+                if (currentIndex < questions.length - 1) {
+                  goNext();
+                }
+              }}
+            />
           )}
         </div>
 
