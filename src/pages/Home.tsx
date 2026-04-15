@@ -169,6 +169,7 @@ function LoggedInHome() {
   const { data: dueCards } = useDueCards();
   const dueCount = dueCards?.length ?? 0;
   const { earned, total } = useBadgeStats();
+  const { data: dueMCQCount = 0 } = useDueMCQCount();
   const { data: lastPos } = useLastPosition();
 
   // Tour + Guidance
