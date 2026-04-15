@@ -17,11 +17,13 @@ import {
 interface Props {
   years: { id: string; name: string }[];
   modules: { id: string; name: string; year_id: string }[];
+  selectedYearId: string;
+  onYearChange: (v: string) => void;
+  selectedModuleId: string;
+  onModuleChange: (v: string) => void;
 }
 
-export function ValidationSummarySubtab({ years, modules }: Props) {
-  const [selectedYearId, setSelectedYearId] = useState('');
-  const [selectedModuleId, setSelectedModuleId] = useState('');
+export function ValidationSummarySubtab({ years, modules, selectedYearId, onYearChange, selectedModuleId, onModuleChange }: Props) {
 
   const filteredModules = selectedYearId ? modules.filter(m => m.year_id === selectedYearId) : modules;
   const { data: structures = [], isLoading } = useAssessmentStructures(selectedModuleId || undefined);
@@ -32,7 +34,7 @@ export function ValidationSummarySubtab({ years, modules }: Props) {
       <div className="flex gap-3 flex-wrap">
         <div className="w-48">
           <Label className="text-xs">Year</Label>
-          <Select value={selectedYearId} onValueChange={v => { setSelectedYearId(v); setSelectedModuleId(''); }}>
+          <Select value={selectedYearId} onValueChange={v => { onYearChange(v); onModuleChange(''); }}>
             <SelectTrigger><SelectValue placeholder="All years" /></SelectTrigger>
             <SelectContent>
               {years.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
@@ -41,7 +43,7 @@ export function ValidationSummarySubtab({ years, modules }: Props) {
         </div>
         <div className="w-64">
           <Label className="text-xs">Module</Label>
-          <Select value={selectedModuleId} onValueChange={setSelectedModuleId}>
+          <Select value={selectedModuleId} onValueChange={onModuleChange}>
             <SelectTrigger><SelectValue placeholder="Select module" /></SelectTrigger>
             <SelectContent>
               {filteredModules.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}

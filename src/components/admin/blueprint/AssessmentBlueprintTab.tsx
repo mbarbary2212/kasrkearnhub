@@ -12,6 +12,8 @@ interface Props {
 
 export function AssessmentBlueprintTab({ years, modules }: Props) {
   const [subtab, setSubtab] = useState('chapters');
+  const [selectedYearId, setSelectedYearId] = useState('');
+  const [selectedModuleId, setSelectedModuleId] = useState('');
 
   return (
     <div className="space-y-4">
@@ -31,16 +33,44 @@ export function AssessmentBlueprintTab({ years, modules }: Props) {
         </TabsList>
 
         <TabsContent value="chapters" className="mt-4">
-          <ChapterBlueprintSubtab years={years} modules={modules} />
+          <ChapterBlueprintSubtab
+            years={years}
+            modules={modules}
+            selectedYearId={selectedYearId}
+            onYearChange={setSelectedYearId}
+            selectedModuleId={selectedModuleId}
+            onModuleChange={setSelectedModuleId}
+          />
         </TabsContent>
         <TabsContent value="structure" className="mt-4">
-          <ExamStructureSubtab years={years} modules={modules} />
+          <ExamStructureSubtab
+            years={years}
+            modules={modules}
+            selectedYearId={selectedYearId}
+            onYearChange={setSelectedYearId}
+            selectedModuleId={selectedModuleId}
+            onModuleChange={setSelectedModuleId}
+          />
         </TabsContent>
         <TabsContent value="weights" className="mt-4">
-          <TopicWeightsSubtab years={years} modules={modules} />
+          <TopicWeightsSubtab
+            years={years}
+            modules={modules}
+            selectedYearId={selectedYearId}
+            onYearChange={setSelectedYearId}
+            selectedModuleId={selectedModuleId}
+            onModuleChange={setSelectedModuleId}
+          />
         </TabsContent>
         <TabsContent value="validation" className="mt-4">
-          <ValidationSummarySubtab years={years} modules={modules} />
+          <ValidationSummarySubtab
+            years={years}
+            modules={modules}
+            selectedYearId={selectedYearId}
+            onYearChange={setSelectedYearId}
+            selectedModuleId={selectedModuleId}
+            onModuleChange={setSelectedModuleId}
+          />
         </TabsContent>
       </Tabs>
     </div>

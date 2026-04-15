@@ -24,11 +24,13 @@ import { toast } from 'sonner';
 interface Props {
   years: { id: string; name: string }[];
   modules: { id: string; name: string; year_id: string }[];
+  selectedYearId: string;
+  onYearChange: (v: string) => void;
+  selectedModuleId: string;
+  onModuleChange: (v: string) => void;
 }
 
-export function TopicWeightsSubtab({ years, modules }: Props) {
-  const [selectedYearId, setSelectedYearId] = useState('');
-  const [selectedModuleId, setSelectedModuleId] = useState('');
+export function TopicWeightsSubtab({ years, modules, selectedYearId, onYearChange, selectedModuleId, onModuleChange }: Props) {
   const [selectedAssessmentId, setSelectedAssessmentId] = useState('');
 
   const filteredModules = selectedYearId ? modules.filter(m => m.year_id === selectedYearId) : modules;
@@ -125,8 +127,8 @@ export function TopicWeightsSubtab({ years, modules }: Props) {
           selectedModuleId={selectedModuleId}
           selectedAssessmentId={selectedAssessmentId}
           structures={structures}
-          onYearChange={v => { setSelectedYearId(v); setSelectedModuleId(''); setSelectedAssessmentId(''); }}
-          onModuleChange={v => { setSelectedModuleId(v); setSelectedAssessmentId(''); }}
+          onYearChange={v => { onYearChange(v); onModuleChange(''); setSelectedAssessmentId(''); }}
+          onModuleChange={v => { onModuleChange(v); setSelectedAssessmentId(''); }}
           onAssessmentChange={setSelectedAssessmentId}
         />
         <p className="text-sm text-muted-foreground py-8 text-center">Select a module and assessment to manage weights.</p>
@@ -144,8 +146,8 @@ export function TopicWeightsSubtab({ years, modules }: Props) {
         selectedModuleId={selectedModuleId}
         selectedAssessmentId={selectedAssessmentId}
         structures={structures}
-        onYearChange={v => { setSelectedYearId(v); setSelectedModuleId(''); setSelectedAssessmentId(''); }}
-        onModuleChange={v => { setSelectedModuleId(v); setSelectedAssessmentId(''); }}
+          onYearChange={v => { onYearChange(v); onModuleChange(''); setSelectedAssessmentId(''); }}
+          onModuleChange={v => { onModuleChange(v); setSelectedAssessmentId(''); }}
         onAssessmentChange={setSelectedAssessmentId}
       />
 
