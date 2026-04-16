@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { BookOpen, FileQuestion, Play, FileText, Clock, ChevronRight, ChevronDown, ArrowRight, GalleryHorizontal, Lightbulb, Stethoscope, Eye, Brain, CheckCircle2, Circle, RotateCcw, CalendarClock, RefreshCw, Loader2 } from 'lucide-react';
 import type { SuggestedItem } from '@/hooks/useStudentDashboard';
 import type { AdaptiveStudyPlan } from '@/lib/studentMetrics';
@@ -112,6 +113,23 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
     }
   };
 
+  // Check if all tasks are done
+  const allDone = useMemo(() => {
+    if (!dailyPlan?.tasks?.length || suggestions.length === 0) return false;
+    return suggestions.every(s => getTaskStatus(dailyPlan, s.chapterId) === 'completed');
+  }, [dailyPlan, suggestions]);
+
+  // Sort suggestions: pending/partial first, completed last
+  const sortedSuggestions = useMemo(() => {
+    return [...suggestions].sort((a, b) => {
+      const statusA = getTaskStatus(dailyPlan, a.chapterId);
+      const statusB = getTaskStatus(dailyPlan, b.chapterId);
+      const aCompleted = statusA === 'completed' ? 1 : 0;
+      const bCompleted = statusB === 'completed' ? 1 : 0;
+      return aCompleted - bCompleted;
+    });
+  }, [suggestions, dailyPlan]);
+
   if (suggestions.length === 0) {
     return (
       <Card>
@@ -127,8 +145,32 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
     );
   }
 
-  const primarySuggestion = suggestions.find(s => s.isPrimary);
-  const otherSuggestions = suggestions.filter(s => !s.isPrimary);
+  // All done state
+  if (allDone) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-center">
+          <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+          <p className="text-lg font-semibold text-foreground">All done for today!</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You completed all {dailyPlan?.tasks.length ?? suggestions.length} tasks. Great work!
+          </p>
+          {onRefreshPlan && (
+            <div className="flex gap-2 justify-center mt-4">
+              <Button variant="outline" size="sm" onClick={() => { setTimeChanged(false); void onRefreshPlan(); }} disabled={isRefreshing}>
+                {isRefreshing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                Add more study time
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Find first non-completed suggestion as primary
+  const primarySuggestion = sortedSuggestions.find(s => getTaskStatus(dailyPlan, s.chapterId) !== 'completed');
+  const otherSuggestions = sortedSuggestions.filter(s => s !== primarySuggestion);
   const totalMinutes = studyPlan?.totalEstimatedMinutes ?? suggestions.reduce((sum, s) => sum + (s.estimatedMinutes || 0), 0);
   const insight = studyPlan?.confidenceInsight ?? confidenceInsight;
   const examMode = studyPlan?.examMode;
@@ -238,7 +280,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
         )}
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Start Here — Primary Action */}
+        {/* Start Here — Primary Action (first non-completed task) */}
         {primarySuggestion && (
           <div
             className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors group bg-primary/5 hover:bg-primary/10 border border-primary/20"
@@ -285,11 +327,12 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
               const Icon = getTaskIcon(item);
               const taskStatus = getTaskStatus(dailyPlan, item.chapterId);
               const carried = isCarriedOver(dailyPlan, item.chapterId);
+              const isCompleted = taskStatus === 'completed';
               return (
                 <div
                   key={idx}
                   className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors group ${
-                    taskStatus === 'completed' ? 'bg-muted/30 opacity-60' : 'bg-muted/50 hover:bg-muted'
+                    isCompleted ? 'bg-muted/30 opacity-60' : 'bg-muted/50 hover:bg-muted'
                   }`}
                   onClick={() => {
                     const tab = item.prescribedStudyMode?.tab || item.tab || 'resources';
@@ -302,7 +345,7 @@ export function DashboardTodayPlan({ suggestions, studyPlan, onNavigate, confide
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <TaskStatusDot status={taskStatus} />
-                      <p className="text-sm font-medium truncate text-foreground">{getChapterName(item)}</p>
+                      <p className={`text-sm font-medium truncate text-foreground ${isCompleted ? 'line-through' : ''}`}>{getChapterName(item)}</p>
                       {carried && (
                         <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0">
                           <RotateCcw className="w-2.5 h-2.5" />carried
