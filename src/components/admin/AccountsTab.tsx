@@ -109,6 +109,14 @@ export function AccountsTab() {
   const [allSortField, setAllSortField] = useState<'status' | 'date'>('date');
   const [allSortOrder, setAllSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Bulk action state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRole, setBulkRole] = useState('student');
+  const [bulkApproveDialogOpen, setBulkApproveDialogOpen] = useState(false);
+  const [bulkRejectDialogOpen, setBulkRejectDialogOpen] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
+  const [bulkReportOpen, setBulkReportOpen] = useState(false);
   const { data: pendingRequests, isLoading: loadingPending } = useAccessRequests('pending');
   const { data: allRequests, isLoading: loadingAll } = useAccessRequests();
   
