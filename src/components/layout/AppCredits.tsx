@@ -41,14 +41,12 @@ export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-0.5 text-[10px] text-muted-foreground border-t border-border/30 pt-3 pb-2 px-2">
-      <span className="flex items-center gap-1">
-        Built with <Heart className="h-3 w-3 text-red-500 fill-red-500" /> by the KALM Hub Team
-      </span>
+    <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground border-t border-border/30 pt-3 pb-2 px-2">
+      <Heart className="h-3 w-3 text-red-500 fill-red-500 shrink-0" />
       <Popover>
         <PopoverTrigger asChild>
           <button className="underline underline-offset-2 hover:text-foreground transition-colors">
-            Credits
+            KALM Hub Team
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-4" align="center" side="right">
