@@ -128,6 +128,7 @@ const App = () => {
       <BadgeCelebrationProvider>
         <CoachProvider>
           <ConnectProvider>
+          <SessionFlowProvider>
           <AudioPlayerProvider>
             <TooltipProvider>
               <Toaster />
@@ -179,6 +180,7 @@ const App = () => {
               </BrowserRouter>
             </TooltipProvider>
           </AudioPlayerProvider>
+          </SessionFlowProvider>
           </ConnectProvider>
         </CoachProvider>
       </BadgeCelebrationProvider>
