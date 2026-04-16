@@ -5,7 +5,7 @@ const TEAM = [
   { name: 'Dr. Ahmed Mansour', role: 'Concept & Vision', email: '' },
   { name: 'Dr. Basma Bahgat', role: 'Content Management', email: '' },
   { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases', email: '' },
-  { name: 'Dr. Mohab Mohamed', role: 'UI Design', email: '' },
+  { name: 'Dr. Mohab Anwar', role: 'UI Design', email: '' },
   { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security', email: '' },
   { name: 'Dr. Mohamed Elbarbary', role: 'Concept & Design Lead', email: 'mohamed.elbarbary@kasralainy.edu.eg' },
   { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development', email: '' },
