@@ -58,9 +58,7 @@ export function StudentSidebar() {
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
 
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(COLLAPSED_KEY) === 'true'; } catch { return false; }
-  });
+  const [collapsed, setCollapsed] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
 
   // Route context
@@ -303,10 +301,14 @@ export function StudentSidebar() {
         <NavButton id="how-to-use" icon={BookOpenCheck} label="Guide" onClick={handleGuide} />
 
         {/* Credit watermark */}
-        {!collapsed && (
-          <div className="text-[9px] text-muted-foreground/50 text-center py-2">
-            KALM Hub Team
-          </div>
+        {collapsed ? (
+          <button onClick={() => navigate('/credits')} className="text-center py-3 hover:opacity-80 transition-opacity w-full">
+            <span className="text-[10px]">❤️</span>
+          </button>
+        ) : (
+          <button onClick={() => navigate('/credits')} className="text-[10px] text-muted-foreground text-center py-3 hover:text-foreground transition-colors w-full">
+            Built with ❤️ by the KALM Hub Team
+          </button>
         )}
       </nav>
     </aside>
