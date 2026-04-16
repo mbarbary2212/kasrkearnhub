@@ -762,6 +762,159 @@ export function AccountsTab() {
         open={bulkUploadOpen}
         onOpenChange={setBulkUploadOpen}
       />
+
+      {/* Bulk Approve Dialog */}
+      <AlertDialog open={bulkApproveDialogOpen} onOpenChange={setBulkApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bulk Approve — {selectedIds.size} requests</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create accounts and send invitation emails to all {selectedIds.size} selected users. Emails that previously bounced will be skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label>Assign Role to All</Label>
+            <Select value={bulkRole} onValueChange={setBulkRole}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100000]">
+                <SelectItem value="student">Student</SelectItem>
+                <SelectItem value="teacher">Teacher</SelectItem>
+                <SelectItem value="topic_admin">Topic Admin</SelectItem>
+                <SelectItem value="department_admin">Department Admin</SelectItem>
+                <SelectItem value="platform_admin">Platform Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkApprove} disabled={bulkProcessing}>
+              {bulkProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Approve {selectedIds.size} & Send Invites
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Reject Dialog */}
+      <AlertDialog open={bulkRejectDialogOpen} onOpenChange={setBulkRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bulk Reject — {selectedIds.size} requests</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reject all {selectedIds.size} selected requests. They will not be notified automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label>Reason (optional — applies to all)</Label>
+            <Input
+              className="mt-2"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="Reason for rejection"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkReject}
+              disabled={bulkProcessing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Reject {selectedIds.size} Requests
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Results Report */}
+      <Dialog open={bulkReportOpen} onOpenChange={setBulkReportOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Bulk Action Report
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {/* Summary counts */}
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const success = bulkResults.filter(r => r.status === 'success').length;
+                const failed = bulkResults.filter(r => r.status === 'failed').length;
+                const bounced = bulkResults.filter(r => r.status === 'bounced').length;
+                const existing = bulkResults.filter(r => r.status === 'already_exists').length;
+                return (
+                  <>
+                    {success > 0 && <Badge className="bg-emerald-600 dark:bg-emerald-500">{success} succeeded</Badge>}
+                    {bounced > 0 && <Badge variant="outline" className="border-amber-500 text-amber-600">{bounced} bounced</Badge>}
+                    {existing > 0 && <Badge variant="outline" className="border-blue-500 text-blue-600">{existing} already existed</Badge>}
+                    {failed > 0 && <Badge variant="destructive">{failed} failed</Badge>}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Detail list */}
+            <ScrollArea className="max-h-[300px]">
+              <div className="space-y-1">
+                {bulkResults.map((result, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
+                      result.status === 'success'
+                        ? 'bg-emerald-500/10'
+                        : result.status === 'bounced'
+                        ? 'bg-amber-500/10'
+                        : result.status === 'already_exists'
+                        ? 'bg-blue-500/10'
+                        : 'bg-destructive/10'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{result.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{result.email}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {result.status === 'success' && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          {result.action === 'approve' ? 'Invited' : 'Rejected'}
+                        </span>
+                      )}
+                      {result.status === 'bounced' && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> Bounced
+                        </span>
+                      )}
+                      {result.status === 'already_exists' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Exists
+                        </span>
+                      )}
+                      {result.status === 'failed' && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="text-xs text-destructive flex items-center gap-1">
+                              <XCircle className="h-3 w-3" /> Failed
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">{result.message}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setBulkReportOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
