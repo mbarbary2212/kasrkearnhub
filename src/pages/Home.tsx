@@ -48,7 +48,6 @@ import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
-  const { startSession } = useSessionFlow();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
   // Redirect admins to overview dashboard
@@ -163,6 +162,7 @@ const resumeIcon: Record<string, React.ElementType> = {
 
 function LoggedInHome() {
   const navigate = useNavigate();
+  const { startSession } = useSessionFlow();
   const { user, profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
   const { data: years, isLoading: yearsLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
