@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   CheckCircle, 
   XCircle, 
@@ -49,7 +58,9 @@ import {
   RefreshCw,
   Search,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ListChecks,
+  FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -70,7 +81,15 @@ import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
+import { toast } from 'sonner';
 
+interface BulkResult {
+  name: string;
+  email: string;
+  action: 'approve' | 'reject' | 'delete';
+  status: 'success' | 'failed' | 'bounced' | 'already_exists';
+  message: string;
+}
 export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
