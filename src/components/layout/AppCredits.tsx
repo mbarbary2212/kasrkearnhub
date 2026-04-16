@@ -3,17 +3,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 const TEAM = [
   { name: 'Dr. Ahmed Mansour', role: 'Concept & Vision', email: '' },
-  { name: 'Dr. Basma Bahgat', role: 'Content Management', email: '' },
-  { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases', email: '' },
-  { name: 'Dr. Mohab Anwar', role: 'UI Design', email: '' },
-  { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security', email: '' },
+  { name: 'Dr. Basma Bahgat', role: 'Content Management', email: 'basma.ali@kasralainy.edu.eg' },
+  { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases', email: 'marwamostafa@kasralainy.edu.eg' },
+  { name: 'Dr. Mohab Anwar', role: 'UI Design', email: 'mohabanwar1@gmail.com' },
+  { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security', email: 'mohamed_am_aldeeb@students.kasralainy.edu.eg' },
   { name: 'Dr. Mohamed Elbarbary', role: 'Concept & Design Lead', email: 'mohamed.elbarbary@kasralainy.edu.eg' },
-  { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development', email: '' },
-  { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development', email: '' },
+  { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development', email: 'mohamed_kh_maslouh@students.kasralainy.edu.eg' },
+  { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development', email: 'Eriksonlegend1@gmail.com' },
   { name: 'Dr. Mohamed Osama', role: 'Video Sorting', email: '' },
   { name: 'Dr. Omar Mohamed Mahmoud', role: 'Testing & Concept Design', email: '' },
   { name: 'Dr. Omar Mofreh', role: 'Logo Design', email: 'om.mufreh2022@students.kasralainy.edu.eg' },
-  { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision', email: '' },
+  { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision', email: 'soha.elmorsy@kasralainy.edu.eg' },
 ];
 
 function TeamList() {
