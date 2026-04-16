@@ -301,6 +301,13 @@ export function StudentSidebar() {
 
         {/* Guide (merged Tour + Guide) */}
         <NavButton id="how-to-use" icon={BookOpenCheck} label="Guide" onClick={handleGuide} />
+
+        {/* Credit watermark */}
+        {!collapsed && (
+          <div className="text-[9px] text-muted-foreground/50 text-center py-2">
+            KALM Hub Team
+          </div>
+        )}
       </nav>
     </aside>
   );
