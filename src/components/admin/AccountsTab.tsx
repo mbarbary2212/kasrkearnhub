@@ -231,6 +231,75 @@ export function AccountsTab() {
     setSelectedRequest(null);
   };
 
+  // Bulk selection helpers
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!pendingRequests) return;
+    if (selectedIds.size === pendingRequests.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendingRequests.map(r => r.id)));
+    }
+  }, [pendingRequests, selectedIds.size]);
+
+  const selectedRequests = useMemo(() => {
+    return (pendingRequests ?? []).filter(r => selectedIds.has(r.id));
+  }, [pendingRequests, selectedIds]);
+
+  const handleBulkApprove = async () => {
+    setBulkProcessing(true);
+    const results: BulkResult[] = [];
+    
+    for (const request of selectedRequests) {
+      try {
+        if (bounceMap?.[request.email.toLowerCase()]) {
+          results.push({ name: request.full_name, email: request.email, action: 'approve', status: 'bounced', message: 'Email previously bounced — skipped' });
+          continue;
+        }
+        await approveRequest.mutateAsync({ requestId: request.id, role: bulkRole });
+        results.push({ name: request.full_name, email: request.email, action: 'approve', status: 'success', message: 'Invite sent' });
+      } catch (err: any) {
+        const msg = err?.message || 'Unknown error';
+        const alreadyExists = msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exists');
+        results.push({ name: request.full_name, email: request.email, action: 'approve', status: alreadyExists ? 'already_exists' : 'failed', message: msg });
+      }
+    }
+
+    setBulkProcessing(false);
+    setBulkApproveDialogOpen(false);
+    setSelectedIds(new Set());
+    setBulkResults(results);
+    setBulkReportOpen(true);
+  };
+
+  const handleBulkReject = async () => {
+    setBulkProcessing(true);
+    const results: BulkResult[] = [];
+
+    for (const request of selectedRequests) {
+      try {
+        await rejectRequest.mutateAsync({ requestId: request.id, notes: rejectNotes || undefined });
+        results.push({ name: request.full_name, email: request.email, action: 'reject', status: 'success', message: 'Rejected' });
+      } catch (err: any) {
+        results.push({ name: request.full_name, email: request.email, action: 'reject', status: 'failed', message: err?.message || 'Unknown error' });
+      }
+    }
+
+    setBulkProcessing(false);
+    setBulkRejectDialogOpen(false);
+    setSelectedIds(new Set());
+    setRejectNotes('');
+    setBulkResults(results);
+    setBulkReportOpen(true);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
