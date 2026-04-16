@@ -2,18 +2,18 @@ import { Heart } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const TEAM = [
-  { name: 'Dr. Ahmed Mansour', role: 'Concept & Vision' },
-  { name: 'Dr. Basma Bahgat', role: 'Content Management' },
-  { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases' },
-  { name: 'Dr. Mohab Mohamed', role: 'UI Design' },
-  { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security' },
-  { name: 'Dr. Mohamed Elbarbary', role: 'Concept & Design Lead' },
-  { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development' },
-  { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development' },
-  { name: 'Dr. Mohamed Osama', role: 'Video Sorting' },
-  { name: 'Dr. Omar Mohamed Mahmoud', role: 'Testing & Concept Design' },
-  { name: 'Dr. Omar Mofreh', role: 'Logo Design' },
-  { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision' },
+  { name: 'Dr. Ahmed Mansour', role: 'Concept & Vision', email: '' },
+  { name: 'Dr. Basma Bahgat', role: 'Content Management', email: '' },
+  { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases', email: '' },
+  { name: 'Dr. Mohab Mohamed', role: 'UI Design', email: '' },
+  { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security', email: '' },
+  { name: 'Dr. Mohamed Elbarbary', role: 'Concept & Design Lead', email: 'mohamed.elbarbary@kasralainy.edu.eg' },
+  { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development', email: '' },
+  { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development', email: '' },
+  { name: 'Dr. Mohamed Osama', role: 'Video Sorting', email: '' },
+  { name: 'Dr. Omar Mohamed Mahmoud', role: 'Testing & Concept Design', email: '' },
+  { name: 'Dr. Omar Mofreh', role: 'Logo Design', email: '' },
+  { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision', email: '' },
 ];
 
 export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
