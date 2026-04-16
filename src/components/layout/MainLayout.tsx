@@ -25,7 +25,10 @@ import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { AppCredits } from '@/components/layout/AppCredits';
+
+import { SessionFloatingBar } from '@/components/session-flow/SessionFloatingBar';
+import { ContinueToNextTaskModal } from '@/components/session-flow/ContinueToNextTaskModal';
+import { useSessionFlow } from '@/contexts/SessionFlowContext';
 import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { getYearIcon } from '@/lib/yearIcons';
 import { useModule } from '@/hooks/useModules';
@@ -59,6 +62,7 @@ function OnlinePill() {
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
   const navigate = useNavigate();
+  const { session } = useSessionFlow();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [inquiryOpen, setInquiryOpen] = useState(false);
@@ -381,8 +385,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <main className={cn("flex-1 min-h-0 overflow-x-hidden overflow-y-auto px-2 py-4 md:px-4 md:py-8", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
           <div className={showSharedNav ? 'container mx-auto' : ''}>
             {children}
-            {user && <AppCredits />}
           </div>
+          {/* Session Flow — sticky inside main scroll area */}
+          <SessionFloatingBar />
         </main>
       </div>
 
@@ -398,6 +403,8 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <AskCoachButton variant="icon" className="h-10 w-10 shadow-lg border border-border bg-card/90 backdrop-blur-sm hover:bg-accent" />
         </div>
       )}
+
+      <ContinueToNextTaskModal />
 
       {/* Inquiry Modal */}
       <InquiryModal isOpen={inquiryOpen} onClose={() => setInquiryOpen(false)} />

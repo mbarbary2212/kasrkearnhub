@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useSessionFlow, type SessionTask } from '@/contexts/SessionFlowContext';
 import { DashboardTodayPlan } from '@/components/dashboard/DashboardTodayPlan';
 import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -161,6 +162,7 @@ const resumeIcon: Record<string, React.ElementType> = {
 
 function LoggedInHome() {
   const navigate = useNavigate();
+  const { startSession } = useSessionFlow();
   const { user, profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
   const { data: years, isLoading: yearsLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
@@ -293,6 +295,7 @@ function LoggedInHome() {
     setAvailableMinutes,
     refreshPlan,
     isRefreshing,
+    markTaskStatus,
   } = useDailyStudyPlan({ planInput, chapterMetrics });
 
   return (
@@ -725,6 +728,31 @@ function LoggedInHome() {
                   navigate('/review/flashcards');
                   return;
                 }
+
+                // Build session task list from all suggestions
+                const sessionTasks: SessionTask[] = suggestions.map(s => {
+                  const planTask = dailyPlan?.tasks.find(t => t.chapter_id === s.chapterId);
+                  return {
+                    title: s.title,
+                    moduleId: s.moduleId ?? '',
+                    chapterId: s.chapterId ?? '',
+                    tab: s.prescribedStudyMode?.tab || s.tab || 'resources',
+                    subtab: s.subtab,
+                    estimatedMinutes: s.estimatedMinutes,
+                    reason: s.reason,
+                    dailyPlanTaskId: planTask?.id,
+                  };
+                });
+
+                // Find the index of the clicked task
+                const clickedIndex = sessionTasks.findIndex(
+                  t => t.chapterId === chapterId && t.moduleId === moduleId
+                );
+
+                startSession(sessionTasks, Math.max(0, clickedIndex), (taskId) => {
+                  markTaskStatus(taskId, 'completed');
+                });
+
                 const subtabParam = subtab ? `&subtab=${subtab}` : '';
                 navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
               }}

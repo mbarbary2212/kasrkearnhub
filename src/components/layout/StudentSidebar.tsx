@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
+import { AppCredits } from '@/components/layout/AppCredits';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
@@ -58,9 +59,7 @@ export function StudentSidebar() {
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
 
-  const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(COLLAPSED_KEY) === 'true'; } catch { return false; }
-  });
+  const [collapsed, setCollapsed] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
 
   // Route context
@@ -301,6 +300,9 @@ export function StudentSidebar() {
 
         {/* Guide (merged Tour + Guide) */}
         <NavButton id="how-to-use" icon={BookOpenCheck} label="Guide" onClick={handleGuide} />
+
+        {/* Credit watermark */}
+        <AppCredits collapsed={collapsed} />
       </nav>
     </aside>
   );
