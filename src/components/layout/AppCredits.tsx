@@ -16,6 +16,28 @@ const TEAM = [
   { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision', email: '' },
 ];
 
+function TeamList() {
+  return (
+    <>
+      <p className="text-sm font-semibold text-foreground mb-3">The KALM Hub Team</p>
+      <div className="space-y-2.5">
+        {TEAM.map((member) => (
+          <div key={member.name}>
+            {member.email ? (
+              <a href={`mailto:${member.email}`} className="text-sm font-medium text-primary hover:underline leading-tight">
+                {member.name}
+              </a>
+            ) : (
+              <p className="text-sm font-medium text-foreground leading-tight">{member.name}</p>
+            )}
+            <p className="text-xs text-muted-foreground leading-tight">{member.role}</p>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
   if (collapsed) {
     return (
@@ -26,15 +48,7 @@ export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-4" align="center" side="right">
-          <p className="text-sm font-semibold text-foreground mb-3">The KALM Hub Team</p>
-          <div className="space-y-2.5">
-            {TEAM.map((member) => (
-              <div key={member.name}>
-                <p className="text-sm font-medium text-foreground leading-tight">{member.name}</p>
-                <p className="text-xs text-muted-foreground leading-tight">{member.role}</p>
-              </div>
-            ))}
-          </div>
+          <TeamList />
         </PopoverContent>
       </Popover>
     );
@@ -50,15 +64,7 @@ export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-4" align="center" side="right">
-          <p className="text-sm font-semibold text-foreground mb-3">The KALM Hub Team</p>
-          <div className="space-y-2.5">
-            {TEAM.map((member) => (
-              <div key={member.name}>
-                <p className="text-sm font-medium text-foreground leading-tight">{member.name}</p>
-                <p className="text-xs text-muted-foreground leading-tight">{member.role}</p>
-              </div>
-            ))}
-          </div>
+          <TeamList />
         </PopoverContent>
       </Popover>
     </div>
