@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useSessionFlow, type SessionTask } from '@/contexts/SessionFlowContext';
 import { DashboardTodayPlan } from '@/components/dashboard/DashboardTodayPlan';
 import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -47,6 +48,7 @@ import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
 export default function Home() {
   const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
+  const { startSession } = useSessionFlow();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
   // Redirect admins to overview dashboard
@@ -725,6 +727,25 @@ function LoggedInHome() {
                   navigate('/review/flashcards');
                   return;
                 }
+
+                // Build session task list from all suggestions
+                const sessionTasks: SessionTask[] = suggestions.map(s => ({
+                  title: s.title,
+                  moduleId: s.moduleId ?? '',
+                  chapterId: s.chapterId ?? '',
+                  tab: s.prescribedStudyMode?.tab || s.tab || 'resources',
+                  subtab: s.subtab,
+                  estimatedMinutes: s.estimatedMinutes,
+                  reason: s.reason,
+                }));
+
+                // Find the index of the clicked task
+                const clickedIndex = sessionTasks.findIndex(
+                  t => t.chapterId === chapterId && t.moduleId === moduleId
+                );
+
+                startSession(sessionTasks, Math.max(0, clickedIndex));
+
                 const subtabParam = subtab ? `&subtab=${subtab}` : '';
                 navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
               }}
