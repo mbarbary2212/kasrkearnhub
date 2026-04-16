@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
 
 export interface SessionTask {
   title: string;
@@ -19,11 +19,12 @@ interface SessionFlowState {
 
 interface SessionFlowContextValue {
   session: SessionFlowState;
-  startSession: (tasks: SessionTask[], startIndex?: number) => void;
+  startSession: (tasks: SessionTask[], startIndex?: number, onTaskCompleted?: (taskId: string) => void) => void;
   endSession: () => void;
   showNextTaskModal: () => void;
   dismissModal: () => void;
   advanceToNext: () => SessionTask | null;
+  markCurrentDone: () => void;
   isModalOpen: boolean;
   currentTask: SessionTask | null;
   nextTask: SessionTask | null;
@@ -47,17 +48,27 @@ const INITIAL_STATE: SessionFlowState = {
 export function SessionFlowProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<SessionFlowState>(INITIAL_STATE);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const onTaskCompletedRef = useRef<((taskId: string) => void) | undefined>();
 
-  const startSession = useCallback((tasks: SessionTask[], startIndex = 0) => {
+  const startSession = useCallback((tasks: SessionTask[], startIndex = 0, onTaskCompleted?: (taskId: string) => void) => {
     if (tasks.length === 0) return;
+    onTaskCompletedRef.current = onTaskCompleted;
     setSession({ isActive: true, tasks, currentIndex: startIndex });
     setIsModalOpen(false);
   }, []);
 
   const endSession = useCallback(() => {
+    onTaskCompletedRef.current = undefined;
     setSession(INITIAL_STATE);
     setIsModalOpen(false);
   }, []);
+
+  const markCurrentDone = useCallback(() => {
+    const task = session.isActive ? session.tasks[session.currentIndex] : null;
+    if (task?.dailyPlanTaskId && onTaskCompletedRef.current) {
+      onTaskCompletedRef.current(task.dailyPlanTaskId);
+    }
+  }, [session]);
 
   const showNextTaskModal = useCallback(() => setIsModalOpen(true), []);
   const dismissModal = useCallback(() => setIsModalOpen(false), []);
@@ -67,6 +78,7 @@ export function SessionFlowProvider({ children }: { children: ReactNode }) {
     setSession(prev => {
       const nextIndex = prev.currentIndex + 1;
       if (nextIndex >= prev.tasks.length) {
+        onTaskCompletedRef.current = undefined;
         return INITIAL_STATE;
       }
       next = prev.tasks[nextIndex];
@@ -82,7 +94,7 @@ export function SessionFlowProvider({ children }: { children: ReactNode }) {
   return (
     <SessionFlowContext.Provider value={{
       session, startSession, endSession, showNextTaskModal, dismissModal,
-      advanceToNext, isModalOpen, currentTask, nextTask, progress,
+      advanceToNext, markCurrentDone, isModalOpen, currentTask, nextTask, progress,
     }}>
       {children}
     </SessionFlowContext.Provider>

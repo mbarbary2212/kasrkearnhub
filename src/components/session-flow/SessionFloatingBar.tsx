@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { X, CheckCircle2 } from 'lucide-react';
 
 export function SessionFloatingBar() {
-  const { session, currentTask, progress, showNextTaskModal, endSession, nextTask } = useSessionFlow();
+  const { session, currentTask, progress, showNextTaskModal, endSession, nextTask, markCurrentDone } = useSessionFlow();
 
   if (!session.isActive || !currentTask) return null;
 
@@ -18,12 +18,12 @@ export function SessionFloatingBar() {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {nextTask ? (
-            <Button size="sm" className="h-8 text-xs gap-1" onClick={showNextTaskModal}>
+            <Button size="sm" className="h-8 text-xs gap-1" onClick={() => { markCurrentDone(); showNextTaskModal(); }}>
               <CheckCircle2 className="h-3.5 w-3.5" />
               Done → Next
             </Button>
           ) : (
-            <Button size="sm" className="h-8 text-xs gap-1" onClick={showNextTaskModal}>
+            <Button size="sm" className="h-8 text-xs gap-1" onClick={() => { markCurrentDone(); showNextTaskModal(); }}>
               <CheckCircle2 className="h-3.5 w-3.5" />
               Finish Session
             </Button>
