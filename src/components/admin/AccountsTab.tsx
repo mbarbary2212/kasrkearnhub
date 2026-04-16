@@ -363,12 +363,47 @@ export function AccountsTab() {
         <TabsContent value="pending">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Access Requests</CardTitle>
-              <CardDescription>
-                Review and approve or reject pending access requests
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Pending Access Requests</CardTitle>
+                  <CardDescription>
+                    Review and approve or reject pending access requests
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
+              {/* Bulk action bar */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border bg-muted/50">
+                  <ListChecks className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <div className="flex-1" />
+                  <Button
+                    size="sm"
+                    onClick={() => { setBulkRole('student'); setBulkApproveDialogOpen(true); }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Approve All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setRejectNotes(''); setBulkRejectDialogOpen(true); }}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Reject All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+
               {loadingPending ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -377,6 +412,12 @@ export function AccountsTab() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={pendingRequests.length > 0 && selectedIds.size === pendingRequests.length}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Type</TableHead>
@@ -387,9 +428,27 @@ export function AccountsTab() {
                   </TableHeader>
                   <TableBody>
                     {pendingRequests.map((request) => (
-                      <TableRow key={request.id}>
+                      <TableRow key={request.id} className={selectedIds.has(request.id) ? 'bg-muted/40' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(request.id)}
+                            onCheckedChange={() => toggleSelect(request.id)}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{request.full_name}</TableCell>
-                        <TableCell>{request.email}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {request.email}
+                            {bounceMap?.[request.email.toLowerCase()] && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                </TooltipTrigger>
+                                <TooltipContent>Email bounced previously</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {request.request_type === 'faculty' ? 'Faculty' : 'Student'}
