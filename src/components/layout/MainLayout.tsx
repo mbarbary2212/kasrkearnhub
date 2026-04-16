@@ -382,10 +382,12 @@ export default function MainLayout({ children }: MainLayoutProps) {
         {showSharedNav && <StudentSidebar />}
 
         {/* Main Content */}
-        <main className={cn("flex-1 min-h-0 overflow-x-hidden overflow-y-auto px-2 py-4 md:px-4 md:py-8", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto', session.isActive && 'pb-32 md:pb-24')}>
+        <main className={cn("flex-1 min-h-0 overflow-x-hidden overflow-y-auto px-2 py-4 md:px-4 md:py-8", showSharedNav ? 'pb-28 md:pb-16' : 'pb-20 md:pb-8', showSharedNav ? '' : 'container mx-auto')}>
           <div className={showSharedNav ? 'container mx-auto' : ''}>
             {children}
           </div>
+          {/* Session Flow — sticky inside main scroll area */}
+          <SessionFloatingBar />
         </main>
       </div>
 
@@ -402,8 +404,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
         </div>
       )}
 
-      {/* Session Flow */}
-      <SessionFloatingBar />
       <ContinueToNextTaskModal />
 
       {/* Inquiry Modal */}
