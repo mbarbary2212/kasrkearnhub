@@ -12,7 +12,7 @@ const TEAM = [
   { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development', email: '' },
   { name: 'Dr. Mohamed Osama', role: 'Video Sorting', email: '' },
   { name: 'Dr. Omar Mohamed Mahmoud', role: 'Testing & Concept Design', email: '' },
-  { name: 'Dr. Omar Mofreh', role: 'Logo Design', email: '' },
+  { name: 'Dr. Omar Mofreh', role: 'Logo Design', email: 'om.mufreh2022@students.kasralainy.edu.eg' },
   { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision', email: '' },
 ];
 
