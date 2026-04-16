@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
+import { AppCredits } from '@/components/layout/AppCredits';
 import { useAuthContext } from '@/contexts/AuthContext';
 import {
   LayoutDashboard, BookOpen, MessageCircle, ClipboardCheck, GraduationCap,
@@ -301,15 +302,7 @@ export function StudentSidebar() {
         <NavButton id="how-to-use" icon={BookOpenCheck} label="Guide" onClick={handleGuide} />
 
         {/* Credit watermark */}
-        {collapsed ? (
-          <button onClick={() => navigate('/credits')} className="text-center py-3 hover:opacity-80 transition-opacity w-full">
-            <span className="text-[10px]">❤️</span>
-          </button>
-        ) : (
-          <button onClick={() => navigate('/credits')} className="text-[10px] text-muted-foreground text-center py-3 hover:text-foreground transition-colors w-full">
-            Built with ❤️ by the KALM Hub Team
-          </button>
-        )}
+        <AppCredits collapsed={collapsed} />
       </nav>
     </aside>
   );

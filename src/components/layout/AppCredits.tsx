@@ -16,20 +16,42 @@ const TEAM = [
   { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision' },
 ];
 
-export function AppCredits() {
+export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
+  if (collapsed) {
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="w-full text-center py-3 hover:opacity-80 transition-opacity">
+            <Heart className="h-3 w-3 text-red-500 fill-red-500 mx-auto" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-72 p-4" align="center" side="right">
+          <p className="text-sm font-semibold text-foreground mb-3">The KALM Hub Team</p>
+          <div className="space-y-2.5">
+            {TEAM.map((member) => (
+              <div key={member.name}>
+                <p className="text-sm font-medium text-foreground leading-tight">{member.name}</p>
+                <p className="text-xs text-muted-foreground leading-tight">{member.role}</p>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   return (
-    <div className="mt-12 mb-4 flex items-center justify-center gap-1 text-xs text-muted-foreground border-t border-border/40 pt-4">
+    <div className="flex flex-col items-center gap-0.5 text-[10px] text-muted-foreground border-t border-border/30 pt-3 pb-2 px-2">
       <span className="flex items-center gap-1">
         Built with <Heart className="h-3 w-3 text-red-500 fill-red-500" /> by the KALM Hub Team
       </span>
-      <span>·</span>
       <Popover>
         <PopoverTrigger asChild>
           <button className="underline underline-offset-2 hover:text-foreground transition-colors">
             Credits
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" align="center" side="top">
+        <PopoverContent className="w-72 p-4" align="center" side="right">
           <p className="text-sm font-semibold text-foreground mb-3">The KALM Hub Team</p>
           <div className="space-y-2.5">
             {TEAM.map((member) => (

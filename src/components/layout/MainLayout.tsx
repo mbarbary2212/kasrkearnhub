@@ -25,7 +25,7 @@ import { useRouteResume, clearLastPath } from '@/hooks/useRouteResume';
 import { useYears } from '@/hooks/useYears';
 import { StudentSidebar } from '@/components/layout/StudentSidebar';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
-import { AppCredits } from '@/components/layout/AppCredits';
+
 import { SessionFloatingBar } from '@/components/session-flow/SessionFloatingBar';
 import { ContinueToNextTaskModal } from '@/components/session-flow/ContinueToNextTaskModal';
 import { useSessionFlow } from '@/contexts/SessionFlowContext';
