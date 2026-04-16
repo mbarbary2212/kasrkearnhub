@@ -1,6 +1,6 @@
 import { useSessionFlow } from '@/contexts/SessionFlowContext';
 import { Button } from '@/components/ui/button';
-import { X, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2 } from 'lucide-react';
 
 export function SessionFloatingBar() {
   const { session, currentTask, progress, showNextTaskModal, endSession, nextTask } = useSessionFlow();
