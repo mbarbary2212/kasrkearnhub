@@ -195,6 +195,11 @@ export function StudentSidebar() {
         {/* Dashboard */}
         <NavButton id="dashboard" icon={LayoutDashboard} label="Dashboard" onClick={handleDashboard} />
 
+        {/* Coach — student only */}
+        {!isAdmin && (
+          <NavButton id="coach" icon={GraduationCap} label="Coach" onClick={() => goTo('/progress')} />
+        )}
+
         {/* Learning — always expanded */}
         <NavButton id="learning" icon={BookOpen} label="Learning" onClick={handleLearningRoot} />
         <div className={cn('flex flex-col gap-0.5', collapsed ? 'items-center' : 'ml-4 pl-2 border-l border-border/30')}>
@@ -279,11 +284,6 @@ export function StudentSidebar() {
 
         {/* Formative — direct nav */}
         <NavButton id="formative" icon={ClipboardCheck} label="Formative" onClick={() => goTo('/formative')} />
-
-        {/* Coach — student only */}
-        {!isAdmin && (
-          <NavButton id="coach" icon={GraduationCap} label="Coach" onClick={() => goTo('/progress')} />
-        )}
 
         {/* Spacer */}
         <div className="flex-1" />

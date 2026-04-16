@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, ChevronRight, ChevronDown, Download, Upload } from 'lucide-react';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import {
@@ -33,6 +33,10 @@ import { useChapterSections } from '@/hooks/useSections';
 interface Props {
   years: { id: string; name: string }[];
   modules: { id: string; name: string; year_id: string }[];
+  selectedYearId: string;
+  onYearChange: (v: string) => void;
+  selectedModuleId: string;
+  onModuleChange: (v: string) => void;
 }
 
 /**
@@ -149,9 +153,7 @@ function ChapterSectionRows({
   );
 }
 
-export function ChapterBlueprintSubtab({ years, modules }: Props) {
-  const [selectedYearId, setSelectedYearId] = useState('');
-  const [selectedModuleId, setSelectedModuleId] = useState('');
+export function ChapterBlueprintSubtab({ years, modules, selectedYearId, onYearChange, selectedModuleId, onModuleChange }: Props) {
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -323,7 +325,7 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       <div className="flex flex-wrap gap-3 items-end">
         <div className="w-48">
           <Label className="text-xs mb-1 block">Year</Label>
-          <Select value={selectedYearId} onValueChange={(v) => { setSelectedYearId(v); setSelectedModuleId(''); setExpandedChapters(new Set()); }}>
+          <Select value={selectedYearId} onValueChange={(v) => { onYearChange(v); onModuleChange(''); setExpandedChapters(new Set()); }}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Select year" /></SelectTrigger>
             <SelectContent>
               {years.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}
@@ -332,7 +334,7 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
         </div>
         <div className="w-56">
           <Label className="text-xs mb-1 block">Module</Label>
-          <Select value={selectedModuleId} onValueChange={(v) => { setSelectedModuleId(v); setExpandedChapters(new Set()); }}>
+          <Select value={selectedModuleId} onValueChange={(v) => { onModuleChange(v); setExpandedChapters(new Set()); }}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Select module" /></SelectTrigger>
             <SelectContent>
               {filteredModules.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -395,10 +397,10 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
       ) : chapters.length === 0 ? (
         <p className="text-sm text-muted-foreground py-8 text-center">No chapters found for this module.</p>
       ) : (
-        <ScrollArea className="w-full">
+        <div className="max-h-[70vh] overflow-auto border rounded-md">
           <div className="min-w-[600px]">
             <table className="w-full border-collapse text-sm">
-              <thead className="sticky top-0 z-10 bg-background">
+              <thead className="sticky top-0 z-10 bg-secondary">
                 <tr className="border-b">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground w-[200px]">Chapter</th>
                   {COMPONENT_COLUMNS.map(col => (
@@ -463,8 +465,7 @@ export function ChapterBlueprintSubtab({ years, modules }: Props) {
               </tbody>
             </table>
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       )}
 
       {/* Import mode dialog */}

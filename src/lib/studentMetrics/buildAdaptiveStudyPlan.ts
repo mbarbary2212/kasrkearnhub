@@ -20,9 +20,12 @@ import {
   MIN_PROGRESS_TASKS_UNLESS_EXAM_CRITICAL,
   EXAM_CRITICAL_DAYS,
   EXAM_MODE_MULTIPLIERS,
+  AMBITION_MULTIPLIERS,
+  ROTATION_MINUTES_CAP,
   classifyExamMode,
   getDaysUntilExam,
   type ExamMode,
+  type AmbitionLevel,
 } from './plannerThresholds';
 
 // ─── Study mode task details ──────────────────────────────────
@@ -110,6 +113,10 @@ export interface AdaptivePlanInput {
   examDate?: Date;
   /** Optional reasoning profile for case practice tasks */
   reasoningProfile?: { domain: string; label: string; avgPercentage: number; attemptCount: number; criticalMissRate: number; trend: string }[];
+  /** Ambition level string from student_goals.ambition_level — defaults to 'pass_comfortably' */
+  ambitionLevel?: AmbitionLevel;
+  /** True when the student is currently on a clinical rotation */
+  isOnRotation?: boolean;
 }
 
 // ─── Slot types for balanced daily plan ───────────────────────
@@ -189,6 +196,15 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
   const { metrics, chapters, examWeightMap, examDate } = input;
   const availableMinutes = input.availableMinutes ?? 60;
 
+  // ── Goals-aware adjustments ──────────────────────────────────
+  const ambition = input.ambitionLevel ?? 'pass_comfortably';
+  const ambitionMults = AMBITION_MULTIPLIERS[ambition];
+
+  // Rotation caps the session length
+  const effectiveMinutes = input.isOnRotation
+    ? Math.min(availableMinutes, ROTATION_MINUTES_CAP)
+    : availableMinutes;
+
   // FIX D — fallback when no chapter data
   if (!chapters || chapters.length === 0) {
     return {
@@ -199,7 +215,7 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     };
   }
 
-  const maxTasks = getMaxTasks(availableMinutes);
+  const maxTasks = Math.max(1, Math.min(5, getMaxTasks(effectiveMinutes) + ambitionMults.maxTasksBonus));
   const metricsMap = new Map(metrics.map(m => [m.chapter_id, m]));
 
   // ── Exam mode ──
@@ -451,6 +467,13 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
     c.priority = Math.min(PRIORITY_CAP, c.priority * cappedExamBoost * engagementFactor * (statusMult / 6));
   }
 
+  // Apply ambition-level priority scaling
+  if (ambitionMults.priorityScale !== 1.0) {
+    for (const c of candidates) {
+      c.priority = Math.min(PRIORITY_CAP, c.priority * ambitionMults.priorityScale);
+    }
+  }
+
   // ── Sort strictly by priority ──
   candidates.sort((a, b) => b.priority - a.priority);
 
@@ -506,7 +529,10 @@ export function buildAdaptiveStudyPlan(input: AdaptivePlanInput): AdaptiveStudyP
 
   // ── Derive plan metadata ──
   const planLabel = derivePlanLabel(plan, examMode, daysUntilExam);
-  const rationale = deriveRationale(plan, planLabel, examMode);
+  const baseRationale = deriveRationale(plan, planLabel, examMode);
+  const rationale = input.isOnRotation
+    ? `On rotation — capped at ${ROTATION_MINUTES_CAP} min. ${baseRationale}`
+    : baseRationale;
   const totalEstimatedMinutes = plan.reduce((sum, t) => sum + t.estimatedMinutes, 0);
 
   // ── Confidence insight ──

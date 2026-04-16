@@ -1,45 +1,30 @@
 
 
-## Remove duplicate sections and prevent future duplicates
+# Fix Blueprint Table: Sticky Header, State Persistence, and Data Verification
 
-### Current state
+## What I Found
 
-There are **45 duplicate section groups** across multiple chapters — same name in the same chapter. The duplicate (later-created) sections have real content attached: 111 MCQs, 4 blueprint configs, 1 mind map, and 4 study resources. This content must be reassigned to the keeper section before deleting duplicates.
+### Is the data actually missing?
+**No — the data is fully populated.** SUR-523 has **1,074 blueprint configs** across all 30 chapters (155 chapter-level + 919 section-level). Every single chapter has between 7 and 54 configurations. The "bottom part not populated" appearance is a **UI problem, not a data problem** — when you scroll down, the table header scrolls away, so you lose track of which column is which, making it look like the bottom rows are empty or broken.
 
-Additionally, some chapters have multiple different sections sharing the same `section_number` (e.g., chapter `81aa5e42` has 6 different sections all numbered "7.1"). These are not name-duplicates but numbering collisions — they need flagging, not deletion.
+### Why does it look empty at the bottom?
+The table uses Radix `ScrollArea` with **no height constraint**. This means `sticky top-0` on the `<thead>` doesn't work — the header scrolls out of view with the page. Without visible column headers, the bottom chapters' colored badges (H/A/L) lose context.
 
-### Plan
+### Why do Year/Module reset when switching tabs?
+Each subtab (Chapter Blueprint, Exam Structure, etc.) manages its own `useState('')` for year and module. When you switch tabs, the component unmounts and state is lost.
 
-**Step 1 — Migration: Reassign content and delete duplicates**
+## Plan
 
-A single SQL migration that:
-1. For each duplicate group (same `chapter_id` + `LOWER(TRIM(name))`), keeps the earliest-created section as the "keeper"
-2. Reassigns all child records from duplicate sections to the keeper: `mcqs`, `chapter_blueprint_config`, `mind_maps`, `study_resources`, `case_scenarios`, `concepts`, `essays`, `matching_questions`, `mcq_sets`, `osce_questions`, `practicals`, `resources`, `true_false_questions`, `virtual_patient_cases`, `interactive_algorithms`, `lecture_sections`, `lectures`
-3. Deletes the duplicate sections
-4. Adds a **unique index** on `sections(chapter_id, LOWER(TRIM(name)))` to prevent future name duplicates within a chapter
-5. Same for topic sections: unique index on `sections(topic_id, LOWER(TRIM(name)))` where `topic_id IS NOT NULL`
+### Step 1: Lift Year/Module state to parent
+Move `selectedYearId` and `selectedModuleId` from each subtab into `AssessmentBlueprintTab.tsx`. Pass them as props so selections persist across all four subtabs.
 
-**Step 2 — Frontend: duplicate guard on section creation**
+**Files:** `AssessmentBlueprintTab.tsx`, `ChapterBlueprintSubtab.tsx`, `ExamStructureSubtab.tsx`, `TopicWeightsSubtab.tsx`, `ValidationSummarySubtab.tsx`
 
-File: `src/hooks/useSections.ts`
+### Step 2: Fix sticky table header
+Replace `<ScrollArea>` around the blueprint table with a plain `<div className="max-h-[70vh] overflow-auto border rounded-md">`. This gives the `<thead sticky top-0>` an actual scroll container to stick within, keeping column headers visible while scrolling through chapters.
 
-In `useCreateSection`, before inserting, query for an existing section with the same normalized name in the same chapter/topic. If found, show a toast error "A section with this name already exists" and abort.
+**File:** `ChapterBlueprintSubtab.tsx`
 
-File: `src/hooks/useExtractSections.ts`
-
-In the AI/PDF extraction insert flow, add a conflict-handling approach: filter out sections whose names already exist in the chapter before inserting.
-
-**Step 3 — Admin UI: flag potential duplicates (section number collisions)**
-
-File: `src/hooks/useSections.ts`
-
-Add a utility hook `useSectionDuplicateWarnings(chapterId)` that returns section IDs with duplicate `section_number` values. This is informational only — shown as a warning icon in the section list.
-
-### Files to modify
-
-| File | Change |
-|------|--------|
-| New migration SQL | Reassign content, delete dupes, add unique indexes |
-| `src/hooks/useSections.ts` | Duplicate name check before insert; duplicate-number warning hook |
-| `src/hooks/useExtractSections.ts` | Filter duplicates before bulk insert |
+### Step 3: Verify data displays correctly
+After the UI fixes, all 30 chapters should show their H/A/L badges with visible column headers. No data import is needed — the 1,074 configs are already in the database. The RECONCILED file upload is not required since the existing data is complete.
 

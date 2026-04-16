@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   CheckCircle, 
   XCircle, 
@@ -49,7 +58,9 @@ import {
   RefreshCw,
   Search,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ListChecks,
+  FileText,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -70,7 +81,15 @@ import { SingleUserInviteModal } from './SingleUserInviteModal';
 import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
+import { toast } from 'sonner';
 
+interface BulkResult {
+  name: string;
+  email: string;
+  action: 'approve' | 'reject' | 'delete';
+  status: 'success' | 'failed' | 'bounced' | 'already_exists';
+  message: string;
+}
 export function AccountsTab() {
   const [activeTab, setActiveTab] = useState('pending');
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
@@ -90,6 +109,14 @@ export function AccountsTab() {
   const [allSortField, setAllSortField] = useState<'status' | 'date'>('date');
   const [allSortOrder, setAllSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Bulk action state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkRole, setBulkRole] = useState('student');
+  const [bulkApproveDialogOpen, setBulkApproveDialogOpen] = useState(false);
+  const [bulkRejectDialogOpen, setBulkRejectDialogOpen] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+  const [bulkResults, setBulkResults] = useState<BulkResult[]>([]);
+  const [bulkReportOpen, setBulkReportOpen] = useState(false);
   const { data: pendingRequests, isLoading: loadingPending } = useAccessRequests('pending');
   const { data: allRequests, isLoading: loadingAll } = useAccessRequests();
   
@@ -204,6 +231,75 @@ export function AccountsTab() {
     setSelectedRequest(null);
   };
 
+  // Bulk selection helpers
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (!pendingRequests) return;
+    if (selectedIds.size === pendingRequests.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(pendingRequests.map(r => r.id)));
+    }
+  }, [pendingRequests, selectedIds.size]);
+
+  const selectedRequests = useMemo(() => {
+    return (pendingRequests ?? []).filter(r => selectedIds.has(r.id));
+  }, [pendingRequests, selectedIds]);
+
+  const handleBulkApprove = async () => {
+    setBulkProcessing(true);
+    const results: BulkResult[] = [];
+    
+    for (const request of selectedRequests) {
+      try {
+        if (bounceMap?.[request.email.toLowerCase()]) {
+          results.push({ name: request.full_name, email: request.email, action: 'approve', status: 'bounced', message: 'Email previously bounced — skipped' });
+          continue;
+        }
+        await approveRequest.mutateAsync({ requestId: request.id, role: bulkRole });
+        results.push({ name: request.full_name, email: request.email, action: 'approve', status: 'success', message: 'Invite sent' });
+      } catch (err: any) {
+        const msg = err?.message || 'Unknown error';
+        const alreadyExists = msg.toLowerCase().includes('already') || msg.toLowerCase().includes('exists');
+        results.push({ name: request.full_name, email: request.email, action: 'approve', status: alreadyExists ? 'already_exists' : 'failed', message: msg });
+      }
+    }
+
+    setBulkProcessing(false);
+    setBulkApproveDialogOpen(false);
+    setSelectedIds(new Set());
+    setBulkResults(results);
+    setBulkReportOpen(true);
+  };
+
+  const handleBulkReject = async () => {
+    setBulkProcessing(true);
+    const results: BulkResult[] = [];
+
+    for (const request of selectedRequests) {
+      try {
+        await rejectRequest.mutateAsync({ requestId: request.id, notes: rejectNotes || undefined });
+        results.push({ name: request.full_name, email: request.email, action: 'reject', status: 'success', message: 'Rejected' });
+      } catch (err: any) {
+        results.push({ name: request.full_name, email: request.email, action: 'reject', status: 'failed', message: err?.message || 'Unknown error' });
+      }
+    }
+
+    setBulkProcessing(false);
+    setBulkRejectDialogOpen(false);
+    setSelectedIds(new Set());
+    setRejectNotes('');
+    setBulkResults(results);
+    setBulkReportOpen(true);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -267,12 +363,47 @@ export function AccountsTab() {
         <TabsContent value="pending">
           <Card>
             <CardHeader>
-              <CardTitle>Pending Access Requests</CardTitle>
-              <CardDescription>
-                Review and approve or reject pending access requests
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Pending Access Requests</CardTitle>
+                  <CardDescription>
+                    Review and approve or reject pending access requests
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
+              {/* Bulk action bar */}
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 mb-4 p-3 rounded-lg border bg-muted/50">
+                  <ListChecks className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                  <div className="flex-1" />
+                  <Button
+                    size="sm"
+                    onClick={() => { setBulkRole('student'); setBulkApproveDialogOpen(true); }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Approve All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setRejectNotes(''); setBulkRejectDialogOpen(true); }}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Reject All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
+
               {loadingPending ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -281,6 +412,12 @@ export function AccountsTab() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={pendingRequests.length > 0 && selectedIds.size === pendingRequests.length}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Type</TableHead>
@@ -291,9 +428,27 @@ export function AccountsTab() {
                   </TableHeader>
                   <TableBody>
                     {pendingRequests.map((request) => (
-                      <TableRow key={request.id}>
+                      <TableRow key={request.id} className={selectedIds.has(request.id) ? 'bg-muted/40' : ''}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(request.id)}
+                            onCheckedChange={() => toggleSelect(request.id)}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{request.full_name}</TableCell>
-                        <TableCell>{request.email}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            {request.email}
+                            {bounceMap?.[request.email.toLowerCase()] && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                </TooltipTrigger>
+                                <TooltipContent>Email bounced previously</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {request.request_type === 'faculty' ? 'Faculty' : 'Student'}
@@ -607,6 +762,159 @@ export function AccountsTab() {
         open={bulkUploadOpen}
         onOpenChange={setBulkUploadOpen}
       />
+
+      {/* Bulk Approve Dialog */}
+      <AlertDialog open={bulkApproveDialogOpen} onOpenChange={setBulkApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bulk Approve — {selectedIds.size} requests</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create accounts and send invitation emails to all {selectedIds.size} selected users. Emails that previously bounced will be skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label>Assign Role to All</Label>
+            <Select value={bulkRole} onValueChange={setBulkRole}>
+              <SelectTrigger className="mt-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100000]">
+                <SelectItem value="student">Student</SelectItem>
+                <SelectItem value="teacher">Teacher</SelectItem>
+                <SelectItem value="topic_admin">Topic Admin</SelectItem>
+                <SelectItem value="department_admin">Department Admin</SelectItem>
+                <SelectItem value="platform_admin">Platform Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkApprove} disabled={bulkProcessing}>
+              {bulkProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Approve {selectedIds.size} & Send Invites
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Reject Dialog */}
+      <AlertDialog open={bulkRejectDialogOpen} onOpenChange={setBulkRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bulk Reject — {selectedIds.size} requests</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reject all {selectedIds.size} selected requests. They will not be notified automatically.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label>Reason (optional — applies to all)</Label>
+            <Input
+              className="mt-2"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
+              placeholder="Reason for rejection"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkReject}
+              disabled={bulkProcessing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Reject {selectedIds.size} Requests
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Results Report */}
+      <Dialog open={bulkReportOpen} onOpenChange={setBulkReportOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Bulk Action Report
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {/* Summary counts */}
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const success = bulkResults.filter(r => r.status === 'success').length;
+                const failed = bulkResults.filter(r => r.status === 'failed').length;
+                const bounced = bulkResults.filter(r => r.status === 'bounced').length;
+                const existing = bulkResults.filter(r => r.status === 'already_exists').length;
+                return (
+                  <>
+                    {success > 0 && <Badge className="bg-emerald-600 dark:bg-emerald-500">{success} succeeded</Badge>}
+                    {bounced > 0 && <Badge variant="outline" className="border-amber-500 text-amber-600">{bounced} bounced</Badge>}
+                    {existing > 0 && <Badge variant="outline" className="border-blue-500 text-blue-600">{existing} already existed</Badge>}
+                    {failed > 0 && <Badge variant="destructive">{failed} failed</Badge>}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Detail list */}
+            <ScrollArea className="max-h-[300px]">
+              <div className="space-y-1">
+                {bulkResults.map((result, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${
+                      result.status === 'success'
+                        ? 'bg-emerald-500/10'
+                        : result.status === 'bounced'
+                        ? 'bg-amber-500/10'
+                        : result.status === 'already_exists'
+                        ? 'bg-blue-500/10'
+                        : 'bg-destructive/10'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{result.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{result.email}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {result.status === 'success' && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          {result.action === 'approve' ? 'Invited' : 'Rejected'}
+                        </span>
+                      )}
+                      {result.status === 'bounced' && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> Bounced
+                        </span>
+                      )}
+                      {result.status === 'already_exists' && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                          <Users className="h-3 w-3" /> Exists
+                        </span>
+                      )}
+                      {result.status === 'failed' && (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <span className="text-xs text-destructive flex items-center gap-1">
+                              <XCircle className="h-3 w-3" /> Failed
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">{result.message}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setBulkReportOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

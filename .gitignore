@@ -34,3 +34,6 @@ dist-ssr
 wrangler.toml
 
 .mcp.json
+.env
+.env.local
+.env.*.local

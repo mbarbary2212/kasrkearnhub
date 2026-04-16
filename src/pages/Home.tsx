@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { useDueCards } from '@/hooks/useFSRS';
+import { useDueMCQCount } from '@/hooks/useMCQFSRS';
 import { useBadgeStats } from '@/hooks/useBadges';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useModules } from '@/hooks/useModules';
@@ -168,6 +169,7 @@ function LoggedInHome() {
   const { data: dueCards } = useDueCards();
   const dueCount = dueCards?.length ?? 0;
   const { earned, total } = useBadgeStats();
+  const { data: dueMCQCount = 0 } = useDueMCQCount();
   const { data: lastPos } = useLastPosition();
 
   // Tour + Guidance
@@ -654,6 +656,29 @@ function LoggedInHome() {
                 <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1.5">
                   ✓ Flashcards all caught up
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* MCQ Spaced Repetition Widget */}
+          {isStudent && dueMCQCount > 0 && (
+            <Card
+              className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
+              onClick={() => navigate('/review/flashcards')}
+            >
+              <CardContent className="py-3 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FlaskConical className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {dueMCQCount} MCQ{dueMCQCount !== 1 ? 's' : ''} due today
+                    </p>
+                    <p className="text-xs text-muted-foreground">Spaced repetition practice</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+                </div>
               </CardContent>
             </Card>
           )}
