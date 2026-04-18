@@ -1,30 +1,55 @@
 
+## Plan: Unblock Admin Panel Load
 
-# Fix Blueprint Table: Sticky Header, State Persistence, and Data Verification
+### Root cause
+`useAdminData()` runs `profiles.select('*')` for every user and `AdminPage` blocks the entire page on it. Inbox loads fast because it bypasses this hook.
 
-## What I Found
+### Changes (4 files)
 
-### Is the data actually missing?
-**No — the data is fully populated.** SUR-523 has **1,074 blueprint configs** across all 30 chapters (155 chapter-level + 919 section-level). Every single chapter has between 7 and 54 configurations. The "bottom part not populated" appearance is a **UI problem, not a data problem** — when you scroll down, the table header scrolls away, so you lose track of which column is which, making it look like the bottom rows are empty or broken.
+**1. `src/pages/AdminPage.tsx`**
+- Loading gate (line ~91): block only on `authLoading`, not `adminDataLoading`.
+- Swap `useAdminData` → `useAdminReferenceData` so tabs render as soon as years/modules/departments arrive (small reference tables).
+- Keep `years` and `modules` props passed to child tabs unchanged.
 
-### Why does it look empty at the bottom?
-The table uses Radix `ScrollArea` with **no height constraint**. This means `sticky top-0` on the `<thead>` doesn't work — the header scrolls out of view with the page. Without visible column headers, the bottom chapters' colored badges (H/A/L) lose context.
+**2. `src/hooks/useAdminData.ts`** — split into two hooks:
 
-### Why do Year/Module reset when switching tabs?
-Each subtab (Chapter Blueprint, Exam Structure, etc.) manages its own `useState('')` for year and module. When you switch tabs, the component unmounts and state is lost.
+```text
+useAdminReferenceData(enabled)
+  → years + modules + departments
+  → cheap, used by AdminPage to render tabs
 
-## Plan
+useAdminUsers(enabled)
+  → profiles (slim cols) + user_roles + department_admins + module_admins
+  → only fires when UsersTab mounts
+  → profiles select limited to:
+     id, email, full_name, avatar_url, status, status_reason, created_at
 
-### Step 1: Lift Year/Module state to parent
-Move `selectedYearId` and `selectedModuleId` from each subtab into `AssessmentBlueprintTab.tsx`. Pass them as props so selections persist across all four subtabs.
+useAdminData(enabled)  [kept for backward compat]
+  → internally combines both, merges into existing { users, departments, years, modules } shape
+```
 
-**Files:** `AssessmentBlueprintTab.tsx`, `ChapterBlueprintSubtab.tsx`, `ExamStructureSubtab.tsx`, `TopicWeightsSubtab.tsx`, `ValidationSummarySubtab.tsx`
+Both hooks: `staleTime: 5 min`, query keys `['admin-reference-data']` and `['admin-users']` so cache invalidations stay surgical. Existing `['admin-data']` consumers still work via the combined hook.
 
-### Step 2: Fix sticky table header
-Replace `<ScrollArea>` around the blueprint table with a plain `<div className="max-h-[70vh] overflow-auto border rounded-md">`. This gives the `<thead sticky top-0>` an actual scroll container to stick within, keeping column headers visible while scrolling through chapters.
+**3. `src/components/admin/UsersTab.tsx`**
+- Switch from `useAdminData` → `useAdminUsers`. Mounting the tab is what triggers the fetch (TanStack `enabled: true`).
+- Show local spinner while `isLoading`.
+- **Directory sub-tab** (~line 350-361): apply the same cap pattern the Students tab already uses — `Showing X of Y`, `.slice(0, 50)`, and "Refine your search to see more" hint when filtered > 50.
+- **Deactivated sub-tab**: same cap treatment.
+- Students/Platform Admins/Module Admins sub-tabs: leave as-is (Students already capped; others are naturally small).
 
-**File:** `ChapterBlueprintSubtab.tsx`
+**4. Verify column usage**
+Before narrowing the profiles select, grep for fields read off profile rows (e.g. `profile.preferred_year_id`, `profile.banned_at`, `profile.year_id`) in admin components to make sure the slim list `id, email, full_name, avatar_url, status, status_reason, created_at` covers them. If anything else is read, add only that column — never restore `*`.
 
-### Step 3: Verify data displays correctly
-After the UI fixes, all 30 chapters should show their H/A/L badges with visible column headers. No data import is needed — the 1,074 configs are already in the database. The RECONCILED file upload is not required since the existing data is complete.
+### Files touched
+- `src/hooks/useAdminData.ts` — split + slim select
+- `src/pages/AdminPage.tsx` — unblock gate + use reference hook
+- `src/components/admin/UsersTab.tsx` — use users hook + cap Directory & Deactivated
 
+### Not touched
+Auth, RLS, env vars, edge functions, routing, notification shortcut to `/admin/inbox`, TopicAdminsTab, assignment dialogs, mutation invalidations (still target `['admin-data']` which the combined hook covers; we'll also invalidate `['admin-users']` where mutations specifically affect users).
+
+### Acceptance check (manual after build)
+1. `/admin` from sidebar → tabs visible <1s.
+2. Click Inbox/Settings/Announcements → no users fetch.
+3. Click Users → local spinner → list capped at 50 with hint.
+4. Notification → `/admin/inbox` still loads fast.
