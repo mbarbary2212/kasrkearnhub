@@ -112,8 +112,14 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
       resetForm();
       onClose();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to submit question. Please try again.';
-      toast.error(errorMessage);
+      // Surface the raw Supabase / validation error verbatim so we can see
+      // exactly what failed (FK violation, RLS, UUID, etc.).
+      const err = error as { message?: string; details?: string; hint?: string; code?: string } | undefined;
+      const verbatim = [err?.message, err?.details, err?.hint, err?.code]
+        .filter(Boolean)
+        .join(' • ');
+      console.error('[InquiryModal] submit failed:', error);
+      toast.error(verbatim || 'Failed to submit question. Please try again.');
     }
   };
 
