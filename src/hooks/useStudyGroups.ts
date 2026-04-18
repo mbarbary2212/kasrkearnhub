@@ -973,16 +973,31 @@ export function usePostGroupMessage() {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        // Log the FULL Supabase error response so we can see code/details/hint
+        console.error('[usePostGroupMessage] Supabase insert failed:', {
+          message: error.message,
+          code: (error as { code?: string }).code,
+          details: (error as { details?: string }).details,
+          hint: (error as { hint?: string }).hint,
+          full: error,
+        });
+        throw error;
+      }
+      return { ...data, threadId };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Invalidate the specific thread's messages and the threads list
+      queryClient.invalidateQueries({ queryKey: ['study-groups', 'messages', data.threadId] });
       queryClient.invalidateQueries({ queryKey: ['study-groups', 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['study-groups', 'threads'] });
     },
-    onError: (error) => {
-      console.error('Error posting message:', error);
-      toast.error('Failed to post message');
+    onError: (error: unknown) => {
+      const err = error as { message?: string; details?: string; hint?: string; code?: string } | undefined;
+      const verbatim = [err?.message, err?.details, err?.hint, err?.code]
+        .filter(Boolean)
+        .join(' • ');
+      toast.error(verbatim || 'Failed to post message');
     },
   });
 }
