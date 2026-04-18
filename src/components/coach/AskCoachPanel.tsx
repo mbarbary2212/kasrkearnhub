@@ -99,6 +99,18 @@ export function AskCoachPanel() {
     if (!authToken) {
       throw new Error('You must be logged in to use the Study Coach');
     }
+
+    // Build soft context — works even without a chapter/topic
+    const { data: { user } } = await supabase.auth.getUser();
+    let preferredYearId: string | null = null;
+    if (user?.id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('preferred_year_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      preferredYearId = profile?.preferred_year_id ?? null;
+    }
     
     const resp = await fetch(CHAT_URL, {
       method: 'POST',
@@ -111,17 +123,27 @@ export function AskCoachPanel() {
         context: systemContext,
         chapterId: studyContext?.chapterId || null,
         topicId: studyContext?.topicId || null,
+        moduleId: studyContext?.moduleId || null,
+        userId: user?.id ?? null,
+        preferredYearId,
+        routePath: typeof window !== 'undefined' ? window.location.pathname : null,
       }),
     });
 
     const contentType = resp.headers.get('content-type') || '';
     
-    // Handle JSON error responses
+    // Always try to parse JSON error responses for diagnostics
     if (contentType.includes('application/json')) {
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
       
-      // Check for structured error codes
-      if (data.code && ['COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'].includes(data.code)) {
+      // Log full body for debugging non-OK responses
+      if (!resp.ok) {
+        console.error('coach-chat non-OK response:', resp.status, data);
+      }
+
+      // Check for structured error codes (with or without 4xx/5xx)
+      const knownCodes: CoachErrorCode[] = ['COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'];
+      if (data?.code && knownCodes.includes(data.code)) {
         setError({
           code: data.code as CoachErrorCode,
           title: data.title || 'Error',
@@ -130,22 +152,36 @@ export function AskCoachPanel() {
         return;
       }
       
-      if (data.blocked) {
+      if (data?.blocked) {
         toast.warning(data.message || 'Your message could not be processed.');
         return;
       }
-      if (data.error) {
+
+      // Generic 4xx/5xx fallback when JSON didn't match a known code
+      if (!resp.ok) {
+        setError({
+          code: 'COACH_DISABLED',
+          title: 'Coach is temporarily unavailable',
+          message: data?.message || data?.error || 'Coach is temporarily unavailable — please try again.',
+        });
+        return;
+      }
+
+      if (data?.error) {
         throw new Error(data.error);
       }
     }
 
     if (!resp.ok) {
-      // Handle specific HTTP status codes
+      // Non-JSON 4xx/5xx — log raw body and surface generic fallback
+      const rawText = await resp.text().catch(() => '');
+      console.error('coach-chat non-OK (non-JSON):', resp.status, rawText);
+      
       if (resp.status === 503) {
         setError({
           code: 'COACH_DISABLED',
           title: 'Coach is temporarily unavailable',
-          message: 'The study coach is currently disabled by the course administrators due to usage limits. Please use your course materials and send questions via Feedback & Inquiries.',
+          message: 'The study coach is currently disabled by the course administrators. Please use your course materials and send questions via Feedback & Inquiries.',
         });
         return;
       }
@@ -157,7 +193,12 @@ export function AskCoachPanel() {
         });
         return;
       }
-      throw new Error(`Error: ${resp.status}`);
+      setError({
+        code: 'COACH_DISABLED',
+        title: 'Coach is temporarily unavailable',
+        message: 'Coach is temporarily unavailable — please try again.',
+      });
+      return;
     }
 
     if (!resp.body) throw new Error('No response body');
