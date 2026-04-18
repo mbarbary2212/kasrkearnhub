@@ -29,18 +29,20 @@ async function enrichWithProfiles(rows: TeamCredit[]): Promise<TeamCredit[]> {
   );
   if (emails.length === 0) return rows;
 
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('id, email, full_name, avatar_url')
-    .in('email', emails);
+  // Use security-definer RPC so students (who can't read other profiles via RLS)
+  // still get team member names + avatars. The RPC only returns rows whose email
+  // matches an active team_credits entry.
+  const { data: profiles, error } = await supabase.rpc('get_team_credit_profiles');
 
-  // If profiles select fails (e.g., RLS), silently fall back to stored values.
+  // If the RPC fails, silently fall back to stored values.
   if (error || !profiles) return rows;
 
-  const byEmail = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }>();
-  for (const p of profiles) {
+  const byEmail = new Map<string, { id: string | null; full_name: string | null; avatar_url: string | null }>();
+  for (const p of profiles as Array<{ email: string | null; full_name: string | null; avatar_url: string | null }>) {
     const key = (p.email ?? '').trim().toLowerCase();
-    if (key) byEmail.set(key, { id: p.id, full_name: p.full_name, avatar_url: p.avatar_url });
+    if (key && emails.includes(key)) {
+      byEmail.set(key, { id: null, full_name: p.full_name, avatar_url: p.avatar_url });
+    }
   }
 
   return rows.map((r) => {

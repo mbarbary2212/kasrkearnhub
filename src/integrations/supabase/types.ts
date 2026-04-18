@@ -7811,6 +7811,14 @@ export type Database = {
           id: string
         }[]
       }
+      get_team_credit_profiles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+        }[]
+      }
       get_user_analytics: {
         Args: { _user_id: string }
         Returns: {
