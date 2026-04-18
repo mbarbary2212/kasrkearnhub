@@ -71,6 +71,7 @@ export function UserAvatarUploadDialog({ open, onOpenChange, user }: UserAvatarU
       }
 
       queryClient.invalidateQueries({ queryKey: ['admin-data'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['team-credits'] });
       toast.success('Photo uploaded successfully');
       onOpenChange(false);
@@ -99,6 +100,8 @@ export function UserAvatarUploadDialog({ open, onOpenChange, user }: UserAvatarU
       if (error) throw error;
 
       queryClient.invalidateQueries({ queryKey: ['admin-data'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['team-credits'] });
       toast.success('Photo removed');
       onOpenChange(false);
       resetState();
