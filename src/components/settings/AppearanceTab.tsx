@@ -3,7 +3,8 @@ import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Sun, Moon, Monitor, Palette, LayoutGrid, Type, Layers } from 'lucide-react';
+import { Sun, Moon, Monitor, Palette, LayoutGrid, Type, Layers, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const THEME_OPTIONS = [
