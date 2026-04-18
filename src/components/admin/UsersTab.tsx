@@ -345,11 +345,15 @@ export function UsersTab() {
                   {userSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
                 </Button>
               </div>
-              {users.length === 0 ? (
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : users.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">No users found</p>
               ) : (
-                <div className="space-y-3">
-                  {users
+                (() => {
+                  const filteredUsers = users
                     .filter(u => {
                       if (!userSearch.trim()) return true;
                       const search = userSearch.toLowerCase();
@@ -359,9 +363,24 @@ export function UsersTab() {
                       const nameA = (a.full_name || a.email).toLowerCase();
                       const nameB = (b.full_name || b.email).toLowerCase();
                       return userSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                    })
-                    .map((u) => renderUserRow(u, { showModuleAssignments: true }))}
-                </div>
+                    });
+                  if (filteredUsers.length === 0) {
+                    return <p className="text-muted-foreground text-center py-8">No users matching your search</p>;
+                  }
+                  return (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Showing {Math.min(filteredUsers.length, 50)} of {users.length} users
+                      </p>
+                      {filteredUsers.slice(0, 50).map((u) => renderUserRow(u, { showModuleAssignments: true }))}
+                      {filteredUsers.length > 50 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Showing first 50 results. Refine your search to see more.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </TabsContent>
 
