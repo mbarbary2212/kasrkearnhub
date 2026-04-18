@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
