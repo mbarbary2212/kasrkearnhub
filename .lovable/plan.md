@@ -1,131 +1,87 @@
 
-## Final migration SQL — for review only, do not apply
 
-Scan result (Step 1):
-- `module_admins`: 1 recursive policy → fix included
-- `profiles`: 2 recursive policies → fixes included (one was missed in earlier plan)
-- `topic_admins`, `user_roles`, `department_admins`: clean, no fix needed
+# Proposal: Group Lecture Videos by Topic Across Doctors
 
-Refinements applied: `pg_temp` in search_path, `drop policy if exists`, locked-down `execute` grants.
+## Audit findings (current state)
+
+**`lectures` table** already has these relevant columns:
+- `id`, `title`, `description` (used as doctor name, e.g. "Dr. Hussein Khairy"), `video_url`, `youtube_video_id`, `duration`
+- `chapter_id` (set on **214/214** rows), `module_id`, `section_id`, `concept_id`
+- `topic_id` (**exists but NULL on 214/214 rows** — never used for lectures)
+
+**`topics` table** already exists with: `id`, `name`, `slug`, `department_id`, `module_id`, `display_order`. It's currently used for department/module navigation, not for lecture grouping.
+
+**Doctor field**: there is no `doctor_id` or join to `profiles` — the doctor name lives as plain text in `lectures.description` (8 distinct values today).
+
+**Current behavior**: a lecture is one (chapter × doctor × video). Two doctors covering "Peptic Ulcer" produce two unrelated lecture rows in different/same chapters with no shared key.
+
+## Schema change (minimal, additive — no destructive migration)
+
+Rather than create a new `topics`-style table, **reuse the existing `topics` table** and finally populate `lectures.topic_id`. This avoids duplicating concepts.
 
 ```sql
--- Migration: fix RLS infinite recursion on module_admins + profiles policies
---
--- Scan of public.user_roles, department_admins, topic_admins, module_admins, profiles:
---   - module_admins: 1 self-referencing SELECT policy ("Module admins can view peers in same module")
---   - profiles: 2 self-referencing SELECT policies via module_admins joins
---       ("Module admins can view profiles of their module admins",
---        "Module admins can view topic admin profiles")
---   - topic_admins, user_roles, department_admins: clean — already use SECURITY DEFINER helpers,
---     no changes required.
+-- 1. Index the existing (currently unused) FK so lookups are fast
+CREATE INDEX IF NOT EXISTS idx_lectures_topic_id 
+  ON public.lectures(topic_id) WHERE is_deleted = false;
 
--- =========================================================================
--- 1. Helper: is the caller an admin of this specific module?
--- =========================================================================
-create or replace function public.is_module_admin_self(_user_id uuid, _module_id uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select exists (
-    select 1 from public.module_admins
-    where user_id = _user_id and module_id = _module_id
-  )
-$$;
-
-revoke execute on function public.is_module_admin_self(uuid, uuid) from public;
-grant  execute on function public.is_module_admin_self(uuid, uuid) to authenticated;
-
--- Note: a public.is_module_admin(uuid, uuid) already exists and is identical in body.
--- We intentionally introduce is_module_admin_self to make it 100% explicit that this
--- function is the one used by the recursive-fix policies, and to avoid any chance of
--- a future edit to is_module_admin reintroducing recursion. Both can coexist safely.
-
--- =========================================================================
--- 2. Helper: do caller and target share any module assignment?
--- =========================================================================
-create or replace function public.shares_module_admin(_caller uuid, _target uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select exists (
-    select 1
-    from public.module_admins a
-    join public.module_admins b on a.module_id = b.module_id
-    where a.user_id = _caller and b.user_id = _target
-  )
-$$;
-
-revoke execute on function public.shares_module_admin(uuid, uuid) from public;
-grant  execute on function public.shares_module_admin(uuid, uuid) to authenticated;
-
--- =========================================================================
--- 3. Helper: is the target user a topic admin in any module the caller administers?
--- =========================================================================
-create or replace function public.shares_module_with_topic_admin(_caller uuid, _target uuid)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-  select exists (
-    select 1
-    from public.module_admins ma
-    join public.topic_admins ta on ta.module_id = ma.module_id
-    where ma.user_id = _caller
-      and ta.user_id = _target
-  )
-$$;
-
-revoke execute on function public.shares_module_with_topic_admin(uuid, uuid) from public;
-grant  execute on function public.shares_module_with_topic_admin(uuid, uuid) to authenticated;
-
--- =========================================================================
--- 4. Replace recursive module_admins SELECT policy
--- =========================================================================
-drop policy if exists "Module admins can view peers in same module"
-  on public.module_admins;
-
-create policy "Module admins can view peers in same module"
-  on public.module_admins for select to authenticated
-  using (public.is_module_admin_self(auth.uid(), module_id));
-
--- =========================================================================
--- 5. Replace recursive profiles SELECT policy (peers via module_admins)
--- =========================================================================
-drop policy if exists "Module admins can view profiles of their module admins"
-  on public.profiles;
-
-create policy "Module admins can view profiles of their module admins"
-  on public.profiles for select to authenticated
-  using (public.shares_module_admin(auth.uid(), id));
-
--- =========================================================================
--- 6. Replace recursive profiles SELECT policy (topic admins in caller's modules)
--- =========================================================================
-drop policy if exists "Module admins can view topic admin profiles"
-  on public.profiles;
-
-create policy "Module admins can view topic admin profiles"
-  on public.profiles for select to authenticated
-  using (public.shares_module_with_topic_admin(auth.uid(), id));
+-- 2. Ensure FK exists (verify before applying — may already be in place)
+ALTER TABLE public.lectures
+  ADD CONSTRAINT lectures_topic_id_fkey
+  FOREIGN KEY (topic_id) REFERENCES public.topics(id) ON DELETE SET NULL;
 ```
 
-### What this changes
-- 3 new `SECURITY DEFINER` helpers, hardened search_path, execute restricted to `authenticated`.
-- 3 RLS policies dropped (idempotently) and recreated with helper calls — no behavior change for end users; module admins still see exactly the same peers, profiles, and topic-admin profiles they could see before (when the policies actually worked).
-- No app code, no schema, no other tables touched.
+No new table. No column rename. No data deletion. Existing UI keeps working because `topic_id` stays nullable.
 
-### Acceptance check after apply
-1. `/admin?tab=users` as super admin → "Failed to load users" red card disappears, Directory populates.
-2. Module Admins / Topic Admins assignment dialogs return user search results.
-3. Non-admin module admin still only sees peers + topic admins in their own modules.
-4. Inbox and other admin tabs continue to load fast.
+**Alternative if you prefer a dedicated table** (e.g. `lecture_topics` separate from the department-scoped `topics`): I can scaffold one — but it duplicates a concept that already exists. Recommend reuse.
 
-Awaiting your explicit "apply" before submitting this as a migration.
+## Backfill strategy — three options
+
+| Option | Effort | Accuracy | Recommendation |
+|---|---|---|---|
+| **A. Manual tagging** via admin UI (dropdown on each lecture row) | High (214 rows) | 100% | Best for long-term quality |
+| **B. AI inference** from title using existing Gemini infra (similar to "AI Assign Sections" tool) | Low | ~85% with review queue | **Recommended** — mirrors existing `concept_auto_assigned` / `concept_ai_confidence` pattern already in the schema |
+| **C. Heuristic match** on lowercased title tokens against `topics.name` | Trivial | ~50% | Use as a first pass before B |
+
+Recommended path: **C → B → A**. Run heuristic first to auto-tag obvious matches, run AI for the rest with a confidence score, then surface low-confidence rows in a review queue (reuse the "Tagging Issues" Control Center pattern). Add `topic_auto_assigned` and `topic_ai_confidence` columns mirroring the existing `concept_*` pattern.
+
+## UI proposal — "All videos on this topic" modal
+
+**Trigger**: in `src/components/content/LectureList.tsx` (line ~635, the title button), clicking the lecture **title** opens the modal instead of just playing inline. The existing play button stays for direct playback.
+
+**New component**: `src/components/content/TopicVideosModal.tsx`
+- Fetches all `lectures` where `topic_id = <clicked lecture's topic_id>` AND `is_deleted=false`, across all chapters and doctors
+- Groups by `description` (doctor name)
+- For each video shows: YouTube thumbnail (`https://i.ytimg.com/vi/<youtube_video_id>/mqdefault.jpg`), duration, doctor badge, chapter context, Play button
+- Empty state if `topic_id` is null: "This lecture isn't tagged to a topic yet."
+
+**New hook**: `src/hooks/useTopicLectures.ts` — `useTopicLectures(topicId)` returning lectures grouped by doctor.
+
+**Layout** (matches existing dialog scrolling pattern with pinned header):
+
+```text
+┌─ All videos: Peptic Ulcer ─────────────×─┐
+│ Dr. Hussein Khairy                       │
+│ ┌────┐ Bleeding peptic ulcer    12:34 ▶ │
+│ ┌────┐ Peptic Ulcer Complications 09:12 ▶│
+│ Dr. Mohamed Elmasry                      │
+│ ┌────┐ Peptic ulcer overview    15:02 ▶ │
+└──────────────────────────────────────────┘
+```
+
+**Soft-gating for untagged lectures**: until backfill runs, untagged lectures (the majority) should still play inline as today — only show the modal when `topic_id` is present. Add a small "More videos on this topic" link only when ≥2 lectures share the topic.
+
+## Files that will change (when approved)
+
+- `supabase/migrations/<new>.sql` — index + FK (+ optional `topic_auto_assigned` columns)
+- `src/components/content/LectureList.tsx` — title click handler
+- `src/components/content/TopicVideosModal.tsx` — NEW
+- `src/hooks/useTopicLectures.ts` — NEW
+- `src/integrations/supabase/types.ts` — regenerated
+- (Optional) `src/components/admin/AssignLectureTopicsTool.tsx` — admin AI backfill tool
+
+## Open questions before I proceed
+
+1. **Reuse `topics` table or create dedicated `lecture_topics`?** Recommend reuse.
+2. **Backfill approach** — proceed with heuristic + AI (Option C+B) or wait for manual admin tagging?
+3. **Doctor identity** — keep using `lectures.description` as plain text, or proper FK to `profiles`? (Out of scope for this prompt but flagging.)
+
