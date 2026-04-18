@@ -132,6 +132,9 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
             To: <span className="font-medium">{targetAdminName}</span>
             {targetRole && <span className="text-muted-foreground"> ({targetRole === 'module' ? 'Module Lead' : 'Topic Lead'})</span>}
           </p>
+          <p className="text-[10px] text-muted-foreground mt-1 font-mono">
+            Recipient ID: {targetAdminId ? targetAdminId : <span className="text-destructive">NOT SET</span>}
+          </p>
         </div>
       )}
 
