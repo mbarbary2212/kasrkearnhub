@@ -1,55 +1,131 @@
 
-## Plan: Unblock Admin Panel Load
+## Final migration SQL — for review only, do not apply
 
-### Root cause
-`useAdminData()` runs `profiles.select('*')` for every user and `AdminPage` blocks the entire page on it. Inbox loads fast because it bypasses this hook.
+Scan result (Step 1):
+- `module_admins`: 1 recursive policy → fix included
+- `profiles`: 2 recursive policies → fixes included (one was missed in earlier plan)
+- `topic_admins`, `user_roles`, `department_admins`: clean, no fix needed
 
-### Changes (4 files)
+Refinements applied: `pg_temp` in search_path, `drop policy if exists`, locked-down `execute` grants.
 
-**1. `src/pages/AdminPage.tsx`**
-- Loading gate (line ~91): block only on `authLoading`, not `adminDataLoading`.
-- Swap `useAdminData` → `useAdminReferenceData` so tabs render as soon as years/modules/departments arrive (small reference tables).
-- Keep `years` and `modules` props passed to child tabs unchanged.
+```sql
+-- Migration: fix RLS infinite recursion on module_admins + profiles policies
+--
+-- Scan of public.user_roles, department_admins, topic_admins, module_admins, profiles:
+--   - module_admins: 1 self-referencing SELECT policy ("Module admins can view peers in same module")
+--   - profiles: 2 self-referencing SELECT policies via module_admins joins
+--       ("Module admins can view profiles of their module admins",
+--        "Module admins can view topic admin profiles")
+--   - topic_admins, user_roles, department_admins: clean — already use SECURITY DEFINER helpers,
+--     no changes required.
 
-**2. `src/hooks/useAdminData.ts`** — split into two hooks:
+-- =========================================================================
+-- 1. Helper: is the caller an admin of this specific module?
+-- =========================================================================
+create or replace function public.is_module_admin_self(_user_id uuid, _module_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from public.module_admins
+    where user_id = _user_id and module_id = _module_id
+  )
+$$;
 
-```text
-useAdminReferenceData(enabled)
-  → years + modules + departments
-  → cheap, used by AdminPage to render tabs
+revoke execute on function public.is_module_admin_self(uuid, uuid) from public;
+grant  execute on function public.is_module_admin_self(uuid, uuid) to authenticated;
 
-useAdminUsers(enabled)
-  → profiles (slim cols) + user_roles + department_admins + module_admins
-  → only fires when UsersTab mounts
-  → profiles select limited to:
-     id, email, full_name, avatar_url, status, status_reason, created_at
+-- Note: a public.is_module_admin(uuid, uuid) already exists and is identical in body.
+-- We intentionally introduce is_module_admin_self to make it 100% explicit that this
+-- function is the one used by the recursive-fix policies, and to avoid any chance of
+-- a future edit to is_module_admin reintroducing recursion. Both can coexist safely.
 
-useAdminData(enabled)  [kept for backward compat]
-  → internally combines both, merges into existing { users, departments, years, modules } shape
+-- =========================================================================
+-- 2. Helper: do caller and target share any module assignment?
+-- =========================================================================
+create or replace function public.shares_module_admin(_caller uuid, _target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1
+    from public.module_admins a
+    join public.module_admins b on a.module_id = b.module_id
+    where a.user_id = _caller and b.user_id = _target
+  )
+$$;
+
+revoke execute on function public.shares_module_admin(uuid, uuid) from public;
+grant  execute on function public.shares_module_admin(uuid, uuid) to authenticated;
+
+-- =========================================================================
+-- 3. Helper: is the target user a topic admin in any module the caller administers?
+-- =========================================================================
+create or replace function public.shares_module_with_topic_admin(_caller uuid, _target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1
+    from public.module_admins ma
+    join public.topic_admins ta on ta.module_id = ma.module_id
+    where ma.user_id = _caller
+      and ta.user_id = _target
+  )
+$$;
+
+revoke execute on function public.shares_module_with_topic_admin(uuid, uuid) from public;
+grant  execute on function public.shares_module_with_topic_admin(uuid, uuid) to authenticated;
+
+-- =========================================================================
+-- 4. Replace recursive module_admins SELECT policy
+-- =========================================================================
+drop policy if exists "Module admins can view peers in same module"
+  on public.module_admins;
+
+create policy "Module admins can view peers in same module"
+  on public.module_admins for select to authenticated
+  using (public.is_module_admin_self(auth.uid(), module_id));
+
+-- =========================================================================
+-- 5. Replace recursive profiles SELECT policy (peers via module_admins)
+-- =========================================================================
+drop policy if exists "Module admins can view profiles of their module admins"
+  on public.profiles;
+
+create policy "Module admins can view profiles of their module admins"
+  on public.profiles for select to authenticated
+  using (public.shares_module_admin(auth.uid(), id));
+
+-- =========================================================================
+-- 6. Replace recursive profiles SELECT policy (topic admins in caller's modules)
+-- =========================================================================
+drop policy if exists "Module admins can view topic admin profiles"
+  on public.profiles;
+
+create policy "Module admins can view topic admin profiles"
+  on public.profiles for select to authenticated
+  using (public.shares_module_with_topic_admin(auth.uid(), id));
 ```
 
-Both hooks: `staleTime: 5 min`, query keys `['admin-reference-data']` and `['admin-users']` so cache invalidations stay surgical. Existing `['admin-data']` consumers still work via the combined hook.
+### What this changes
+- 3 new `SECURITY DEFINER` helpers, hardened search_path, execute restricted to `authenticated`.
+- 3 RLS policies dropped (idempotently) and recreated with helper calls — no behavior change for end users; module admins still see exactly the same peers, profiles, and topic-admin profiles they could see before (when the policies actually worked).
+- No app code, no schema, no other tables touched.
 
-**3. `src/components/admin/UsersTab.tsx`**
-- Switch from `useAdminData` → `useAdminUsers`. Mounting the tab is what triggers the fetch (TanStack `enabled: true`).
-- Show local spinner while `isLoading`.
-- **Directory sub-tab** (~line 350-361): apply the same cap pattern the Students tab already uses — `Showing X of Y`, `.slice(0, 50)`, and "Refine your search to see more" hint when filtered > 50.
-- **Deactivated sub-tab**: same cap treatment.
-- Students/Platform Admins/Module Admins sub-tabs: leave as-is (Students already capped; others are naturally small).
+### Acceptance check after apply
+1. `/admin?tab=users` as super admin → "Failed to load users" red card disappears, Directory populates.
+2. Module Admins / Topic Admins assignment dialogs return user search results.
+3. Non-admin module admin still only sees peers + topic admins in their own modules.
+4. Inbox and other admin tabs continue to load fast.
 
-**4. Verify column usage**
-Before narrowing the profiles select, grep for fields read off profile rows (e.g. `profile.preferred_year_id`, `profile.banned_at`, `profile.year_id`) in admin components to make sure the slim list `id, email, full_name, avatar_url, status, status_reason, created_at` covers them. If anything else is read, add only that column — never restore `*`.
-
-### Files touched
-- `src/hooks/useAdminData.ts` — split + slim select
-- `src/pages/AdminPage.tsx` — unblock gate + use reference hook
-- `src/components/admin/UsersTab.tsx` — use users hook + cap Directory & Deactivated
-
-### Not touched
-Auth, RLS, env vars, edge functions, routing, notification shortcut to `/admin/inbox`, TopicAdminsTab, assignment dialogs, mutation invalidations (still target `['admin-data']` which the combined hook covers; we'll also invalidate `['admin-users']` where mutations specifically affect users).
-
-### Acceptance check (manual after build)
-1. `/admin` from sidebar → tabs visible <1s.
-2. Click Inbox/Settings/Announcements → no users fetch.
-3. Click Users → local spinner → list capped at 50 with hint.
-4. Notification → `/admin/inbox` still loads fast.
+Awaiting your explicit "apply" before submitting this as a migration.
