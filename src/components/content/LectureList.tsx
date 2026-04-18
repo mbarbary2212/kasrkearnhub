@@ -156,8 +156,33 @@ export function LectureList({
   const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const [notesLecture, setNotesLecture] = useState<Lecture | null>(null);
   const [currentVideoTime, setCurrentVideoTime] = useState(0);
+  const [topicModalTopicId, setTopicModalTopicId] = useState<string | null>(null);
+  const [topicModalExcludeId, setTopicModalExcludeId] = useState<string | undefined>();
 
   const bulkDelete = useBulkDeleteContent('lectures');
+
+  // Count sibling lectures per topic_id (across all chapters/doctors) so we
+  // only show the "More videos on this topic" link when there are ≥2.
+  const lectureTopicIds = useMemo(
+    () => Array.from(new Set(lectures.map((l) => l.topic_id).filter(Boolean) as string[])),
+    [lectures]
+  );
+  const { data: topicSiblingCounts = {} } = useQuery({
+    queryKey: ['lecture-topic-sibling-counts', lectureTopicIds],
+    enabled: lectureTopicIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lectures')
+        .select('topic_id')
+        .in('topic_id', lectureTopicIds)
+        .eq('is_deleted', false);
+      const counts: Record<string, number> = {};
+      for (const row of data || []) {
+        if (row.topic_id) counts[row.topic_id] = (counts[row.topic_id] || 0) + 1;
+      }
+      return counts;
+    },
+  });
 
   // Get video IDs for all lectures
   const videoIds = useMemo(() => lectures.map(getVideoIdForLecture), [lectures]);
