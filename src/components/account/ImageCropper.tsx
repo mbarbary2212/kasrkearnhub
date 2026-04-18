@@ -45,7 +45,19 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, 1));
+    const initialCrop = centerAspectCrop(width, height, 1);
+    setCrop(initialCrop);
+    // Pre-compute the initial pixel crop so Save is enabled immediately
+    // and a sensible default is used if the user doesn't drag.
+    const scale = width;
+    const pixelCrop: PixelCrop = {
+      unit: 'px',
+      x: (initialCrop.x / 100) * scale,
+      y: (initialCrop.y / 100) * height,
+      width: (initialCrop.width / 100) * scale,
+      height: (initialCrop.height / 100) * height,
+    };
+    setCompletedCrop(pixelCrop);
   }, []);
 
   const getCroppedImg = async (): Promise<Blob | null> => {
