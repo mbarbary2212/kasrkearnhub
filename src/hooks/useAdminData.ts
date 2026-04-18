@@ -58,10 +58,11 @@ async function fetchAdminUsers(): Promise<AdminUsersData> {
     { data: deptAssignments, error: deptError },
     { data: moduleAssignments, error: moduleError },
   ] = await Promise.all([
-    // Slim select: only the columns the admin user list actually reads.
+    // Reverted to select('*') — slim select caused HTTP 500 because of a column-name mismatch.
+    // Verified column list now in hand; will re-slim in a follow-up.
     supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, status, status_reason, created_at'),
+      .select('*'),
     supabase.from('user_roles').select('*'),
     supabase.from('department_admins').select('*'),
     supabase.from('module_admins').select('*'),
