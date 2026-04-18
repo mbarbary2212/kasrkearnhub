@@ -9,30 +9,56 @@ export interface UserWithRole extends Profile {
   moduleAssignments?: ModuleAdmin[];
 }
 
-interface AdminData {
-  users: UserWithRole[];
+interface AdminReferenceData {
   departments: Department[];
   years: Year[];
   modules: Module[];
 }
 
-async function fetchAdminData(): Promise<AdminData> {
+interface AdminUsersData {
+  users: UserWithRole[];
+}
+
+interface AdminData extends AdminReferenceData, AdminUsersData {}
+
+// Slim, fast — small reference tables only. Used to render the Admin tabs shell.
+async function fetchAdminReferenceData(): Promise<AdminReferenceData> {
+  const [
+    { data: depts, error: deptsError },
+    { data: yearsData, error: yearsError },
+    { data: modulesData, error: modulesError },
+  ] = await Promise.all([
+    supabase.from('departments').select('*').order('display_order'),
+    supabase.from('years').select('*').order('display_order'),
+    supabase.from('modules').select('*').order('display_order'),
+  ]);
+
+  if (deptsError) throw deptsError;
+  if (yearsError) throw yearsError;
+  if (modulesError) throw modulesError;
+
+  return {
+    departments: (depts as Department[]) || [],
+    years: (yearsData as Year[]) || [],
+    modules: (modulesData as Module[]) || [],
+  };
+}
+
+// The expensive one — only call this when the Users tab is mounted.
+async function fetchAdminUsers(): Promise<AdminUsersData> {
   const [
     { data: profiles, error: profilesError },
     { data: roles, error: rolesError },
     { data: deptAssignments },
     { data: moduleAssignments },
-    { data: depts },
-    { data: yearsData },
-    { data: modulesData },
   ] = await Promise.all([
-    supabase.from('profiles').select('*'),
+    // Slim select: only the columns the admin user list actually reads.
+    supabase
+      .from('profiles')
+      .select('id, email, full_name, avatar_url, status, status_reason, created_at'),
     supabase.from('user_roles').select('*'),
     supabase.from('department_admins').select('*'),
     supabase.from('module_admins').select('*'),
-    supabase.from('departments').select('*').order('display_order'),
-    supabase.from('years').select('*').order('display_order'),
-    supabase.from('modules').select('*').order('display_order'),
   ]);
 
   if (profilesError) throw profilesError;
@@ -43,26 +69,58 @@ async function fetchAdminData(): Promise<AdminData> {
     const userDeptAssignments = deptAssignments?.filter((a) => a.user_id === profile.id) || [];
     const userModuleAssignments = moduleAssignments?.filter((a) => a.user_id === profile.id) || [];
     return {
-      ...profile,
+      ...(profile as Profile),
       role: (userRole?.role as AppRole) || 'student',
       departmentAssignments: userDeptAssignments as DepartmentAdmin[],
       moduleAssignments: userModuleAssignments as ModuleAdmin[],
     };
   });
 
-  return {
-    users,
-    departments: (depts as Department[]) || [],
-    years: (yearsData as Year[]) || [],
-    modules: (modulesData as Module[]) || [],
-  };
+  return { users };
 }
 
-export function useAdminData(enabled: boolean) {
+export function useAdminReferenceData(enabled: boolean) {
   return useQuery({
-    queryKey: ['admin-data'],
-    queryFn: fetchAdminData,
+    queryKey: ['admin-reference-data'],
+    queryFn: fetchAdminReferenceData,
     enabled,
     staleTime: 1000 * 60 * 5,
   });
+}
+
+export function useAdminUsers(enabled: boolean) {
+  return useQuery({
+    queryKey: ['admin-users'],
+    queryFn: fetchAdminUsers,
+    enabled,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Backward-compat: combines both queries into the original { users, departments, years, modules } shape.
+// Existing consumers and `queryClient.invalidateQueries({ queryKey: ['admin-data'] })` calls keep working,
+// but new code should prefer the targeted hooks above.
+export function useAdminData(enabled: boolean) {
+  const reference = useAdminReferenceData(enabled);
+  const usersQuery = useAdminUsers(enabled);
+
+  const data: AdminData | undefined =
+    reference.data && usersQuery.data
+      ? {
+          users: usersQuery.data.users,
+          departments: reference.data.departments,
+          years: reference.data.years,
+          modules: reference.data.modules,
+        }
+      : undefined;
+
+  return {
+    data,
+    isLoading: reference.isLoading || usersQuery.isLoading,
+    isError: reference.isError || usersQuery.isError,
+    error: reference.error || usersQuery.error,
+    refetch: async () => {
+      await Promise.all([reference.refetch(), usersQuery.refetch()]);
+    },
+  };
 }
