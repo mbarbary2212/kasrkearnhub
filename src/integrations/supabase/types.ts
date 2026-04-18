@@ -3556,6 +3556,8 @@ export type Database = {
           section_id: string | null
           title: string
           title_ar: string | null
+          topic_ai_confidence: number | null
+          topic_auto_assigned: boolean
           topic_id: string | null
           updated_at: string | null
           updated_by: string | null
@@ -3581,6 +3583,8 @@ export type Database = {
           section_id?: string | null
           title: string
           title_ar?: string | null
+          topic_ai_confidence?: number | null
+          topic_auto_assigned?: boolean
           topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -3606,6 +3610,8 @@ export type Database = {
           section_id?: string | null
           title?: string
           title_ar?: string | null
+          topic_ai_confidence?: number | null
+          topic_auto_assigned?: boolean
           topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
