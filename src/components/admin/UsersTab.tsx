@@ -750,8 +750,10 @@ export function UsersTab() {
                   }
                   return (
                     <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground mb-2">{filtered.length} deactivated user{filtered.length !== 1 ? 's' : ''}</p>
-                      {filtered.map(u => (
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Showing {Math.min(filtered.length, 50)} of {deactivatedUsers.length} deactivated user{deactivatedUsers.length !== 1 ? 's' : ''}
+                      </p>
+                      {filtered.slice(0, 50).map(u => (
                         <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
@@ -775,6 +777,11 @@ export function UsersTab() {
                           </Button>
                         </div>
                       ))}
+                      {filtered.length > 50 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Showing first 50 results. Refine your search to see more.
+                        </p>
+                      )}
                     </div>
                   );
                 })()}
