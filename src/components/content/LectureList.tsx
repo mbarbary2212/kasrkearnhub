@@ -657,22 +657,37 @@ export function LectureList({
               </button>
 
               {/* Content */}
-              <button
-                onClick={() => isValid && handleSelectLecture(lecture)}
-                disabled={!isValid}
-                className="flex-1 min-w-0 text-left disabled:opacity-50"
-              >
-                <div className="font-semibold truncate">{lecture.title}</div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                  {lecture.duration && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />{lecture.duration}
-                    </span>
-                  )}
-                  <span className="hidden md:inline">Click to play</span>
-                  <span className="md:hidden">Tap to play</span>
-                </div>
-              </button>
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => isValid && handleSelectLecture(lecture)}
+                  disabled={!isValid}
+                  className="w-full text-left disabled:opacity-50"
+                >
+                  <div className="font-semibold truncate">{lecture.title}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    {lecture.duration && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />{lecture.duration}
+                      </span>
+                    )}
+                    <span className="hidden md:inline">Click to play</span>
+                    <span className="md:hidden">Tap to play</span>
+                  </div>
+                </button>
+                {lecture.topic_id && (topicSiblingCounts[lecture.topic_id] || 0) > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTopicModalTopicId(lecture.topic_id!);
+                      setTopicModalExcludeId(lecture.id);
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Layers className="w-3 h-3" />
+                    More videos on this topic ({(topicSiblingCounts[lecture.topic_id] || 1) - 1})
+                  </button>
+                )}
+              </div>
 
               {/* Student action buttons */}
               {isStudent && user && (
