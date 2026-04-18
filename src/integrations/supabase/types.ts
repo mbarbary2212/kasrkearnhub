@@ -7873,6 +7873,10 @@ export type Database = {
         Args: { _module_id: string; _user_id: string }
         Returns: boolean
       }
+      is_module_admin_self: {
+        Args: { _module_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_platform_admin_or_higher: {
         Args: { _user_id: string }
         Returns: boolean
@@ -7929,6 +7933,14 @@ export type Database = {
             }
             Returns: Json
           }
+      shares_module_admin: {
+        Args: { _caller: string; _target: string }
+        Returns: boolean
+      }
+      shares_module_with_topic_admin: {
+        Args: { _caller: string; _target: string }
+        Returns: boolean
+      }
       upsert_student_chapter_metrics: {
         Args: {
           p_chapter_id: string
