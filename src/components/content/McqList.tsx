@@ -1351,6 +1351,40 @@ The AI will parse and extract the questions automatically.`}
         </DialogContent>
       </Dialog>
 
+      {/* Reset Progress Confirmation Dialog */}
+      <AlertDialog
+        open={resetConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !resetAttemptMutation.isPending) setResetConfirmOpen(false);
+        }}
+      >
+        <AlertDialogContent className="z-[99999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset progress on this chapter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure? This will erase your progress on this chapter's MCQs,
+              including answered/correct/incorrect history and attempt scores.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetAttemptMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmResetAttempt();
+              }}
+              disabled={resetAttemptMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {resetAttemptMutation.isPending ? 'Resetting...' : 'Yes, reset'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         open={!!deletingMcq}
