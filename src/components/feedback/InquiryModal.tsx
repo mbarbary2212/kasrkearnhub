@@ -53,6 +53,20 @@ export default function InquiryModal({ isOpen, onClose, moduleId, moduleName, ch
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
 
+  // Debug: log target admin context whenever the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[InquiryModal] opened with target admin context:', {
+        targetAdminId,
+        targetAdminName,
+        targetRole,
+        moduleId,
+        chapterId,
+        topicId,
+      });
+    }
+  }, [isOpen, targetAdminId, targetAdminName, targetRole, moduleId, chapterId, topicId]);
+
   const resetForm = () => {
     setCategory('');
     setSubject('');
