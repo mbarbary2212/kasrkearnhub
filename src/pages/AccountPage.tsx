@@ -14,8 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown } from 'lucide-react';
+import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown, PlayCircle } from 'lucide-react';
 import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
+import { useTour } from '@/hooks/useTour';
+import { studentTourSteps } from '@/components/tour/studentTourSteps';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
 import { PasswordRequirements, isPasswordValid } from '@/components/auth/PasswordRequirements';
@@ -26,6 +28,19 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const { data: years, isLoading: yearsLoading } = useYears();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { startTour, resetTour } = useTour('student', studentTourSteps);
+
+  const handleReplayTutorial = () => {
+    resetTour();
+    // Navigate home so the tour targets exist on the page, then start
+    if (window.location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => startTour(), 400);
+    } else {
+      startTour();
+    }
+    toast.success('Tutorial restarted');
+  };
   
   // Form state
   const [fullName, setFullName] = useState('');
@@ -470,6 +485,25 @@ export default function AccountPage() {
 
         {/* Admin API Key (BYOK) */}
         <AdminApiKeyCard />
+
+        {/* Help & Tutorial */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PlayCircle className="h-5 w-5 text-primary" />
+              Help & Tutorial
+            </CardTitle>
+            <CardDescription>
+              Replay the guided walkthrough of the dashboard if you skipped it or want a refresher.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={handleReplayTutorial}>
+              <PlayCircle className="mr-2 h-4 w-4" />
+              Replay tutorial
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Image Cropper Modal */}
