@@ -50,6 +50,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
+import { TopicVideosModal } from './TopicVideosModal';
+import { Layers } from 'lucide-react';
 
 interface Lecture {
   id: string;
@@ -60,6 +62,7 @@ interface Lecture {
   youtube_video_id?: string | null;
   duration?: string | null;
   section_id?: string | null;
+  topic_id?: string | null;
   created_at?: string | null;
 }
 
@@ -153,8 +156,33 @@ export function LectureList({
   const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
   const [notesLecture, setNotesLecture] = useState<Lecture | null>(null);
   const [currentVideoTime, setCurrentVideoTime] = useState(0);
+  const [topicModalTopicId, setTopicModalTopicId] = useState<string | null>(null);
+  const [topicModalExcludeId, setTopicModalExcludeId] = useState<string | undefined>();
 
   const bulkDelete = useBulkDeleteContent('lectures');
+
+  // Count sibling lectures per topic_id (across all chapters/doctors) so we
+  // only show the "More videos on this topic" link when there are ≥2.
+  const lectureTopicIds = useMemo(
+    () => Array.from(new Set(lectures.map((l) => l.topic_id).filter(Boolean) as string[])),
+    [lectures]
+  );
+  const { data: topicSiblingCounts = {} } = useQuery({
+    queryKey: ['lecture-topic-sibling-counts', lectureTopicIds],
+    enabled: lectureTopicIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('lectures')
+        .select('topic_id')
+        .in('topic_id', lectureTopicIds)
+        .eq('is_deleted', false);
+      const counts: Record<string, number> = {};
+      for (const row of data || []) {
+        if (row.topic_id) counts[row.topic_id] = (counts[row.topic_id] || 0) + 1;
+      }
+      return counts;
+    },
+  });
 
   // Get video IDs for all lectures
   const videoIds = useMemo(() => lectures.map(getVideoIdForLecture), [lectures]);
@@ -629,22 +657,37 @@ export function LectureList({
               </button>
 
               {/* Content */}
-              <button
-                onClick={() => isValid && handleSelectLecture(lecture)}
-                disabled={!isValid}
-                className="flex-1 min-w-0 text-left disabled:opacity-50"
-              >
-                <div className="font-semibold truncate">{lecture.title}</div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                  {lecture.duration && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />{lecture.duration}
-                    </span>
-                  )}
-                  <span className="hidden md:inline">Click to play</span>
-                  <span className="md:hidden">Tap to play</span>
-                </div>
-              </button>
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => isValid && handleSelectLecture(lecture)}
+                  disabled={!isValid}
+                  className="w-full text-left disabled:opacity-50"
+                >
+                  <div className="font-semibold truncate">{lecture.title}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    {lecture.duration && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />{lecture.duration}
+                      </span>
+                    )}
+                    <span className="hidden md:inline">Click to play</span>
+                    <span className="md:hidden">Tap to play</span>
+                  </div>
+                </button>
+                {lecture.topic_id && (topicSiblingCounts[lecture.topic_id] || 0) > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTopicModalTopicId(lecture.topic_id!);
+                      setTopicModalExcludeId(lecture.id);
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Layers className="w-3 h-3" />
+                    More videos on this topic ({(topicSiblingCounts[lecture.topic_id] || 1) - 1})
+                  </button>
+                )}
+              </div>
 
               {/* Student action buttons */}
               {isStudent && user && (
@@ -968,6 +1011,30 @@ export function LectureList({
           isTimestampLive={!!selectedYouTubeId && selectedLecture?.id === notesLecture.id}
         />
       )}
+
+      {/* All-videos-on-this-topic modal */}
+      <TopicVideosModal
+        topicId={topicModalTopicId}
+        open={!!topicModalTopicId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTopicModalTopicId(null);
+            setTopicModalExcludeId(undefined);
+          }
+        }}
+        excludeLectureId={topicModalExcludeId}
+        onPlay={(lec) => {
+          handleSelectLecture({
+            id: lec.id,
+            title: lec.title,
+            description: lec.description,
+            video_url: lec.video_url,
+            youtube_video_id: lec.youtube_video_id,
+            duration: lec.duration,
+            topic_id: lec.topic_id,
+          });
+        }}
+      />
     </TooltipProvider>
   );
 }
