@@ -1,6 +1,7 @@
-import { ReactNode, useState, useMemo } from 'react';
+import { ReactNode, useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -65,7 +66,7 @@ function OnlinePill() {
  */
 function useShowOnlineCount(userId: string | undefined): boolean {
   const [show, setShow] = useState(true);
-  useMemo(() => {
+  useEffect(() => {
     let cancelled = false;
     if (!userId) return;
     supabase
