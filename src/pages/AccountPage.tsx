@@ -46,7 +46,9 @@ export default function AccountPage() {
   const [fullName, setFullName] = useState('');
   const [preferredYearId, setPreferredYearId] = useState<string>('');
   const [autoLoginToYear, setAutoLoginToYear] = useState(false);
+  const [showOnlineCount, setShowOnlineCount] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
   
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -70,13 +72,14 @@ export default function AccountPage() {
       const fetchExtendedProfile = async () => {
         const { data } = await supabase
           .from('profiles')
-          .select('preferred_year_id, auto_login_to_year')
+          .select('preferred_year_id, auto_login_to_year, show_online_count')
           .eq('id', profile.id)
           .single();
         
         if (data) {
           setPreferredYearId(data.preferred_year_id || '');
           setAutoLoginToYear(data.auto_login_to_year || false);
+          setShowOnlineCount(data.show_online_count ?? true);
         }
       };
       fetchExtendedProfile();
