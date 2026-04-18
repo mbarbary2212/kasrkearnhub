@@ -66,6 +66,31 @@ export function useSubmitInquiry() {
     }) => {
       if (!user?.id) throw new Error('Must be logged in to submit inquiry');
 
+      // Validate assignedToUserId is a valid UUID if provided
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (data.assignedToUserId && !UUID_RE.test(data.assignedToUserId)) {
+        console.error('[useSubmitInquiry] Invalid assignedToUserId:', data.assignedToUserId);
+        throw new Error('Invalid doctor selection — please re-select');
+      }
+
+      // Verify the assigned admin actually exists in profiles (FK is to auth.users,
+      // but profiles.id mirrors auth.users.id). This gives a clear error before
+      // hitting a confusing FK violation.
+      if (data.assignedToUserId) {
+        const { data: adminProfile, error: adminLookupError } = await supabase
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('id', data.assignedToUserId)
+          .maybeSingle();
+        if (adminLookupError) {
+          console.error('[useSubmitInquiry] Admin lookup failed:', adminLookupError);
+        }
+        if (!adminProfile) {
+          throw new Error('Selected doctor not found — please re-select');
+        }
+        console.log('[useSubmitInquiry] Resolved assigned admin:', adminProfile);
+      }
+
       // Rate limiting: Check recent submissions
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
       const { count, error: countError } = await supabase
