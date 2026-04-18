@@ -55,7 +55,7 @@ export function UsersTab() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin } = useAuthContext();
   const queryClient = useQueryClient();
   // Lazy: this only fires once UsersTab mounts (i.e. user actually clicked the Users tab).
-  const { data: usersData, isLoading: usersLoading } = useAdminUsers(!!isAdmin);
+  const { data: usersData, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = useAdminUsers(!!isAdmin);
   const { data: refData } = useAdminReferenceData(!!isAdmin);
   const users = usersData?.users ?? [];
   const years = refData?.years ?? [];

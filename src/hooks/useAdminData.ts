@@ -46,11 +46,17 @@ async function fetchAdminReferenceData(): Promise<AdminReferenceData> {
 
 // The expensive one — only call this when the Users tab is mounted.
 async function fetchAdminUsers(): Promise<AdminUsersData> {
+  const formatErr = (label: string, err: any) =>
+    `[useAdminUsers] ${label} query failed: ${err?.message || 'unknown error'}` +
+    (err?.code ? ` (code: ${err.code})` : '') +
+    (err?.details ? ` | details: ${err.details}` : '') +
+    (err?.hint ? ` | hint: ${err.hint}` : '');
+
   const [
     { data: profiles, error: profilesError },
     { data: roles, error: rolesError },
-    { data: deptAssignments },
-    { data: moduleAssignments },
+    { data: deptAssignments, error: deptError },
+    { data: moduleAssignments, error: moduleError },
   ] = await Promise.all([
     // Slim select: only the columns the admin user list actually reads.
     supabase
@@ -61,8 +67,10 @@ async function fetchAdminUsers(): Promise<AdminUsersData> {
     supabase.from('module_admins').select('*'),
   ]);
 
-  if (profilesError) throw profilesError;
-  if (rolesError) throw rolesError;
+  if (profilesError) throw new Error(formatErr('profiles', profilesError));
+  if (rolesError) throw new Error(formatErr('user_roles', rolesError));
+  if (deptError) throw new Error(formatErr('department_admins', deptError));
+  if (moduleError) throw new Error(formatErr('module_admins', moduleError));
 
   const users: UserWithRole[] = (profiles || []).map((profile) => {
     const userRole = roles?.find((r) => r.user_id === profile.id);
@@ -76,7 +84,9 @@ async function fetchAdminUsers(): Promise<AdminUsersData> {
     };
   });
 
-  return { users };
+  const result = { users };
+  console.log('[useAdminUsers] fetched:', result);
+  return result;
 }
 
 export function useAdminReferenceData(enabled: boolean) {
