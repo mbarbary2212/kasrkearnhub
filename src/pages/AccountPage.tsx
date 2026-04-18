@@ -489,6 +489,48 @@ export default function AccountPage() {
         {/* Admin API Key (BYOK) */}
         <AdminApiKeyCard />
 
+        {/* Display preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Display</CardTitle>
+            <CardDescription>Control what appears in your interface.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <Label htmlFor="show-online-count" className="text-sm font-medium">
+                  Show active users count
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Turn off if you find the online-user indicator distracting.
+                </p>
+              </div>
+              <Switch
+                id="show-online-count"
+                checked={showOnlineCount}
+                disabled={isSavingDisplay}
+                onCheckedChange={async (checked) => {
+                  if (!user) return;
+                  const previous = showOnlineCount;
+                  setShowOnlineCount(checked);
+                  setIsSavingDisplay(true);
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ show_online_count: checked })
+                    .eq('id', user.id);
+                  setIsSavingDisplay(false);
+                  if (error) {
+                    setShowOnlineCount(previous);
+                    toast.error(error.message || 'Failed to update preference');
+                  } else {
+                    toast.success(checked ? 'Active users count shown' : 'Active users count hidden');
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Help & Tutorial */}
         <Card>
           <CardHeader>

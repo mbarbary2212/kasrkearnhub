@@ -59,6 +59,28 @@ function OnlinePill() {
   );
 }
 
+/**
+ * Reads the current user's `show_online_count` preference. Defaults to true
+ * (so existing users keep seeing the pill while the value is loading or absent).
+ */
+function useShowOnlineCount(userId: string | undefined): boolean {
+  const [show, setShow] = useState(true);
+  useMemo(() => {
+    let cancelled = false;
+    if (!userId) return;
+    supabase
+      .from('profiles')
+      .select('show_online_count')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data) setShow(data.show_online_count ?? true);
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
+  return show;
+}
+
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
   const navigate = useNavigate();
