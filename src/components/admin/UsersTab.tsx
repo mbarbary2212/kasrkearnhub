@@ -55,7 +55,7 @@ export function UsersTab() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin } = useAuthContext();
   const queryClient = useQueryClient();
   // Lazy: this only fires once UsersTab mounts (i.e. user actually clicked the Users tab).
-  const { data: usersData, isLoading: usersLoading } = useAdminUsers(!!isAdmin);
+  const { data: usersData, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = useAdminUsers(!!isAdmin);
   const { data: refData } = useAdminReferenceData(!!isAdmin);
   const users = usersData?.users ?? [];
   const years = refData?.years ?? [];
@@ -312,6 +312,24 @@ export function UsersTab() {
           <CardDescription>Manage users, roles, and permissions.</CardDescription>
         </CardHeader>
         <CardContent>
+          {usersError && (
+            <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+              <p className="font-medium text-destructive">Failed to load users</p>
+              <p className="text-sm text-destructive/80 mt-1 break-words">
+                {(usersError as Error)?.message || 'Unknown error'}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => refetchUsers()}
+                disabled={usersLoading}
+              >
+                {usersLoading && <Loader2 className="w-3 h-3 mr-2 animate-spin" />}
+                Retry
+              </Button>
+            </div>
+          )}
           <Tabs defaultValue="directory" className="space-y-4">
             <TabsList className="bg-muted/50">
               <TabsTrigger value="directory" className="data-[state=active]:bg-background">Directory</TabsTrigger>
