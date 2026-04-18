@@ -19,8 +19,8 @@ export function YearContextBanner({ noYearSet, yearMismatch }: YearContextBanner
 
   if (yearMismatch) {
     return (
-      <Alert className="border-amber-500/40 bg-amber-500/10">
-        <AlertTriangle className="h-4 w-4 text-amber-500" />
+      <Alert className="border-destructive/40 bg-destructive/5">
+        <AlertTriangle className="h-4 w-4 text-destructive" />
         <AlertDescription className="text-sm">
           This exam belongs to a different academic year than your profile.{' '}
           <Link to="/account" className="font-medium underline underline-offset-2">
