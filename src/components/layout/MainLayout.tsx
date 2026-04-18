@@ -84,6 +84,7 @@ function useShowOnlineCount(userId: string | undefined): boolean {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
+  const showOnlineCount = useShowOnlineCount(user?.id);
   const navigate = useNavigate();
   const { session } = useSessionFlow();
   const location = useLocation();
@@ -329,7 +330,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           <div className="flex items-center gap-1.5 md:gap-2">
-            {user && <OnlinePill />}
+            {user && showOnlineCount && <OnlinePill />}
             <ThemeToggle />
             {/* Admin notifications for admins */}
             {user && isAdmin && (
