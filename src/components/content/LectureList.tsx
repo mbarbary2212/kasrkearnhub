@@ -50,6 +50,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { LecturesAdminTable } from './LecturesAdminTable';
 import { AdminViewToggle, ViewMode } from '@/components/admin/AdminViewToggle';
 import { useBulkDeleteContent } from '@/hooks/useContentBulkOperations';
+import { TopicVideosModal } from './TopicVideosModal';
+import { Layers } from 'lucide-react';
 
 interface Lecture {
   id: string;
@@ -60,6 +62,7 @@ interface Lecture {
   youtube_video_id?: string | null;
   duration?: string | null;
   section_id?: string | null;
+  topic_id?: string | null;
   created_at?: string | null;
 }
 
