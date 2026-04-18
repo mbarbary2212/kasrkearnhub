@@ -8,17 +8,26 @@ import { useModuleChapters } from '@/hooks/useChapters';
 import { useModuleMcqs } from '@/hooks/useMcqs';
 import { useMockExamSettings } from '@/hooks/useMockExam';
 import { MockTimedExam } from '@/components/exam';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { YearContextBanner } from '@/components/exam/YearContextBanner';
 
 export default function MockExamPage() {
   const { moduleId } = useParams();
   const navigate = useNavigate();
-  
+  const { profile, isAdmin } = useAuthContext();
+
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapters } = useModuleChapters(moduleId);
   const { data: mcqs, isLoading: mcqsLoading } = useModuleMcqs(moduleId);
   const { data: settings, isLoading: settingsLoading } = useMockExamSettings(moduleId);
 
   const isLoading = moduleLoading || mcqsLoading || settingsLoading;
+
+  // Year context (admins bypass — they may legitimately view any year)
+  const preferredYearId = profile?.preferred_year_id ?? null;
+  const noYearSet = !isAdmin && !preferredYearId;
+  const yearMismatch =
+    !isAdmin && !!preferredYearId && !!module?.year_id && module.year_id !== preferredYearId;
 
   const handleBack = () => {
     navigate(`/module/${moduleId}`);
@@ -49,6 +58,11 @@ export default function MockExamPage() {
             )}
           </div>
         </div>
+
+        {/* Year context notice (non-blocking, students only) */}
+        {!isLoading && (
+          <YearContextBanner noYearSet={noYearSet} yearMismatch={yearMismatch} />
+        )}
 
         {/* Exam Content */}
         {isLoading ? (
