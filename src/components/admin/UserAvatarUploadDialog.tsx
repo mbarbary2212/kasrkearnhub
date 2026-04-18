@@ -20,7 +20,7 @@ export function UserAvatarUploadDialog({ open, onOpenChange, user }: UserAvatarU
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -35,21 +35,26 @@ export function UserAvatarUploadDialog({ open, onOpenChange, user }: UserAvatarU
 
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+    // Auto-upload immediately so the admin doesn't have to click a second button.
+    await uploadFile(file);
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-
+  const uploadFile = async (file: File) => {
     setUploading(true);
     try {
-      const ext = selectedFile.name.split('.').pop()?.toLowerCase() || 'png';
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
       const path = `user-avatars/${user.id}-${Date.now()}.${ext}`;
+
+      console.log('[UserAvatarUpload] uploading', { path, size: file.size, type: file.type });
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, selectedFile, { upsert: true });
+        .upload(path, file, { upsert: true, contentType: file.type });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('[UserAvatarUpload] storage error', uploadError);
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -60,18 +65,27 @@ export function UserAvatarUploadDialog({ open, onOpenChange, user }: UserAvatarU
         .update({ avatar_url: publicUrl })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('[UserAvatarUpload] profile update error', updateError);
+        throw updateError;
+      }
 
       queryClient.invalidateQueries({ queryKey: ['admin-data'] });
+      queryClient.invalidateQueries({ queryKey: ['team-credits'] });
       toast.success('Photo uploaded successfully');
       onOpenChange(false);
       resetState();
     } catch (err: any) {
       console.error('Upload error:', err);
-      toast.error(`Upload failed: ${err.message}`);
+      toast.error(`Upload failed: ${err.message ?? 'unknown error'}`);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) return;
+    await uploadFile(selectedFile);
   };
 
   const handleRemovePhoto = async () => {
