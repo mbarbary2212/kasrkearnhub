@@ -61,6 +61,7 @@ export function AppearanceTab() {
   }, [flashcardInterval]);
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="space-y-6">
       {/* Theme */}
       <Card>
@@ -68,6 +69,14 @@ export function AppearanceTab() {
           <CardTitle className="flex items-center gap-2 text-base">
             <Palette className="h-4 w-4" />
             Theme
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Switches the app between light, dark, or your operating-system preference. Applies instantly across every page.
+              </TooltipContent>
+            </Tooltip>
           </CardTitle>
           <CardDescription>Choose between light, dark, or system theme.</CardDescription>
         </CardHeader>
@@ -101,6 +110,14 @@ export function AppearanceTab() {
           <CardTitle className="flex items-center gap-2 text-base">
             <LayoutGrid className="h-4 w-4" />
             Display Density
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <strong>Comfortable</strong> uses generous padding for easier reading. <strong>Compact</strong> shrinks spacing so more cards, lists, and rows fit on screen — useful on small laptops.
+              </TooltipContent>
+            </Tooltip>
           </CardTitle>
           <CardDescription>Controls spacing and sizing across the interface.</CardDescription>
         </CardHeader>
@@ -140,6 +157,14 @@ export function AppearanceTab() {
           <CardTitle className="flex items-center gap-2 text-base">
             <Type className="h-4 w-4" />
             Reading Size
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Scales every text element in the app proportionally (Small = 90%, Medium = 100%, Large = 110%). Useful for accessibility — the layout reflows automatically and stays readable on all screens.
+              </TooltipContent>
+            </Tooltip>
           </CardTitle>
           <CardDescription>Adjust text size across the interface.</CardDescription>
         </CardHeader>
@@ -156,7 +181,12 @@ export function AppearanceTab() {
                     : 'border-border hover:border-primary/40 hover:bg-muted/30'
                 )}
               >
-                <span className="text-sm font-medium">{opt.label}</span>
+                <span
+                  className="font-medium"
+                  style={{ fontSize: `${parseFloat(opt.value) * 0.875}rem` }}
+                >
+                  {opt.label}
+                </span>
               </button>
             ))}
           </div>
