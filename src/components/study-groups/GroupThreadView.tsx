@@ -27,6 +27,7 @@ interface GroupThreadViewProps {
 
 export function GroupThreadView({ thread, onBack, isAdmin }: GroupThreadViewProps) {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [replyContent, setReplyContent] = useState("");
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [warning, setWarning] = useState("");
@@ -42,6 +43,12 @@ export function GroupThreadView({ thread, onBack, isAdmin }: GroupThreadViewProp
   const handleSubmit = (parentId?: string) => {
     if (!replyContent.trim() || thread.is_locked) return;
 
+    // Surface profanity rejection visibly instead of letting it pass silently.
+    if (quickCheck(replyContent)) {
+      toast.error("Your message may contain inappropriate language. Please revise it before posting.");
+      return;
+    }
+
     postMessage(
       {
         threadId: thread.id,
@@ -53,6 +60,8 @@ export function GroupThreadView({ thread, onBack, isAdmin }: GroupThreadViewProp
           setReplyContent("");
           setReplyingTo(null);
           setWarning("");
+          // Force-refetch this thread's messages so the new reply appears immediately
+          queryClient.invalidateQueries({ queryKey: ['study-groups', 'messages', thread.id] });
         },
       }
     );
