@@ -180,20 +180,61 @@ export default function AccountPage() {
         auto_login_to_year: autoLoginToYear,
       };
 
-      const { error } = await supabase
+      // Update + return the persisted row so we can verify
+      const { data: updatedRows, error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('id, full_name, preferred_year_id, auto_login_to_year');
 
-      if (error) throw error;
+      if (error) {
+        // Surface the Supabase error verbatim (code + message + hint)
+        console.error('[AccountPage] Supabase update error:', error);
+        const verbatim = [error.message, error.details, error.hint, error.code]
+          .filter(Boolean)
+          .join(' • ');
+        toast.error(verbatim || 'Unknown Supabase error');
+        return;
+      }
+
+      // Refetch authoritative row to verify the write actually persisted
+      const { data: verifyRow, error: verifyError } = await supabase
+        .from('profiles')
+        .select('preferred_year_id, auto_login_to_year, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (verifyError) {
+        console.error('[AccountPage] Verify fetch error:', verifyError);
+        toast.error(verifyError.message || 'Saved but could not verify');
+        return;
+      }
+
+      const persistedYear = verifyRow?.preferred_year_id ?? null;
+      const expectedYear = updates.preferred_year_id;
+      if (persistedYear !== expectedYear) {
+        console.error('[AccountPage] preferred_year_id mismatch', {
+          expected: expectedYear,
+          persisted: persistedYear,
+          updatedRows,
+          verifyRow,
+        });
+        toast.error('Save did not persist — please contact support');
+        return;
+      }
 
       // Optimistically update local auth state
       patchProfile(updates as any);
 
+      // Sync local form state with verified server values
+      setPreferredYearId(verifyRow?.preferred_year_id || '');
+      setAutoLoginToYear(verifyRow?.auto_login_to_year || false);
+      setFullName(verifyRow?.full_name || '');
+
       toast.success('Profile saved successfully');
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error(error.message || 'Failed to save profile');
+      toast.error(error?.message || 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
