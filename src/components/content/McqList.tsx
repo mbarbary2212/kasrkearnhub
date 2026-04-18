@@ -447,11 +447,31 @@ export function McqList({
     setSelectedIds(new Set(allIds));
   }, [filteredMcqs]);
 
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+
   const handleResetAttempt = () => {
     if (!chapterId) return;
-    resetAttemptMutation.mutate({ chapterId, questionType: 'mcq' });
-    // Also reset filters to default so all questions are visible again
-    setPracticeFilters(DEFAULT_STUDENT_FILTERS);
+    setResetConfirmOpen(true);
+  };
+
+  const confirmResetAttempt = () => {
+    if (!chapterId) return;
+    resetAttemptMutation.mutate(
+      { chapterId, questionType: 'mcq' },
+      {
+        onSuccess: () => {
+          setPracticeFilters(DEFAULT_STUDENT_FILTERS);
+          setResetConfirmOpen(false);
+          toast.success('Progress reset');
+        },
+        onError: (error: any) => {
+          const verbatim = [error?.message, error?.details, error?.hint, error?.code]
+            .filter(Boolean)
+            .join(' • ');
+          toast.error(verbatim || 'Failed to reset progress');
+        },
+      }
+    );
   };
 
   const toggleMark = useCallback((id: string) => {
@@ -1330,6 +1350,40 @@ The AI will parse and extract the questions automatically.`}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Progress Confirmation Dialog */}
+      <AlertDialog
+        open={resetConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !resetAttemptMutation.isPending) setResetConfirmOpen(false);
+        }}
+      >
+        <AlertDialogContent className="z-[99999]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset progress on this chapter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure? This will erase your progress on this chapter's MCQs,
+              including answered/correct/incorrect history and attempt scores.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetAttemptMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmResetAttempt();
+              }}
+              disabled={resetAttemptMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {resetAttemptMutation.isPending ? 'Resetting...' : 'Yes, reset'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

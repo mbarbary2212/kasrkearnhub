@@ -407,50 +407,64 @@ async function updateChapterAttempt(
 }
 
 /**
- * Hook to reset attempt (start new attempt)
+ * Hook to reset attempt — fully erases progress on this chapter for the given
+ * question type by deleting BOTH question_attempts and chapter_attempts rows
+ * for the current user. Previously this only marked the chapter attempt as
+ * completed, which left stats visible.
  */
 export function useResetChapterAttempt() {
   const { user } = useAuthContext();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      chapterId, 
-      questionType 
-    }: { 
-      chapterId: string; 
+    mutationFn: async ({
+      chapterId,
+      questionType,
+    }: {
+      chapterId: string;
       questionType: PracticeQuestionType;
     }) => {
       if (!user?.id) throw new Error('Not authenticated');
 
       const dbType = mapToDbQuestionType(questionType);
 
-      // Get current attempt number
-      const currentAttempt = await getCurrentAttemptNumber(user.id, chapterId, dbType);
-
-      // Mark current attempt as completed
-      const { error } = await supabase
-        .from('chapter_attempts')
-        .update({
-          is_completed: true,
-          completed_at: new Date().toISOString(),
-        })
+      // 1) Delete per-question attempts for this user/chapter/type
+      const { error: qaError } = await supabase
+        .from('question_attempts')
+        .delete()
         .eq('user_id', user.id)
         .eq('chapter_id', chapterId)
-        .eq('question_type', dbType)
-        .eq('attempt_number', currentAttempt);
+        .eq('question_type', dbType);
 
-      if (error) throw error;
+      if (qaError) {
+        console.error('[useResetChapterAttempt] question_attempts delete failed:', qaError);
+        throw qaError;
+      }
 
-      return { newAttemptNumber: currentAttempt + 1 };
+      // 2) Delete the aggregated chapter attempts for the same scope
+      const { error: caError } = await supabase
+        .from('chapter_attempts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('chapter_id', chapterId)
+        .eq('question_type', dbType);
+
+      if (caError) {
+        console.error('[useResetChapterAttempt] chapter_attempts delete failed:', caError);
+        throw caError;
+      }
+
+      return { chapterId, questionType };
     },
     onSuccess: (_, params) => {
-      queryClient.invalidateQueries({ 
-        queryKey: ['question-attempts', params.chapterId] 
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ['chapter-attempts', params.chapterId] 
-      });
+      // Invalidate every cache that derives from these tables so the UI
+      // reflects the wipe without a page reload.
+      queryClient.invalidateQueries({ queryKey: ['question-attempts', params.chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-attempts', params.chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-question-attempts', params.chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['chapter-percentile', params.chapterId] });
+      queryClient.invalidateQueries({ queryKey: ['student-chapter-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['content-progress'] });
     },
   });
 }
