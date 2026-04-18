@@ -225,5 +225,6 @@ export function AppearanceTab() {
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   );
 }
