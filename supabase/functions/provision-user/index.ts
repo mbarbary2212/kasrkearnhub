@@ -398,7 +398,7 @@ const { data: listData, error: listError } = await supabaseAdmin.auth.admin.list
     </p>
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
     <p style="color: #9ca3af; font-size: 12px;">If you did not request this, you can safely ignore this email.</p>
-    <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 24px;">KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub</p>
+    <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 24px;">KALM Hub — Knowledge, Assessment, Learning & Mentorship Hub</p>
   </div>
 </body>
 </html>`;
@@ -723,7 +723,7 @@ async function inviteUser(
       If you did not request this, you can safely ignore this email.
     </p>
     <p style="color: #6b7280; font-size: 12px; text-align: center; margin-top: 24px;">
-      KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub
+      KALM Hub — Knowledge, Assessment, Learning & Mentorship Hub
     </p>
   </div>
 </body>
@@ -738,7 +738,7 @@ ${inviteLink}
 
 If you did not request this, you can safely ignore this email.
 
-KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub`;
+KALM Hub — Knowledge, Assessment, Learning & Mentorship Hub`;
 
     const resendPayload: any = {
       from: resendFromEmail,

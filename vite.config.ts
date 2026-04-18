@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: 'KALM Hub',
         short_name: 'KALM Hub',
-        description: 'Kasr Al-Ainy Learning & Mentorship Platform for medical students',
+        description: 'Knowledge, Assessment, Learning & Mentorship Platform for medical students',
         theme_color: '#1e3a5f',
         background_color: '#ffffff',
         display: 'standalone',
