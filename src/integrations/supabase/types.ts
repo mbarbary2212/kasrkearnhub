@@ -5171,6 +5171,7 @@ export type Database = {
           full_name: string | null
           id: string
           preferred_year_id: string | null
+          show_online_count: boolean
           status: string
           status_reason: string | null
           status_updated_at: string | null
@@ -5186,6 +5187,7 @@ export type Database = {
           full_name?: string | null
           id: string
           preferred_year_id?: string | null
+          show_online_count?: boolean
           status?: string
           status_reason?: string | null
           status_updated_at?: string | null
@@ -5201,6 +5203,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           preferred_year_id?: string | null
+          show_online_count?: boolean
           status?: string
           status_reason?: string | null
           status_updated_at?: string | null
