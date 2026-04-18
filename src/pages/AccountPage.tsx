@@ -46,7 +46,9 @@ export default function AccountPage() {
   const [fullName, setFullName] = useState('');
   const [preferredYearId, setPreferredYearId] = useState<string>('');
   const [autoLoginToYear, setAutoLoginToYear] = useState(false);
+  const [showOnlineCount, setShowOnlineCount] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
   
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -70,13 +72,14 @@ export default function AccountPage() {
       const fetchExtendedProfile = async () => {
         const { data } = await supabase
           .from('profiles')
-          .select('preferred_year_id, auto_login_to_year')
+          .select('preferred_year_id, auto_login_to_year, show_online_count')
           .eq('id', profile.id)
           .single();
         
         if (data) {
           setPreferredYearId(data.preferred_year_id || '');
           setAutoLoginToYear(data.auto_login_to_year || false);
+          setShowOnlineCount(data.show_online_count ?? true);
         }
       };
       fetchExtendedProfile();
@@ -485,6 +488,48 @@ export default function AccountPage() {
 
         {/* Admin API Key (BYOK) */}
         <AdminApiKeyCard />
+
+        {/* Display preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Display</CardTitle>
+            <CardDescription>Control what appears in your interface.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <Label htmlFor="show-online-count" className="text-sm font-medium">
+                  Show active users count
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Turn off if you find the online-user indicator distracting.
+                </p>
+              </div>
+              <Switch
+                id="show-online-count"
+                checked={showOnlineCount}
+                disabled={isSavingDisplay}
+                onCheckedChange={async (checked) => {
+                  if (!user) return;
+                  const previous = showOnlineCount;
+                  setShowOnlineCount(checked);
+                  setIsSavingDisplay(true);
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ show_online_count: checked })
+                    .eq('id', user.id);
+                  setIsSavingDisplay(false);
+                  if (error) {
+                    setShowOnlineCount(previous);
+                    toast.error(error.message || 'Failed to update preference');
+                  } else {
+                    toast.success(checked ? 'Active users count shown' : 'Active users count hidden');
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Help & Tutorial */}
         <Card>

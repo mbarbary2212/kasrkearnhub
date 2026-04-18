@@ -1,6 +1,7 @@
-import { ReactNode, useState, useMemo } from 'react';
+import { ReactNode, useState, useMemo, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -59,8 +60,31 @@ function OnlinePill() {
   );
 }
 
+/**
+ * Reads the current user's `show_online_count` preference. Defaults to true
+ * (so existing users keep seeing the pill while the value is loading or absent).
+ */
+function useShowOnlineCount(userId: string | undefined): boolean {
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    if (!userId) return;
+    supabase
+      .from('profiles')
+      .select('show_online_count')
+      .eq('id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data) setShow(data.show_online_count ?? true);
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
+  return show;
+}
+
 export default function MainLayout({ children }: MainLayoutProps) {
   const { user, profile, role, signOut, isAdmin, isSuperAdmin, isPlatformAdmin, isDepartmentAdmin, isTopicAdmin, isTeacher } = useAuthContext();
+  const showOnlineCount = useShowOnlineCount(user?.id);
   const navigate = useNavigate();
   const { session } = useSessionFlow();
   const location = useLocation();
@@ -306,7 +330,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
           )}
 
           <div className="flex items-center gap-1.5 md:gap-2">
-            {user && <OnlinePill />}
+            {user && showOnlineCount && <OnlinePill />}
             <ThemeToggle />
             {/* Admin notifications for admins */}
             {user && isAdmin && (
