@@ -1,87 +1,51 @@
 
 
-# Proposal: Group Lecture Videos by Topic Across Doctors
+## Rebranding plan — text-only, surgical edits
 
-## Audit findings (current state)
+### Files to modify (5 total)
 
-**`lectures` table** already has these relevant columns:
-- `id`, `title`, `description` (used as doctor name, e.g. "Dr. Hussein Khairy"), `video_url`, `youtube_video_id`, `duration`
-- `chapter_id` (set on **214/214** rows), `module_id`, `section_id`, `concept_id`
-- `topic_id` (**exists but NULL on 214/214 rows** — never used for lectures)
+**1. `src/components/SplashScreen.tsx`** — the actual public-facing landing/hero shown at `/auth` and on first load. Two layouts (desktop + mobile) each contain the heading + subtitle.
 
-**`topics` table** already exists with: `id`, `name`, `slug`, `department_id`, `module_id`, `display_order`. It's currently used for department/module navigation, not for lecture grouping.
+- Line 87 (desktop heading): `Kasr Al-Ainy Learning & Mentorship Hub` → `Knowledge, Assessment, Learning & Mentorship — For Medical Students`
+- Line 90 (desktop subtitle): `An academic digital platform supporting medical students at Kasr Al-Ainy.` → `The all-in-one learning hub for medical students.`
+- Line 145 (mobile heading): same replacement as line 87
+- Line 148 (mobile subtitle, slight variant): `An academic platform for medical students at Kasr Al-Ainy.` → `The all-in-one learning hub for medical students.`
 
-**Doctor field**: there is no `doctor_id` or join to `profiles` — the doctor name lives as plain text in `lectures.description` (8 distinct values today).
+Mobile heading currently uses `text-xs` in a narrow `w-32` box — the new longer heading will wrap. I'll widen the mobile heading container (e.g. `w-32` → `w-48` or `max-w-[60%]`) and remove `truncate`/single-line constraints so it wraps gracefully without shrinking the font. Desktop already uses `max-w-xs` which wraps fine.
 
-**Current behavior**: a lecture is one (chapter × doctor × video). Two doctors covering "Peptic Ulcer" produce two unrelated lecture rows in different/same chapters with no shared key.
+**2. `index.html`** — `<title>`, `<meta name="description">`, `<meta property="og:title">`, `<meta property="og:description">` (Change 3 — generic acronym expansion form).
 
-## Schema change (minimal, additive — no destructive migration)
+- Title: `KALM Hub – Kasr Al-Ainy Learning & Mentorship Platform` → `KALM Hub – Knowledge, Assessment, Learning & Mentorship Platform`
+- Description: rewrite to drop "developed at Kasr Al-Ainy" → "...digital learning and mentorship platform supporting medical students and trainees through structured education, formative assessment, and guided learning."
+- og:title: same as `<title>`
+- og:description: drop "at Kasr Al-Ainy" → "Digital learning and mentorship platform supporting medical students through structured education and formative assessment."
 
-Rather than create a new `topics`-style table, **reuse the existing `topics` table** and finally populate `lectures.topic_id`. This avoids duplicating concepts.
+**3. `vite.config.ts`** — PWA manifest description (line 29).
 
-```sql
--- 1. Index the existing (currently unused) FK so lookups are fast
-CREATE INDEX IF NOT EXISTS idx_lectures_topic_id 
-  ON public.lectures(topic_id) WHERE is_deleted = false;
+- `Kasr Al-Ainy Learning & Mentorship Platform for medical students` → `Knowledge, Assessment, Learning & Mentorship Platform for medical students`
 
--- 2. Ensure FK exists (verify before applying — may already be in place)
-ALTER TABLE public.lectures
-  ADD CONSTRAINT lectures_topic_id_fkey
-  FOREIGN KEY (topic_id) REFERENCES public.topics(id) ON DELETE SET NULL;
-```
+**4. `supabase/functions/provision-user/index.ts`** — email template footers (lines 401, 726, 741).
 
-No new table. No column rename. No data deletion. Existing UI keeps working because `topic_id` stays nullable.
+- All three: `KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub` → `KALM Hub — Knowledge, Assessment, Learning & Mentorship Hub`
 
-**Alternative if you prefer a dedicated table** (e.g. `lecture_topics` separate from the department-scoped `topics`): I can scaffold one — but it duplicates a concept that already exists. Recommend reuse.
+### Files explicitly NOT touched (flagged for manual review)
 
-## Backfill strategy — three options
+- **`supabase/functions/coach-chat/index.ts`** line 13 — AI system prompt: `"You are the Kasr Aliny Study Coach... for Cairo University medical students"`. This is an AI persona identity, not the KALM acronym phrase. **Flagging — will not change** unless you confirm.
+- **`security-report.html`** — internal/historical "KasrLearnHub" references in a confidential security report. Not user-facing app copy.
+- **`src/components/module/ModuleLearningTab.tsx`** lines 584, 652 — `kasrlearn_book_*` / `kasrlearn_sort_*` are localStorage **code identifiers** (keys). Per your "do not change identifiers" rule, leaving alone.
+- **`supabase/functions/send-admin-email/index.ts`** line 144 — `kasrkearnhub.lovable.app` is a deployment URL fallback. Per "do not change URLs/routes", leaving alone.
+- **`supabase/migrations/*.sql`** — historical migrations and any rows containing `@kasralainy.edu.eg` admin emails. Per "do not change Supabase config / seed data", leaving alone.
+- **`README.md`** — no `Kasr` matches found. No change needed.
 
-| Option | Effort | Accuracy | Recommendation |
-|---|---|---|---|
-| **A. Manual tagging** via admin UI (dropdown on each lecture row) | High (214 rows) | 100% | Best for long-term quality |
-| **B. AI inference** from title using existing Gemini infra (similar to "AI Assign Sections" tool) | Low | ~85% with review queue | **Recommended** — mirrors existing `concept_auto_assigned` / `concept_ai_confidence` pattern already in the schema |
-| **C. Heuristic match** on lowercased title tokens against `topics.name` | Trivial | ~50% | Use as a first pass before B |
+### Confirmations the implementation will satisfy
 
-Recommended path: **C → B → A**. Run heuristic first to auto-tag obvious matches, run AI for the rest with a confidence score, then surface low-confidence rows in a review queue (reuse the "Tagging Issues" Control Center pattern). Add `topic_auto_assigned` and `topic_ai_confidence` columns mirroring the existing `concept_*` pattern.
+- "KALM Hub" brand name preserved in every location (verified in all 4 changed files)
+- Hero watercolor `<picture>`/`<img>` references in `SplashScreen.tsx` (lines 118-127 and the corresponding desktop block) untouched — only the text `<p>` siblings change
+- No code identifiers, file names, env vars, RLS policies, table/column names, or routes touched
+- `kasralainy.edu.eg` test/admin emails in migrations untouched
+- No new dependencies, no logic changes, no styling beyond the minimal mobile heading container width fix needed for graceful wrapping
 
-## UI proposal — "All videos on this topic" modal
+### Report format after implementation
 
-**Trigger**: in `src/components/content/LectureList.tsx` (line ~635, the title button), clicking the lecture **title** opens the modal instead of just playing inline. The existing play button stays for direct playback.
-
-**New component**: `src/components/content/TopicVideosModal.tsx`
-- Fetches all `lectures` where `topic_id = <clicked lecture's topic_id>` AND `is_deleted=false`, across all chapters and doctors
-- Groups by `description` (doctor name)
-- For each video shows: YouTube thumbnail (`https://i.ytimg.com/vi/<youtube_video_id>/mqdefault.jpg`), duration, doctor badge, chapter context, Play button
-- Empty state if `topic_id` is null: "This lecture isn't tagged to a topic yet."
-
-**New hook**: `src/hooks/useTopicLectures.ts` — `useTopicLectures(topicId)` returning lectures grouped by doctor.
-
-**Layout** (matches existing dialog scrolling pattern with pinned header):
-
-```text
-┌─ All videos: Peptic Ulcer ─────────────×─┐
-│ Dr. Hussein Khairy                       │
-│ ┌────┐ Bleeding peptic ulcer    12:34 ▶ │
-│ ┌────┐ Peptic Ulcer Complications 09:12 ▶│
-│ Dr. Mohamed Elmasry                      │
-│ ┌────┐ Peptic ulcer overview    15:02 ▶ │
-└──────────────────────────────────────────┘
-```
-
-**Soft-gating for untagged lectures**: until backfill runs, untagged lectures (the majority) should still play inline as today — only show the modal when `topic_id` is present. Add a small "More videos on this topic" link only when ≥2 lectures share the topic.
-
-## Files that will change (when approved)
-
-- `supabase/migrations/<new>.sql` — index + FK (+ optional `topic_auto_assigned` columns)
-- `src/components/content/LectureList.tsx` — title click handler
-- `src/components/content/TopicVideosModal.tsx` — NEW
-- `src/hooks/useTopicLectures.ts` — NEW
-- `src/integrations/supabase/types.ts` — regenerated
-- (Optional) `src/components/admin/AssignLectureTopicsTool.tsx` — admin AI backfill tool
-
-## Open questions before I proceed
-
-1. **Reuse `topics` table or create dedicated `lecture_topics`?** Recommend reuse.
-2. **Backfill approach** — proceed with heuristic + AI (Option C+B) or wait for manual admin tagging?
-3. **Doctor identity** — keep using `lectures.description` as plain text, or proper FK to `profiles`? (Out of scope for this prompt but flagging.)
+Per your request, I'll return: full file paths, before→after diff for each line, the four explicit confirmations, and the manual-review flag list above.
 
