@@ -93,15 +93,15 @@ export function AttemptDetailsModal({ attempt, open, onClose }: AttemptDetailsMo
                     key={d.id}
                     className={`rounded-lg border p-4 ${
                       isCorrect
-                        ? 'bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40'
-                        : 'bg-rose-50/50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/40'
+                        ? 'bg-success/5 border-success/30'
+                        : 'bg-destructive/5 border-destructive/30'
                     }`}
                   >
                     <div className="flex items-start gap-2 mb-2">
                       {isCorrect ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                        <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
                       )}
                       <p className="font-medium text-sm">
                         Q{idx + 1}. {d.question_text || '(Question text unavailable)'}
@@ -113,7 +113,7 @@ export function AttemptDetailsModal({ attempt, open, onClose }: AttemptDetailsMo
                           const letter = String.fromCharCode(65 + i);
                           const isThisCorrect = d.correct_answer_key?.toLowerCase() === letter.toLowerCase();
                           return (
-                            <li key={i} className={isThisCorrect ? 'text-emerald-700 dark:text-emerald-400 font-medium' : ''}>
+                            <li key={i} className={isThisCorrect ? 'text-success font-medium' : ''}>
                               {letter}. {opt}
                             </li>
                           );
@@ -123,14 +123,14 @@ export function AttemptDetailsModal({ attempt, open, onClose }: AttemptDetailsMo
                     <div className="ml-6 space-y-1 text-xs">
                       <p>
                         <span className="font-medium text-muted-foreground">Your answer: </span>
-                        <span className={isCorrect ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}>
+                        <span className={isCorrect ? 'text-success' : 'text-destructive'}>
                           {studentAns}
                         </span>
                       </p>
                       {!isCorrect && (
                         <p>
                           <span className="font-medium text-muted-foreground">Correct answer: </span>
-                          <span className="text-emerald-700 dark:text-emerald-400">{correctAns}</span>
+                          <span className="text-success whitespace-pre-line">{correctAns}</span>
                         </p>
                       )}
                       {d.explanation && (

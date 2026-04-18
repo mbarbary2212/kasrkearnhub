@@ -103,21 +103,21 @@ export function useAttemptDetails(attempt?: PastChapterAttempt | null) {
       if (isMcq) {
         const { data: mcqs } = await supabase
           .from('mcqs')
-          .select('id, question_text, options, correct_answer_key, explanation')
+          .select('id, stem, choices, correct_key, explanation')
           .in('id', questionIds);
         questionMap = Object.fromEntries(
           (mcqs || []).map((m) => {
-            const opts = Array.isArray(m.options)
-              ? (m.options as unknown[]).map((o) =>
+            const opts = Array.isArray(m.choices)
+              ? (m.choices as unknown[]).map((o) =>
                   typeof o === 'string' ? o : (o as { text?: string })?.text ?? JSON.stringify(o),
                 )
               : null;
             return [
               m.id,
               {
-                text: m.question_text,
+                text: m.stem,
                 options: opts,
-                correct: m.correct_answer_key,
+                correct: m.correct_key,
                 explanation: m.explanation ?? null,
               },
             ];
@@ -126,13 +126,25 @@ export function useAttemptDetails(attempt?: PastChapterAttempt | null) {
       } else {
         const { data: osce } = await supabase
           .from('osce_questions')
-          .select('id, question_text, model_answer')
+          .select('id, history_text, statement_1, statement_2, statement_3, statement_4, statement_5, answer_1, answer_2, answer_3, answer_4, answer_5')
           .in('id', questionIds);
         questionMap = Object.fromEntries(
-          (osce || []).map((o) => [
-            o.id,
-            { text: o.question_text, options: null, correct: o.model_answer ?? null, explanation: null },
-          ]),
+          (osce || []).map((o) => {
+            const statements = [o.statement_1, o.statement_2, o.statement_3, o.statement_4, o.statement_5].filter(Boolean) as string[];
+            const answers = [o.answer_1, o.answer_2, o.answer_3, o.answer_4, o.answer_5].filter((a) => a !== null && a !== undefined);
+            const correctSummary = statements
+              .map((s, i) => `${i + 1}. ${s} → ${answers[i] === true ? 'True' : answers[i] === false ? 'False' : '—'}`)
+              .join('\n');
+            return [
+              o.id,
+              {
+                text: o.history_text || statements[0] || 'OSCE Question',
+                options: statements.length > 0 ? statements : null,
+                correct: correctSummary,
+                explanation: null,
+              },
+            ];
+          }),
         );
       }
 
