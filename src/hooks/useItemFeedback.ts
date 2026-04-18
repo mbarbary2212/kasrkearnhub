@@ -46,7 +46,7 @@ export function useSubmitItemFeedback() {
 
   return useMutation({
     mutationFn: async (data: {
-      moduleId: string;
+      moduleId?: string | null;
       chapterId?: string;
       topicId?: string;
       itemType: ItemType;
@@ -74,7 +74,7 @@ export function useSubmitItemFeedback() {
 
       const { data: insertedData, error } = await supabase.from('item_feedback').insert({
         user_id: user.id,
-        module_id: data.moduleId,
+        module_id: data.moduleId ?? null,
         chapter_id: data.chapterId || null,
         topic_id: data.topicId || null,
         item_type: data.itemType,
@@ -93,7 +93,7 @@ export function useSubmitItemFeedback() {
           body: {
             type: 'feedback',
             id: insertedData.id,
-            module_id: data.moduleId,
+            module_id: data.moduleId ?? null,
             chapter_id: data.chapterId || null,
             topic_id: data.topicId || null,
             category: data.category,
