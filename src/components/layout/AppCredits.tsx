@@ -1,44 +1,59 @@
 import { Heart } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useTeamCredits, type TeamCredit } from '@/hooks/useTeamCredits';
 
-const TEAM = [
-  { name: 'Dr. Ahmed Mansour', role: 'Concept & Vision', email: '' },
-  { name: 'Dr. Basma Bahgat', role: 'Content Management', email: 'basma.ali@kasralainy.edu.eg' },
-  { name: 'Dr. Marwa Mostafa', role: 'Interactive Cases', email: 'marwamostafa@kasralainy.edu.eg' },
-  { name: 'Dr. Mohab Anwar', role: 'UI Design', email: 'mohabanwar1@gmail.com' },
-  { name: 'Dr. Mohamed Amro', role: 'Design, Code Review & Security', email: 'mohamed_am_aldeeb@students.kasralainy.edu.eg' },
-  { name: 'Dr. Mohamed Elbarbary', role: 'Concept & Design Lead', email: 'mohamed.elbarbary@kasralainy.edu.eg' },
-  { name: 'Dr. Mohamed Khaled Maslouh', role: 'MCQ Development', email: 'mohamed_kh_maslouh@students.kasralainy.edu.eg' },
-  { name: 'Dr. Mohamed Lotfy', role: 'Flashcards Development', email: 'Eriksonlegend1@gmail.com' },
-  { name: 'Dr. Mohamed Osama', role: 'Video Sorting', email: '' },
-  { name: 'Dr. Omar Mohamed Mahmoud', role: 'Testing & Concept Design', email: '' },
-  { name: 'Dr. Omar Mofreh', role: 'Logo Design', email: 'om.mufreh2022@students.kasralainy.edu.eg' },
-  { name: 'Dr. Soha Elmorsy', role: 'Concept & Vision', email: 'soha.elmorsy@kasralainy.edu.eg' },
-];
+function initials(name: string) {
+  return name
+    .replace(/^Dr\.?\s*/i, '')
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase();
+}
 
-function TeamList() {
+function TeamList({ team }: { team: TeamCredit[] }) {
   return (
     <>
       <p className="text-sm font-semibold text-foreground mb-3">The KALM Hub Team</p>
-      <div className="space-y-2.5">
-        {TEAM.map((member) => (
-          <div key={member.name}>
-            {member.email ? (
-              <a href={`mailto:${member.email}`} className="text-sm font-medium text-primary hover:underline leading-tight">
-                {member.name}
-              </a>
-            ) : (
-              <p className="text-sm font-medium text-foreground leading-tight">{member.name}</p>
-            )}
-            <p className="text-xs text-muted-foreground leading-tight">{member.role}</p>
+      <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+        {team.map((member) => (
+          <div key={member.id} className="flex items-start gap-2.5">
+            <Avatar className="h-8 w-8 shrink-0">
+              {member.photo_url ? <AvatarImage src={member.photo_url} alt={member.name} /> : null}
+              <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground">
+                {initials(member.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              {member.email ? (
+                <a
+                  href={`mailto:${member.email}`}
+                  className="text-sm font-medium text-primary hover:underline leading-tight break-words"
+                >
+                  {member.name}
+                </a>
+              ) : (
+                <p className="text-sm font-medium text-foreground leading-tight break-words">
+                  {member.name}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground leading-tight">{member.role}</p>
+            </div>
           </div>
         ))}
+        {team.length === 0 && (
+          <p className="text-xs text-muted-foreground">No team members yet.</p>
+        )}
       </div>
     </>
   );
 }
 
 export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
+  const { data: team = [] } = useTeamCredits();
+
   if (collapsed) {
     return (
       <Popover>
@@ -47,8 +62,8 @@ export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
             <Heart className="h-3 w-3 text-red-500 fill-red-500 mx-auto" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" align="center" side="right">
-          <TeamList />
+        <PopoverContent className="w-80 p-4" align="center" side="right">
+          <TeamList team={team} />
         </PopoverContent>
       </Popover>
     );
@@ -63,8 +78,8 @@ export function AppCredits({ collapsed = false }: { collapsed?: boolean }) {
             KALM Hub Team
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" align="center" side="right">
-          <TeamList />
+        <PopoverContent className="w-80 p-4" align="center" side="right">
+          <TeamList team={team} />
         </PopoverContent>
       </Popover>
     </div>
