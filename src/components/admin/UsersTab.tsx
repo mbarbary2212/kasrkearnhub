@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
+import { useAdminUsers, useAdminReferenceData, UserWithRole } from '@/hooks/useAdminData';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,10 +54,12 @@ const ROLE_COLORS: Record<AppRole, string> = {
 export function UsersTab() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin } = useAuthContext();
   const queryClient = useQueryClient();
-  const { data: adminData } = useAdminData(!!isAdmin);
-  const users = adminData?.users ?? [];
-  const years = adminData?.years ?? [];
-  const modules = adminData?.modules ?? [];
+  // Lazy: this only fires once UsersTab mounts (i.e. user actually clicked the Users tab).
+  const { data: usersData, isLoading: usersLoading } = useAdminUsers(!!isAdmin);
+  const { data: refData } = useAdminReferenceData(!!isAdmin);
+  const users = usersData?.users ?? [];
+  const years = refData?.years ?? [];
+  const modules = refData?.modules ?? [];
 
   const { banUser, unbanUser, removeUser, restoreUser, resetPassword } = useUserAdminActions();
 
@@ -343,11 +345,15 @@ export function UsersTab() {
                   {userSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
                 </Button>
               </div>
-              {users.length === 0 ? (
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : users.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">No users found</p>
               ) : (
-                <div className="space-y-3">
-                  {users
+                (() => {
+                  const filteredUsers = users
                     .filter(u => {
                       if (!userSearch.trim()) return true;
                       const search = userSearch.toLowerCase();
@@ -357,9 +363,24 @@ export function UsersTab() {
                       const nameA = (a.full_name || a.email).toLowerCase();
                       const nameB = (b.full_name || b.email).toLowerCase();
                       return userSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                    })
-                    .map((u) => renderUserRow(u, { showModuleAssignments: true }))}
-                </div>
+                    });
+                  if (filteredUsers.length === 0) {
+                    return <p className="text-muted-foreground text-center py-8">No users matching your search</p>;
+                  }
+                  return (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Showing {Math.min(filteredUsers.length, 50)} of {users.length} users
+                      </p>
+                      {filteredUsers.slice(0, 50).map((u) => renderUserRow(u, { showModuleAssignments: true }))}
+                      {filteredUsers.length > 50 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Showing first 50 results. Refine your search to see more.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </TabsContent>
 
@@ -729,8 +750,10 @@ export function UsersTab() {
                   }
                   return (
                     <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground mb-2">{filtered.length} deactivated user{filtered.length !== 1 ? 's' : ''}</p>
-                      {filtered.map(u => (
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Showing {Math.min(filtered.length, 50)} of {deactivatedUsers.length} deactivated user{deactivatedUsers.length !== 1 ? 's' : ''}
+                      </p>
+                      {filtered.slice(0, 50).map(u => (
                         <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
@@ -754,6 +777,11 @@ export function UsersTab() {
                           </Button>
                         </div>
                       ))}
+                      {filtered.length > 50 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Showing first 50 results. Refine your search to see more.
+                        </p>
+                      )}
                     </div>
                   );
                 })()}

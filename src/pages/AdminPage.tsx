@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useAdminReferenceData } from '@/hooks/useAdminData';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Shield, HelpCircle } from 'lucide-react';
@@ -30,7 +30,8 @@ export default function AdminPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: adminData, isLoading: adminDataLoading } = useAdminData(!!isAdmin);
+  // Reference data only — fast. The expensive users fetch is now lazy-loaded inside UsersTab.
+  const { data: adminData } = useAdminReferenceData(!!isAdmin);
   const years = adminData?.years ?? [];
   const modules = adminData?.modules ?? [];
 
@@ -90,7 +91,8 @@ export default function AdminPage() {
     }
   }, [user, isAdmin, authLoading, navigate]);
 
-  if (authLoading || adminDataLoading) {
+  // Only block on auth — never on admin data. Each tab handles its own loading state.
+  if (authLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center py-12">
