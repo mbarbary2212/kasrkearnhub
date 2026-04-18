@@ -6,9 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const YOUTUBE_CLIENT_ID =
-  "1003356147365-inbtnn60riahbu6b4kec33letj8k3u36.apps.googleusercontent.com";
-const YOUTUBE_CLIENT_SECRET = "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";
+const YOUTUBE_CLIENT_ID = Deno.env.get("YOUTUBE_CLIENT_ID") ?? "";
+const YOUTUBE_CLIENT_SECRET = Deno.env.get("YOUTUBE_CLIENT_SECRET") ?? "";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -16,6 +15,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (!YOUTUBE_CLIENT_ID || !YOUTUBE_CLIENT_SECRET) {
+      return new Response(
+        JSON.stringify({ error: "YouTube OAuth credentials are not configured on the server." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     // Validate JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
