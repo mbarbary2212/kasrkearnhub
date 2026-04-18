@@ -6499,6 +6499,48 @@ export type Database = {
           },
         ]
       }
+      team_credits: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_order: number
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          photo_url: string | null
+          role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          photo_url?: string | null
+          role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          photo_url?: string | null
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       tf_analytics: {
         Row: {
           chapter_id: string | null
