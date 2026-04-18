@@ -1011,6 +1011,30 @@ export function LectureList({
           isTimestampLive={!!selectedYouTubeId && selectedLecture?.id === notesLecture.id}
         />
       )}
+
+      {/* All-videos-on-this-topic modal */}
+      <TopicVideosModal
+        topicId={topicModalTopicId}
+        open={!!topicModalTopicId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTopicModalTopicId(null);
+            setTopicModalExcludeId(undefined);
+          }
+        }}
+        excludeLectureId={topicModalExcludeId}
+        onPlay={(lec) => {
+          handleSelectLecture({
+            id: lec.id,
+            title: lec.title,
+            description: lec.description,
+            video_url: lec.video_url,
+            youtube_video_id: lec.youtube_video_id,
+            duration: lec.duration,
+            topic_id: lec.topic_id,
+          });
+        }}
+      />
     </TooltipProvider>
   );
 }
