@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
+import { useAdminUsers, useAdminReferenceData, UserWithRole } from '@/hooks/useAdminData';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,10 +54,12 @@ const ROLE_COLORS: Record<AppRole, string> = {
 export function UsersTab() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin } = useAuthContext();
   const queryClient = useQueryClient();
-  const { data: adminData } = useAdminData(!!isAdmin);
-  const users = adminData?.users ?? [];
-  const years = adminData?.years ?? [];
-  const modules = adminData?.modules ?? [];
+  // Lazy: this only fires once UsersTab mounts (i.e. user actually clicked the Users tab).
+  const { data: usersData, isLoading: usersLoading } = useAdminUsers(!!isAdmin);
+  const { data: refData } = useAdminReferenceData(!!isAdmin);
+  const users = usersData?.users ?? [];
+  const years = refData?.years ?? [];
+  const modules = refData?.modules ?? [];
 
   const { banUser, unbanUser, removeUser, restoreUser, resetPassword } = useUserAdminActions();
 
