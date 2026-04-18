@@ -115,20 +115,25 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
         <DialogHeader>
           <DialogTitle>Crop Avatar</DialogTitle>
         </DialogHeader>
-        <div className="flex justify-center overflow-auto max-h-[50vh]">
+        <p className="text-xs text-muted-foreground -mt-2">
+          Drag the corners to adjust. The area inside the circle will be your avatar.
+        </p>
+        <div className="flex justify-center overflow-auto max-h-[55vh] bg-muted/30 rounded-md p-2">
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
             onComplete={(c) => setCompletedCrop(c)}
             aspect={1}
             circularCrop
+            keepSelection
+            minWidth={50}
           >
             <img
               ref={imgRef}
               alt="Crop preview"
               src={imageSrc}
               onLoad={onImageLoad}
-              className="max-h-[45vh] max-w-full"
+              className="max-h-[50vh] max-w-full block"
             />
           </ReactCrop>
         </div>
