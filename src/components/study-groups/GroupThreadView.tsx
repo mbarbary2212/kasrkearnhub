@@ -16,6 +16,8 @@ import {
 } from "@/hooks/useStudyGroups";
 import { quickCheck } from "@/lib/profanityFilter";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface GroupThreadViewProps {
   thread: StudyGroupThread;
