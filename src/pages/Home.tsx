@@ -199,6 +199,8 @@ function LoggedInHome() {
   // Year selection
   const preferredYearId = profile?.preferred_year_id;
   const [selectedYearId, setSelectedYearId] = useState<string>('');
+  const [defaultPromptDismissed, setDefaultPromptDismissed] = useState(false);
+  const [savingDefaultYear, setSavingDefaultYear] = useState(false);
 
   useEffect(() => {
     if (preferredYearId) {
@@ -207,6 +209,42 @@ function LoggedInHome() {
       setSelectedYearId(years[0].id);
     }
   }, [preferredYearId, years]);
+
+  // Reset dismissal whenever user changes year selection
+  const handleYearChange = (yearId: string) => {
+    setSelectedYearId(yearId);
+    setDefaultPromptDismissed(false);
+  };
+
+  // Show the "save as default" prompt when selected year differs from preferred
+  const showSaveDefaultPrompt =
+    !!selectedYearId &&
+    !defaultPromptDismissed &&
+    !savingDefaultYear &&
+    selectedYearId !== (preferredYearId ?? null);
+
+  const selectedYearForPrompt = years?.find(y => y.id === selectedYearId);
+
+  const handleSaveAsDefault = async () => {
+    if (!user || !selectedYearId) return;
+    setSavingDefaultYear(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ preferred_year_id: selectedYearId })
+        .eq('id', user.id);
+      if (error) {
+        toast.error(error.message || 'Could not save default year');
+        return;
+      }
+      patchProfile({ preferred_year_id: selectedYearId } as any);
+      toast.success(`${selectedYearForPrompt?.name ?? 'Year'} saved as your default`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save default year');
+    } finally {
+      setSavingDefaultYear(false);
+    }
+  };
 
   // Sync active year to header context
   useEffect(() => {
