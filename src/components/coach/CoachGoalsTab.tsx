@@ -10,7 +10,8 @@ import { toast } from 'sonner';
 import { useStudentGoals, useUpsertStudentGoals, computeGoalsProgress, ROTATION_DEPARTMENTS, type ExamEntry, type RotationEntry } from '@/hooks/useStudentGoals';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthContext } from '@/contexts/AuthContext';
+import { useActiveYear } from '@/contexts/ActiveYearContext';
+import { useYears } from '@/hooks/useYears';
 
 const AMBITION_OPTIONS = [
   { value: 'top_of_class', label: 'Top of my class', description: 'I want to excel. I will commit significant daily study time and aim for distinction.' },
@@ -29,10 +30,11 @@ const AMBITION_HINTS: Record<string, string> = {
 export function CoachGoalsTab() {
   const { data: goals, isLoading } = useStudentGoals();
   const upsert = useUpsertStudentGoals();
-  const { profile } = useAuthContext();
+  const { activeYear } = useActiveYear();
+  const { data: years } = useYears();
 
-  // Year for filtering modules comes from profile preference, not navigation context
-  const activeYearId = profile?.preferred_year_id;
+  // Resolve active year to ID for filtering modules
+  const activeYearId = years?.find(y => y.number === activeYear?.yearNumber)?.id;
 
   // Mark onboarding shown
   useEffect(() => {
