@@ -1,51 +1,76 @@
 
 
-## Rebranding plan — text-only, surgical edits
+Investigating the 406 error on `user_sessions`.
+<lov-tool-use id="toolu_vrtx_019xpWmgws5nnyNxKmzNABsx" name="code--search_files" integration-id="code" data="{\"query\": \"user_sessions\", \"include_patterns\": \"src/**/*.ts,src/**/*.tsx\"}">
+</lov-tool-use>
 
-### Files to modify (5 total)
+<lov-tool-use id="toolu_vrtx_01XJL9oDXccfVUkyeCUftGCP" name="code--search_files" integration-id="code" data="{\"query\": \"user_sessions\", \"include_patterns\": \"src/**/*.ts,src/**/*.tsx\"}">
+</lov-tool-use>
+The smoking gun is in `useSessionTracking.ts` line 36-44: it queries an existing session by id, filters by user_id, and uses `.single()`. If the session row was created by another user (from a previous account using same client) or doesn't exist or belongs to a different user_id, `.single()` returns 406.
+<lov-tool-use id="toolu_vrtx_01BW2cWJmVHEmeLpYMwvHBSE" name="code--view" integration-id="code" data="{\"file_path\": \"src/hooks/useSessionTracking.ts\", \"lines\": \"25-75\"}">
+</lov-tool-use>
 
-**1. `src/components/SplashScreen.tsx`** — the actual public-facing landing/hero shown at `/auth` and on first load. Two layouts (desktop + mobile) each contain the heading + subtitle.
+<lov-tool-use id="toolu_vrtx_01MqMn7398BfEAVsKLeq3mcB" name="supabase--read_query" integration-id="supabase" data="{\"query\": \"SELECT polname, polcmd, pg_get_expr(polqual, polrelid) AS using_expr, pg_get_expr(polwithcheck, polrelid) AS check_expr FROM pg_policy WHERE polrelid = 'public.user_sessions'::regclass;\"}">
+</lov-tool-use>
+Confirmed. RLS is fine. Root cause is `.single()` on a row that may not exist (lingering localStorage `current_session_id` from previous user/expired session).
 
-- Line 87 (desktop heading): `Kasr Al-Ainy Learning & Mentorship Hub` → `Knowledge, Assessment, Learning & Mentorship — For Medical Students`
-- Line 90 (desktop subtitle): `An academic digital platform supporting medical students at Kasr Al-Ainy.` → `The all-in-one learning hub for medical students.`
-- Line 145 (mobile heading): same replacement as line 87
-- Line 148 (mobile subtitle, slight variant): `An academic platform for medical students at Kasr Al-Ainy.` → `The all-in-one learning hub for medical students.`
+<lov-plan>
 
-Mobile heading currently uses `text-xs` in a narrow `w-32` box — the new longer heading will wrap. I'll widen the mobile heading container (e.g. `w-32` → `w-48` or `max-w-[60%]`) and remove `truncate`/single-line constraints so it wraps gracefully without shrinking the font. Desktop already uses `max-w-xs` which wraps fine.
+## Root cause
 
-**2. `index.html`** — `<title>`, `<meta name="description">`, `<meta property="og:title">`, `<meta property="og:description">` (Change 3 — generic acronym expansion form).
+`src/hooks/useSessionTracking.ts` line 36-41: when a user logs in, `startSession` reads `current_session_id` from localStorage and queries `user_sessions` with `.single()`:
 
-- Title: `KALM Hub – Kasr Al-Ainy Learning & Mentorship Platform` → `KALM Hub – Knowledge, Assessment, Learning & Mentorship Platform`
-- Description: rewrite to drop "developed at Kasr Al-Ainy" → "...digital learning and mentorship platform supporting medical students and trainees through structured education, formative assessment, and guided learning."
-- og:title: same as `<title>`
-- og:description: drop "at Kasr Al-Ainy" → "Digital learning and mentorship platform supporting medical students through structured education and formative assessment."
+```ts
+const { data: existingSession } = await supabase
+  .from('user_sessions')
+  .select('id, session_end')
+  .eq('id', existingSessionId)
+  .eq('user_id', userId)
+  .single();   // ← 406 when 0 rows
+```
 
-**3. `vite.config.ts`** — PWA manifest description (line 29).
+PostgREST returns **HTTP 406 Not Acceptable** whenever `.single()` finds 0 rows (or >1). This happens whenever the cached `current_session_id` no longer matches a row owned by the current user. Common triggers:
 
-- `Kasr Al-Ainy Learning & Mentorship Platform for medical students` → `Knowledge, Assessment, Learning & Mentorship Platform for medical students`
+1. **Different user logs in on same browser** — the cached session id belongs to the previous user, so the `user_id = auth.uid()` filter excludes it.
+2. **Old session was deleted/pruned** server-side.
+3. **localStorage carried a session id across logout** — `endSession()` only removes the key on graceful logout; `beforeunload` and crashes leave it behind.
+4. **Initial render race** — auth state has loaded `userId` but the row was never created (this is the page reload that produces the 406 in the current network log).
 
-**4. `supabase/functions/provision-user/index.ts`** — email template footers (lines 401, 726, 741).
+RLS is **not** the problem. Verified policies on `user_sessions`:
+- `SELECT` allowed where `auth.uid() = user_id` ✓
+- `INSERT WITH CHECK auth.uid() = user_id` ✓
+- `UPDATE` allowed where `auth.uid() = user_id` ✓
 
-- All three: `KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub` → `KALM Hub — Knowledge, Assessment, Learning & Mentorship Hub`
+Auth log confirms `/user` returns 200 (auth ready) right before the 406, so this is not the auth-readiness race from the stack-overflow pattern — it is purely a `.single()` vs. zero-rows mismatch.
 
-### Files explicitly NOT touched (flagged for manual review)
+## Why it keeps recurring on `/auth`
 
-- **`supabase/functions/coach-chat/index.ts`** line 13 — AI system prompt: `"You are the Kasr Aliny Study Coach... for Cairo University medical students"`. This is an AI persona identity, not the KALM acronym phrase. **Flagging — will not change** unless you confirm.
-- **`security-report.html`** — internal/historical "KasrLearnHub" references in a confidential security report. Not user-facing app copy.
-- **`src/components/module/ModuleLearningTab.tsx`** lines 584, 652 — `kasrlearn_book_*` / `kasrlearn_sort_*` are localStorage **code identifiers** (keys). Per your "do not change identifiers" rule, leaving alone.
-- **`supabase/functions/send-admin-email/index.ts`** line 144 — `kasrkearnhub.lovable.app` is a deployment URL fallback. Per "do not change URLs/routes", leaving alone.
-- **`supabase/migrations/*.sql`** — historical migrations and any rows containing `@kasralainy.edu.eg` admin emails. Per "do not change Supabase config / seed data", leaving alone.
-- **`README.md`** — no `Kasr` matches found. No change needed.
+The user is currently on `/auth`. After login, `AuthContext` mounts `useSessionTracking(user.id)` immediately. localStorage still holds an `existingSessionId` from a prior visit (possibly a different account — e.g. `claude_student@kasralainy.edu.eg` per the auth logs), the lookup returns 0 rows under RLS, `.single()` → 406. Code then proceeds to `INSERT` a fresh session, so functionally nothing breaks — it is just noisy in the network panel and logs an error.
 
-### Confirmations the implementation will satisfy
+## Proposed fix (minimal, no schema/RLS changes)
 
-- "KALM Hub" brand name preserved in every location (verified in all 4 changed files)
-- Hero watercolor `<picture>`/`<img>` references in `SplashScreen.tsx` (lines 118-127 and the corresponding desktop block) untouched — only the text `<p>` siblings change
-- No code identifiers, file names, env vars, RLS policies, table/column names, or routes touched
-- `kasralainy.edu.eg` test/admin emails in migrations untouched
-- No new dependencies, no logic changes, no styling beyond the minimal mobile heading container width fix needed for graceful wrapping
+**File:** `src/hooks/useSessionTracking.ts`
 
-### Report format after implementation
+1. **Replace `.single()` with `.maybeSingle()`** on line 41. `maybeSingle()` returns `data: null` for 0 rows with a 200 response — the existing `if (existingSession && !existingSession.session_end)` branch already handles `null` correctly, so behavior is preserved.
 
-Per your request, I'll return: full file paths, before→after diff for each line, the four explicit confirmations, and the manual-review flag list above.
+2. **Defensively clear stale localStorage** when the lookup returns null OR when the session has ended, so the next login does not retry the same dead id:
+   ```ts
+   if (!existingSession || existingSession.session_end) {
+     localStorage.removeItem(SESSION_ID_KEY);
+   }
+   ```
+
+3. **Audit other `.single()` calls in the same file** (line 60 on insert is fine — insert always returns 1 row; line 96 on `endSession` selects by id we just wrote, also fine). No further changes needed.
+
+4. **Optional follow-up (separate task, not part of this fix):** clear `SESSION_ID_KEY` inside the `signOut` flow in `useAuth` so account switches start clean. Flagging for review, will not include unless you say so.
+
+## Expected outcome
+
+- 406 disappears from the network panel on `/auth` and on every fresh login.
+- No functional change for users with a valid resumable session.
+- No DB migration, no RLS edit, no new dependencies.
+
+## Files that will change
+
+- `src/hooks/useSessionTracking.ts` — two lines (lines 36–48 region)
 
