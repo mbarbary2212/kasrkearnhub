@@ -32,13 +32,13 @@ export function useSessionTracking(userId: string | null | undefined) {
       // Check if there's an existing active session for this client
       const existingSessionId = localStorage.getItem(SESSION_ID_KEY);
       if (existingSessionId) {
-        // Try to resume existing session
+        // Try to resume existing session — use maybeSingle() to avoid 406 on zero rows
         const { data: existingSession } = await supabase
           .from('user_sessions')
           .select('id, session_end')
           .eq('id', existingSessionId)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
 
         if (existingSession && !existingSession.session_end) {
           // Resume existing session
@@ -46,6 +46,9 @@ export function useSessionTracking(userId: string | null | undefined) {
           await updateHeartbeat();
           return;
         }
+
+        // Stale or ended session — clear it so we don't retry next login
+        localStorage.removeItem(SESSION_ID_KEY);
       }
 
       // Create new session
