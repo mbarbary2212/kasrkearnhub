@@ -48,7 +48,7 @@ import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
 import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
 
 export default function Home() {
-  const { user, isLoading: authLoading, isAdmin } = useAuthContext();
+  const { user, isLoading: authLoading, isAdmin, patchProfile } = useAuthContext();
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
