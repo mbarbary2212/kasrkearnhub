@@ -26,6 +26,8 @@ import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
 import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Check, X } from 'lucide-react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
@@ -46,7 +48,7 @@ import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
 import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
 
 export default function Home() {
-  const { user, isLoading: authLoading, isAdmin } = useAuthContext();
+  const { user, isLoading: authLoading, isAdmin, patchProfile } = useAuthContext();
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
@@ -197,6 +199,8 @@ function LoggedInHome() {
   // Year selection
   const preferredYearId = profile?.preferred_year_id;
   const [selectedYearId, setSelectedYearId] = useState<string>('');
+  const [defaultPromptDismissed, setDefaultPromptDismissed] = useState(false);
+  const [savingDefaultYear, setSavingDefaultYear] = useState(false);
 
   useEffect(() => {
     if (preferredYearId) {
@@ -205,6 +209,42 @@ function LoggedInHome() {
       setSelectedYearId(years[0].id);
     }
   }, [preferredYearId, years]);
+
+  // Reset dismissal whenever user changes year selection
+  const handleYearChange = (yearId: string) => {
+    setSelectedYearId(yearId);
+    setDefaultPromptDismissed(false);
+  };
+
+  // Show the "save as default" prompt when selected year differs from preferred
+  const showSaveDefaultPrompt =
+    !!selectedYearId &&
+    !defaultPromptDismissed &&
+    !savingDefaultYear &&
+    selectedYearId !== (preferredYearId ?? null);
+
+  const selectedYearForPrompt = years?.find(y => y.id === selectedYearId);
+
+  const handleSaveAsDefault = async () => {
+    if (!user || !selectedYearId) return;
+    setSavingDefaultYear(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ preferred_year_id: selectedYearId })
+        .eq('id', user.id);
+      if (error) {
+        toast.error(error.message || 'Could not save default year');
+        return;
+      }
+      patchProfile({ preferred_year_id: selectedYearId } as any);
+      toast.success(`${selectedYearForPrompt?.name ?? 'Year'} saved as your default`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save default year');
+    } finally {
+      setSavingDefaultYear(false);
+    }
+  };
 
   // Sync active year to header context
   useEffect(() => {
@@ -429,7 +469,7 @@ function LoggedInHome() {
                   <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
                   <p className="text-[10px] text-muted-foreground/70">Explore topics or revise specific areas</p>
                 </div>
-                <Select value={selectedYearId} onValueChange={setSelectedYearId}>
+                <Select value={selectedYearId} onValueChange={handleYearChange}>
                   <SelectTrigger className="h-7 w-[130px] bg-background text-xs">
                     <SelectValue placeholder="Year" />
                   </SelectTrigger>
@@ -451,6 +491,39 @@ function LoggedInHome() {
                 </Button>
               </div>
             </div>
+
+            {/* Save-as-default prompt: appears when browsing a year other than the saved default */}
+            {showSaveDefaultPrompt && selectedYearForPrompt && (
+              <div
+                role="status"
+                className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs"
+              >
+                <p className="text-foreground/90">
+                  Browsing <span className="font-medium">{selectedYearForPrompt.name}</span>. Want this to be your default when you log in?
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={handleSaveAsDefault}
+                    disabled={savingDefaultYear}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Set as default
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => setDefaultPromptDismissed(true)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Keep browsing
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Module Grid / List */}
             {isLoading ? (
