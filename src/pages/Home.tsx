@@ -452,38 +452,7 @@ function LoggedInHome() {
               </div>
             </div>
 
-            {/* Save-as-default prompt: appears when browsing a year other than the saved default */}
-            {showSaveDefaultPrompt && selectedYearForPrompt && (
-              <div
-                role="status"
-                className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs"
-              >
-                <p className="text-foreground/90">
-                  Browsing <span className="font-medium">{selectedYearForPrompt.name}</span>. Want this to be your default when you log in?
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="h-7 gap-1.5 text-xs"
-                    onClick={handleSaveAsDefault}
-                    disabled={savingDefaultYear}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                    Set as default
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1.5 text-xs"
-                    onClick={() => setDefaultPromptDismissed(true)}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Keep browsing
-                  </Button>
-                </div>
-              </div>
-            )}
+
 
             {/* Module Grid / List */}
             {isLoading ? (
