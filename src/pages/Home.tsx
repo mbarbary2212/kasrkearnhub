@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+
 import { getLastPath, isValidResumePath, clearLastPath } from '@/hooks/useRouteResume';
 import { useLastPosition, buildResumeUrl, buildResumeLabel } from '@/hooks/useLastPosition';
 import { useDueCards } from '@/hooks/useFSRS';
@@ -46,7 +46,7 @@ import { WorkflowGuide } from '@/components/guidance/WorkflowGuide';
 import { FirstLoginModal } from '@/components/guidance/FirstLoginModal';
 
 export default function Home() {
-  const { user, isLoading: authLoading, isAdmin, patchProfile } = useAuthContext();
+  const { user, isLoading: authLoading, isAdmin } = useAuthContext();
   const navigate = useNavigate();
   const [hasCheckedAutoLogin, setHasCheckedAutoLogin] = useState(false);
 
@@ -194,11 +194,9 @@ function LoggedInHome() {
   
   const { setActiveYear } = useActiveYear();
 
-  // Year selection
+  // Year selection (session-scoped; pure local filter for "Your Modules")
   const preferredYearId = profile?.preferred_year_id;
   const [selectedYearId, setSelectedYearId] = useState<string>('');
-  const [defaultPromptDismissed, setDefaultPromptDismissed] = useState(false);
-  const [savingDefaultYear, setSavingDefaultYear] = useState(false);
 
   useEffect(() => {
     if (preferredYearId) {
@@ -208,51 +206,15 @@ function LoggedInHome() {
     }
   }, [preferredYearId, years]);
 
-  // Reset dismissal whenever user changes year selection
-  const handleYearChange = (yearId: string) => {
-    setSelectedYearId(yearId);
-    setDefaultPromptDismissed(false);
-  };
-
-  // Show the "save as default" prompt when selected year differs from preferred
-  const showSaveDefaultPrompt =
-    !!selectedYearId &&
-    !defaultPromptDismissed &&
-    !savingDefaultYear &&
-    selectedYearId !== (preferredYearId ?? null);
-
-  const selectedYearForPrompt = years?.find(y => y.id === selectedYearId);
-
-  const handleSaveAsDefault = async () => {
-    if (!user || !selectedYearId) return;
-    setSavingDefaultYear(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ preferred_year_id: selectedYearId })
-        .eq('id', user.id);
-      if (error) {
-        toast.error(error.message || 'Could not save default year');
-        return;
-      }
-      patchProfile({ preferred_year_id: selectedYearId } as any);
-      toast.success(`${selectedYearForPrompt?.name ?? 'Year'} saved as your default`);
-    } catch (e: any) {
-      toast.error(e?.message || 'Could not save default year');
-    } finally {
-      setSavingDefaultYear(false);
-    }
-  };
-
-  // Sync active year to header context
+  // Sync active year to header context — follows profile preference, not the local dropdown
   useEffect(() => {
-    if (selectedYearId && years) {
-      const year = years.find(y => y.id === selectedYearId);
+    if (preferredYearId && years) {
+      const year = years.find(y => y.id === preferredYearId);
       if (year) {
         setActiveYear({ yearNumber: year.number, yearName: year.name });
       }
     }
-  }, [selectedYearId, years, setActiveYear]);
+  }, [preferredYearId, years, setActiveYear]);
 
   // Modules for selected year
   const { data: rawModules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
@@ -271,9 +233,9 @@ function LoggedInHome() {
   // Year-level classification dashboard
   const { data: yearClassification } = useYearClassification(user?.id, moduleIds);
 
-  // Dashboard data (suggestions, streak, readiness)
+  // Dashboard data (suggestions, streak, readiness) — follows profile, not the local dropdown
   const { data: dashboard } = useStudentDashboard(
-    selectedYearId ? { yearId: selectedYearId } : undefined
+    preferredYearId ? { yearId: preferredYearId } : undefined
   );
 
   // Cards/List toggle
@@ -467,7 +429,7 @@ function LoggedInHome() {
                   <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
                   <p className="text-[10px] text-muted-foreground/70">Explore topics or revise specific areas</p>
                 </div>
-                <Select value={selectedYearId} onValueChange={handleYearChange}>
+                <Select value={selectedYearId} onValueChange={setSelectedYearId}>
                   <SelectTrigger className="h-7 w-[130px] bg-background text-xs">
                     <SelectValue placeholder="Year" />
                   </SelectTrigger>
