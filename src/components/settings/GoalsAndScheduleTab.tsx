@@ -4,11 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Target, Clock, Calendar, Stethoscope, Plus, Trash2 } from 'lucide-react';
+import { Target, Clock, Calendar, Stethoscope, Plus, Trash2, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useStudentGoals, useUpsertStudentGoals, ROTATION_DEPARTMENTS, type ExamEntry, type RotationEntry } from '@/hooks/useStudentGoals';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const AMBITION_OPTIONS = [
   { value: 'top_of_class', label: 'Top of my class', description: 'I want to excel. I will commit significant daily study time and aim for distinction.' },
@@ -20,6 +22,13 @@ const AMBITION_OPTIONS = [
 export function GoalsAndScheduleTab() {
   const { data: goals, isLoading } = useStudentGoals();
   const upsert = useUpsertStudentGoals();
+  const { profile, isAdmin } = useAuthContext();
+
+  // Year context — students see modules for their preferred year only.
+  // Admins bypass and see all years (they may legitimately schedule across years).
+  const preferredYearId = profile?.preferred_year_id ?? null;
+  const noYearSet = !isAdmin && !preferredYearId;
+  const yearFilter = isAdmin ? null : preferredYearId;
 
   // Mark onboarding shown
   useEffect(() => {
@@ -46,11 +55,15 @@ export function GoalsAndScheduleTab() {
     }
   }, [goals]);
 
-  // Fetch modules for exam schedule
+  // Fetch modules for exam schedule, filtered by student's preferred year (admins see all)
   const { data: modules } = useQuery({
-    queryKey: ['modules-list'],
+    queryKey: ['modules-list', yearFilter ?? 'all'],
     queryFn: async () => {
-      const { data } = await supabase.from('modules').select('id, name').order('name');
+      let query = supabase.from('modules').select('id, name').order('name');
+      if (yearFilter) {
+        query = query.eq('year_id', yearFilter);
+      }
+      const { data } = await query;
       return data ?? [];
     },
   });
@@ -194,6 +207,18 @@ export function GoalsAndScheduleTab() {
           <CardDescription>Enter your upcoming exam dates so we can prioritize your study plan.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {noYearSet && (
+            <div className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+              <Info className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+              <p className="text-muted-foreground">
+                Set your year in{' '}
+                <Link to="/account" className="font-medium text-foreground underline underline-offset-2">
+                  Account Settings
+                </Link>{' '}
+                to see exams tailored to your year.
+              </p>
+            </div>
+          )}
           {exams.map((exam, i) => (
             <div key={i} className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
               <div className="flex-1 w-full space-y-1">

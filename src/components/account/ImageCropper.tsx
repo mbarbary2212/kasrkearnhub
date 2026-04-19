@@ -45,7 +45,19 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    setCrop(centerAspectCrop(width, height, 1));
+    const initialCrop = centerAspectCrop(width, height, 1);
+    setCrop(initialCrop);
+    // Pre-compute the initial pixel crop so Save is enabled immediately
+    // and a sensible default is used if the user doesn't drag.
+    const scale = width;
+    const pixelCrop: PixelCrop = {
+      unit: 'px',
+      x: (initialCrop.x / 100) * scale,
+      y: (initialCrop.y / 100) * height,
+      width: (initialCrop.width / 100) * scale,
+      height: (initialCrop.height / 100) * height,
+    };
+    setCompletedCrop(pixelCrop);
   }, []);
 
   const getCroppedImg = async (): Promise<Blob | null> => {
@@ -103,20 +115,25 @@ export function ImageCropper({ open, onClose, imageSrc, onCropComplete }: ImageC
         <DialogHeader>
           <DialogTitle>Crop Avatar</DialogTitle>
         </DialogHeader>
-        <div className="flex justify-center overflow-auto max-h-[50vh]">
+        <p className="text-xs text-muted-foreground -mt-2">
+          Drag the corners to adjust. The area inside the circle will be your avatar.
+        </p>
+        <div className="flex justify-center overflow-auto max-h-[55vh] bg-muted/30 rounded-md p-2">
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
             onComplete={(c) => setCompletedCrop(c)}
             aspect={1}
             circularCrop
+            keepSelection
+            minWidth={50}
           >
             <img
               ref={imgRef}
               alt="Crop preview"
               src={imageSrc}
               onLoad={onImageLoad}
-              className="max-h-[45vh] max-w-full"
+              className="max-h-[50vh] max-w-full block"
             />
           </ReactCrop>
         </div>

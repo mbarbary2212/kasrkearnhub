@@ -14,8 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown } from 'lucide-react';
+import { Camera, Key, Home, User, Loader2, Shield, AlertTriangle, Trash2, CheckCircle2, Save, ChevronDown, PlayCircle } from 'lucide-react';
 import { SafeMarkdown } from '@/components/ui/SafeMarkdown';
+import { useTour } from '@/hooks/useTour';
+import { studentTourSteps } from '@/components/tour/studentTourSteps';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ImageCropper } from '@/components/account/ImageCropper';
 import { PasswordRequirements, isPasswordValid } from '@/components/auth/PasswordRequirements';
@@ -26,12 +28,27 @@ export default function AccountPage() {
   const navigate = useNavigate();
   const { data: years, isLoading: yearsLoading } = useYears();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { startTour, resetTour } = useTour('student', studentTourSteps);
+
+  const handleReplayTutorial = () => {
+    resetTour();
+    // Navigate home so the tour targets exist on the page, then start
+    if (window.location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => startTour(), 400);
+    } else {
+      startTour();
+    }
+    toast.success('Tutorial restarted');
+  };
   
   // Form state
   const [fullName, setFullName] = useState('');
   const [preferredYearId, setPreferredYearId] = useState<string>('');
   const [autoLoginToYear, setAutoLoginToYear] = useState(false);
+  const [showOnlineCount, setShowOnlineCount] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
   
   // Password state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -55,13 +72,14 @@ export default function AccountPage() {
       const fetchExtendedProfile = async () => {
         const { data } = await supabase
           .from('profiles')
-          .select('preferred_year_id, auto_login_to_year')
+          .select('preferred_year_id, auto_login_to_year, show_online_count')
           .eq('id', profile.id)
           .single();
         
         if (data) {
           setPreferredYearId(data.preferred_year_id || '');
           setAutoLoginToYear(data.auto_login_to_year || false);
+          setShowOnlineCount(data.show_online_count ?? true);
         }
       };
       fetchExtendedProfile();
@@ -180,20 +198,61 @@ export default function AccountPage() {
         auto_login_to_year: autoLoginToYear,
       };
 
-      const { error } = await supabase
+      // Update + return the persisted row so we can verify
+      const { data: updatedRows, error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select('id, full_name, preferred_year_id, auto_login_to_year');
 
-      if (error) throw error;
+      if (error) {
+        // Surface the Supabase error verbatim (code + message + hint)
+        console.error('[AccountPage] Supabase update error:', error);
+        const verbatim = [error.message, error.details, error.hint, error.code]
+          .filter(Boolean)
+          .join(' • ');
+        toast.error(verbatim || 'Unknown Supabase error');
+        return;
+      }
+
+      // Refetch authoritative row to verify the write actually persisted
+      const { data: verifyRow, error: verifyError } = await supabase
+        .from('profiles')
+        .select('preferred_year_id, auto_login_to_year, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (verifyError) {
+        console.error('[AccountPage] Verify fetch error:', verifyError);
+        toast.error(verifyError.message || 'Saved but could not verify');
+        return;
+      }
+
+      const persistedYear = verifyRow?.preferred_year_id ?? null;
+      const expectedYear = updates.preferred_year_id;
+      if (persistedYear !== expectedYear) {
+        console.error('[AccountPage] preferred_year_id mismatch', {
+          expected: expectedYear,
+          persisted: persistedYear,
+          updatedRows,
+          verifyRow,
+        });
+        toast.error('Save did not persist — please contact support');
+        return;
+      }
 
       // Optimistically update local auth state
       patchProfile(updates as any);
 
+      // Sync local form state with verified server values
+      setPreferredYearId(verifyRow?.preferred_year_id || '');
+      setAutoLoginToYear(verifyRow?.auto_login_to_year || false);
+      setFullName(verifyRow?.full_name || '');
+
       toast.success('Profile saved successfully');
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error(error.message || 'Failed to save profile');
+      toast.error(error?.message || 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
@@ -429,6 +488,67 @@ export default function AccountPage() {
 
         {/* Admin API Key (BYOK) */}
         <AdminApiKeyCard />
+
+        {/* Display preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Display</CardTitle>
+            <CardDescription>Control what appears in your interface.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <Label htmlFor="show-online-count" className="text-sm font-medium">
+                  Show active users count
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Turn off if you find the online-user indicator distracting.
+                </p>
+              </div>
+              <Switch
+                id="show-online-count"
+                checked={showOnlineCount}
+                disabled={isSavingDisplay}
+                onCheckedChange={async (checked) => {
+                  if (!user) return;
+                  const previous = showOnlineCount;
+                  setShowOnlineCount(checked);
+                  setIsSavingDisplay(true);
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ show_online_count: checked })
+                    .eq('id', user.id);
+                  setIsSavingDisplay(false);
+                  if (error) {
+                    setShowOnlineCount(previous);
+                    toast.error(error.message || 'Failed to update preference');
+                  } else {
+                    toast.success(checked ? 'Active users count shown' : 'Active users count hidden');
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Help & Tutorial */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PlayCircle className="h-5 w-5 text-primary" />
+              Help & Tutorial
+            </CardTitle>
+            <CardDescription>
+              Replay the guided walkthrough of the dashboard if you skipped it or want a refresher.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={handleReplayTutorial}>
+              <PlayCircle className="mr-2 h-4 w-4" />
+              Replay tutorial
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Image Cropper Modal */}

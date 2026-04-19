@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useSessionState } from '@/hooks/useSessionState';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useAdminData, UserWithRole } from '@/hooks/useAdminData';
+import { useAdminUsers, useAdminReferenceData, UserWithRole } from '@/hooks/useAdminData';
 import { useUserAdminActions } from '@/hooks/useUserAdminActions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -54,29 +55,31 @@ const ROLE_COLORS: Record<AppRole, string> = {
 export function UsersTab() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin } = useAuthContext();
   const queryClient = useQueryClient();
-  const { data: adminData } = useAdminData(!!isAdmin);
-  const users = adminData?.users ?? [];
-  const years = adminData?.years ?? [];
-  const modules = adminData?.modules ?? [];
+  // Lazy: this only fires once UsersTab mounts (i.e. user actually clicked the Users tab).
+  const { data: usersData, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = useAdminUsers(!!isAdmin);
+  const { data: refData } = useAdminReferenceData(!!isAdmin);
+  const users = usersData?.users ?? [];
+  const years = refData?.years ?? [];
+  const modules = refData?.modules ?? [];
 
   const { banUser, unbanUser, removeUser, restoreUser, resetPassword } = useUserAdminActions();
 
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedModule, setSelectedModule] = useState<string>('');
-  const [studentSearch, setStudentSearch] = useState('');
-  const [userSearch, setUserSearch] = useState('');
-  const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [studentSortOrder, setStudentSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [moduleAdminSortOrder, setModuleAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [studentSearch, setStudentSearch] = useSessionState<string>('admin.users.studentSearch', '');
+  const [userSearch, setUserSearch] = useSessionState<string>('admin.users.userSearch', '');
+  const [userSortOrder, setUserSortOrder] = useSessionState<'asc' | 'desc'>('admin.users.userSortOrder', 'asc');
+  const [studentSortOrder, setStudentSortOrder] = useSessionState<'asc' | 'desc'>('admin.users.studentSortOrder', 'asc');
+  const [moduleAdminSortOrder, setModuleAdminSortOrder] = useSessionState<'asc' | 'desc'>('admin.users.moduleAdminSortOrder', 'asc');
   const [moduleAdminAssignDialogOpen, setModuleAdminAssignDialogOpen] = useState(false);
   const [maSelectedUserId, setMaSelectedUserId] = useState('');
   const [maSelectedModules, setMaSelectedModules] = useState<string[]>([]);
   const [maUserPopoverOpen, setMaUserPopoverOpen] = useState(false);
-  const [platformAdminSortOrder, setPlatformAdminSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [platformAdminSearch, setPlatformAdminSearch] = useState('');
-  const [moduleAdminSearch, setModuleAdminSearch] = useState('');
-  const [deactivatedSearch, setDeactivatedSearch] = useState('');
-  const [deactivatedSortOrder, setDeactivatedSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [platformAdminSortOrder, setPlatformAdminSortOrder] = useSessionState<'asc' | 'desc'>('admin.users.platformAdminSortOrder', 'asc');
+  const [platformAdminSearch, setPlatformAdminSearch] = useSessionState<string>('admin.users.platformAdminSearch', '');
+  const [moduleAdminSearch, setModuleAdminSearch] = useSessionState<string>('admin.users.moduleAdminSearch', '');
+  const [deactivatedSearch, setDeactivatedSearch] = useSessionState<string>('admin.users.deactivatedSearch', '');
+  const [deactivatedSortOrder, setDeactivatedSortOrder] = useSessionState<'asc' | 'desc'>('admin.users.deactivatedSortOrder', 'asc');
   const [passwordDialogUser, setPasswordDialogUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [editEmailUser, setEditEmailUser] = useState<{ id: string; email: string; full_name: string | null } | null>(null);
   const [deleteUserTarget, setDeleteUserTarget] = useState<{ id: string; email: string; full_name: string | null; status?: string } | null>(null);
@@ -310,6 +313,24 @@ export function UsersTab() {
           <CardDescription>Manage users, roles, and permissions.</CardDescription>
         </CardHeader>
         <CardContent>
+          {usersError && (
+            <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 p-4">
+              <p className="font-medium text-destructive">Failed to load users</p>
+              <p className="text-sm text-destructive/80 mt-1 break-words">
+                {(usersError as Error)?.message || 'Unknown error'}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => refetchUsers()}
+                disabled={usersLoading}
+              >
+                {usersLoading && <Loader2 className="w-3 h-3 mr-2 animate-spin" />}
+                Retry
+              </Button>
+            </div>
+          )}
           <Tabs defaultValue="directory" className="space-y-4">
             <TabsList className="bg-muted/50">
               <TabsTrigger value="directory" className="data-[state=active]:bg-background">Directory</TabsTrigger>
@@ -343,11 +364,15 @@ export function UsersTab() {
                   {userSortOrder === 'asc' ? 'A → Z' : 'Z → A'}
                 </Button>
               </div>
-              {users.length === 0 ? (
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : users.length === 0 ? (
                 <p className="text-muted-foreground text-center py-8">No users found</p>
               ) : (
-                <div className="space-y-3">
-                  {users
+                (() => {
+                  const filteredUsers = users
                     .filter(u => {
                       if (!userSearch.trim()) return true;
                       const search = userSearch.toLowerCase();
@@ -357,9 +382,24 @@ export function UsersTab() {
                       const nameA = (a.full_name || a.email).toLowerCase();
                       const nameB = (b.full_name || b.email).toLowerCase();
                       return userSortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-                    })
-                    .map((u) => renderUserRow(u, { showModuleAssignments: true }))}
-                </div>
+                    });
+                  if (filteredUsers.length === 0) {
+                    return <p className="text-muted-foreground text-center py-8">No users matching your search</p>;
+                  }
+                  return (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Showing {Math.min(filteredUsers.length, 50)} of {users.length} users
+                      </p>
+                      {filteredUsers.slice(0, 50).map((u) => renderUserRow(u, { showModuleAssignments: true }))}
+                      {filteredUsers.length > 50 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Showing first 50 results. Refine your search to see more.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()
               )}
             </TabsContent>
 
@@ -729,8 +769,10 @@ export function UsersTab() {
                   }
                   return (
                     <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground mb-2">{filtered.length} deactivated user{filtered.length !== 1 ? 's' : ''}</p>
-                      {filtered.map(u => (
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Showing {Math.min(filtered.length, 50)} of {deactivatedUsers.length} deactivated user{deactivatedUsers.length !== 1 ? 's' : ''}
+                      </p>
+                      {filtered.slice(0, 50).map(u => (
                         <div key={u.id} className="flex items-center justify-between p-4 border rounded-lg">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
@@ -754,6 +796,11 @@ export function UsersTab() {
                           </Button>
                         </div>
                       ))}
+                      {filtered.length > 50 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Showing first 50 results. Refine your search to see more.
+                        </p>
+                      )}
                     </div>
                   );
                 })()}

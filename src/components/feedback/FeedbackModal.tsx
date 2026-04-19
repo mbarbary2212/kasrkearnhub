@@ -62,14 +62,9 @@ export default function FeedbackModal({ open, onOpenChange, moduleId, moduleName
       return;
     }
 
-    if (!moduleId) {
-      toast.error('Module context is required');
-      return;
-    }
-
     try {
       await submitFeedback.mutateAsync({
-        moduleId,
+        moduleId: moduleId ?? null,
         chapterId,
         itemType: 'resource', // Generic feedback
         category,

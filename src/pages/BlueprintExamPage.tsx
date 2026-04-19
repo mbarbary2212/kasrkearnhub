@@ -11,11 +11,14 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { BlueprintExamRunner } from '@/components/exam/BlueprintExamRunner';
 import { PaperConfig } from '@/components/exam/ExamPaperConfig';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { YearContextBanner } from '@/components/exam/YearContextBanner';
 
 export default function BlueprintExamPage() {
   const { moduleId, paperIndex } = useParams();
   const navigate = useNavigate();
   const idx = parseInt(paperIndex || '0', 10);
+  const { profile, isAdmin } = useAuthContext();
 
   const { data: module, isLoading: moduleLoading } = useModule(moduleId || '');
   const { data: chapters } = useModuleChapters(moduleId);
@@ -58,6 +61,12 @@ export default function BlueprintExamPage() {
     max_revisions: bp?.essay_settings?.max_revisions ?? 1,
   };
 
+  // Year context (admins bypass — they may legitimately view any year)
+  const preferredYearId = profile?.preferred_year_id ?? null;
+  const noYearSet = !isAdmin && !preferredYearId;
+  const yearMismatch =
+    !isAdmin && !!preferredYearId && !!module?.year_id && module.year_id !== preferredYearId;
+
   const handleBack = () => {
     navigate(`/module/${moduleId}`);
   };
@@ -87,6 +96,11 @@ export default function BlueprintExamPage() {
             )}
           </div>
         </div>
+
+        {/* Year context notice (non-blocking, students only) */}
+        {!isLoading && (
+          <YearContextBanner noYearSet={noYearSet} yearMismatch={yearMismatch} />
+        )}
 
         {/* Exam Content */}
         {isLoading ? (

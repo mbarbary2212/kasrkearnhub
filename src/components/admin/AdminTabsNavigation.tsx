@@ -1,4 +1,4 @@
-import { Shield, BookOpen, MessageSquare, Users, UserPlus, Activity, Settings, Layers, FileText, Sparkles, HelpCircle, BarChart3, Megaphone, Radio, Video, ClipboardList, Timer } from 'lucide-react';
+import { Shield, BookOpen, MessageSquare, Users, UserPlus, Activity, Settings, Layers, FileText, Sparkles, HelpCircle, BarChart3, Megaphone, Radio, Video, ClipboardList, Timer, Heart } from 'lucide-react';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -43,6 +43,7 @@ export function AdminTabsNavigation({
         { value: 'live', label: 'Live', icon: Radio, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'perf-logs', label: 'Performance', icon: Timer, visible: isSuperAdmin || isPlatformAdmin },
         { value: 'settings', label: 'Platform Settings', icon: Settings, visible: isPlatformAdmin },
+        { value: 'team-credits', label: 'Team Credits', icon: Heart, visible: isSuperAdmin },
       ],
     },
     {

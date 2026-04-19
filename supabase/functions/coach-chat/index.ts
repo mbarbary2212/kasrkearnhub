@@ -10,7 +10,7 @@ const corsHeaders = {
 // Admin roles that have unlimited coach access
 const ADMIN_ROLES = ['super_admin', 'platform_admin', 'department_admin', 'admin', 'teacher', 'topic_admin'];
 
-const SYSTEM_PROMPT = `You are the Kasr Aliny Study Coach, an intelligent academic mentor for Cairo University medical students. Your role is to guide, support, and help students master their medical curriculum.
+const SYSTEM_PROMPT = `You are the KALM Hub Study Coach, designed to support medical students — currently primarily those at Cairo University's Kasr Al-Ainy Faculty of Medicine. Your role is to guide, support, and help students master their medical curriculum.
 
 ## Your Core Identity:
 - You are a trusted academic mentor, not just a chatbot
@@ -315,7 +315,21 @@ serve(async (req) => {
       }
     }
 
-    const { messages, context, chapterId, topicId } = await req.json();
+    const body = await req.json();
+    const { messages, context, chapterId, topicId, moduleId, userId, preferredYearId, routePath } = body;
+
+    // Debug log (redact message contents)
+    console.log('coach-chat payload received:', {
+      hasMessages: Array.isArray(messages),
+      messageCount: Array.isArray(messages) ? messages.length : 0,
+      hasContext: !!context,
+      chapterId: chapterId || null,
+      topicId: topicId || null,
+      moduleId: moduleId || null,
+      userId: userId || user.id,
+      preferredYearId: preferredYearId || null,
+      routePath: routePath || null,
+    });
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return jsonError('INVALID_REQUEST', 'Invalid Request', 'No messages provided.', 400);
@@ -332,11 +346,58 @@ serve(async (req) => {
 
     // Build system prompt with context
     let fullSystemPrompt = SYSTEM_PROMPT;
+    const hasStudyContext = !!(context || chapterId || topicId);
+    
     if (context) {
       fullSystemPrompt += `\n\n${context}`;
     }
 
-    // Fetch linked PDF for grounding (backend-side)
+    // GENERAL TUTORING MODE: when no chapter/topic context provided,
+    // soft-scope to the student's preferred year and recent activity.
+    if (!hasStudyContext) {
+      console.log('coach-chat entering general tutoring mode (no chapter/topic context)');
+      const softParts: string[] = ['\n\n[GENERAL TUTORING MODE]'];
+      softParts.push('No specific chapter or topic context was provided. The student is asking a general study question.');
+      
+      const effectivePreferredYearId = preferredYearId || null;
+      if (effectivePreferredYearId) {
+        try {
+          const { data: yearRow } = await serviceClient
+            .from('years')
+            .select('number, name')
+            .eq('id', effectivePreferredYearId)
+            .maybeSingle();
+          if (yearRow) {
+            softParts.push(`Student's preferred academic year: ${yearRow.name || `Year ${yearRow.number}`}.`);
+          }
+        } catch (e) {
+          console.warn('Could not load preferred year for soft context:', e);
+        }
+      }
+
+      if (routePath) {
+        softParts.push(`Student is currently on page: ${routePath}`);
+      }
+
+      try {
+        const { data: recent } = await serviceClient
+          .from('chapter_attempts')
+          .select('chapter_id, module_id, completed_at')
+          .eq('user_id', user.id)
+          .order('completed_at', { ascending: false, nullsFirst: false })
+          .limit(3);
+        if (recent && recent.length > 0) {
+          softParts.push(`Recent activity: student has practiced in ${recent.length} chapter(s) recently.`);
+        }
+      } catch (e) {
+        console.warn('Could not load recent activity for soft context:', e);
+      }
+
+      softParts.push('Provide helpful, general study guidance scoped to the medical curriculum. Encourage the student to open a specific chapter for grounded answers.');
+      fullSystemPrompt += softParts.join('\n');
+    }
+
+    // Fetch linked PDF for grounding (backend-side) — only when context is present
     let pdfData: { base64: string; title: string } | null = null;
     if (chapterId || topicId) {
       try {

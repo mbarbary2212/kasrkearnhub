@@ -45,7 +45,79 @@ export function useChapterExamWeights(moduleIds: string[]) {
         .not('chapter_id', 'is', null)
         .not('component_id', 'is', null);
 
-      if (!weights || weights.length === 0) return new Map<string, ChapterExamWeight>();
+      if (!weights || weights.length === 0) {
+        // Fallback: synthesize weights from chapter_blueprint_config (H/A/L inclusion levels)
+        const { data: blueprint } = await supabase
+          .from('chapter_blueprint_config')
+          .select('chapter_id, module_id, component_type, inclusion_level')
+          .in('module_id', moduleIds);
+
+        if (!blueprint || blueprint.length === 0) return new Map<string, ChapterExamWeight>();
+
+        const inclusionToMarks = (level: string): number => {
+          switch ((level || '').toLowerCase()) {
+            case 'high': return 30;
+            case 'average': return 15;
+            case 'low': return 5;
+            default: return 0;
+          }
+        };
+
+        const bpMap = new Map<string, {
+          module_id: string;
+          totalPercent: number;
+          totalMarks: number;
+          byComponent: Record<string, { percent: number; marks: number }>;
+        }>();
+
+        for (const b of blueprint as any[]) {
+          if (!b.chapter_id) continue;
+          const componentType: string = b.component_type || 'unknown';
+          const marks = inclusionToMarks(b.inclusion_level);
+          if (marks === 0) continue;
+
+          let entry = bpMap.get(b.chapter_id);
+          if (!entry) {
+            entry = { module_id: b.module_id, totalPercent: 0, totalMarks: 0, byComponent: {} };
+            bpMap.set(b.chapter_id, entry);
+          }
+          entry.totalMarks += marks;
+
+          if (!entry.byComponent[componentType]) {
+            entry.byComponent[componentType] = { percent: 0, marks: 0 };
+          }
+          entry.byComponent[componentType].marks += marks;
+        }
+
+        const bpResult = new Map<string, ChapterExamWeight>();
+        for (const [chapterId, entry] of bpMap) {
+          const sorted = Object.entries(entry.byComponent)
+            .map(([type, vals]) => ({ type, total: vals.marks }))
+            .sort((a, b) => b.total - a.total);
+
+          const dominant = sorted[0]?.type ?? null;
+          let secondary: string | null = null;
+          if (sorted.length >= 2 && sorted[0].total > 0) {
+            const ratio = sorted[1].total / sorted[0].total;
+            if (ratio >= SECONDARY_THRESHOLD) {
+              secondary = sorted[1].type;
+            }
+          }
+
+          bpResult.set(chapterId, {
+            chapter_id: chapterId,
+            module_id: entry.module_id,
+            total_weight_percent: 0,
+            total_weight_marks: entry.totalMarks,
+            component_weights: entry.byComponent,
+            dominant_component: dominant,
+            secondary_component: secondary,
+            prescribed_study_mode: getStudyMode(dominant),
+          });
+        }
+
+        return bpResult;
+      }
 
       // Build per-chapter aggregation
       const map = new Map<string, {

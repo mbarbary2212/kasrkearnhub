@@ -3556,6 +3556,8 @@ export type Database = {
           section_id: string | null
           title: string
           title_ar: string | null
+          topic_ai_confidence: number | null
+          topic_auto_assigned: boolean
           topic_id: string | null
           updated_at: string | null
           updated_by: string | null
@@ -3581,6 +3583,8 @@ export type Database = {
           section_id?: string | null
           title: string
           title_ar?: string | null
+          topic_ai_confidence?: number | null
+          topic_auto_assigned?: boolean
           topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -3606,6 +3610,8 @@ export type Database = {
           section_id?: string | null
           title?: string
           title_ar?: string | null
+          topic_ai_confidence?: number | null
+          topic_auto_assigned?: boolean
           topic_id?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -5171,6 +5177,7 @@ export type Database = {
           full_name: string | null
           id: string
           preferred_year_id: string | null
+          show_online_count: boolean
           status: string
           status_reason: string | null
           status_updated_at: string | null
@@ -5186,6 +5193,7 @@ export type Database = {
           full_name?: string | null
           id: string
           preferred_year_id?: string | null
+          show_online_count?: boolean
           status?: string
           status_reason?: string | null
           status_updated_at?: string | null
@@ -5201,6 +5209,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           preferred_year_id?: string | null
+          show_online_count?: boolean
           status?: string
           status_reason?: string | null
           status_updated_at?: string | null
@@ -6499,6 +6508,48 @@ export type Database = {
           },
         ]
       }
+      team_credits: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          display_order: number
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          photo_url: string | null
+          role: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          photo_url?: string | null
+          role: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          photo_url?: string | null
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       tf_analytics: {
         Row: {
           chapter_id: string | null
@@ -7769,6 +7820,14 @@ export type Database = {
           id: string
         }[]
       }
+      get_team_credit_profiles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          email: string
+          full_name: string
+        }[]
+      }
       get_user_analytics: {
         Args: { _user_id: string }
         Returns: {
@@ -7831,6 +7890,10 @@ export type Database = {
         Args: { _module_id: string; _user_id: string }
         Returns: boolean
       }
+      is_module_admin_self: {
+        Args: { _module_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_platform_admin_or_higher: {
         Args: { _user_id: string }
         Returns: boolean
@@ -7887,6 +7950,14 @@ export type Database = {
             }
             Returns: Json
           }
+      shares_module_admin: {
+        Args: { _caller: string; _target: string }
+        Returns: boolean
+      }
+      shares_module_with_topic_admin: {
+        Args: { _caller: string; _target: string }
+        Returns: boolean
+      }
       upsert_student_chapter_metrics: {
         Args: {
           p_chapter_id: string

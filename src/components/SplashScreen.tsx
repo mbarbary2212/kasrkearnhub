@@ -84,10 +84,10 @@ export default function SplashScreen({
         {/* SEO Text + Login button - center left, vertically centered */}
         <div className="absolute top-1/2 left-6 -translate-y-1/2 z-10 max-w-xs text-left">
           <p className="text-lg md:text-xl text-black font-medium drop-shadow-sm">
-            Kasr Al-Ainy Learning & Mentorship Hub
+            Knowledge, Assessment, Learning & Mentorship — For Medical Students
           </p>
           <p className="text-sm text-black/80 mt-2 leading-relaxed max-w-[240px]">
-            An academic digital platform supporting medical students at Kasr Al-Ainy.
+            The all-in-one learning hub for medical students.
           </p>
           
           {/* Login button */}
@@ -140,12 +140,12 @@ export default function SplashScreen({
         </div>
         
         {/* SEO Text + Login button - below logo */}
-        <div className="absolute top-20 left-4 z-10 w-32 text-left">
-          <p className="text-xs text-black font-medium drop-shadow-sm">
-            Kasr Al-Ainy Learning & Mentorship Hub
+        <div className="absolute top-20 left-4 z-10 max-w-[60%] text-left">
+          <p className="text-xs text-black font-medium drop-shadow-sm leading-snug">
+            Knowledge, Assessment, Learning & Mentorship — For Medical Students
           </p>
           <p className="text-[10px] text-black/80 mt-1 leading-relaxed">
-            An academic platform for medical students at Kasr Al-Ainy.
+            The all-in-one learning hub for medical students.
           </p>
           
           {/* Login button */}

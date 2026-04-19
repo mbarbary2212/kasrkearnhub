@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useAdminReferenceData } from '@/hooks/useAdminData';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Shield, HelpCircle } from 'lucide-react';
@@ -23,19 +23,21 @@ import { RealtimeAnalyticsTab } from '@/components/admin/RealtimeAnalyticsTab';
 import { VideosManagementTab } from '@/components/admin/VideosManagementTab';
 import { AssessmentBlueprintTab } from '@/components/admin/blueprint/AssessmentBlueprintTab';
 import { PerfLogsTab } from '@/components/admin/PerfLogsTab';
+import { TeamCreditsTab } from '@/components/admin/TeamCreditsTab';
 
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, isLoading: authLoading } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: adminData, isLoading: adminDataLoading } = useAdminData(!!isAdmin);
+  // Reference data only — fast. The expensive users fetch is now lazy-loaded inside UsersTab.
+  const { data: adminData } = useAdminReferenceData(!!isAdmin);
   const years = adminData?.years ?? [];
   const modules = adminData?.modules ?? [];
 
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
-    if (['users', 'accounts', 'activity-log', 'settings', 'perf-logs'].includes(tab)) return 'system';
+    if (['users', 'accounts', 'activity-log', 'settings', 'perf-logs', 'team-credits'].includes(tab)) return 'system';
     if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases', 'videos', 'blueprint'].includes(tab)) return 'content';
     if (['announcements', 'inbox'].includes(tab)) return 'messaging';
     return 'system';
@@ -53,6 +55,7 @@ export default function AdminPage() {
         { value: 'accounts', visible: isSuperAdmin || isPlatformAdmin },
         { value: 'activity-log', visible: isSuperAdmin || isPlatformAdmin },
         { value: 'settings', visible: isPlatformAdmin },
+        { value: 'team-credits', visible: isSuperAdmin },
       ],
       content: [
         { value: 'sources', visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
@@ -88,7 +91,8 @@ export default function AdminPage() {
     }
   }, [user, isAdmin, authLoading, navigate]);
 
-  if (authLoading || adminDataLoading) {
+  // Only block on auth — never on admin data. Each tab handles its own loading state.
+  if (authLoading) {
     return (
       <MainLayout>
         <div className="flex items-center justify-center py-12">
@@ -167,6 +171,12 @@ export default function AdminPage() {
           {isPlatformAdmin && (
             <TabsContent value="settings">
               <PlatformSettingsTab />
+            </TabsContent>
+          )}
+
+          {isSuperAdmin && (
+            <TabsContent value="team-credits">
+              <TeamCreditsTab />
             </TabsContent>
           )}
 
