@@ -38,7 +38,12 @@ export function useSessionTracking(userId: string | null | undefined) {
           .select('id, session_end')
           .eq('id', existingSessionId)
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();
+
+        // Defensive cleanup: remove dead session ID from localStorage
+        if (!existingSession || existingSession.session_end) {
+          localStorage.removeItem(SESSION_ID_KEY);
+        }
 
         if (existingSession && !existingSession.session_end) {
           // Resume existing session
