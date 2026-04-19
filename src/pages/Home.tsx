@@ -5,7 +5,6 @@ import { useDailyStudyPlan } from '@/hooks/useDailyStudyPlan';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Megaphone, Mail, ChevronRight, Play, ArrowRight, GalleryHorizontal, Trophy, LayoutGrid, List, Lock, Stethoscope, FlaskConical, PenLine, Video, BookOpenCheck } from 'lucide-react';
-import { useYears } from '@/hooks/useYears';
 import MainLayout from '@/components/layout/MainLayout';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import { useUnreadAnnouncementDetails } from '@/hooks/useUnreadAnnouncementDetails';
@@ -25,12 +24,10 @@ import { useModules } from '@/hooks/useModules';
 import { useModuleReadinessBatch } from '@/hooks/useModuleReadinessBatch';
 import { ModuleReadinessBar } from '@/components/module/ModuleReadinessBar';
 import { useMergedModuleConfig } from '@/hooks/useMergedModuleConfig';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { getModuleImage, getModuleGradient } from '@/lib/moduleImages';
 import { cn } from '@/lib/utils';
 
-import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard, type SuggestedItem } from '@/hooks/useStudentDashboard';
 import { getReadinessLabel, getResumeIconName } from '@/lib/readinessLabels';
 import { DashboardWeakTopics } from '@/components/dashboard/DashboardWeakTopics';
@@ -164,7 +161,6 @@ function LoggedInHome() {
   const navigate = useNavigate();
   const { startSession } = useSessionFlow();
   const { user, profile, isAdmin, isTeacher, isPlatformAdmin, isSuperAdmin, isModuleAdmin, moduleAdminModuleIds } = useAuthContext();
-  const { data: years, isLoading: yearsLoading } = useYears();
   const { data: unreadCounts } = useUnreadMessages();
   const { data: unreadAnnouncements } = useUnreadAnnouncementDetails();
   const isStudent = !isAdmin && !isTeacher && !isPlatformAdmin && !isSuperAdmin;
@@ -192,32 +188,11 @@ function LoggedInHome() {
     return count < 3;
   });
   
-  const { setActiveYear } = useActiveYear();
-
-  // Year selection (session-scoped; pure local filter for "Your Modules")
+  // Year is sourced exclusively from profile.preferred_year_id (no local dropdown).
   const preferredYearId = profile?.preferred_year_id;
-  const [selectedYearId, setSelectedYearId] = useState<string>('');
 
-  useEffect(() => {
-    if (preferredYearId) {
-      setSelectedYearId(preferredYearId);
-    } else if (years && years.length > 0 && !selectedYearId) {
-      setSelectedYearId(years[0].id);
-    }
-  }, [preferredYearId, years]);
-
-  // Sync active year to header context — follows profile preference, not the local dropdown
-  useEffect(() => {
-    if (preferredYearId && years) {
-      const year = years.find(y => y.id === preferredYearId);
-      if (year) {
-        setActiveYear({ yearNumber: year.number, yearName: year.name });
-      }
-    }
-  }, [preferredYearId, years, setActiveYear]);
-
-  // Modules for selected year
-  const { data: rawModules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
+  // Modules for the user's preferred year
+  const { data: rawModules, isLoading: modulesLoading } = useModules(preferredYearId || undefined);
   const { data: mergedConfig } = useMergedModuleConfig();
 
   // Apply merged module filtering and overrides for students
@@ -247,7 +222,6 @@ function LoggedInHome() {
     localStorage.setItem('yearPageViewMode', mode);
   };
 
-  const selectedYear = years?.find(y => y.id === selectedYearId);
   const totalMessages = (unreadCounts?.announcements ?? 0) + (unreadCounts?.replies ?? 0);
   const hasMessages = totalMessages > 0;
 
@@ -257,7 +231,7 @@ function LoggedInHome() {
   const readiness = dashboard?.readinessResult?.examReadiness ?? 0;
   const suggestions: SuggestedItem[] = (dashboard?.suggestions ?? []).slice(0, 3);
 
-  const isLoading = yearsLoading || modulesLoading;
+  const isLoading = modulesLoading;
 
   // Resume icon
   const resumeType = lastPos ? getResumeIconName(lastPos.tab, lastPos.activity_position?.sub_tab as string | null) : 'reading';
@@ -421,24 +395,12 @@ function LoggedInHome() {
             </section>
           )}
 
-          {/* Module Section with Year Selector + Cards/List Toggle */}
+          {/* Module Section with Cards/List Toggle */}
           <section data-tour="modules">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <div>
-                  <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
-                  <p className="text-[10px] text-muted-foreground/70">Explore topics or revise specific areas</p>
-                </div>
-                <Select value={selectedYearId} onValueChange={setSelectedYearId}>
-                  <SelectTrigger className="h-7 w-[130px] bg-background text-xs">
-                    <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {years?.map((year) => (
-                      <SelectItem key={year.id} value={year.id}>{year.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div>
+                <h2 className="text-lg font-heading font-semibold">Your Modules</h2>
+                <p className="text-[10px] text-muted-foreground/70">Explore topics or revise specific areas</p>
               </div>
               <div className="flex items-center gap-1 border rounded-md p-0.5">
                 <Button variant={viewMode === 'cards' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 gap-1.5" onClick={() => toggleViewMode('cards')}>
