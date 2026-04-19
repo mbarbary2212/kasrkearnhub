@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useActiveYear } from '@/contexts/ActiveYearContext';
 import { useStudentDashboard } from '@/hooks/useStudentDashboard';
 import { useTestProgress } from '@/hooks/useTestProgress';
 import { useYears } from '@/hooks/useYears';
@@ -29,7 +28,7 @@ export function StudentDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const moduleSelectRef = useRef<HTMLButtonElement>(null);
-  const { activeYear } = useActiveYear();
+  // Year is sourced from profile preference, not navigation context, so Coach views are immune to module-page year bleed.
   
   // Detect if user arrived from Learning tab click
   const [highlightModuleSelect, setHighlightModuleSelect] = useState(false);
@@ -55,8 +54,8 @@ export function StudentDashboard() {
   // Fetch years to resolve activeYear to an ID
   const { data: years, isLoading: yearsLoading } = useYears();
   
-  // Derive selectedYearId from activeYear context
-  const selectedYearId = years?.find(y => y.number === activeYear?.yearNumber)?.id || '';
+  // Derive selectedYearId from profile.preferred_year_id
+  const selectedYearId = years?.find(y => y.id === profile?.preferred_year_id)?.id || '';
   
   const { data: modules, isLoading: modulesLoading } = useModules(selectedYearId || undefined);
   
