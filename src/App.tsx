@@ -135,8 +135,6 @@ const App = () => {
               <Toaster />
               <Sonner />
                <BadgeCelebration />
-               <AskCoachPanel />
-               <ConnectModal />
                <AudioMiniPlayer />
                <PWAInstallBanner />
                
