@@ -10,6 +10,7 @@ import {
   BookOpenCheck, ChevronDown, ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
 
@@ -134,6 +135,20 @@ export function StudentSidebar() {
   const handleGuide = useCallback(() => {
     window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
   }, []);
+
+  const handleStartTour = useCallback(() => {
+    // Clear "seen" flag so it always replays from this entry point
+    try {
+      localStorage.removeItem(isAdmin ? 'kalm_tour_admin_done' : 'kalm_tour_student_done');
+    } catch {}
+    const onHome = location.pathname === '/' || location.pathname === '/admin/dashboard';
+    if (!onHome) {
+      navigate(isAdmin ? '/admin/dashboard' : '/');
+      setTimeout(() => window.dispatchEvent(new CustomEvent('kalm:start-tour')), 400);
+    } else {
+      window.dispatchEvent(new CustomEvent('kalm:start-tour'));
+    }
+  }, [isAdmin, navigate, location.pathname]);
 
   // ── Render helpers ───────────────────────────────────
   const NavButton = ({ id, icon: Icon, label, onClick, badge }: {
@@ -299,7 +314,44 @@ export function StudentSidebar() {
         <NavButton id="settings" icon={Settings} label="Settings" onClick={() => goTo('/student-settings')} />
 
         {/* Guide (merged Tour + Guide) */}
-        <NavButton id="how-to-use" icon={BookOpenCheck} label="Guide" onClick={handleGuide} />
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              data-tour="how-to-use"
+              className={cn(
+                'relative flex items-center gap-3 w-full rounded-lg transition-all duration-200 group',
+                collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5',
+                'hover:bg-white/[0.06] text-muted-foreground',
+              )}
+              aria-label="Guide"
+            >
+              <BookOpenCheck className="h-[18px] w-[18px] shrink-0" />
+              {!collapsed && <span className="text-sm truncate">Guide</span>}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent side="right" align="end" className="w-56 p-1">
+            <button
+              onClick={handleStartTour}
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-white/[0.06] transition-colors text-left"
+            >
+              <BookOpenCheck className="h-4 w-4 text-primary" />
+              <div className="flex flex-col">
+                <span>Take a tour</span>
+                <span className="text-[10px] text-muted-foreground">Spotlight walkthrough</span>
+              </div>
+            </button>
+            <button
+              onClick={handleGuide}
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-md text-sm text-foreground hover:bg-white/[0.06] transition-colors text-left"
+            >
+              <HelpCircle className="h-4 w-4 text-primary" />
+              <div className="flex flex-col">
+                <span>How to use KALM</span>
+                <span className="text-[10px] text-muted-foreground">Open the full guide</span>
+              </div>
+            </button>
+          </PopoverContent>
+        </Popover>
 
         {/* Credit watermark */}
         <AppCredits collapsed={collapsed} />

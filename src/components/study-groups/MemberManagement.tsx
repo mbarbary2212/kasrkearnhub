@@ -83,11 +83,8 @@ export function MemberManagement({
                   </Avatar>
                   <div>
                     <p className="font-medium text-sm">
-                      {request.profile?.full_name || request.profile?.email || 'Unknown'}
+                      {request.profile?.full_name || 'Unknown'}
                     </p>
-                    {request.profile?.email && request.profile?.full_name && (
-                      <p className="text-xs text-muted-foreground">{request.profile.email}</p>
-                    )}
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -143,15 +140,12 @@ export function MemberManagement({
                   </Avatar>
                   <div>
                     <p className="font-medium text-sm flex items-center gap-1.5">
-                      {member.profile?.full_name || member.profile?.email || 'Unknown'}
+                      {member.profile?.full_name || 'Unknown'}
                       {getRoleIcon(member.role)}
                       {isMe && (
                         <Badge variant="outline" className="text-xs py-0">You</Badge>
                       )}
                     </p>
-                    {member.profile?.email && member.profile?.full_name && (
-                      <p className="text-xs text-muted-foreground">{member.profile.email}</p>
-                    )}
                   </div>
                 </div>
 

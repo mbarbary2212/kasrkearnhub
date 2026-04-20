@@ -5305,6 +5305,27 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          bucket_minute: string
+          call_count: number
+          endpoint: string
+          user_id: string
+        }
+        Insert: {
+          bucket_minute: string
+          call_count?: number
+          endpoint: string
+          user_id: string
+        }
+        Update: {
+          bucket_minute?: string
+          call_count?: number
+          endpoint?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       resources: {
         Row: {
           audio_storage_path: string | null
@@ -7828,6 +7849,14 @@ export type Database = {
           full_name: string
         }[]
       }
+      get_thread_authors: {
+        Args: { thread_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       get_user_analytics: {
         Args: { _user_id: string }
         Returns: {
@@ -7950,6 +7979,14 @@ export type Database = {
             }
             Returns: Json
           }
+      search_invitable_users: {
+        Args: { group_id: string; search_term: string }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          id: string
+        }[]
+      }
       shares_module_admin: {
         Args: { _caller: string; _target: string }
         Returns: boolean

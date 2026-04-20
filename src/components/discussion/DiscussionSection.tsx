@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useModuleThreads, useChapterThreads, DiscussionThread } from "@/hooks/useDiscussions";
+import { useModuleThreads, useChapterThreads, useAllOpenThreads, DiscussionThread } from "@/hooks/useDiscussions";
 import { ThreadList } from "./ThreadList";
 import { ThreadView } from "./ThreadView";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +14,20 @@ export function DiscussionSection({ moduleId, chapterId }: DiscussionSectionProp
   
   const moduleThreads = useModuleThreads(chapterId ? undefined : moduleId);
   const chapterThreads = useChapterThreads(chapterId);
-  
-  const threads = chapterId ? chapterThreads.data : moduleThreads.data;
-  const isLoading = chapterId ? chapterThreads.isLoading : moduleThreads.isLoading;
+  const openThreads = useAllOpenThreads();
+
+  const isOpenDiscussion = !moduleId && !chapterId;
+
+  const threads = isOpenDiscussion
+    ? openThreads.data
+    : chapterId
+      ? chapterThreads.data
+      : moduleThreads.data;
+  const isLoading = isOpenDiscussion
+    ? openThreads.isLoading
+    : chapterId
+      ? chapterThreads.isLoading
+      : moduleThreads.isLoading;
   
   const selectedThread = threads?.find(t => t.id === selectedThreadId);
 
@@ -35,6 +46,7 @@ export function DiscussionSection({ moduleId, chapterId }: DiscussionSectionProp
       isLoading={isLoading}
       moduleId={moduleId}
       chapterId={chapterId}
+      isOpenDiscussion={isOpenDiscussion}
       onSelectThread={setSelectedThreadId}
       selectedThreadId={selectedThreadId || undefined}
     />

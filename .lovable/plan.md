@@ -1,51 +1,68 @@
 
 
-## Rebranding plan — text-only, surgical edits
+## Fix Coach AI awareness + restore Tour entry points
 
-### Files to modify (5 total)
+Two distinct issues. Each gets its own scoped change. Nothing else touched.
 
-**1. `src/components/SplashScreen.tsx`** — the actual public-facing landing/hero shown at `/auth` and on first load. Two layouts (desktop + mobile) each contain the heading + subtitle.
+### Issue 1 — Coach AI doesn't know how the app is laid out
 
-- Line 87 (desktop heading): `Kasr Al-Ainy Learning & Mentorship Hub` → `Knowledge, Assessment, Learning & Mentorship — For Medical Students`
-- Line 90 (desktop subtitle): `An academic digital platform supporting medical students at Kasr Al-Ainy.` → `The all-in-one learning hub for medical students.`
-- Line 145 (mobile heading): same replacement as line 87
-- Line 148 (mobile subtitle, slight variant): `An academic platform for medical students at Kasr Al-Ainy.` → `The all-in-one learning hub for medical students.`
+**What you'll see after shipping:** When a student asks "where are the MCQs?", "how do I do flashcards?", "where's my study plan?", the coach answers with the actual navigation path in KALM Hub (e.g., *"Open any chapter → Practice tab → MCQs"*). When asked an academic question with no chapter context, it still works the same as today.
 
-Mobile heading currently uses `text-xs` in a narrow `w-32` box — the new longer heading will wrap. I'll widen the mobile heading container (e.g. `w-32` → `w-48` or `max-w-[60%]`) and remove `truncate`/single-line constraints so it wraps gracefully without shrinking the font. Desktop already uses `max-w-xs` which wraps fine.
+**Root cause:** `supabase/functions/coach-chat/index.ts` system prompt has zero knowledge of the app's structure — it's purely a medical tutor. So app-navigation questions get vague or refused answers.
 
-**2. `index.html`** — `<title>`, `<meta name="description">`, `<meta property="og:title">`, `<meta property="og:description">` (Change 3 — generic acronym expansion form).
+**Fix (one file):** `supabase/functions/coach-chat/index.ts`
 
-- Title: `KALM Hub – Kasr Al-Ainy Learning & Mentorship Platform` → `KALM Hub – Knowledge, Assessment, Learning & Mentorship Platform`
-- Description: rewrite to drop "developed at Kasr Al-Ainy" → "...digital learning and mentorship platform supporting medical students and trainees through structured education, formative assessment, and guided learning."
-- og:title: same as `<title>`
-- og:description: drop "at Kasr Al-Ainy" → "Digital learning and mentorship platform supporting medical students through structured education and formative assessment."
+Add an `[APP NAVIGATION KNOWLEDGE]` section to `SYSTEM_PROMPT` describing the canonical routes and where each activity type lives. Concise — under ~25 lines so it doesn't bloat token usage. Content based on the actual app:
 
-**3. `vite.config.ts`** — PWA manifest description (line 29).
+- Dashboard `/` — Today's Plan, Continue, Daily reviews
+- Coach `/progress` — Goals, Plan, Progress tabs
+- Learning: Module → Chapter → Topic. Inside a chapter: tabs **Resources** (lectures, PDFs, mind maps, infographics, videos), **Interactive** (clinical cases, structured cases, virtual patient), **Practice** (MCQs, OSCE, matching, short questions, case scenarios), **Test Yourself** (chapter exam)
+- Connect: Messages, Ask a Question, Feedback, Discussions `/connect/discussions`, Study Groups `/connect/groups`
+- Formative `/formative` — formative assessments
+- Settings `/student-settings` — Appearance, Content, Account
+- Daily reviews = flashcards (Classic / Cloze / Combined, FSRS-scheduled)
 
-- `Kasr Al-Ainy Learning & Mentorship Platform for medical students` → `Knowledge, Assessment, Learning & Mentorship Platform for medical students`
+Add one rule to the prompt: *"If the student asks where to find an app feature, give them the navigation path in plain language. Do not invent routes that aren't listed above."*
 
-**4. `supabase/functions/provision-user/index.ts`** — email template footers (lines 401, 726, 741).
+No other system-prompt logic changes. The grounding/PDF/RAG behavior stays identical.
 
-- All three: `KALM Hub — Kasr Al-Ainy Learning & Mentorship Hub` → `KALM Hub — Knowledge, Assessment, Learning & Mentorship Hub`
+### Issue 2 — Tour disappeared from sidebar/Settings; Guide is too basic
 
-### Files explicitly NOT touched (flagged for manual review)
+**What you'll see after shipping:**
+- Sidebar **Guide** button opens a small popover with **two** choices: *"Take a tour"* (driver.js spotlight) and *"How to use KALM"* (the existing WorkflowGuide). Today it only opens the basic WorkflowGuide.
+- A new **Help & Tour** card appears in `/student-settings` → **Account** tab with two buttons: *"Replay tour"* and *"Open how-to guide"*. Today the tour replay button only lives on the legacy `/account` page, which the sidebar no longer links to.
+- Mobile bottom nav "Take a Tour" item now actually starts the tour (currently dispatches `kalm:start-tour` but **nothing listens** for it — silently broken).
 
-- **`supabase/functions/coach-chat/index.ts`** line 13 — AI system prompt: `"You are the Kasr Aliny Study Coach... for Cairo University medical students"`. This is an AI persona identity, not the KALM acronym phrase. **Flagging — will not change** unless you confirm.
-- **`security-report.html`** — internal/historical "KasrLearnHub" references in a confidential security report. Not user-facing app copy.
-- **`src/components/module/ModuleLearningTab.tsx`** lines 584, 652 — `kasrlearn_book_*` / `kasrlearn_sort_*` are localStorage **code identifiers** (keys). Per your "do not change identifiers" rule, leaving alone.
-- **`supabase/functions/send-admin-email/index.ts`** line 144 — `kasrkearnhub.lovable.app` is a deployment URL fallback. Per "do not change URLs/routes", leaving alone.
-- **`supabase/migrations/*.sql`** — historical migrations and any rows containing `@kasralainy.edu.eg` admin emails. Per "do not change Supabase config / seed data", leaving alone.
-- **`README.md`** — no `Kasr` matches found. No change needed.
+**Root cause:** `kalm:start-tour` is dispatched in `MobileBottomNav.tsx` but no component subscribes to it. The sidebar Guide handler only fires `kalm:open-workflow` — no tour option. The tour replay UI is orphaned on `/account` (route exists but isn't linked from the new sidebar).
 
-### Confirmations the implementation will satisfy
+**Files changed (3 files, no migrations, no DB):**
 
-- "KALM Hub" brand name preserved in every location (verified in all 4 changed files)
-- Hero watercolor `<picture>`/`<img>` references in `SplashScreen.tsx` (lines 118-127 and the corresponding desktop block) untouched — only the text `<p>` siblings change
-- No code identifiers, file names, env vars, RLS policies, table/column names, or routes touched
-- `kasralainy.edu.eg` test/admin emails in migrations untouched
-- No new dependencies, no logic changes, no styling beyond the minimal mobile heading container width fix needed for graceful wrapping
+| File | Change |
+|---|---|
+| `src/components/layout/StudentSidebar.tsx` | Wrap the Guide `NavButton` in a `Popover` with two items: *Take a tour* (dispatch `kalm:start-tour` with role) and *How to use KALM* (dispatch `kalm:open-workflow`). Keep collapsed-mode tooltip behavior. |
+| `src/pages/Home.tsx` and `src/pages/AdminDashboard.tsx` | Add a `useEffect` listener for `window.addEventListener('kalm:start-tour')` that calls the existing `startTour()` from `useTour(...)`. If user is on a different page when the event fires, navigate home first then start (mirrors AccountPage's `handleReplayTutorial` pattern). |
+| `src/components/settings/AccountTab.tsx` | Add a small "Help & Tour" card (matching existing Card styling) with two buttons: *Replay tour* (navigates `/` then dispatches `kalm:start-tour`) and *Open how-to guide* (dispatches `kalm:open-workflow`). |
 
-### Report format after implementation
+No new components. No changes to `useTour.ts`, `studentTourSteps.ts`, `WorkflowGuide.tsx`, or `FirstLoginModal.tsx`. The legacy `/account` page is left intact — not deleted.
 
-Per your request, I'll return: full file paths, before→after diff for each line, the four explicit confirmations, and the manual-review flag list above.
+### Out of scope (intentionally)
+
+- The "Something went wrong" screenshot on the `/module/.../chapter/...` route. I see no runtime error in the logs and no edge-function errors. That looks like a separate chapter-page crash, not the coach panel itself (the coach panel renders fine in screenshot 1). If you still see it after PR3 lands, send a fresh repro and I'll investigate as a focused PR — out of scope here to avoid scope creep.
+- No changes to `med-tutor-chat` (legacy, unused by the coach icon).
+- No prompt tuning beyond the navigation knowledge block.
+- No changes to tour step targets or driver.js styling.
+
+### Acceptance tests
+
+**Coach awareness:**
+1. Open coach icon from a chapter page → ask *"where are the MCQs?"* → answer mentions Practice tab inside the chapter.
+2. Ask *"where do I find my study plan?"* → mentions Coach `/progress` → Plan tab.
+3. Ask a normal medical question (e.g., *"stages of wound healing"*) → still answered as before, grounded in chapter PDF when on a chapter page.
+
+**Tour + Guide:**
+4. Click sidebar **Guide** → popover shows two options.
+5. Click *Take a tour* → driver.js tour starts on the dashboard; navigates home first if needed.
+6. Click *How to use KALM* → existing WorkflowGuide modal opens.
+7. Open `/student-settings` → Account tab → click *Replay tour* → tour starts (after navigating home if needed).
+8. Mobile bottom nav → More → *Take a Tour* → tour now starts (was silently broken).
 
