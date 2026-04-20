@@ -97,7 +97,12 @@ export function AskCoachPanel() {
     const authToken = session?.access_token;
     
     if (!authToken) {
-      throw new Error('You must be logged in to use the Study Coach');
+      setError({
+        code: 'AUTH_REQUIRED',
+        title: 'Sign in required',
+        message: 'Please sign in to use the Study Coach.',
+      });
+      return;
     }
 
     // Build soft context — works even without a chapter/topic
@@ -142,7 +147,7 @@ export function AskCoachPanel() {
       }
 
       // Check for structured error codes (with or without 4xx/5xx)
-      const knownCodes: CoachErrorCode[] = ['COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'];
+      const knownCodes: CoachErrorCode[] = ['AUTH_REQUIRED', 'COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'];
       if (data?.code && knownCodes.includes(data.code)) {
         setError({
           code: data.code as CoachErrorCode,
