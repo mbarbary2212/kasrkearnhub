@@ -104,8 +104,9 @@ interface CoachSettings {
   enabled: boolean;
   dailyLimit: number;
   disabledMessage: string;
-  provider: 'gemini' | 'lovable';
+  provider: 'gemini' | 'lovable' | 'anthropic';
   model: string;
+  anthropicModel: string;
 }
 
 async function getCoachSettings(supabase: any): Promise<CoachSettings> {
@@ -120,6 +121,7 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
       'study_coach_model',
       'ai_provider',
       'gemini_model',
+      'anthropic_model',
       'lovable_model',
     ]);
 
@@ -129,6 +131,7 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
     disabledMessage: 'The study coach is currently disabled by the course administrators due to usage limits. Please use your course materials and send questions via Feedback & Inquiries.',
     provider: 'gemini',
     model: 'gemini-3.1-pro-preview',
+    anthropicModel: 'claude-sonnet-4-20250514',
   };
 
   if (error || !data) return defaults;
@@ -137,6 +140,7 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
   let featureModel: string | null = null;
   let globalProvider: string | null = null;
   let globalGeminiModel: string | null = null;
+  let globalAnthropicModel: string | null = null;
   let globalLovableModel: string | null = null;
 
   for (const row of data) {
@@ -166,6 +170,9 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
       case 'gemini_model':
         globalGeminiModel = value || null;
         break;
+      case 'anthropic_model':
+        globalAnthropicModel = value || null;
+        break;
       case 'lovable_model':
         globalLovableModel = value || null;
         break;
@@ -173,12 +180,15 @@ async function getCoachSettings(supabase: any): Promise<CoachSettings> {
   }
 
   const resolvedProvider = featureProvider ?? globalProvider ?? 'gemini';
-  defaults.provider = resolvedProvider === 'lovable' ? 'lovable' : 'gemini';
+  defaults.provider = resolvedProvider === 'lovable' ? 'lovable' : resolvedProvider === 'anthropic' ? 'anthropic' : 'gemini';
+  defaults.anthropicModel = globalAnthropicModel || defaults.anthropicModel;
 
   if (featureModel) {
     defaults.model = featureModel;
   } else if (defaults.provider === 'gemini' && globalGeminiModel) {
     defaults.model = globalGeminiModel;
+  } else if (defaults.provider === 'anthropic' && globalAnthropicModel) {
+    defaults.model = globalAnthropicModel;
   } else if (defaults.provider === 'lovable' && globalLovableModel) {
     defaults.model = globalLovableModel;
   }
@@ -286,6 +296,138 @@ function jsonError(code: string, title: string, message: string, status: number)
     }),
     { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   );
+}
+
+function createSseTextResponse(text: string) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(
+        encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n`)
+      );
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+  });
+}
+
+async function createAnthropicCoachResponse({
+  model,
+  fullSystemPrompt,
+  messages,
+  pdfData,
+  chapterId,
+  topicId,
+}: {
+  model: string;
+  fullSystemPrompt: string;
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  pdfData: { base64: string; title: string } | null;
+  chapterId?: string;
+  topicId?: string;
+}) {
+  const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!anthropicKey) {
+    return jsonError('CONFIG_ERROR', 'Configuration Error', 'AI service is not properly configured. Please contact support.', 500);
+  }
+
+  let injectedPdf = false;
+  const anthropicMessages = messages.map((message) => {
+    if (message.role === 'user' && pdfData && !injectedPdf) {
+      injectedPdf = true;
+      return {
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: {
+              type: 'base64',
+              media_type: 'application/pdf',
+              data: pdfData.base64,
+            },
+          },
+          {
+            type: 'text',
+            text: `The attached PDF "${pdfData.title}" is the chapter material. Use it as your primary source of truth.\n\n${message.content}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      role: message.role === 'assistant' ? 'assistant' : 'user',
+      content: message.content,
+    };
+  });
+
+  if (pdfData && !injectedPdf) {
+    anthropicMessages.unshift({
+      role: 'user',
+      content: [
+        {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: pdfData.base64,
+          },
+        },
+        {
+          type: 'text',
+          text: `The attached PDF "${pdfData.title}" is the chapter material. Use it as your primary source of truth.`,
+        },
+      ],
+    });
+  }
+
+  console.log(`[coach-chat] provider=anthropic model=${model} hasPdf=${!!pdfData} chapterId=${chapterId || 'none'} topicId=${topicId || 'none'}`);
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 4096,
+      system: fullSystemPrompt,
+      messages: anthropicMessages,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Anthropic API error:', response.status, errorText);
+    if (response.status === 429) {
+      return new Response(
+        JSON.stringify({ error: 'AI service is busy. Please try again in a moment.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    return new Response(
+      JSON.stringify({
+        error: 'AI service temporarily unavailable',
+        upstream_status: response.status,
+        upstream_detail: errorText.slice(0, 500),
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const result = await response.json();
+  const text = (result.content || [])
+    .filter((part: { type: string }) => part.type === 'text')
+    .map((part: { text: string }) => part.text)
+    .join('\n\n');
+
+  return createSseTextResponse(text);
 }
 
 serve(async (req) => {
@@ -434,9 +576,21 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (provider.name === 'gemini') {
       if (!GOOGLE_API_KEY) {
+        if (ANTHROPIC_API_KEY) {
+          console.warn('[coach-chat] GOOGLE_API_KEY missing, falling back to anthropic');
+          return await createAnthropicCoachResponse({
+            model: coachSettings.anthropicModel,
+            fullSystemPrompt,
+            messages,
+            pdfData,
+            chapterId,
+            topicId,
+          });
+        }
         return jsonError('CONFIG_ERROR', 'Configuration Error', 'AI service is not properly configured. Please contact support.', 500);
       }
 
@@ -484,6 +638,17 @@ serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Gemini API error:', response.status, errorText);
+        if (ANTHROPIC_API_KEY && response.status >= 400) {
+          console.warn(`[coach-chat] gemini failed (${response.status}), falling back to anthropic`);
+          return await createAnthropicCoachResponse({
+            model: coachSettings.anthropicModel,
+            fullSystemPrompt,
+            messages,
+            pdfData,
+            chapterId,
+            topicId,
+          });
+        }
         if (response.status === 429) {
           return new Response(
             JSON.stringify({ error: 'AI service is busy. Please try again in a moment.' }),
@@ -523,6 +688,16 @@ serve(async (req) => {
 
       return new Response(response.body?.pipeThrough(transformStream), {
         headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+      });
+
+    } else if (provider.name === 'anthropic') {
+      return await createAnthropicCoachResponse({
+        model: provider.model,
+        fullSystemPrompt,
+        messages,
+        pdfData,
+        chapterId,
+        topicId,
       });
 
     } else {
