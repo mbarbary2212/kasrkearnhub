@@ -44,6 +44,15 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('kalm:open-workflow', handler);
   }, []);
 
+  // Listen for tour start event (sidebar Guide popover, mobile nav)
+  useEffect(() => {
+    const handler = () => {
+      setTimeout(() => startTour(), 150);
+    };
+    window.addEventListener('kalm:start-tour', handler);
+    return () => window.removeEventListener('kalm:start-tour', handler);
+  }, [startTour]);
+
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';

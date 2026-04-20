@@ -185,6 +185,16 @@ function LoggedInHome() {
     return () => window.removeEventListener('kalm:open-workflow', handler);
   }, []);
 
+  // Listen for tour start event (sidebar Guide popover, Settings, mobile nav)
+  useEffect(() => {
+    const handler = () => {
+      // Small delay so the page has time to render tour targets if just navigated
+      setTimeout(() => startTour(), 150);
+    };
+    window.addEventListener('kalm:start-tour', handler);
+    return () => window.removeEventListener('kalm:start-tour', handler);
+  }, [startTour]);
+
   // Visit counter for context guide
   const [showHomeGuide] = useState(() => {
     const count = parseInt(localStorage.getItem('kalm_home_visit_count') || '0', 10);

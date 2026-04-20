@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Mail, KeyRound } from 'lucide-react';
+import { User, Mail, KeyRound, BookOpenCheck, Sparkles, PlayCircle } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export function AccountTab() {
   const { user, profile } = useAuthContext();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [resetCooldown, setResetCooldown] = useState(0);
 
   useEffect(() => {
@@ -25,6 +28,27 @@ export function AccountTab() {
       setResetCooldown(60);
     } catch {
       toast.error('Failed to send reset email');
+    }
+  };
+
+  const handleReplayTour = () => {
+    // Clear "seen" flag so the tour will run again
+    try { localStorage.removeItem('kalm_tour_student_done'); } catch {}
+    if (location.pathname !== '/') {
+      navigate('/');
+      // Wait for Home to mount and register its listener
+      setTimeout(() => window.dispatchEvent(new CustomEvent('kalm:start-tour')), 400);
+    } else {
+      window.dispatchEvent(new CustomEvent('kalm:start-tour'));
+    }
+  };
+
+  const handleOpenGuide = () => {
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => window.dispatchEvent(new CustomEvent('kalm:open-workflow')), 400);
+    } else {
+      window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
     }
   };
 
@@ -66,6 +90,26 @@ export function AccountTab() {
           >
             <Mail className="w-4 h-4 mr-2" />
             {resetCooldown > 0 ? `Sent — wait ${resetCooldown}s` : 'Send Password Reset Email'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4" />
+            Help & Tour
+          </CardTitle>
+          <CardDescription>Replay the guided tour or open the how-to guide</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={handleReplayTour}>
+            <PlayCircle className="w-4 h-4 mr-2" />
+            Replay tour
+          </Button>
+          <Button variant="outline" onClick={handleOpenGuide}>
+            <BookOpenCheck className="w-4 h-4 mr-2" />
+            Open how-to guide
           </Button>
         </CardContent>
       </Card>
