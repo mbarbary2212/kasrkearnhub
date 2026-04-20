@@ -606,7 +606,7 @@ serve(async (req) => {
       console.log(`[coach-chat] provider=gemini model=${coachSettings.model} hasPdf=${!!pdfData} chapterId=${chapterId || 'none'} topicId=${topicId || 'none'}`);
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${coachSettings.model}:streamGenerateContent?alt=sse`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${coachSettings.model}:generateContent`,
         {
           method: 'POST',
           headers: {
@@ -665,101 +665,37 @@ serve(async (req) => {
         );
       }
 
-      const decoder = new TextDecoder();
-      const encoder = new TextEncoder();
-      let sseBuffer = '';
-      let emittedAnyText = false;
-      let candidateCount = 0;
+      const result = await response.json();
+      const text = (result?.candidates || [])
+        .flatMap((candidate: { content?: { parts?: Array<{ text?: string }> } }) => candidate.content?.parts || [])
+        .map((part: { text?: string }) => part.text || '')
+        .join('')
+        .trim();
 
-      const transformStream = new TransformStream({
-        transform(chunk, controller) {
-          sseBuffer += decoder.decode(chunk, { stream: true });
+      if (!text) {
+        console.warn('[coach-chat] gemini returned empty text', {
+          model: coachSettings.model,
+          hasPdf: !!pdfData,
+          chapterId: chapterId || null,
+          topicId: topicId || null,
+        });
 
-          let newlineIndex: number;
-          while ((newlineIndex = sseBuffer.indexOf('\n')) !== -1) {
-            let line = sseBuffer.slice(0, newlineIndex);
-            sseBuffer = sseBuffer.slice(newlineIndex + 1);
+        if (ANTHROPIC_API_KEY) {
+          console.warn('[coach-chat] gemini returned empty text, falling back to anthropic');
+          return await createAnthropicCoachResponse({
+            model: coachSettings.anthropicModel,
+            fullSystemPrompt,
+            messages,
+            pdfData,
+            chapterId,
+            topicId,
+          });
+        }
 
-            if (line.endsWith('\r')) line = line.slice(0, -1);
-            if (!line.startsWith('data: ')) continue;
+        return createSseTextResponse('The coach didn\'t produce an answer. Please try again or rephrase your question.');
+      }
 
-            const payload = line.slice(6).trim();
-            if (!payload || payload === '[DONE]') continue;
-
-            try {
-              const data = JSON.parse(payload);
-              if (data.candidates?.length) candidateCount += data.candidates.length;
-              const parts = data.candidates?.[0]?.content?.parts || [];
-              const content = parts
-                .map((part: { text?: string }) => part.text || '')
-                .join('');
-
-              if (content) {
-                emittedAnyText = true;
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
-                );
-              }
-            } catch {
-              sseBuffer = `${line}\n${sseBuffer}`;
-              break;
-            }
-          }
-        },
-        flush(controller) {
-          const remainder = decoder.decode();
-          if (remainder) sseBuffer += remainder;
-
-          const finalLines = sseBuffer.split('\n');
-          for (let line of finalLines) {
-            if (line.endsWith('\r')) line = line.slice(0, -1);
-            if (!line.startsWith('data: ')) continue;
-
-            const payload = line.slice(6).trim();
-            if (!payload || payload === '[DONE]') continue;
-
-            try {
-              const data = JSON.parse(payload);
-              if (data.candidates?.length) candidateCount += data.candidates.length;
-              const parts = data.candidates?.[0]?.content?.parts || [];
-              const content = parts
-                .map((part: { text?: string }) => part.text || '')
-                .join('');
-
-              if (content) {
-                emittedAnyText = true;
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
-                );
-              }
-            } catch {
-              console.warn('[coach-chat] failed to parse final Gemini SSE chunk');
-            }
-          }
-
-          if (!emittedAnyText) {
-            console.warn('[coach-chat] gemini stream finished with zero text', {
-              model: coachSettings.model,
-              candidateCount,
-              hasPdf: !!pdfData,
-              chapterId: chapterId || null,
-              topicId: topicId || null,
-            });
-            const fallbackMsg = candidateCount === 0
-              ? 'The coach didn\'t receive any response from the AI provider. Please try again.'
-              : 'The coach response was filtered or empty. Try rephrasing your question.';
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fallbackMsg } }] })}\n\n`)
-            );
-          }
-
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        },
-      });
-
-      return new Response(response.body?.pipeThrough(transformStream), {
-        headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
-      });
+      return createSseTextResponse(text);
 
     } else if (provider.name === 'anthropic') {
       return await createAnthropicCoachResponse({
