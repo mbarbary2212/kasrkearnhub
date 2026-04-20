@@ -212,6 +212,7 @@ export function AskCoachPanel() {
     const decoder = new TextDecoder();
     let textBuffer = '';
     let assistantContent = '';
+    let receivedAssistantToken = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -235,6 +236,7 @@ export function AskCoachPanel() {
           const parsed = JSON.parse(jsonStr);
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) {
+            receivedAssistantToken = true;
             assistantContent += content;
             setMessages(prev => {
               const last = prev[prev.length - 1];
@@ -251,6 +253,16 @@ export function AskCoachPanel() {
           break;
         }
       }
+    }
+
+    // Detect silent empty stream — surface a clear error instead of leaving the user hanging.
+    if (!receivedAssistantToken) {
+      console.warn('[coach-chat] stream completed with zero assistant tokens');
+      setError({
+        code: 'COACH_DISABLED',
+        title: 'Coach returned an empty response',
+        message: 'The coach connected but didn\'t produce an answer. Please try again, or rephrase your question.',
+      });
     }
   }, [studyContext?.chapterId, studyContext?.topicId]);
 

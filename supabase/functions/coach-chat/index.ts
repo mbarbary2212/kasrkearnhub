@@ -668,6 +668,8 @@ serve(async (req) => {
       const decoder = new TextDecoder();
       const encoder = new TextEncoder();
       let sseBuffer = '';
+      let emittedAnyText = false;
+      let candidateCount = 0;
 
       const transformStream = new TransformStream({
         transform(chunk, controller) {
@@ -686,12 +688,14 @@ serve(async (req) => {
 
             try {
               const data = JSON.parse(payload);
+              if (data.candidates?.length) candidateCount += data.candidates.length;
               const parts = data.candidates?.[0]?.content?.parts || [];
               const content = parts
                 .map((part: { text?: string }) => part.text || '')
                 .join('');
 
               if (content) {
+                emittedAnyText = true;
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
                 );
@@ -716,12 +720,14 @@ serve(async (req) => {
 
             try {
               const data = JSON.parse(payload);
+              if (data.candidates?.length) candidateCount += data.candidates.length;
               const parts = data.candidates?.[0]?.content?.parts || [];
               const content = parts
                 .map((part: { text?: string }) => part.text || '')
                 .join('');
 
               if (content) {
+                emittedAnyText = true;
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
                 );
@@ -729,6 +735,22 @@ serve(async (req) => {
             } catch {
               console.warn('[coach-chat] failed to parse final Gemini SSE chunk');
             }
+          }
+
+          if (!emittedAnyText) {
+            console.warn('[coach-chat] gemini stream finished with zero text', {
+              model: coachSettings.model,
+              candidateCount,
+              hasPdf: !!pdfData,
+              chapterId: chapterId || null,
+              topicId: topicId || null,
+            });
+            const fallbackMsg = candidateCount === 0
+              ? 'The coach didn\'t receive any response from the AI provider. Please try again.'
+              : 'The coach response was filtered or empty. Try rephrasing your question.';
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: fallbackMsg } }] })}\n\n`)
+            );
           }
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
