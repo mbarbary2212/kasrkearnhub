@@ -285,8 +285,152 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
+      {/* Manage Models catalog (super admin only) */}
+      {isSuperAdmin && <ManageModelsPanel />}
+
       {/* Content Type Rules Section — only if showRules is true */}
       {showRules && <ContentRulesSection />}
+    </div>
+  );
+}
+
+// ============================================
+// Provider + Model card with catalog + Custom + Test
+// ============================================
+
+function ProviderModelCard({
+  provider,
+  label,
+  icon,
+  isActive,
+  modelValue,
+  isPendingSave,
+  onActivate,
+  onModelChange,
+  onSaveModel,
+  saveDisabled,
+}: {
+  provider: AIProvider;
+  label: string;
+  icon: React.ReactNode;
+  isActive: boolean;
+  modelValue: string;
+  isPendingSave: boolean;
+  onActivate: () => void;
+  onModelChange: (v: string) => void;
+  onSaveModel: () => void;
+  saveDisabled: boolean;
+}) {
+  const { data: catalog, isLoading } = useAIModelCatalog(provider, { activeOnly: true });
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const [testing, setTesting] = useState(false);
+
+  const models = catalog ?? [];
+  const matchesCatalog = models.some(m => m.model_id === modelValue);
+  const showingCustom = customMode || (!isLoading && !matchesCatalog && !!modelValue);
+  const selectValue = showingCustom ? CUSTOM_MODEL_VALUE : modelValue;
+
+  const handleSelect = (v: string) => {
+    if (v === CUSTOM_MODEL_VALUE) {
+      setCustomMode(true);
+      setCustomValue(matchesCatalog ? '' : modelValue);
+      return;
+    }
+    setCustomMode(false);
+    onModelChange(v);
+  };
+
+  const commitCustom = () => {
+    const trimmed = customValue.trim();
+    if (!trimmed) return;
+    onModelChange(trimmed);
+  };
+
+  const handleTest = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-ai-connection', {
+        body: { provider, model: modelValue },
+      });
+      if (error) {
+        toast.error(`Test failed: ${error.message}`);
+      } else if (data?.ok) {
+        toast.success(`✓ ${provider}/${modelValue} responded`);
+      } else {
+        toast.error(`Provider error: ${data?.error || 'unknown'}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Test failed: ${msg}`);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div
+      className={`space-y-2 p-3 border rounded-lg transition-colors ${
+        isActive
+          ? 'border-primary bg-primary/5'
+          : 'border-muted hover:border-primary/30 cursor-pointer'
+      }`}
+      onClick={() => !isActive && onActivate()}
+    >
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+          {label}
+        </span>
+        {isActive && <Check className="w-4 h-4 text-primary ml-auto" />}
+      </div>
+
+      <Select value={selectValue} onValueChange={handleSelect} disabled={!isActive}>
+        <SelectTrigger className={`w-full ${!isActive ? 'opacity-50' : ''}`}>
+          <SelectValue placeholder={isLoading ? 'Loading…' : 'Pick a model'} />
+        </SelectTrigger>
+        <SelectContent>
+          {models.map(m => (
+            <SelectItem key={m.model_id} value={m.model_id}>{m.label}</SelectItem>
+          ))}
+          {!matchesCatalog && !!modelValue && !customMode && (
+            <SelectItem value={modelValue}>{modelValue} (current)</SelectItem>
+          )}
+          <SelectItem value={CUSTOM_MODEL_VALUE}>✏️ Custom model ID…</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {showingCustom && isActive && (
+        <div className="flex gap-1.5">
+          <Input
+            value={customValue || (matchesCatalog ? '' : modelValue)}
+            onChange={(e) => setCustomValue(e.target.value)}
+            placeholder="paste exact model id"
+            className="h-8 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <Button size="sm" variant="outline" className="h-8" onClick={(e) => { e.stopPropagation(); commitCustom(); }}>
+            Use
+          </Button>
+        </div>
+      )}
+
+      {!isActive && <p className="text-xs text-muted-foreground">Click to switch</p>}
+
+      {isActive && (
+        <div className="flex gap-1.5">
+          {isPendingSave && (
+            <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); onSaveModel(); }} disabled={saveDisabled}>
+              <Save className="w-3 h-3 mr-1" /> Save
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className={isPendingSave ? '' : 'flex-1'} onClick={handleTest} disabled={testing || !modelValue}>
+            {testing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <PlugZap className="w-3 h-3 mr-1" />}
+            Test
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
