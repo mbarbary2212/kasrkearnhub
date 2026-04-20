@@ -1,87 +1,65 @@
 
 
-## Make AI model lists future-proof (no more code edits when providers release new models)
+## Coach silent failure — final root cause and the actual fix
 
-### How it works today
+### What I just verified end-to-end
 
-Model dropdowns in `AISettingsPanel.tsx` are hardcoded:
-- `LOVABLE_MODELS` (4 entries)
-- `GEMINI_MODELS` (5 entries)
-- `CLAUDE_MODELS` (only 2 — already outdated)
+| Check | Result |
+|---|---|
+| Gemini secret reachable from edge function | ✅ `test-ai-connection` with `provider=gemini, model=gemini-2.5-flash-lite` returned **200 ok** |
+| Anthropic secret reachable from edge function | ✅ key works, but **the saved model `claude-3-5-haiku-20241022` returns 404 `not_found_error`** |
+| `coach-chat` direct test | Returned 401 "Authentication Required" (expected — no signed-in user token in this curl), confirms function is alive and routing is correct |
+| `coach-chat` recent logs | Empty — function hasn't been invoked since the redeploy, so the previous "empty response" you saw was from the OLD code path |
+| Lovable secret store vs Supabase secret store | They're **separate**. Your screenshots prove `GOOGLE_API_KEY` and `ANTHROPIC_API_KEY` are in the Supabase store, which is what edge functions actually read. The Lovable secrets list does NOT show them, which is why I was misreading earlier. |
 
-When Anthropic ships Claude 4.5 or Google ships Gemini 2.6, **nothing in the app picks it up**. You need a code change. That's why your Claude list is stale.
+### So what's actually wrong
 
-Saved values are just strings, so once a model name is in the dropdown, the rest of the system handles it fine. The only friction is *getting the new name into the dropdown*.
+Two compounding issues, both data-only, no code change needed:
 
-### Recommended approach: hybrid — curated defaults + free-text override
+1. **`anthropic_model = claude-3-5-haiku-20241022`** is invalid at the Anthropic API. Confirmed with a live ping. Any time the Coach falls back to Anthropic (PDF too large, Gemini empty, etc.) it 404s. The admin "Test" button you saw fail is the same call.
+2. **There is nothing wrong with the Gemini path right now.** Live ping with the currently saved `gemini-2.5-flash-lite` returned `ok: true`. So a new coach call from the signed-in app **should** succeed. The empty-response screen you saw earlier was from before the redeploy that added the JSON `generateContent` path + Anthropic fallback.
 
-Pick this because it keeps the safe defaults (so admins don't accidentally type bad model names) but lets you adopt a new model **the same day it ships**, without waiting for a code release.
+### The fix (data-only, preview-first, no code changes)
 
-#### What changes
+Update `ai_settings`:
 
-**1. Move the model lists out of code, into the database**
-
-New table `ai_model_catalog`:
-
-| column | type | example |
+| key | new value | reason |
 |---|---|---|
-| `id` | uuid | — |
-| `provider` | text | `'anthropic'` |
-| `model_id` | text | `'claude-sonnet-4-5-20250929'` |
-| `label` | text | `'Claude Sonnet 4.5 (Latest)'` |
-| `is_default` | bool | false |
-| `is_active` | bool | true |
-| `sort_order` | int | 10 |
-| `notes` | text | `'Released Sept 2025, supports PDFs'` |
-| `created_at` | timestamptz | — |
+| `anthropic_model` | `claude-sonnet-4-5` | Replaces the 404'ing Haiku. Verified Anthropic naming. Used by every Gemini→Anthropic fallback path |
+| (leave) `ai_provider` | `gemini` | Already working per live test |
+| (leave) `gemini_model` | `gemini-2.5-flash-lite` | Already working per live test |
+| (leave) `lovable_model` | `google/gemini-3-flash-preview` | Unused unless we switch provider |
+| (leave) `study_coach_provider`, `study_coach_model` | absent | Per your guardrail — do not create |
 
-Seeded with the current curated lists for `lovable`, `gemini`, `anthropic`. Super-admin only RLS.
+Stored as plain JSON strings to match the existing rows.
 
-**2. Admin UI: replace hardcoded arrays with a query**
+### Verification (after the upsert)
 
-`AISettingsPanel.tsx` reads dropdown options from `ai_model_catalog` filtered by current provider. Adding a new model = inserting one row, no deploy needed.
+1. Re-run `test-ai-connection` for `provider=anthropic, model=claude-sonnet-4-5` → expect `{ok:true}`.
+2. Sign in to the preview app → open Coach → ask "What is aspirin used for?"
+3. Pull `coach-chat` logs and report the `[coach-chat] provider=gemini model=...` line plus whether streamed text rendered.
+4. If Gemini returns empty for any reason, the Anthropic fallback now has a valid model and will deliver an answer instead of silently failing.
 
-**3. Add a small "Manage Models" sub-panel** (super-admin only)
+### What I will NOT touch
 
-Inside the AI settings page. Lets you:
-- Add a new model: pick provider, paste model id (e.g. `claude-sonnet-4-5-20250929`), give it a label
-- Toggle a model active/inactive (so you can hide deprecated ones without deleting)
-- Reorder
-- Mark one as the recommended default per provider
-
-**4. Add a "Custom model" free-text option in the main dropdown**
-
-For ultra-fresh adoption: pick "Custom…" → paste model id → save. The string goes straight into `ai_settings.gemini_model` (or `anthropic_model`). Useful when you want to try a new model for one day before adding it to the catalog formally.
-
-**5. Optional but recommended: a "Test connection" button**
-
-Next to the model dropdown. Sends a 1-token "ping" to the configured provider+model and shows ✓ or the actual upstream error. Catches typos like `claude-sonnett-5` instantly instead of finding out later when the Coach silently fails.
-
-### What I will NOT do
-
-- **No auto-fetching from Anthropic/Google's `GET /models` endpoints.** Their feeds include embeddings, vision-only, deprecated, and fine-tuned variants — surfacing all of them in your admin dropdown would be noise and a footgun. Curation by you is more reliable. (We can revisit if you want it later.)
-- **No automatic model swap.** Even if Anthropic releases a new model, your saved selection stays put. You decide when to switch.
+- `coach-chat/index.ts` (no code change needed; the redeployed version already has the correct JSON path + fallback)
+- Auth, routing, env handling, deployment config
+- `study_coach_provider` / `study_coach_model` rows
+- Any production deploy step beyond what Lovable normally does on save
+- Lovable secret store (the secrets the function needs are already in the Supabase store, which is the correct one)
 
 ### Files affected
 
 | File | Change |
 |---|---|
-| New migration | Create `ai_model_catalog` table + RLS + seed rows from current hardcoded lists |
-| `src/components/admin/AISettingsPanel.tsx` | Remove hardcoded `LOVABLE_MODELS`/`GEMINI_MODELS`/`CLAUDE_MODELS`; read from new table; add "Custom…" option |
-| `src/components/admin/ManageModelsPanel.tsx` (new) | CRUD UI for catalog: add/edit/toggle/reorder rows |
-| `src/hooks/useAIModelCatalog.ts` (new) | Query + mutation hooks for the catalog |
-| `supabase/functions/test-ai-connection/index.ts` (new, optional) | One-shot ping using current provider+model, returns ✓ or upstream error |
+| `ai_settings` table | One UPSERT row: `anthropic_model = "claude-sonnet-4-5"` |
+| Everything else | Untouched |
 
 ### Acceptance criteria
 
-1. Open admin AI settings → see all current models in the dropdowns (matches today's behavior).
-2. Click "Manage Models" → add `claude-sonnet-4-5-20250929` with label `Claude Sonnet 4.5` → save.
-3. Refresh provider dropdown → new model appears immediately.
-4. Switch active model to it → save → reload → still selected.
-5. Pick "Custom…" → type any model id → save → it persists and is used by edge functions.
-6. (Optional) "Test connection" button reports success or shows the exact provider error.
-
-### One question before I build it
-
-Do you want the **"Test connection" ping button** included in this round, or skip it to keep the change minimal? It costs ~1 token per click and catches typos immediately, but it's ~30 minutes of extra work and a new edge function. My recommendation: include it.
+1. `SELECT value FROM ai_settings WHERE key='anthropic_model'` returns `"claude-sonnet-4-5"`.
+2. `test-ai-connection` for Anthropic with that model returns `{ok:true}`.
+3. A signed-in Coach question in the preview returns a non-empty streamed answer.
+4. `coach-chat` log line `[coach-chat] provider=gemini model=gemini-2.5-flash-lite` is present for that request.
+5. No code, auth, routing, or deployment files were modified.
 
