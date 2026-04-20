@@ -10,6 +10,7 @@ import {
   BookOpenCheck, ChevronDown, ChevronsLeft, ChevronsRight,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
 
@@ -134,6 +135,20 @@ export function StudentSidebar() {
   const handleGuide = useCallback(() => {
     window.dispatchEvent(new CustomEvent('kalm:open-workflow'));
   }, []);
+
+  const handleStartTour = useCallback(() => {
+    // Clear "seen" flag so it always replays from this entry point
+    try {
+      localStorage.removeItem(isAdmin ? 'kalm_tour_admin_done' : 'kalm_tour_student_done');
+    } catch {}
+    const onHome = location.pathname === '/' || location.pathname === '/admin/dashboard';
+    if (!onHome) {
+      navigate(isAdmin ? '/admin/dashboard' : '/');
+      setTimeout(() => window.dispatchEvent(new CustomEvent('kalm:start-tour')), 400);
+    } else {
+      window.dispatchEvent(new CustomEvent('kalm:start-tour'));
+    }
+  }, [isAdmin, navigate, location.pathname]);
 
   // ── Render helpers ───────────────────────────────────
   const NavButton = ({ id, icon: Icon, label, onClick, badge }: {
