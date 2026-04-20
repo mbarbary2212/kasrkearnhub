@@ -71,18 +71,25 @@ export function useUpdateAISetting() {
       // Cast value to Json type for Supabase
       const jsonValue = value as import('@/integrations/supabase/types').Json;
       
+      // Upsert by key so save works even when the row doesn't exist yet.
       const { data, error } = await supabase
         .from('ai_settings')
-        .update({ 
-          value: jsonValue, 
-          updated_by: user?.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('key', key)
+        .upsert(
+          {
+            key,
+            value: jsonValue,
+            updated_by: user?.id ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'key' }
+        )
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useUpdateAISetting] upsert failed', { key, error });
+        throw error;
+      }
       return data;
     },
     onSuccess: (_, { key }) => {
@@ -90,9 +97,10 @@ export function useUpdateAISetting() {
       queryClient.invalidateQueries({ queryKey: ['ai-settings', key] });
       toast.success('AI setting updated successfully');
     },
-    onError: (error) => {
-      console.error('Error updating AI setting:', error);
-      toast.error('Failed to update AI setting');
+    onError: (error: unknown, variables) => {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error updating AI setting:', { key: variables?.key, error });
+      toast.error(`Failed to save "${variables?.key}": ${msg}`);
     },
   });
 }

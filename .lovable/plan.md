@@ -1,68 +1,134 @@
 
+## Fix silent Coach replies + make AI model settings persist reliably
 
-## Fix Coach AI awareness + restore Tour entry points
+Two concrete problems are showing up, and they appear related to configuration robustness rather than UI layout.
 
-Two distinct issues. Each gets its own scoped change. Nothing else touched.
+### What’s actually happening
 
-### Issue 1 — Coach AI doesn't know how the app is laid out
+1. **Coach can finish without showing any answer**
+   - The current coach UI treats a completed SSE stream with zero parsed text tokens as a success.
+   - The edge function’s Gemini stream transformer only forwards `parts[].text`. If the provider returns a different chunk shape, partial chunks, or a non-text final event, the stream can complete with no assistant message and no error.
+   - Result: the user sees their question, then nothing.
 
-**What you'll see after shipping:** When a student asks "where are the MCQs?", "how do I do flashcards?", "where's my study plan?", the coach answers with the actual navigation path in KALM Hub (e.g., *"Open any chapter → Practice tab → MCQs"*). When asked an academic question with no chapter context, it still works the same as today.
+2. **Admin AI settings are not fully save-safe**
+   - The admin settings UI only does `update(...).eq('key', key)`.
+   - In the database, some expected keys are missing — most notably `anthropic_model`.
+   - That means any save attempt for a missing row will fail, even though the panel is built as if all provider rows always exist.
+   - Current DB state confirms `ai_provider` and `gemini_model` exist, but `anthropic_model` is absent.
 
-**Root cause:** `supabase/functions/coach-chat/index.ts` system prompt has zero knowledge of the app's structure — it's purely a medical tutor. So app-navigation questions get vague or refused answers.
+### Implementation plan
 
-**Fix (one file):** `supabase/functions/coach-chat/index.ts`
+#### 1) Harden the `ai_settings` data model
+Create a migration that normalizes the AI settings rows so the admin panel always has a complete baseline.
 
-Add an `[APP NAVIGATION KNOWLEDGE]` section to `SYSTEM_PROMPT` describing the canonical routes and where each activity type lives. Concise — under ~25 lines so it doesn't bloat token usage. Content based on the actual app:
+Add missing rows with safe defaults:
+- `anthropic_model = "claude-sonnet-4-20250514"`
+- confirm/seed `ai_provider`
+- confirm/seed `gemini_model`
+- confirm/seed `lovable_model`
 
-- Dashboard `/` — Today's Plan, Continue, Daily reviews
-- Coach `/progress` — Goals, Plan, Progress tabs
-- Learning: Module → Chapter → Topic. Inside a chapter: tabs **Resources** (lectures, PDFs, mind maps, infographics, videos), **Interactive** (clinical cases, structured cases, virtual patient), **Practice** (MCQs, OSCE, matching, short questions, case scenarios), **Test Yourself** (chapter exam)
-- Connect: Messages, Ask a Question, Feedback, Discussions `/connect/discussions`, Study Groups `/connect/groups`
-- Formative `/formative` — formative assessments
-- Settings `/student-settings` — Appearance, Content, Account
-- Daily reviews = flashcards (Classic / Cloze / Combined, FSRS-scheduled)
+If any of these already exist, keep them unchanged.
 
-Add one rule to the prompt: *"If the student asks where to find an app feature, give them the navigation path in plain language. Do not invent routes that aren't listed above."*
+This removes the “missing row” failure mode immediately.
 
-No other system-prompt logic changes. The grounding/PDF/RAG behavior stays identical.
+#### 2) Make AI settings saves resilient
+Update the settings mutation so it does not rely on rows already existing.
 
-### Issue 2 — Tour disappeared from sidebar/Settings; Guide is too basic
+Change `useUpdateAISetting` to:
+- attempt a keyed upsert instead of update-only, or
+- fall back to insert when update returns no row
 
-**What you'll see after shipping:**
-- Sidebar **Guide** button opens a small popover with **two** choices: *"Take a tour"* (driver.js spotlight) and *"How to use KALM"* (the existing WorkflowGuide). Today it only opens the basic WorkflowGuide.
-- A new **Help & Tour** card appears in `/student-settings` → **Account** tab with two buttons: *"Replay tour"* and *"Open how-to guide"*. Today the tour replay button only lives on the legacy `/account` page, which the sidebar no longer links to.
-- Mobile bottom nav "Take a Tour" item now actually starts the tour (currently dispatches `kalm:start-tour` but **nothing listens** for it — silently broken).
+Also improve the error surfaced to the UI so failures are specific:
+- “Couldn’t save provider”
+- “Couldn’t save model”
+- include the Supabase error message in console output for diagnosis
 
-**Root cause:** `kalm:start-tour` is dispatched in `MobileBottomNav.tsx` but no component subscribes to it. The sidebar Guide handler only fires `kalm:open-workflow` — no tour option. The tour replay UI is orphaned on `/account` (route exists but isn't linked from the new sidebar).
+This makes future settings additions safe too.
 
-**Files changed (3 files, no migrations, no DB):**
+#### 3) Prevent silent Coach completions on the frontend
+Update `AskCoachPanel.tsx` so the client can detect an empty successful stream.
 
-| File | Change |
-|---|---|
-| `src/components/layout/StudentSidebar.tsx` | Wrap the Guide `NavButton` in a `Popover` with two items: *Take a tour* (dispatch `kalm:start-tour` with role) and *How to use KALM* (dispatch `kalm:open-workflow`). Keep collapsed-mode tooltip behavior. |
-| `src/pages/Home.tsx` and `src/pages/AdminDashboard.tsx` | Add a `useEffect` listener for `window.addEventListener('kalm:start-tour')` that calls the existing `startTour()` from `useTour(...)`. If user is on a different page when the event fires, navigate home first then start (mirrors AccountPage's `handleReplayTutorial` pattern). |
-| `src/components/settings/AccountTab.tsx` | Add a small "Help & Tour" card (matching existing Card styling) with two buttons: *Replay tour* (navigates `/` then dispatches `kalm:start-tour`) and *Open how-to guide* (dispatches `kalm:open-workflow`). |
+Add:
+- a `receivedAssistantToken` flag while reading the stream
+- a final post-stream check:
+  - if stream ended with no tokens and no structured error, show a proper coach error state or toast
+  - do not silently leave only the user message in chat
 
-No new components. No changes to `useTour.ts`, `studentTourSteps.ts`, `WorkflowGuide.tsx`, or `FirstLoginModal.tsx`. The legacy `/account` page is left intact — not deleted.
+Also preserve the user message and surface a clear fallback such as:
+- “Coach returned an empty response. Please try again.”
+- or a provider-specific message if returned by the backend
 
-### Out of scope (intentionally)
+#### 4) Make `coach-chat` return explicit diagnostics for empty-output cases
+Update `supabase/functions/coach-chat/index.ts` so it never treats “no extracted text” as a successful answer.
 
-- The "Something went wrong" screenshot on the `/module/.../chapter/...` route. I see no runtime error in the logs and no edge-function errors. That looks like a separate chapter-page crash, not the coach panel itself (the coach panel renders fine in screenshot 1). If you still see it after PR3 lands, send a fresh repro and I'll investigate as a focused PR — out of scope here to avoid scope creep.
-- No changes to `med-tutor-chat` (legacy, unused by the coach icon).
-- No prompt tuning beyond the navigation knowledge block.
-- No changes to tour step targets or driver.js styling.
+For the Gemini path:
+- keep the SSE buffering logic
+- track whether any text was actually emitted downstream
+- if the upstream stream finishes with zero emitted tokens:
+  - return a structured JSON error instead of an empty SSE success
+  - include safe diagnostics such as:
+    - provider
+    - model
+    - whether PDF grounding was attached
+    - whether any candidates were received
+    - upstream status when applicable
 
-### Acceptance tests
+Also broaden chunk parsing so it handles:
+- partial SSE lines
+- empty/non-text parts
+- final flush cases
+- candidate shapes that don’t map cleanly to `parts[].text`
 
-**Coach awareness:**
-1. Open coach icon from a chapter page → ask *"where are the MCQs?"* → answer mentions Practice tab inside the chapter.
-2. Ask *"where do I find my study plan?"* → mentions Coach `/progress` → Plan tab.
-3. Ask a normal medical question (e.g., *"stages of wound healing"*) → still answered as before, grounded in chapter PDF when on a chapter page.
+#### 5) Add focused logging so this can be verified quickly
+Add lightweight logs in `coach-chat` for:
+- resolved provider + model
+- request mode (general vs chapter-grounded)
+- whether a PDF was attached
+- whether any assistant text was emitted
+- whether fallback to Anthropic happened
+- whether the request ended empty
 
-**Tour + Guide:**
-4. Click sidebar **Guide** → popover shows two options.
-5. Click *Take a tour* → driver.js tour starts on the dashboard; navigates home first if needed.
-6. Click *How to use KALM* → existing WorkflowGuide modal opens.
-7. Open `/student-settings` → Account tab → click *Replay tour* → tour starts (after navigating home if needed).
-8. Mobile bottom nav → More → *Take a Tour* → tour now starts (was silently broken).
+No secrets and no message content should be logged.
+
+#### 6) Verify the admin panel matches saved state after refresh
+After the save-path fix, the panel should:
+- save provider changes
+- save Gemini model changes
+- save Anthropic model changes
+- still show the persisted selection after reload/refetch
+
+If needed, slightly tighten the pending-change clearing logic so the UI only clears local pending state after a confirmed successful mutation.
+
+## Files likely affected
+
+- `src/hooks/useAISettings.ts`
+- `src/components/coach/AskCoachPanel.tsx`
+- `supabase/functions/coach-chat/index.ts`
+- new Supabase migration under `supabase/migrations/...`
+
+## Acceptance criteria
+
+### Coach
+1. Ask a generic question like “Where are the MCQs?”
+   - Either an answer appears, or a clear error appears.
+   - No more silent no-answer state.
+2. Ask a chapter-grounded question on a chapter page
+   - Response streams normally, or returns an explicit structured failure.
+3. Logs show provider/model and whether text was emitted.
+
+### Admin AI settings
+1. Change Gemini model and save.
+2. Change provider and save.
+3. Change Anthropic model and save.
+4. Refresh the page.
+5. All saved values persist and re-render correctly.
+
+## Technical notes
+
+- The current database already shows:
+  - `ai_provider = gemini`
+  - `gemini_model = gemini-2.5-flash-lite`
+  - no `anthropic_model` row
+- The current admin save code is update-only, which explains missing-row save failures.
+- The current coach client and edge function both allow an empty-success path, which explains “it doesn’t error, but it doesn’t answer.”
 

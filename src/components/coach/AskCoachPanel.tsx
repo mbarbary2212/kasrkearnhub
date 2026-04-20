@@ -97,7 +97,12 @@ export function AskCoachPanel() {
     const authToken = session?.access_token;
     
     if (!authToken) {
-      throw new Error('You must be logged in to use the Study Coach');
+      setError({
+        code: 'AUTH_REQUIRED',
+        title: 'Sign in required',
+        message: 'Please sign in to use the Study Coach.',
+      });
+      return;
     }
 
     // Build soft context — works even without a chapter/topic
@@ -142,7 +147,7 @@ export function AskCoachPanel() {
       }
 
       // Check for structured error codes (with or without 4xx/5xx)
-      const knownCodes: CoachErrorCode[] = ['COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'];
+      const knownCodes: CoachErrorCode[] = ['AUTH_REQUIRED', 'COACH_DISABLED', 'QUOTA_EXCEEDED', 'RAG_NO_RESULTS', 'INJECTION_DETECTED'];
       if (data?.code && knownCodes.includes(data.code)) {
         setError({
           code: data.code as CoachErrorCode,
@@ -207,6 +212,7 @@ export function AskCoachPanel() {
     const decoder = new TextDecoder();
     let textBuffer = '';
     let assistantContent = '';
+    let receivedAssistantToken = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -230,6 +236,7 @@ export function AskCoachPanel() {
           const parsed = JSON.parse(jsonStr);
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) {
+            receivedAssistantToken = true;
             assistantContent += content;
             setMessages(prev => {
               const last = prev[prev.length - 1];
@@ -246,6 +253,16 @@ export function AskCoachPanel() {
           break;
         }
       }
+    }
+
+    // Detect silent empty stream — surface a clear error instead of leaving the user hanging.
+    if (!receivedAssistantToken) {
+      console.warn('[coach-chat] stream completed with zero assistant tokens');
+      setError({
+        code: 'COACH_DISABLED',
+        title: 'Coach returned an empty response',
+        message: 'The coach connected but didn\'t produce an answer. Please try again, or rephrase your question.',
+      });
     }
   }, [studyContext?.chapterId, studyContext?.topicId]);
 

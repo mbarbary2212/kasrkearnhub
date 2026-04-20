@@ -1,8 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, MessageSquare, Clock, Search } from 'lucide-react';
+import { AlertCircle, LogIn, MessageSquare, Clock, Search } from 'lucide-react';
 
 export type CoachErrorCode = 
+  | 'AUTH_REQUIRED'
   | 'COACH_DISABLED' 
   | 'QUOTA_EXCEEDED' 
   | 'RAG_NO_RESULTS' 
@@ -16,6 +17,7 @@ interface CoachErrorStateProps {
 }
 
 const ERROR_CONFIG: Record<CoachErrorCode, { icon: typeof AlertCircle; color: string }> = {
+  AUTH_REQUIRED: { icon: LogIn, color: 'text-primary' },
   COACH_DISABLED: { icon: AlertCircle, color: 'text-amber-500' },
   QUOTA_EXCEEDED: { icon: Clock, color: 'text-blue-500' },
   RAG_NO_RESULTS: { icon: Search, color: 'text-muted-foreground' },
@@ -32,6 +34,11 @@ export function CoachErrorState({ code, title, message, onClose }: CoachErrorSta
     navigate('/feedback');
   };
 
+  const handleOpenAuth = () => {
+    onClose();
+    navigate('/auth');
+  };
+
   return (
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="text-center space-y-4 max-w-sm">
@@ -43,10 +50,17 @@ export function CoachErrorState({ code, title, message, onClose }: CoachErrorSta
         <p className="text-sm text-muted-foreground">{message}</p>
 
         <div className="flex flex-col gap-2 pt-2">
-          <Button onClick={handleOpenFeedback} className="w-full">
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Open Feedback & Inquiries
-          </Button>
+          {code === 'AUTH_REQUIRED' ? (
+            <Button onClick={handleOpenAuth} className="w-full">
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign in to use Study Coach
+            </Button>
+          ) : (
+            <Button onClick={handleOpenFeedback} className="w-full">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Open Feedback & Inquiries
+            </Button>
+          )}
           
           {code === 'QUOTA_EXCEEDED' && (
             <Button variant="outline" onClick={onClose} className="w-full">
