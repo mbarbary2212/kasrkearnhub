@@ -92,9 +92,13 @@ export function GroupDetailView({ groupId, onBack }: GroupDetailViewProps) {
 
       {/* Stats */}
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
-        <span className="flex items-center gap-1">
+        <span
+          className={`flex items-center gap-1 ${
+            (group.member_count ?? 0) >= 10 ? 'text-amber-600 font-medium' : ''
+          }`}
+        >
           <Users className="h-4 w-4" />
-          {group.member_count} member{group.member_count !== 1 ? 's' : ''}
+          {group.member_count ?? 0} / 10 members
         </span>
         {pendingRequests && pendingRequests.length > 0 && isAdmin && (
           <Badge variant="outline" className="text-orange-600 border-orange-600">
