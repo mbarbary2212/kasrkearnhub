@@ -1,134 +1,87 @@
 
-## Fix silent Coach replies + make AI model settings persist reliably
 
-Two concrete problems are showing up, and they appear related to configuration robustness rather than UI layout.
+## Make AI model lists future-proof (no more code edits when providers release new models)
 
-### What’s actually happening
+### How it works today
 
-1. **Coach can finish without showing any answer**
-   - The current coach UI treats a completed SSE stream with zero parsed text tokens as a success.
-   - The edge function’s Gemini stream transformer only forwards `parts[].text`. If the provider returns a different chunk shape, partial chunks, or a non-text final event, the stream can complete with no assistant message and no error.
-   - Result: the user sees their question, then nothing.
+Model dropdowns in `AISettingsPanel.tsx` are hardcoded:
+- `LOVABLE_MODELS` (4 entries)
+- `GEMINI_MODELS` (5 entries)
+- `CLAUDE_MODELS` (only 2 — already outdated)
 
-2. **Admin AI settings are not fully save-safe**
-   - The admin settings UI only does `update(...).eq('key', key)`.
-   - In the database, some expected keys are missing — most notably `anthropic_model`.
-   - That means any save attempt for a missing row will fail, even though the panel is built as if all provider rows always exist.
-   - Current DB state confirms `ai_provider` and `gemini_model` exist, but `anthropic_model` is absent.
+When Anthropic ships Claude 4.5 or Google ships Gemini 2.6, **nothing in the app picks it up**. You need a code change. That's why your Claude list is stale.
 
-### Implementation plan
+Saved values are just strings, so once a model name is in the dropdown, the rest of the system handles it fine. The only friction is *getting the new name into the dropdown*.
 
-#### 1) Harden the `ai_settings` data model
-Create a migration that normalizes the AI settings rows so the admin panel always has a complete baseline.
+### Recommended approach: hybrid — curated defaults + free-text override
 
-Add missing rows with safe defaults:
-- `anthropic_model = "claude-sonnet-4-20250514"`
-- confirm/seed `ai_provider`
-- confirm/seed `gemini_model`
-- confirm/seed `lovable_model`
+Pick this because it keeps the safe defaults (so admins don't accidentally type bad model names) but lets you adopt a new model **the same day it ships**, without waiting for a code release.
 
-If any of these already exist, keep them unchanged.
+#### What changes
 
-This removes the “missing row” failure mode immediately.
+**1. Move the model lists out of code, into the database**
 
-#### 2) Make AI settings saves resilient
-Update the settings mutation so it does not rely on rows already existing.
+New table `ai_model_catalog`:
 
-Change `useUpdateAISetting` to:
-- attempt a keyed upsert instead of update-only, or
-- fall back to insert when update returns no row
+| column | type | example |
+|---|---|---|
+| `id` | uuid | — |
+| `provider` | text | `'anthropic'` |
+| `model_id` | text | `'claude-sonnet-4-5-20250929'` |
+| `label` | text | `'Claude Sonnet 4.5 (Latest)'` |
+| `is_default` | bool | false |
+| `is_active` | bool | true |
+| `sort_order` | int | 10 |
+| `notes` | text | `'Released Sept 2025, supports PDFs'` |
+| `created_at` | timestamptz | — |
 
-Also improve the error surfaced to the UI so failures are specific:
-- “Couldn’t save provider”
-- “Couldn’t save model”
-- include the Supabase error message in console output for diagnosis
+Seeded with the current curated lists for `lovable`, `gemini`, `anthropic`. Super-admin only RLS.
 
-This makes future settings additions safe too.
+**2. Admin UI: replace hardcoded arrays with a query**
 
-#### 3) Prevent silent Coach completions on the frontend
-Update `AskCoachPanel.tsx` so the client can detect an empty successful stream.
+`AISettingsPanel.tsx` reads dropdown options from `ai_model_catalog` filtered by current provider. Adding a new model = inserting one row, no deploy needed.
 
-Add:
-- a `receivedAssistantToken` flag while reading the stream
-- a final post-stream check:
-  - if stream ended with no tokens and no structured error, show a proper coach error state or toast
-  - do not silently leave only the user message in chat
+**3. Add a small "Manage Models" sub-panel** (super-admin only)
 
-Also preserve the user message and surface a clear fallback such as:
-- “Coach returned an empty response. Please try again.”
-- or a provider-specific message if returned by the backend
+Inside the AI settings page. Lets you:
+- Add a new model: pick provider, paste model id (e.g. `claude-sonnet-4-5-20250929`), give it a label
+- Toggle a model active/inactive (so you can hide deprecated ones without deleting)
+- Reorder
+- Mark one as the recommended default per provider
 
-#### 4) Make `coach-chat` return explicit diagnostics for empty-output cases
-Update `supabase/functions/coach-chat/index.ts` so it never treats “no extracted text” as a successful answer.
+**4. Add a "Custom model" free-text option in the main dropdown**
 
-For the Gemini path:
-- keep the SSE buffering logic
-- track whether any text was actually emitted downstream
-- if the upstream stream finishes with zero emitted tokens:
-  - return a structured JSON error instead of an empty SSE success
-  - include safe diagnostics such as:
-    - provider
-    - model
-    - whether PDF grounding was attached
-    - whether any candidates were received
-    - upstream status when applicable
+For ultra-fresh adoption: pick "Custom…" → paste model id → save. The string goes straight into `ai_settings.gemini_model` (or `anthropic_model`). Useful when you want to try a new model for one day before adding it to the catalog formally.
 
-Also broaden chunk parsing so it handles:
-- partial SSE lines
-- empty/non-text parts
-- final flush cases
-- candidate shapes that don’t map cleanly to `parts[].text`
+**5. Optional but recommended: a "Test connection" button**
 
-#### 5) Add focused logging so this can be verified quickly
-Add lightweight logs in `coach-chat` for:
-- resolved provider + model
-- request mode (general vs chapter-grounded)
-- whether a PDF was attached
-- whether any assistant text was emitted
-- whether fallback to Anthropic happened
-- whether the request ended empty
+Next to the model dropdown. Sends a 1-token "ping" to the configured provider+model and shows ✓ or the actual upstream error. Catches typos like `claude-sonnett-5` instantly instead of finding out later when the Coach silently fails.
 
-No secrets and no message content should be logged.
+### What I will NOT do
 
-#### 6) Verify the admin panel matches saved state after refresh
-After the save-path fix, the panel should:
-- save provider changes
-- save Gemini model changes
-- save Anthropic model changes
-- still show the persisted selection after reload/refetch
+- **No auto-fetching from Anthropic/Google's `GET /models` endpoints.** Their feeds include embeddings, vision-only, deprecated, and fine-tuned variants — surfacing all of them in your admin dropdown would be noise and a footgun. Curation by you is more reliable. (We can revisit if you want it later.)
+- **No automatic model swap.** Even if Anthropic releases a new model, your saved selection stays put. You decide when to switch.
 
-If needed, slightly tighten the pending-change clearing logic so the UI only clears local pending state after a confirmed successful mutation.
+### Files affected
 
-## Files likely affected
+| File | Change |
+|---|---|
+| New migration | Create `ai_model_catalog` table + RLS + seed rows from current hardcoded lists |
+| `src/components/admin/AISettingsPanel.tsx` | Remove hardcoded `LOVABLE_MODELS`/`GEMINI_MODELS`/`CLAUDE_MODELS`; read from new table; add "Custom…" option |
+| `src/components/admin/ManageModelsPanel.tsx` (new) | CRUD UI for catalog: add/edit/toggle/reorder rows |
+| `src/hooks/useAIModelCatalog.ts` (new) | Query + mutation hooks for the catalog |
+| `supabase/functions/test-ai-connection/index.ts` (new, optional) | One-shot ping using current provider+model, returns ✓ or upstream error |
 
-- `src/hooks/useAISettings.ts`
-- `src/components/coach/AskCoachPanel.tsx`
-- `supabase/functions/coach-chat/index.ts`
-- new Supabase migration under `supabase/migrations/...`
+### Acceptance criteria
 
-## Acceptance criteria
+1. Open admin AI settings → see all current models in the dropdowns (matches today's behavior).
+2. Click "Manage Models" → add `claude-sonnet-4-5-20250929` with label `Claude Sonnet 4.5` → save.
+3. Refresh provider dropdown → new model appears immediately.
+4. Switch active model to it → save → reload → still selected.
+5. Pick "Custom…" → type any model id → save → it persists and is used by edge functions.
+6. (Optional) "Test connection" button reports success or shows the exact provider error.
 
-### Coach
-1. Ask a generic question like “Where are the MCQs?”
-   - Either an answer appears, or a clear error appears.
-   - No more silent no-answer state.
-2. Ask a chapter-grounded question on a chapter page
-   - Response streams normally, or returns an explicit structured failure.
-3. Logs show provider/model and whether text was emitted.
+### One question before I build it
 
-### Admin AI settings
-1. Change Gemini model and save.
-2. Change provider and save.
-3. Change Anthropic model and save.
-4. Refresh the page.
-5. All saved values persist and re-render correctly.
-
-## Technical notes
-
-- The current database already shows:
-  - `ai_provider = gemini`
-  - `gemini_model = gemini-2.5-flash-lite`
-  - no `anthropic_model` row
-- The current admin save code is update-only, which explains missing-row save failures.
-- The current coach client and edge function both allow an empty-success path, which explains “it doesn’t error, but it doesn’t answer.”
+Do you want the **"Test connection" ping button** included in this round, or skip it to keep the change minimal? It costs ~1 token per click and catches typos immediately, but it's ~30 minutes of extra work and a new edge function. My recommendation: include it.
 
