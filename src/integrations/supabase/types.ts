@@ -7849,6 +7849,14 @@ export type Database = {
           full_name: string
         }[]
       }
+      get_thread_authors: {
+        Args: { thread_ids: string[] }
+        Returns: {
+          avatar_url: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       get_user_analytics: {
         Args: { _user_id: string }
         Returns: {
