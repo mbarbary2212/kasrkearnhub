@@ -15,6 +15,7 @@ export interface DiscussionThread {
   last_activity_at: string;
   created_at: string;
   author?: { full_name: string | null; avatar_url: string | null };
+  module?: { id: string; name: string; slug: string | null } | null;
 }
 
 export interface DiscussionMessage {
@@ -60,19 +61,24 @@ export function useModuleThreads(moduleId: string | undefined) {
         .order('last_activity_at', { ascending: false });
       
       if (error) throw error;
-      
-      // Fetch author profiles separately
-      const userIds = threads.map(t => t.created_by).filter(Boolean) as string[];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', userIds);
-      
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-      
+      if (!threads || threads.length === 0) return [] as DiscussionThread[];
+
+      // Fetch author info via secure RPC (only returns user_id, full_name, avatar_url)
+      const threadIds = threads.map(t => t.id);
+      const { data: authors, error: authorsError } = await supabase
+        .rpc('get_thread_authors', { thread_ids: threadIds });
+
+      if (authorsError) {
+        console.error('Failed to fetch thread authors:', authorsError);
+      }
+
+      const authorMap = new Map(
+        (authors || []).map((a: any) => [a.user_id, { full_name: a.full_name, avatar_url: a.avatar_url }])
+      );
+
       return threads.map(t => ({
         ...t,
-        author: t.created_by ? profileMap.get(t.created_by) : undefined,
+        author: t.created_by ? authorMap.get(t.created_by) : undefined,
       })) as DiscussionThread[];
     },
     enabled: !!moduleId,
@@ -94,22 +100,89 @@ export function useChapterThreads(chapterId: string | undefined) {
         .order('last_activity_at', { ascending: false });
       
       if (error) throw error;
-      
-      // Fetch author profiles separately
-      const userIds = threads.map(t => t.created_by).filter(Boolean) as string[];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .in('id', userIds);
-      
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-      
+      if (!threads || threads.length === 0) return [] as DiscussionThread[];
+
+      const threadIds = threads.map(t => t.id);
+      const { data: authors, error: authorsError } = await supabase
+        .rpc('get_thread_authors', { thread_ids: threadIds });
+
+      if (authorsError) {
+        console.error('Failed to fetch thread authors:', authorsError);
+      }
+
+      const authorMap = new Map(
+        (authors || []).map((a: any) => [a.user_id, { full_name: a.full_name, avatar_url: a.avatar_url }])
+      );
+
       return threads.map(t => ({
         ...t,
-        author: t.created_by ? profileMap.get(t.created_by) : undefined,
+        author: t.created_by ? authorMap.get(t.created_by) : undefined,
       })) as DiscussionThread[];
     },
     enabled: !!chapterId,
+  });
+}
+
+// Fetch ALL open (non-chapter-scoped) threads sitewide.
+// Includes module-scoped threads AND orphan threads (module_id IS NULL → "General").
+export function useAllOpenThreads() {
+  return useQuery({
+    queryKey: ['discussion-threads', 'all-open'],
+    queryFn: async () => {
+      const { data: threads, error } = await supabase
+        .from('discussion_threads')
+        .select('*, module:modules(id, name, slug)')
+        .is('chapter_id', null)
+        .order('is_pinned', { ascending: false })
+        .order('last_activity_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      if (!threads || threads.length === 0) return [] as DiscussionThread[];
+
+      const threadIds = threads.map(t => t.id);
+      const { data: authors, error: authorsError } = await supabase
+        .rpc('get_thread_authors', { thread_ids: threadIds });
+
+      if (authorsError) {
+        console.error('Failed to fetch thread authors:', authorsError);
+      }
+
+      const authorMap = new Map(
+        (authors || []).map((a: any) => [a.user_id, { full_name: a.full_name, avatar_url: a.avatar_url }])
+      );
+
+      return threads.map(t => ({
+        ...t,
+        author: t.created_by ? authorMap.get(t.created_by) : undefined,
+      })) as DiscussionThread[];
+    },
+  });
+}
+
+// Fetch all published modules (with year info) for the "Post to" dropdown.
+// Returns minimal fields only — no email, no sensitive data.
+export interface DropdownModule {
+  id: string;
+  name: string;
+  year_id: string;
+  year: { id: string; number: number; name: string | null; display_order: number | null } | null;
+}
+
+export function useAllModulesForDropdown() {
+  return useQuery({
+    queryKey: ['modules', 'for-discussion-dropdown'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('modules')
+        .select('id, name, year_id, year:years(id, number, name, display_order)')
+        .eq('is_published', true)
+        .order('name');
+
+      if (error) throw error;
+      return (data || []) as unknown as DropdownModule[];
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -14,6 +14,7 @@ interface ThreadListProps {
   isLoading: boolean;
   moduleId?: string;
   chapterId?: string;
+  isOpenDiscussion?: boolean;
   onSelectThread: (threadId: string) => void;
   selectedThreadId?: string;
 }
@@ -23,6 +24,7 @@ export function ThreadList({
   isLoading, 
   moduleId, 
   chapterId, 
+  isOpenDiscussion,
   onSelectThread,
   selectedThreadId 
 }: ThreadListProps) {
@@ -88,6 +90,14 @@ export function ThreadList({
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{thread.author?.full_name || 'Anonymous'}</span>
                       <span>•</span>
+                      {isOpenDiscussion && (
+                        <>
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                            {thread.module?.name ?? "General"}
+                          </Badge>
+                          <span>•</span>
+                        </>
+                      )}
                       <span>{thread.reply_count} {thread.reply_count === 1 ? 'reply' : 'replies'}</span>
                       <span>•</span>
                       <span>{formatDistanceToNow(new Date(thread.last_activity_at), { addSuffix: true })}</span>
@@ -105,6 +115,7 @@ export function ThreadList({
         onOpenChange={setShowCreateModal}
         moduleId={moduleId}
         chapterId={chapterId}
+        isOpenDiscussion={isOpenDiscussion}
         onSuccess={(threadId) => {
           setShowCreateModal(false);
           onSelectThread(threadId);
