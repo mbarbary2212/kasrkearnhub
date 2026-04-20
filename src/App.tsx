@@ -143,6 +143,8 @@ const App = () => {
             <BrowserRouter>
               <PresencePageTracker />
               <ScrollToTop />
+              <AskCoachPanel />
+              <ConnectModal />
               <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin mr-2" />Loading...</div>}>
               <Routes>
                 <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
