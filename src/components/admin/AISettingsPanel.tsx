@@ -226,49 +226,24 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
             <div className="grid gap-4 md:grid-cols-3">
               {AI_PROVIDERS.filter((p) => p.value !== 'lovable' || isSuperAdmin).map((p) => {
                 const isActive = provider === p.value;
-                const models = p.value === 'lovable' ? LOVABLE_MODELS : p.value === 'gemini' ? GEMINI_MODELS : CLAUDE_MODELS;
                 const modelKey = p.value === 'lovable' ? 'lovable_model' : p.value === 'gemini' ? 'gemini_model' : 'anthropic_model';
                 const modelValue = p.value === 'lovable' ? lovableModel : p.value === 'gemini' ? geminiModel : anthropicModel;
                 const icon = p.value === 'lovable' ? <Zap className="w-4 h-4" /> : p.value === 'anthropic' ? <Sparkles className="w-4 h-4" /> : <Cloud className="w-4 h-4" />;
 
                 return (
-                  <div
+                  <ProviderModelCard
                     key={p.value}
-                    className={`space-y-2 p-3 border rounded-lg transition-colors ${
-                      isActive
-                        ? 'border-primary bg-primary/5'
-                        : 'border-muted hover:border-primary/30 cursor-pointer'
-                    }`}
-                    onClick={() => !isActive && handleChange('ai_provider', p.value)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {icon}
-                      <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {p.label}
-                      </span>
-                      {isActive && <Check className="w-4 h-4 text-primary ml-auto" />}
-                    </div>
-                    <Select
-                      value={modelValue as string}
-                      onValueChange={(v) => handleChange(modelKey, v)}
-                      disabled={!isActive}
-                    >
-                      <SelectTrigger className={`w-full ${!isActive ? 'opacity-50' : ''}`}><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {models.map(m => (
-                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!isActive && (
-                      <p className="text-xs text-muted-foreground">Click to switch</p>
-                    )}
-                    {isActive && modelKey in pendingChanges && (
-                      <Button size="sm" variant="outline" className="w-full" onClick={(e) => { e.stopPropagation(); handleSave(modelKey); }} disabled={updateSetting.isPending}>
-                        <Save className="w-3 h-3 mr-1" /> Save Model
-                      </Button>
-                    )}
-                  </div>
+                    provider={p.value as AIProvider}
+                    label={p.label}
+                    icon={icon}
+                    isActive={isActive}
+                    modelValue={modelValue as string}
+                    isPendingSave={modelKey in pendingChanges}
+                    onActivate={() => handleChange('ai_provider', p.value)}
+                    onModelChange={(v) => handleChange(modelKey, v)}
+                    onSaveModel={() => handleSave(modelKey)}
+                    saveDisabled={updateSetting.isPending}
+                  />
                 );
               })}
             </div>
