@@ -13,9 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2
+  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2, Loader2, PlugZap
 } from 'lucide-react';
 
 // ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
@@ -25,6 +26,10 @@ import {
   useAIPlatformSettings, useUpdateAIPlatformSettings
 } from '@/hooks/useAIGovernance';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useAIModelCatalog, type AIProvider } from '@/hooks/useAIModelCatalog';
+import { ManageModelsPanel } from '@/components/admin/ManageModelsPanel';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const AI_PROVIDERS = [
   { value: 'lovable', label: 'Lovable AI Gateway', description: 'Uses Lovable credits' },
@@ -32,25 +37,7 @@ const AI_PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic Claude API', description: 'Uses your ANTHROPIC_API_KEY' },
 ];
 
-const LOVABLE_MODELS = [
-  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (Fast)' },
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini (OpenAI)' },
-];
-
-const GEMINI_MODELS = [
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Advanced)' },
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (Fast)' },
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
-];
-
-const CLAUDE_MODELS = [
-  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Balanced)' },
-  { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Fast)' },
-];
+const CUSTOM_MODEL_VALUE = '__custom__';
 
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQ Questions' },
@@ -239,49 +226,24 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
             <div className="grid gap-4 md:grid-cols-3">
               {AI_PROVIDERS.filter((p) => p.value !== 'lovable' || isSuperAdmin).map((p) => {
                 const isActive = provider === p.value;
-                const models = p.value === 'lovable' ? LOVABLE_MODELS : p.value === 'gemini' ? GEMINI_MODELS : CLAUDE_MODELS;
                 const modelKey = p.value === 'lovable' ? 'lovable_model' : p.value === 'gemini' ? 'gemini_model' : 'anthropic_model';
                 const modelValue = p.value === 'lovable' ? lovableModel : p.value === 'gemini' ? geminiModel : anthropicModel;
                 const icon = p.value === 'lovable' ? <Zap className="w-4 h-4" /> : p.value === 'anthropic' ? <Sparkles className="w-4 h-4" /> : <Cloud className="w-4 h-4" />;
 
                 return (
-                  <div
+                  <ProviderModelCard
                     key={p.value}
-                    className={`space-y-2 p-3 border rounded-lg transition-colors ${
-                      isActive
-                        ? 'border-primary bg-primary/5'
-                        : 'border-muted hover:border-primary/30 cursor-pointer'
-                    }`}
-                    onClick={() => !isActive && handleChange('ai_provider', p.value)}
-                  >
-                    <div className="flex items-center gap-2">
-                      {icon}
-                      <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {p.label}
-                      </span>
-                      {isActive && <Check className="w-4 h-4 text-primary ml-auto" />}
-                    </div>
-                    <Select
-                      value={modelValue as string}
-                      onValueChange={(v) => handleChange(modelKey, v)}
-                      disabled={!isActive}
-                    >
-                      <SelectTrigger className={`w-full ${!isActive ? 'opacity-50' : ''}`}><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {models.map(m => (
-                          <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {!isActive && (
-                      <p className="text-xs text-muted-foreground">Click to switch</p>
-                    )}
-                    {isActive && modelKey in pendingChanges && (
-                      <Button size="sm" variant="outline" className="w-full" onClick={(e) => { e.stopPropagation(); handleSave(modelKey); }} disabled={updateSetting.isPending}>
-                        <Save className="w-3 h-3 mr-1" /> Save Model
-                      </Button>
-                    )}
-                  </div>
+                    provider={p.value as AIProvider}
+                    label={p.label}
+                    icon={icon}
+                    isActive={isActive}
+                    modelValue={modelValue as string}
+                    isPendingSave={modelKey in pendingChanges}
+                    onActivate={() => handleChange('ai_provider', p.value)}
+                    onModelChange={(v) => handleChange(modelKey, v)}
+                    onSaveModel={() => handleSave(modelKey)}
+                    saveDisabled={updateSetting.isPending}
+                  />
                 );
               })}
             </div>
@@ -323,8 +285,152 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
+      {/* Manage Models catalog (super admin only) */}
+      {isSuperAdmin && <ManageModelsPanel />}
+
       {/* Content Type Rules Section — only if showRules is true */}
       {showRules && <ContentRulesSection />}
+    </div>
+  );
+}
+
+// ============================================
+// Provider + Model card with catalog + Custom + Test
+// ============================================
+
+function ProviderModelCard({
+  provider,
+  label,
+  icon,
+  isActive,
+  modelValue,
+  isPendingSave,
+  onActivate,
+  onModelChange,
+  onSaveModel,
+  saveDisabled,
+}: {
+  provider: AIProvider;
+  label: string;
+  icon: React.ReactNode;
+  isActive: boolean;
+  modelValue: string;
+  isPendingSave: boolean;
+  onActivate: () => void;
+  onModelChange: (v: string) => void;
+  onSaveModel: () => void;
+  saveDisabled: boolean;
+}) {
+  const { data: catalog, isLoading } = useAIModelCatalog(provider, { activeOnly: true });
+  const [customMode, setCustomMode] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+  const [testing, setTesting] = useState(false);
+
+  const models = catalog ?? [];
+  const matchesCatalog = models.some(m => m.model_id === modelValue);
+  const showingCustom = customMode || (!isLoading && !matchesCatalog && !!modelValue);
+  const selectValue = showingCustom ? CUSTOM_MODEL_VALUE : modelValue;
+
+  const handleSelect = (v: string) => {
+    if (v === CUSTOM_MODEL_VALUE) {
+      setCustomMode(true);
+      setCustomValue(matchesCatalog ? '' : modelValue);
+      return;
+    }
+    setCustomMode(false);
+    onModelChange(v);
+  };
+
+  const commitCustom = () => {
+    const trimmed = customValue.trim();
+    if (!trimmed) return;
+    onModelChange(trimmed);
+  };
+
+  const handleTest = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-ai-connection', {
+        body: { provider, model: modelValue },
+      });
+      if (error) {
+        toast.error(`Test failed: ${error.message}`);
+      } else if (data?.ok) {
+        toast.success(`✓ ${provider}/${modelValue} responded`);
+      } else {
+        toast.error(`Provider error: ${data?.error || 'unknown'}`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Test failed: ${msg}`);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <div
+      className={`space-y-2 p-3 border rounded-lg transition-colors ${
+        isActive
+          ? 'border-primary bg-primary/5'
+          : 'border-muted hover:border-primary/30 cursor-pointer'
+      }`}
+      onClick={() => !isActive && onActivate()}
+    >
+      <div className="flex items-center gap-2">
+        {icon}
+        <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+          {label}
+        </span>
+        {isActive && <Check className="w-4 h-4 text-primary ml-auto" />}
+      </div>
+
+      <Select value={selectValue} onValueChange={handleSelect} disabled={!isActive}>
+        <SelectTrigger className={`w-full ${!isActive ? 'opacity-50' : ''}`}>
+          <SelectValue placeholder={isLoading ? 'Loading…' : 'Pick a model'} />
+        </SelectTrigger>
+        <SelectContent>
+          {models.map(m => (
+            <SelectItem key={m.model_id} value={m.model_id}>{m.label}</SelectItem>
+          ))}
+          {!matchesCatalog && !!modelValue && !customMode && (
+            <SelectItem value={modelValue}>{modelValue} (current)</SelectItem>
+          )}
+          <SelectItem value={CUSTOM_MODEL_VALUE}>✏️ Custom model ID…</SelectItem>
+        </SelectContent>
+      </Select>
+
+      {showingCustom && isActive && (
+        <div className="flex gap-1.5">
+          <Input
+            value={customValue || (matchesCatalog ? '' : modelValue)}
+            onChange={(e) => setCustomValue(e.target.value)}
+            placeholder="paste exact model id"
+            className="h-8 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <Button size="sm" variant="outline" className="h-8" onClick={(e) => { e.stopPropagation(); commitCustom(); }}>
+            Use
+          </Button>
+        </div>
+      )}
+
+      {!isActive && <p className="text-xs text-muted-foreground">Click to switch</p>}
+
+      {isActive && (
+        <div className="flex gap-1.5">
+          {isPendingSave && (
+            <Button size="sm" variant="outline" className="flex-1" onClick={(e) => { e.stopPropagation(); onSaveModel(); }} disabled={saveDisabled}>
+              <Save className="w-3 h-3 mr-1" /> Save
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" className={isPendingSave ? '' : 'flex-1'} onClick={handleTest} disabled={testing || !modelValue}>
+            {testing ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <PlugZap className="w-3 h-3 mr-1" />}
+            Test
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -499,10 +605,11 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
   const { data: settings } = useAISettings();
   const updateSetting = useUpdateAISetting();
   const [isOpen, setIsOpen] = useState(false);
-  
+  const { data: catalog } = useAIModelCatalog(provider as AIProvider, { activeOnly: true });
+
   const overrides = getSettingValue<Record<string, string>>(settings, 'content_type_model_overrides', {});
-  
-  const models = provider === 'gemini' ? GEMINI_MODELS : provider === 'anthropic' ? CLAUDE_MODELS : LOVABLE_MODELS;
+
+  const models = (catalog ?? []).map(m => ({ value: m.model_id, label: m.label }));
 
   const handleModelChange = (contentType: string, model: string) => {
     const newOverrides = { ...overrides, [contentType]: model };
