@@ -616,6 +616,48 @@ export type Database = {
           },
         ]
       }
+      ai_model_catalog: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          label: string
+          model_id: string
+          notes: string | null
+          provider: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          label: string
+          model_id: string
+          notes?: string | null
+          provider: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          label?: string
+          model_id?: string
+          notes?: string | null
+          provider?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_platform_settings: {
         Row: {
           allow_admin_fallback_to_global_key: boolean
