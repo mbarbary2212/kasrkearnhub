@@ -665,24 +665,73 @@ serve(async (req) => {
         );
       }
 
+      const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
+      let sseBuffer = '';
+
       const transformStream = new TransformStream({
         transform(chunk, controller) {
-          const text = new TextDecoder().decode(chunk);
-          const lines = text.split('\n');
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (content) {
-                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`));
-                }
-              } catch { /* skip */ }
+          sseBuffer += decoder.decode(chunk, { stream: true });
+
+          let newlineIndex: number;
+          while ((newlineIndex = sseBuffer.indexOf('\n')) !== -1) {
+            let line = sseBuffer.slice(0, newlineIndex);
+            sseBuffer = sseBuffer.slice(newlineIndex + 1);
+
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (!line.startsWith('data: ')) continue;
+
+            const payload = line.slice(6).trim();
+            if (!payload || payload === '[DONE]') continue;
+
+            try {
+              const data = JSON.parse(payload);
+              const parts = data.candidates?.[0]?.content?.parts || [];
+              const content = parts
+                .map((part: { text?: string }) => part.text || '')
+                .join('');
+
+              if (content) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
+                );
+              }
+            } catch {
+              sseBuffer = `${line}\n${sseBuffer}`;
+              break;
             }
           }
         },
         flush(controller) {
-          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'));
+          const remainder = decoder.decode();
+          if (remainder) sseBuffer += remainder;
+
+          const finalLines = sseBuffer.split('\n');
+          for (let line of finalLines) {
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (!line.startsWith('data: ')) continue;
+
+            const payload = line.slice(6).trim();
+            if (!payload || payload === '[DONE]') continue;
+
+            try {
+              const data = JSON.parse(payload);
+              const parts = data.candidates?.[0]?.content?.parts || [];
+              const content = parts
+                .map((part: { text?: string }) => part.text || '')
+                .join('');
+
+              if (content) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`)
+                );
+              }
+            } catch {
+              console.warn('[coach-chat] failed to parse final Gemini SSE chunk');
+            }
+          }
+
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
         },
       });
 
