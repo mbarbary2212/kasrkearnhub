@@ -461,10 +461,11 @@ function ContentTypeModelSection({ provider }: { provider: string }) {
   const { data: settings } = useAISettings();
   const updateSetting = useUpdateAISetting();
   const [isOpen, setIsOpen] = useState(false);
-  
+  const { data: catalog } = useAIModelCatalog(provider as AIProvider, { activeOnly: true });
+
   const overrides = getSettingValue<Record<string, string>>(settings, 'content_type_model_overrides', {});
-  
-  const models = provider === 'gemini' ? GEMINI_MODELS : provider === 'anthropic' ? CLAUDE_MODELS : LOVABLE_MODELS;
+
+  const models = (catalog ?? []).map(m => ({ value: m.model_id, label: m.label }));
 
   const handleModelChange = (contentType: string, model: string) => {
     const newOverrides = { ...overrides, [contentType]: model };
