@@ -18,8 +18,8 @@ export default function DiscussionsPage() {
           <h1 className="text-xl font-semibold text-foreground">Open Discussions</h1>
         </div>
         <ContextGuide
-          title="Get help when needed"
-          description="Ask questions or contact your module lead if you're stuck."
+          title="How discussions work"
+          description="Start a discussion in any module — or pick General for cross-topic questions. Posts are visible to all students."
           storageKey="kalm_guide_connect_dismissed"
         />
         <DiscussionSection />
