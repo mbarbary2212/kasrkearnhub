@@ -449,6 +449,8 @@ serve(async (req) => {
         systemParts[1] = { text: fullSystemPrompt + `\n\n[CHAPTER CONTENT] The attached PDF "${pdfData.title}" is the chapter material. Use it as your primary source of truth.` };
       }
 
+      console.log(`[coach-chat] provider=gemini model=${coachSettings.model} hasPdf=${!!pdfData} chapterId=${chapterId || 'none'} topicId=${topicId || 'none'}`);
+
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${coachSettings.model}:streamGenerateContent?alt=sse`,
         {
@@ -489,7 +491,11 @@ serve(async (req) => {
           );
         }
         return new Response(
-          JSON.stringify({ error: 'AI service temporarily unavailable' }),
+          JSON.stringify({
+            error: 'AI service temporarily unavailable',
+            upstream_status: response.status,
+            upstream_detail: errorText.slice(0, 500),
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
