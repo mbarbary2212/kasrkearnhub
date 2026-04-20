@@ -30,7 +30,6 @@ export interface StudyGroupMember {
   created_at: string;
   profile?: {
     full_name: string | null;
-    email: string | null;
     avatar_url: string | null;
   };
 }
@@ -47,7 +46,6 @@ export interface StudyGroupInvite {
   group?: StudyGroup;
   inviter_profile?: {
     full_name: string | null;
-    email: string | null;
   };
 }
 
@@ -270,7 +268,7 @@ export function useGroupMembers(groupId: string | undefined) {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, avatar_url')
+        .select('id, full_name, avatar_url')
         .in('id', userIds);
 
       const profileMap = profiles?.reduce((acc, p) => {
@@ -311,7 +309,7 @@ export function usePendingJoinRequests(groupId: string | undefined) {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email, avatar_url')
+        .select('id, full_name, avatar_url')
         .in('id', userIds);
 
       const profileMap = profiles?.reduce((acc, p) => {
@@ -361,7 +359,7 @@ export function useMyInvites() {
       const inviterIds = invites.map(i => i.invited_by).filter(Boolean);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name, email')
+        .select('id, full_name')
         .in('id', inviterIds);
 
       const groupMap = groups?.reduce((acc, g) => {
@@ -761,40 +759,20 @@ export function useSearchUsersToInvite(searchTerm: string, groupId: string | und
     queryFn: async () => {
       if (!searchTerm || searchTerm.length < 2 || !groupId) return [];
 
-      // Get existing members and invites
-      const [{ data: members }, { data: invites }] = await Promise.all([
-        supabase
-          .from('study_group_members')
-          .select('user_id')
-          .eq('group_id', groupId),
-        supabase
-          .from('study_group_invites')
-          .select('invited_user_id')
-          .eq('group_id', groupId)
-          .eq('status', 'pending'),
-      ]);
-
-      const excludeIds = [
-        ...(members?.map(m => m.user_id) || []),
-        ...(invites?.map(i => i.invited_user_id) || []),
-      ];
-
-      let query = supabase
-        .from('profiles')
-        .select('id, full_name, email, avatar_url')
-        .or(`full_name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
-        .limit(10);
-
-      if (excludeIds.length > 0) {
-        query = query.not('id', 'in', `(${excludeIds.join(',')})`);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc('search_invitable_users', {
+        search_term: searchTerm,
+        group_id: groupId,
+      });
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as Array<{
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+      }>;
     },
     enabled: searchTerm.length >= 2 && !!groupId,
+    retry: false,
   });
 }
 
