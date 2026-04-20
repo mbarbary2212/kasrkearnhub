@@ -13,9 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Input } from '@/components/ui/input';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2
+  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2, Loader2, PlugZap
 } from 'lucide-react';
 
 // ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
@@ -25,6 +26,10 @@ import {
   useAIPlatformSettings, useUpdateAIPlatformSettings
 } from '@/hooks/useAIGovernance';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useAIModelCatalog, type AIProvider } from '@/hooks/useAIModelCatalog';
+import { ManageModelsPanel } from '@/components/admin/ManageModelsPanel';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const AI_PROVIDERS = [
   { value: 'lovable', label: 'Lovable AI Gateway', description: 'Uses Lovable credits' },
@@ -32,25 +37,7 @@ const AI_PROVIDERS = [
   { value: 'anthropic', label: 'Anthropic Claude API', description: 'Uses your ANTHROPIC_API_KEY' },
 ];
 
-const LOVABLE_MODELS = [
-  { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (Fast)' },
-  { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
-  { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
-  { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini (OpenAI)' },
-];
-
-const GEMINI_MODELS = [
-  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview (Advanced)' },
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (Fast)' },
-  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Balanced)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (High Quality)' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (Fastest)' },
-];
-
-const CLAUDE_MODELS = [
-  { value: 'claude-sonnet-4-20250514', label: 'Claude Sonnet 4 (Balanced)' },
-  { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Fast)' },
-];
+const CUSTOM_MODEL_VALUE = '__custom__';
 
 const CONTENT_TYPES = [
   { value: 'mcq', label: 'MCQ Questions' },
