@@ -43,9 +43,16 @@ async function streamGemini(
   controller: ReadableStreamDefaultController
 ) {
   const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
+  if (!apiKey) {
+      console.error('>>>> MISSING_API_KEY: Neither GOOGLE_API_KEY nor GEMINI_API_KEY found');
+      throw new Error('Server configuration error: Missing API Key');
+  }
+
   const modelId = 'gemini-3.1-flash-tts-preview';
   const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
   const prompt = stylePrompt ? `${stylePrompt}\n\n${inputText}` : inputText;
+
+  console.log(`>>>> GOOGLE_STREAM_START: mode=${voice}, textLen=${inputText.length}`);
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?key=${apiKey}`;
 
@@ -57,48 +64,93 @@ async function streamGemini(
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
-      }
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+      ]
     }),
   });
 
-  if (!response.ok) throw new Error(`Google API Stream Error: ${response.status} - ${await response.text()}`);
+  if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`>>>> GOOGLE_HTTP_ERROR: ${response.status} - ${errorText}`);
+      throw new Error(`Google API Stream Error: ${response.status}`);
+  }
 
   const reader = response.body?.getReader();
   if (!reader) throw new Error('No body in Google response');
 
   const decoder = new TextDecoder();
   let buffer = "";
+  let chunkCount = 0;
+  let audioFound = false;
 
   while (true) {
     const { done, value } = await reader.read();
-    if (done) break;
+    if (done) {
+        console.log(`>>>> GOOGLE_STREAM_DONE: totalChunks=${chunkCount}, audioFound=${audioFound}`);
+        break;
+    }
 
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() || "";
+    const text = decoder.decode(value, { stream: true });
+    buffer += text;
+    
+    // Process each character to find balanced JSON objects in the stream
+    // Google's stream is weird, sometimes it's [, {...}, {...}, ] 
+    // We try to find objects between { and }
+    let lastIndex = 0;
+    while (true) {
+        const start = buffer.indexOf('{', lastIndex);
+        if (start === -1) break;
+        
+        let depth = 0;
+        let end = -1;
+        for (let i = start; i < buffer.length; i++) {
+            if (buffer[i] === '{') depth++;
+            else if (buffer[i] === '}') {
+                depth--;
+                if (depth === 0) {
+                    end = i;
+                    break;
+                }
+            }
+        }
 
-    for (const line of lines) {
-        const cleaned = line.trim().replace(/^,/, '').replace(/^\[/, '').replace(/\]$/, '');
-        if (!cleaned) continue;
+        if (end === -1) break; // Incomplete object
 
+        const objStr = buffer.substring(start, end + 1);
         try {
-            const json = JSON.parse(cleaned);
+            const json = JSON.parse(objStr);
+            chunkCount++;
+            
             const base64Audio = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
             if (base64Audio) {
+                audioFound = true;
                 const raw = atob(base64Audio);
                 const bytes = new Uint8Array(raw.length);
                 for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
                 controller.enqueue(bytes);
+                if (chunkCount % 50 === 0) console.log(`>>>> AUDIO_CHUNK: count=${chunkCount}, bytes=${bytes.length}`);
+            } else {
+                // Log non-audio chunks for debugging (safety flags etc)
+                if (json?.promptFeedback || json?.candidates?.[0]?.finishReason) {
+                    console.log(`>>>> NON_AUDIO_CHUNK: ${JSON.stringify(json).substring(0, 500)}`);
+                }
             }
         } catch (e) {
-            buffer = line + buffer;
-            break;
+            console.error(`>>>> JSON_PARSE_ERROR in chunk: ${e.message}`);
         }
+        
+        lastIndex = end + 1;
     }
+    buffer = buffer.substring(lastIndex);
   }
 }
 
-serve(async (req) => {
+ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -114,12 +166,10 @@ serve(async (req) => {
 
       console.log(`>>>> RETRIEVAL_START: ${tokenId}`);
 
-      // RETRY LOOP: Database consistency insurance
       let tokenData = null;
       let lastError = null;
 
       for (let attempt = 1; attempt <= 3; attempt++) {
-        console.log(`>>>> ATTEMPT ${attempt} for token ${tokenId}`);
         const { data, error } = await svcClient
           .from('tts_tokens')
           .delete()
@@ -134,28 +184,24 @@ serve(async (req) => {
 
         lastError = error;
         if (attempt < 3) {
-            console.log(`>>>> RETRYING_IN_100MS: ${error?.message || 'Not found'}`);
             await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
       if (!tokenData) {
-          console.error(`>>>> FATAL_RETRIEVAL_FAILURE: ${lastError?.message || 'Row not found after retries'}`);
-          return new Response(`Invalid token: ${lastError?.message || 'Not found'}`, { 
-              status: 401, 
-              headers: corsHeaders 
-          });
+          console.error(`>>>> FATAL_RETRIEVAL_FAILURE: ${lastError?.message || 'Row not found'}`);
+          return new Response(`Invalid token`, { status: 401, headers: corsHeaders });
       }
 
-      console.log(`>>>> TOKEN_VALIDATED: Starting audio stream`);
-
       const { text, voiceName, stylePrompt } = tokenData.payload;
+      console.log(`>>>> TOKEN_VALIDATED: Starting Gemini stream for "${text.substring(0, 50)}..."`);
       
       const stream = new ReadableStream({
         async start(controller) {
           try {
             controller.enqueue(createWavHeader(0));
             await streamGemini(text, voiceName, stylePrompt, controller);
+            console.log('>>>> STREAM_COMPLETE_SUCCESSFULLY');
             controller.close();
           } catch (err) {
             console.error('>>>> STREAM_ERROR:', err);
@@ -168,7 +214,8 @@ serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'audio/wav',
-          'Cache-Control': 'no-cache'
+          'Cache-Control': 'no-cache',
+          'X-Content-Type-Options': 'nosniff'
         } 
       });
     }
