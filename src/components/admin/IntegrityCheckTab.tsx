@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ShieldAlert, FileText, Stethoscope, Layers, Video, ArrowLeftRight, ListChecks, Lightbulb, Network, HeartPulse, Activity, AlertTriangle, CheckCircle2, Copy, Download, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 interface IntegrityLocation {
   id: string;

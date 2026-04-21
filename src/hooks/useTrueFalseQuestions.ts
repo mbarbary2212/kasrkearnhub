@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/activityLog';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface TrueFalseQuestion {
   id: string;

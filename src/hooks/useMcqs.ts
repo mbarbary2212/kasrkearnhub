@@ -4,6 +4,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/activityLog';
 import type { Json } from '@/integrations/supabase/types';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface McqChoice {
   key: 'A' | 'B' | 'C' | 'D' | 'E';
