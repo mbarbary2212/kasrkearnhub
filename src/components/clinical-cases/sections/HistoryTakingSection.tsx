@@ -17,6 +17,9 @@ import { SUPABASE_URL as SUPABASE_URL_FALLBACK } from '@/lib/supabaseUrl';
 import { toast } from 'sonner';
 import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
+import { useAuth } from '@/hooks/useAuth';
+import { PerformanceMetrics, INITIAL_METRICS } from '@/utils/performanceTelemetry';
+import { PerformanceDebugConsole } from '../PerformanceDebugConsole';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   avatarUrl?: string;
@@ -61,6 +64,11 @@ export function HistoryTakingSection({
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
+
+  const { isSuperAdmin } = useAuth();
+  const [metrics, setMetrics] = useState<PerformanceMetrics>(INITIAL_METRICS);
+  const lastPartialTimeRef = useRef<number>(0);
+  const sttLatencyRef = useRef<number>(0);
 
   // TTS settings
   const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
@@ -128,6 +136,9 @@ export function HistoryTakingSection({
     onCommittedTranscript: (data) => {
       console.log('[Scribe] Committed transcript:', data.text);
       if (data.text?.trim()) {
+        // Measure STT latency: from last partial to commitment
+        sttLatencyRef.current = lastPartialTimeRef.current ? Date.now() - lastPartialTimeRef.current : 0;
+        
         setLastSpoken(data.text);
         setVoiceErrorCount(0);
         sendChatMessageRef.current(data.text);
@@ -137,6 +148,7 @@ export function HistoryTakingSection({
       }
     },
     onPartialTranscript: (data) => {
+      lastPartialTimeRef.current = Date.now();
       setInterimTranscript(data.text || '');
     },
   });
@@ -315,6 +327,10 @@ export function HistoryTakingSection({
     setChatInput('');
     setIsSending(true);
 
+    const llmStart = Date.now();
+    let llmEnd = 0;
+    let ttsEnd = 0;
+
     try {
       const { data: fnData, error } = await supabase.functions.invoke('patient-history-chat', {
         body: {
@@ -327,6 +343,7 @@ export function HistoryTakingSection({
 
       if (error) throw error;
 
+      llmEnd = Date.now();
       const reply = fnData?.reply || 'Sorry, I could not respond.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
@@ -341,6 +358,8 @@ export function HistoryTakingSection({
             || (gender === 'female'
               ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+          
+          const ttsStart = Date.now();
           setIsSpeaking(true);
           try {
             if (ttsProvider === 'gemini') {
@@ -386,6 +405,7 @@ export function HistoryTakingSection({
             } else {
               await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
             }
+            ttsEnd = Date.now();
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();
@@ -410,6 +430,25 @@ export function HistoryTakingSection({
       ]);
     } finally {
       setIsSending(false);
+      
+      // Update performance metrics for super_admins
+      if (isSuperAdmin) {
+        const llmLatency = llmEnd ? llmEnd - llmStart : 0;
+        const ttsLatency = ttsEnd && llmEnd ? ttsEnd - Math.max(llmEnd, llmStart + llmLatency) : 0; // Use actual request start for TTS if possible
+        const finalTtsLatency = ttsEnd ? ttsEnd - (llmEnd || llmStart) : 0;
+
+        setMetrics({
+          stt: sttLatencyRef.current,
+          llm: llmLatency,
+          tts: finalTtsLatency,
+          total: sttLatencyRef.current + llmLatency + finalTtsLatency,
+          timestamp: Date.now()
+        });
+        
+        // Reset STT for next turn
+        sttLatencyRef.current = 0;
+        lastPartialTimeRef.current = 0;
+      }
     }
   }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase]);
 
@@ -804,6 +843,7 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
+          {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
@@ -929,6 +969,7 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-360px)] min-h-[220px] relative">
           {watermark}
+          {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
@@ -1059,6 +1100,7 @@ export function HistoryTakingSection({
   return (
     <div className="space-y-5 relative">
       {watermark}
+      {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
       {questions.length > 0 && (
         <div className="space-y-3">
