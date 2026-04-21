@@ -61,14 +61,24 @@ export function PerformanceDebugConsole({ metrics, onClose }: PerformanceDebugCo
               </div>
 
               {/* TTS Metric */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <Volume2 className="w-3 h-3" />
-                  TTS Generation
+              <div className="flex flex-col gap-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                    <Volume2 className="w-3 h-3" />
+                    TTS TTFB (1st word)
+                  </div>
+                  <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.ttfb))}>
+                    {formatMs(metrics.ttfb)}
+                  </span>
                 </div>
-                <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.tts))}>
-                  {formatMs(metrics.tts)}
-                </span>
+                <div className="flex items-center justify-between pl-5">
+                  <div className="text-[10px] text-muted-foreground/70">
+                    Audio Duration
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground">
+                    {formatMs(metrics.tts)}
+                  </span>
+                </div>
               </div>
 
               <div className="pt-2 border-t mt-2 flex items-center justify-between">

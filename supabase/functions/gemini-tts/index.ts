@@ -12,13 +12,11 @@ function createWavHeader(dataSize = 0): Uint8Array {
   const bitsPerSample = 16;
   const byteRate = sampleRate * numChannels * bitsPerSample / 8;
   const blockAlign = numChannels * bitsPerSample / 8;
-  
   const buffer = new ArrayBuffer(44);
   const view = new DataView(buffer);
   const writeString = (offset: number, str: string) => {
     for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   };
-
   writeString(0, 'RIFF');
   view.setUint32(4, dataSize > 0 ? 36 + dataSize : 0x7FFFFFFF, true); 
   writeString(8, 'WAVE');
@@ -32,7 +30,6 @@ function createWavHeader(dataSize = 0): Uint8Array {
   view.setUint16(34, bitsPerSample, true);
   writeString(36, 'data');
   view.setUint32(40, dataSize > 0 ? dataSize : 0x7FFFFFFF, true); 
-
   return new Uint8Array(buffer);
 }
 
@@ -42,15 +39,15 @@ async function streamGemini(
   stylePrompt: string | undefined, 
   controller: ReadableStreamDefaultController
 ) {
+  const startTime = Date.now();
   const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
   const modelId = 'gemini-3.1-flash-tts-preview';
   const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
   const prompt = stylePrompt ? `${stylePrompt}\n\n${inputText}` : inputText;
 
-  // Use a slightly more robust system prompt to avoid silence
-  console.log(`>>>> INITIATING_GOOGLE_STREAM: ${modelId} (${voice})`);
-
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?key=${apiKey}`;
+
+  console.log(`[Timer] T+0ms: Fetching Google Stream...`);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -78,6 +75,7 @@ async function streamGemini(
   const decoder = new TextDecoder();
   let buffer = "";
   let audioBytesTotal = 0;
+  let firstChunkTime = 0;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -85,8 +83,6 @@ async function streamGemini(
 
     buffer += decoder.decode(value, { stream: true });
     
-    // Efficiently find all complete JSON objects in the buffer
-    // Google's format is an array [ {..}, {..} ]
     let braceDepth = 0;
     let startPos = -1;
     
@@ -102,63 +98,52 @@ async function streamGemini(
                     const json = JSON.parse(jsonStr);
                     const base64Audio = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
                     if (base64Audio) {
+                        if (audioBytesTotal === 0) {
+                            firstChunkTime = Date.now() - startTime;
+                            console.log(`[Timer] T+${firstChunkTime}ms: RECEIVED FIRST AUDIO CHUNK`);
+                        }
                         const raw = atob(base64Audio);
                         const bytes = new Uint8Array(raw.length);
                         for (let j = 0; j < raw.length; j++) bytes[j] = raw.charCodeAt(j);
                         controller.enqueue(bytes);
                         audioBytesTotal += bytes.length;
                     }
-                } catch (e) {
-                    // Ignore malformed partials
-                }
-                // Prepare for next scan
-                buffer = buffer.substring(i + 1);
-                i = -1; // Reset loop for the new buffer
+                } catch (e) { }
+                buffer = buffer.substring(startPos + jsonStr.length);
+                i = -1; 
                 startPos = -1;
             }
         }
     }
   }
-  console.log(`>>>> STREAM_FINISHED: audioBytes=${audioBytesTotal}`);
+  console.log(`[Timer] T+${Date.now() - startTime}ms: STREAM COMPLETE. TotalBytes=${audioBytesTotal}`);
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const svcClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
     const url = new URL(req.url);
-
     if (req.method === 'GET') {
       const tokenId = url.searchParams.get('token_id');
       if (!tokenId) return new Response('Missing token_id', { status: 400, headers: corsHeaders });
 
       let tokenData = null;
       for (let attempt = 1; attempt <= 3; attempt++) {
-        const { data, error } = await svcClient
-          .from('tts_tokens')
-          .delete()
-          .eq('id', tokenId)
-          .select()
-          .single();
-        if (!error && data) {
-          tokenData = data;
-          break;
-        }
+        const { data, error } = await svcClient.from('tts_tokens').delete().eq('id', tokenId).select().single();
+        if (!error && data) { tokenData = data; break; }
         if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 100));
       }
-
       if (!tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
 
       const { text, voiceName, stylePrompt } = tokenData.payload;
-      
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            // Immediately send the WAV header so the browser knows the format
+            console.log(`[Timer] RETRIEVAL_SUCCESS. Starting stream...`);
             controller.enqueue(createWavHeader(0));
             await streamGemini(text, voiceName, stylePrompt, controller);
             controller.close();
@@ -168,35 +153,18 @@ serve(async (req) => {
           }
         }
       });
-
-      return new Response(stream, { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'audio/wav',
-          'Cache-Control': 'no-cache',
-          'X-Content-Type-Options': 'nosniff'
-        } 
-      });
+      return new Response(stream, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav', 'Cache-Control': 'no-cache' } });
     }
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return new Response('Unauthorized', { status: 401 });
-
     const { data: { user }, error: authError } = await (createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)).auth.getUser(authHeader.replace('Bearer ', ''));
     if (authError || !user) return new Response('Invalid auth', { status: 401 });
 
     const payload = await req.json();
-    const { data: tokenRow, error: insertError } = await svcClient
-      .from('tts_tokens')
-      .insert({ user_id: user.id, payload })
-      .select('id')
-      .single();
-
+    const { data: tokenRow, error: insertError } = await svcClient.from('tts_tokens').insert({ user_id: user.id, payload }).select('id').single();
     if (insertError) throw insertError;
-    return new Response(JSON.stringify({ token_id: tokenRow.id }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-
+    return new Response(JSON.stringify({ token_id: tokenRow.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('>>>> FATAL_ERROR:', err);
     return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: corsHeaders });

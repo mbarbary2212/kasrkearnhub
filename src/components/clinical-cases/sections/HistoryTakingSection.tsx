@@ -118,6 +118,7 @@ export function HistoryTakingSection({
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsFirstByte, setTtsFirstByte] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -280,14 +281,15 @@ export function HistoryTakingSection({
     // Hard sync: when TTS stops, show full text immediately
     if (!isSpeaking) {
       setDisplayedText(lastAiMessage);
+      setTtsFirstByte(false);
       return;
     }
 
-    // Start typewriter when speaking begins with new text
-    if (isSpeaking && lastAiMessage) {
+    // Start typewriter when actual playback (first byte) begins
+    if (isSpeaking && ttsFirstByte && lastAiMessage) {
       const text = lastAiMessage;
-      const duration = ttsDurationRef.current;
-      const charDelay = duration > 0 ? (duration * 1000) / text.length : 20;
+      // Use a consistent speed for Arabic (roughly 15-20 bytes per second is common for clear speech)
+      const charDelay = 35; 
       let idx = 0;
       setDisplayedText('');
 
@@ -368,6 +370,7 @@ export function HistoryTakingSection({
           ) as string;
           
           setIsSpeaking(true);
+          setTtsFirstByte(false);
           try {
             await speakArabic(
               reply,
@@ -376,7 +379,10 @@ export function HistoryTakingSection({
               patientTone,
               preUnlockedAudio,
               ttsProvider === 'gemini' ? geminiStylePrompt : undefined,
-              () => { ttsEnd = Date.now(); }
+              () => { 
+                ttsEnd = Date.now(); 
+                setTtsFirstByte(true);
+              }
             );
             
             // Fallback if onPlaybackStarted didn't fire for some reason
@@ -411,14 +417,16 @@ export function HistoryTakingSection({
       // Update performance metrics for super_admins
       if (isSuperAdmin) {
         const llmLatency = llmEnd ? llmEnd - llmStart : 0;
-        const ttsLatency = ttsEnd && llmEnd ? ttsEnd - Math.max(llmEnd, llmStart + llmLatency) : 0; // Use actual request start for TTS if possible
-        const finalTtsLatency = ttsEnd ? ttsEnd - (llmEnd || llmStart) : 0;
+        const ttAudioEnd = Date.now();
+        const fullTtsDuration = ttsEnd ? ttAudioEnd - llmEnd : 0;
+        const ttfbLatency = ttsEnd ? ttsEnd - llmEnd : 0;
 
         setMetrics({
           stt: sttLatencyRef.current,
           llm: llmLatency,
-          tts: finalTtsLatency,
-          total: sttLatencyRef.current + llmLatency + finalTtsLatency,
+          tts: fullTtsDuration,
+          ttfb: ttfbLatency,
+          total: sttLatencyRef.current + llmLatency + fullTtsDuration,
           timestamp: Date.now()
         });
         

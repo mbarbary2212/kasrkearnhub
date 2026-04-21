@@ -2,6 +2,7 @@ export interface PerformanceMetrics {
   stt: number;
   llm: number;
   tts: number;
+  ttfb: number;
   total: number;
   timestamp: number;
 }
@@ -10,6 +11,7 @@ export const INITIAL_METRICS: PerformanceMetrics = {
   stt: 0,
   llm: 0,
   tts: 0,
+  ttfb: 0,
   total: 0,
   timestamp: 0,
 };

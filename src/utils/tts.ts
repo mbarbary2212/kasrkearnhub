@@ -170,10 +170,13 @@ export async function speakArabic(
       currentAudio = audio;
 
       return new Promise<void>((resolve, reject) => {
+        let ttfbCaptured = false;
         const handlePlaying = () => {
-          console.log('[TTS] Audio started playing (streaming)');
-          onPlaybackStarted?.();
-          audio.removeEventListener('playing', handlePlaying);
+          if (!ttfbCaptured) {
+            console.log('[TTS] Audio started playing (streaming)');
+            onPlaybackStarted?.();
+            ttfbCaptured = true;
+          }
         };
         audio.addEventListener('playing', handlePlaying);
 
