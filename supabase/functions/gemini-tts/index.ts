@@ -8,7 +8,7 @@ const corsHeaders = {
 
 function createWavHeader(dataSize = 0): Uint8Array {
   const numChannels = 1;
-  const sampleRate = 24000; // Updated to 24kHz
+  const sampleRate = 24000;
   const bitsPerSample = 16;
   const byteRate = sampleRate * numChannels * bitsPerSample / 8;
   const blockAlign = numChannels * bitsPerSample / 8;
@@ -91,7 +91,6 @@ async function streamGemini(
                 controller.enqueue(bytes);
             }
         } catch (e) {
-            // Keep in buffer for next cycle
             buffer = line + buffer;
             break;
         }
@@ -104,10 +103,6 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  
-  // LOGGING: Verify keys are present (masked)
-  console.log(`>>>> INIT: URL=${supabaseUrl.substring(0, 20)}... | KEY=${serviceRoleKey ? 'PRESENT' : 'MISSING'}`);
-
   const svcClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
@@ -115,43 +110,52 @@ serve(async (req) => {
 
     if (req.method === 'GET') {
       const tokenId = url.searchParams.get('token_id');
-      console.log(`>>>> GET_REQUEST: tokenId=${tokenId}`);
-
       if (!tokenId) return new Response('Missing token_id', { status: 400, headers: corsHeaders });
 
-      // Fetch and delete token in one go
-      const { data: tokenData, error: tokenError } = await svcClient
-        .from('tts_tokens')
-        .delete()
-        .eq('id', tokenId)
-        .select()
-        .single();
+      console.log(`>>>> RETRIEVAL_START: ${tokenId}`);
 
-      if (tokenError) {
-          console.error(`>>>> DB_ERROR: ${tokenError.message} (Code: ${tokenError.code})`);
-          return new Response(`Token verification failed: ${tokenError.message}`, { 
-              status: 401, 
-              headers: { ...corsHeaders, 'X-Error-Code': tokenError.code } 
-          });
+      // RETRY LOOP: Database consistency insurance
+      let tokenData = null;
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        console.log(`>>>> ATTEMPT ${attempt} for token ${tokenId}`);
+        const { data, error } = await svcClient
+          .from('tts_tokens')
+          .delete()
+          .eq('id', tokenId)
+          .select()
+          .single();
+
+        if (!error && data) {
+          tokenData = data;
+          break;
+        }
+
+        lastError = error;
+        if (attempt < 3) {
+            console.log(`>>>> RETRYING_IN_100MS: ${error?.message || 'Not found'}`);
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
       }
 
       if (!tokenData) {
-          console.error('>>>> TOKEN_NOT_FOUND: Token might be expired or already used.');
-          return new Response('Token not found or expired', { status: 401, headers: corsHeaders });
+          console.error(`>>>> FATAL_RETRIEVAL_FAILURE: ${lastError?.message || 'Row not found after retries'}`);
+          return new Response(`Invalid token: ${lastError?.message || 'Not found'}`, { 
+              status: 401, 
+              headers: corsHeaders 
+          });
       }
 
-      console.log(`>>>> TOKEN_VERIFIED: Starting stream for user ${tokenData.user_id}`);
+      console.log(`>>>> TOKEN_VALIDATED: Starting audio stream`);
 
       const { text, voiceName, stylePrompt } = tokenData.payload;
       
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            console.log('>>>> STREAM_START: Sending WAV header');
             controller.enqueue(createWavHeader(0));
-            console.log('>>>> STREAMING: Calling Gemini');
             await streamGemini(text, voiceName, stylePrompt, controller);
-            console.log('>>>> STREAM_DONE');
             controller.close();
           } catch (err) {
             console.error('>>>> STREAM_ERROR:', err);
@@ -177,7 +181,7 @@ serve(async (req) => {
     if (authError || !user) return new Response('Invalid auth', { status: 401 });
 
     const payload = await req.json();
-    console.log(`>>>> HANDSHAKE: Creating token for user ${user.id}`);
+    console.log(`>>>> HANDSHAKE: user=${user.id}`);
 
     const { data: tokenRow, error: insertError } = await svcClient
       .from('tts_tokens')
