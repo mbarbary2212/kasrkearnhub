@@ -399,6 +399,8 @@ export function HistoryTakingSection({
       }
     } catch (err) {
       console.error('Chat error:', err);
+      const msg = (err as Error).message || 'An unexpected error occurred';
+      toast.error(msg);
       setChatMessages(prev => [
         ...prev,
         { role: 'assistant', content: 'عذراً، حدث خطأ. حاول مرة أخرى.' },

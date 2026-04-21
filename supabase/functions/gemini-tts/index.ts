@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 function addWavHeader(
@@ -13,198 +13,158 @@ function addWavHeader(
   numChannels = 1,
   bitsPerSample = 16
 ): ArrayBuffer {
-  const pcmBuffer = new Int16Array(
-    Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0)).buffer
-  );
+  try {
+    const rawData = atob(pcmBase64.trim());
+    const pcmBuffer = new Int16Array(
+      Uint8Array.from(rawData, c => c.charCodeAt(0)).buffer
+    );
 
-  const ratio = inputSampleRate / outputSampleRate;
-  const outputLength = Math.floor(pcmBuffer.length / ratio);
-  const downsampled = new Int16Array(outputLength);
-  for (let i = 0; i < outputLength; i++) {
-    const pos = i * ratio;
-    const index = Math.floor(pos);
-    const frac = pos - index;
-    const a = pcmBuffer[index] ?? 0;
-    const b = pcmBuffer[index + 1] ?? 0;
-    downsampled[i] = Math.round(a + frac * (b - a));
+    const ratio = inputSampleRate / outputSampleRate;
+    const outputLength = Math.floor(pcmBuffer.length / ratio);
+    const downsampled = new Int16Array(outputLength);
+    for (let i = 0; i < outputLength; i++) {
+        const pos = i * ratio;
+        const index = Math.floor(pos);
+        const frac = pos - index;
+        const a = pcmBuffer[index] ?? 0;
+        const b = pcmBuffer[index + 1] ?? 0;
+        downsampled[i] = Math.round(a + frac * (b - a));
+    }
+
+    const dataSize = downsampled.byteLength;
+    const byteRate = outputSampleRate * numChannels * bitsPerSample / 8;
+    const blockAlign = numChannels * bitsPerSample / 8;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++)
+        view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, outputSampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeString(36, 'data');
+    view.setUint32(40, dataSize, true);
+    new Uint8Array(buffer).set(new Uint8Array(downsampled.buffer), 44);
+    return buffer;
+  } catch (err) {
+    console.error('>>>> WAV_HEADER_ERROR:', err);
+    // Return minimal silent WAV if processing fails
+    return new ArrayBuffer(44); 
+  }
+}
+
+async function callGemini(inputText: string, voiceName: string, stylePrompt?: string) {
+  const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) throw new Error('API Key missing');
+
+  // Use gemini-2.0-flash-exp
+  const modelId = 'gemini-2.0-flash-exp';
+  const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
+  const prompt = stylePrompt ? `${stylePrompt}\n\n${inputText}` : inputText;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_API_KEY}`;
+  
+  console.log(`>>>> Gemini Request: ${modelId} | Voice: ${voice} | Prompt snippet: ${inputText.substring(0, 30)}...`);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } }
+        }
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Google API Error ${response.status}: ${errText}`);
   }
 
-  const dataSize = downsampled.byteLength;
-  const byteRate = outputSampleRate * numChannels * bitsPerSample / 8;
-  const blockAlign = numChannels * bitsPerSample / 8;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++)
-      view.setUint8(offset + i, str.charCodeAt(i));
-  };
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, outputSampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-  writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-  new Uint8Array(buffer).set(new Uint8Array(downsampled.buffer), 44);
-  return buffer;
+  const result = await response.json();
+  const data = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  
+  if (!data) {
+    console.error('>>>> GEMINI_NO_AUDIO:', JSON.stringify(result));
+    throw new Error('Gemini did not return any audio data');
+  }
+  return data;
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const svcClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const svcClient = createClient(supabaseUrl, serviceRoleKey);
+    const url = new URL(req.url);
 
-    async function streamFromGemini(payload: any) {
-      const { text, voiceName, stylePrompt } = payload;
-      let GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
-      
-      if (!GEMINI_API_KEY) {
-         console.error('[GEMINI] Neither GOOGLE_API_KEY nor GEMINI_API_KEY is set');
-         throw new Error('Gemini API key is missing');
-      }
-
-      async function callGemini(inputText: string, voice: string) {
-        // Use gemini-2.0-flash-exp (more common for multimodal/audio)
-        const modelId = 'gemini-2.0-flash-exp'; 
-        console.log(`[GEMINI] Calling model: ${modelId} with voice: ${voice}`);
-        
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`,
-          {
-            method: 'POST',
-            headers: {
-              'X-Goog-Api-Key': GEMINI_API_KEY!,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: inputText }] }],
-              generationConfig: {
-                responseModalities: ['AUDIO'],
-                speechConfig: {
-                  voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName: voice },
-                  },
-                },
-              },
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          const errBody = await response.text();
-          console.error(`[GEMINI] Google API Error: ${response.status} - ${errBody}`);
-          throw new Error(`Gemini status ${response.status}: ${errBody}`);
-        }
-        
-        const result = await response.json();
-        const data = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (!data) {
-          console.error('[GEMINI] No audio data in response:', JSON.stringify(result));
-          throw new Error('No audio data returned from Gemini');
-        }
-        return data;
-      }
-
-      // Valid voice names for Gemini 2.0: 'Kore', 'Puck', 'Fenrir', 'Aoide', 'Charon'
-      // If the incoming voiceName looks like a long UUID (ElevenLabs ID), fallback to 'Kore'.
-      const isUuid = voiceName && /^[0-9a-f]{8}-/i.test(voiceName) || (voiceName && voiceName.length > 15);
-      const voice = !voiceName || isUuid ? 'Kore' : voiceName;
-      
-      const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
-      
-      let audioData;
-      try {
-        audioData = await callGemini(finalText, voice);
-      } catch (err) {
-        console.warn('[GEMINI] Primary attempt failed, trying fallback without style prompt...');
-        try {
-          audioData = await callGemini(text, voice);
-        } catch (fallbackErr) {
-           console.error('[GEMINI] Final fallback failed:', fallbackErr);
-           throw fallbackErr;
-        }
-      }
-
-      return addWavHeader(audioData);
-    }
-
+    // GET FLOW (Streaming)
     if (req.method === 'GET') {
-      const url = new URL(req.url);
       const tokenId = url.searchParams.get('token_id');
-      
-      let payloadToStream: any;
-      
-      if (tokenId) {
-        // 1. New Handshake Flow
-        const { data: tokenData, error: tokenError } = await svcClient
-          .from('tts_tokens')
-          .delete()
-          .eq('id', tokenId)
-          .select()
-          .single();
+      if (!tokenId) return new Response('Missing token_id', { status: 400, headers: corsHeaders });
 
-        if (tokenError || !tokenData) {
-          return new Response('Invalid or expired token', { status: 401, headers: corsHeaders });
-        }
-        payloadToStream = tokenData.payload;
-      } else {
-        // 2. Legacy Flow (Backward Compatibility)
-        const text = url.searchParams.get('text');
-        const token = url.searchParams.get('token');
-        const voiceName = url.searchParams.get('voiceName');
-        const stylePrompt = url.searchParams.get('stylePrompt');
+      const { data: tokenData, error: tokenError } = await svcClient
+        .from('tts_tokens')
+        .delete()
+        .eq('id', tokenId)
+        .select()
+        .single();
 
-        if (!text || !token) {
-          return new Response('Missing token_id or legacy params', { status: 400, headers: corsHeaders });
-        }
-
-        // Validate legacy token
-        const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
-          global: { headers: { Authorization: `Bearer ${token}` } } 
-        });
-        const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-        if (authError || !user) {
-          return new Response('Invalid legacy auth', { status: 401, headers: corsHeaders });
-        }
-        
-        payloadToStream = { text, voiceName, stylePrompt };
+      if (tokenError || !tokenData) {
+        return new Response('Invalid token', { status: 401, headers: corsHeaders });
       }
 
-      console.log(`[GET] Streaming Gemini audio for ${tokenId ? 'Handshake' : 'Legacy'} request`);
-      const wavBuffer = await streamFromGemini(payloadToStream);
+      const { text, voiceName, stylePrompt } = tokenData.payload;
+      const audioData = await callGemini(text, voiceName, stylePrompt);
+      const wavBuffer = addWavHeader(audioData);
+
       return new Response(wavBuffer, {
         headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
       });
     }
 
-    // POST FLOW
+    // POST FLOW (Handshake)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return new Response('Unauthorized', { status: 401 });
     const token = authHeader.replace('Bearer ', '');
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
-      global: { headers: { Authorization: `Bearer ${token}` } } 
-    });
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    const { data: { user }, error: authError } = await (createClient(supabaseUrl, supabaseAnonKey)).auth.getUser(token);
     if (authError || !user) return new Response('Invalid auth', { status: 401 });
 
     const payload = await req.json();
-    if (payload.legacy === true) {
-      const wavBuffer = await streamFromGemini(payload);
-      return new Response(wavBuffer, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav' } });
+    const { text, voiceName, stylePrompt } = payload;
+
+    // VALIDATION: Try reaching Gemini NOW so we catch errors early
+    console.log('>>>> Performing pre-handshake validation...');
+    try {
+      await callGemini("Connection test", voiceName || "Kore", stylePrompt);
+      console.log('>>>> Pre-handshake validation SUCCESS');
+    } catch (err) {
+      const msg = (err as Error).message;
+      console.error('>>>> PRE_HANDSHAKE_FAILED:', msg);
+      return new Response(JSON.stringify({ error: `Handshake failed: ${msg}` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
+    // Create token if validation passed
     const { data: tokenRow, error: insertError } = await svcClient
       .from('tts_tokens')
       .insert({ user_id: user.id, payload })
@@ -218,16 +178,14 @@ serve(async (req) => {
 
   } catch (err) {
     const msg = (err as Error).message;
-    console.error('Master Error:', msg);
-    
-    // Return error in a header so it's visible in the Network tab even if the body is ignored by Audio tag
-    return new Response(JSON.stringify({ error: msg }), { 
-      status: 500, 
+    console.error('>>>> MASTER_ERROR:', msg);
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
       headers: { 
         ...corsHeaders, 
         'Content-Type': 'application/json',
         'X-Error-Message': msg.substring(0, 200).replace(/\n/g, ' ')
-      } 
+      }
     });
   }
 });
