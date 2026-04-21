@@ -1,5 +1,7 @@
 .driver-popover.kalm-tour-popover {
-  background: hsl(var(--card));
+  background: hsl(222 47% 11%) !important;
+  background-color: hsl(222 47% 11%) !important;
+  opacity: 1 !important;
   color: hsl(var(--card-foreground));
   border: 1px solid hsl(var(--border));
   border-left: 3px solid hsl(var(--primary));
