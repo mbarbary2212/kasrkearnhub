@@ -155,20 +155,8 @@ serve(async (req) => {
         return new Response(wavBuffer, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav' } });
     }
 
-    // PRE-HANDSHAKE VALIDATION: Test Gemini NOW to catch errors
-    console.log('>>>> Testing Gemini connection for handshake...');
-    try {
-      await callGemini("Connection test", voiceName || "Kore", stylePrompt);
-      console.log('>>>> Gemini test success');
-    } catch (err) {
-      const msg = (err as Error).message;
-      console.error('>>>> GEMINI_TEST_FAILED:', msg);
-      return new Response(JSON.stringify({ error: `Handshake rejected: ${msg}` }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
+    // HANDSHAKE: We simply store the payload and return a token.
+    // The actual generation happens during the GET request to minimize latency.
     const { data: tokenRow, error: insertError } = await svcClient
       .from('tts_tokens')
       .insert({ user_id: user.id, payload })
