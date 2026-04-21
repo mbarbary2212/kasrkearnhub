@@ -726,9 +726,9 @@ function LoggedInHome() {
             </Card>
           )}
 
-          {/* Today's Study Plan — rendered via DashboardTodayPlan component */}
+          {/* Today's Study Plan — wrapper is permanent so the tour anchor always exists */}
+          <div data-tour="study-plan">
           {isStudent && suggestions.length > 0 && (
-            <div data-tour="study-plan">
             <DashboardTodayPlan
               suggestions={suggestions}
               studyPlan={dashboard?.studyPlan ?? null}
@@ -771,8 +771,8 @@ function LoggedInHome() {
                 navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
               }}
             />
-            </div>
           )}
+          </div>
         </div>
       </div>
     </div>
