@@ -112,10 +112,12 @@ export function createUnlockedAudio(): HTMLAudioElement {
 
 export async function speakArabic(
   text: string,
-  provider: 'browser' | 'elevenlabs',
+  provider: 'browser' | 'elevenlabs' | 'gemini',
   voiceId?: string,
   tone?: PatientTone,
-  preUnlockedAudio?: HTMLAudioElement
+  preUnlockedAudio?: HTMLAudioElement,
+  stylePrompt?: string,
+  onPlaybackStarted?: () => void
 ): Promise<void> {
   // Stop previous audio without destroying the pre-unlocked element
   if (currentAudio && currentAudio !== preUnlockedAudio) {
@@ -128,67 +130,63 @@ export async function speakArabic(
   currentAudio = null;
   window.speechSynthesis?.cancel();
 
-  if (provider === 'elevenlabs' && voiceId) {
+  if ((provider === 'elevenlabs' || provider === 'gemini') && voiceId) {
     try {
-      // Get the user's session token for auth
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('No session token — user not logged in');
 
-      console.log('[TTS] Calling ElevenLabs, provider:', provider, 'voiceId:', voiceId);
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }),
-        }
-      );
+      const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
+      const params = new URLSearchParams({
+        text,
+        token: accessToken,
+      });
 
-      console.log('[TTS] Response status:', res.status);
-      if (!res.ok) throw new Error(`ElevenLabs TTS failed: ${res.status}`);
+      if (provider === 'elevenlabs') {
+        params.append('voiceId', voiceId);
+        if (tone) params.append('tone', tone);
+        params.append('speed', getToneVoiceSettings(tone).speed.toString());
+      } else {
+        params.append('voiceName', voiceId);
+        if (stylePrompt) params.append('stylePrompt', stylePrompt);
+      }
 
-      const blob = await res.blob();
-      console.log('[TTS] Got audio blob, size:', blob.size);
-      const audioUrl = URL.createObjectURL(blob);
+      const streamingUrl = `${SUPABASE_URL}/functions/v1/${functionName}?${params.toString()}`;
+      console.log(`[TTS] Streaming from ${provider}, function: ${functionName}`);
+
       const audio = preUnlockedAudio || new Audio();
-      audio.src = audioUrl;
+      audio.src = streamingUrl;
       currentAudio = audio;
 
-      // Return a Promise that resolves when playback finishes
       return new Promise<void>((resolve) => {
+        const handlePlaying = () => {
+          console.log('[TTS] Audio started playing (streaming)');
+          onPlaybackStarted?.();
+          audio.removeEventListener('playing', handlePlaying);
+        };
+        audio.addEventListener('playing', handlePlaying);
+
         audio.addEventListener('ended', () => {
           if (currentAudio === audio) currentAudio = null;
-          URL.revokeObjectURL(audioUrl);
           resolve();
         });
-        audio.addEventListener('error', () => {
+        audio.addEventListener('error', (e) => {
+          console.error('[TTS] Streaming audio error:', e);
           if (currentAudio === audio) currentAudio = null;
-          URL.revokeObjectURL(audioUrl);
-          resolve(); // resolve gracefully — don't block callers
+          resolve();
         });
-        // If externally stopped via stopAllTTS(), the pause event fires
         audio.addEventListener('pause', () => {
-          // Only resolve if this audio was cleared (stopAllTTS sets src='')
-          if (!audio.src || audio.src === '') {
-            URL.revokeObjectURL(audioUrl);
-            resolve();
-          }
+          if (!audio.src || audio.src === '') resolve();
         });
-        console.log('[TTS] Attempting audio.play()');
+
         audio.play().catch((err) => {
           console.error('[TTS] Play failed:', err);
           if (currentAudio === audio) currentAudio = null;
-          URL.revokeObjectURL(audioUrl);
           resolve();
         });
       });
     } catch (err) {
-      console.error('[TTS] ElevenLabs failed:', err);
-      // Fall through to browser TTS
+      console.error(`[TTS] ${provider} streaming failed:`, err);
     }
   }
 

@@ -40,17 +40,38 @@ serve(async (req) => {
   }
 
   try {
-    // ── Auth guard ──
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    // ── Parameter & Auth extraction ──
+    const url = new URL(req.url);
+    let text, voiceId, tone, requestSpeed, token;
+
+    if (req.method === 'GET') {
+      text = url.searchParams.get('text');
+      voiceId = url.searchParams.get('voiceId');
+      tone = url.searchParams.get('tone');
+      requestSpeed = parseFloat(url.searchParams.get('speed') || '1.1');
+      token = url.searchParams.get('token');
+    } else {
+      const body = await req.json();
+      text = body.text;
+      voiceId = body.voiceId;
+      tone = body.tone;
+      requestSpeed = body.speed;
+      const authHeader = req.headers.get('Authorization') || '';
+      token = authHeader.replace('Bearer ', '');
+    }
+
+    if (!token) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace('Bearer ', '');
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+      global: { headers: { Authorization: `Bearer ${token}` } } 
+    });
+    
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
     if (authError || !user) {
       console.error('Auth error:', authError);
@@ -65,7 +86,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { text, voiceId, tone, speed: requestSpeed } = await req.json();
 
     if (!text || !voiceId) {
       return new Response(

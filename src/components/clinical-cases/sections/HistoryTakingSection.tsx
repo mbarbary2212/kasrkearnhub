@@ -366,53 +366,20 @@ export function HistoryTakingSection({
               ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
               : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
           
-          const ttsStart = Date.now();
           setIsSpeaking(true);
           try {
-            if (ttsProvider === 'gemini') {
-              stopAllTTS();
-              const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-              const SUPABASE_URL = SUPABASE_URL_FALLBACK;
-              const { data: { session } } = await supabase.auth.getSession();
-              console.log('[Response TTS] Fetching gemini-tts, voice:', geminiVoiceToUse);
-              const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${session?.access_token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ text: reply, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
-              });
-              if (!res.ok) {
-                console.warn('[Response TTS] Gemini reply failed:', res.status, '— skipping audio');
-              } else {
-                const blob = await res.blob();
-                console.log('[Response TTS] Got blob, size:', blob.size, 'type:', blob.type);
-                if (blob.size < 100) {
-                  console.warn('[Response TTS] Gemini reply blob too small:', blob.size, '— skipping audio');
-                } else {
-                  const blobUrl = URL.createObjectURL(blob);
-                  const audio = preUnlockedAudio || new Audio();
-                  audio.src = blobUrl;
-                  registerCurrentAudio(audio);
-                  console.log('[Response TTS] Calling audio.play()');
-                  await new Promise<void>((resolve, reject) => {
-                    audio.onended = () => { console.log('[Response TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
-                    audio.onerror = (e) => { console.error('[Response TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
-                    audio.play().then(() => {
-                      console.log('[Response TTS] Audio playing, duration:', audio.duration);
-                    }).catch((err) => {
-                      console.error('[Response TTS] play() rejected:', err);
-                      URL.revokeObjectURL(blobUrl);
-                      resolve();
-                    });
-                  });
-                }
-              }
-            } else {
-              await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
-            }
-            ttsEnd = Date.now();
+            await speakArabic(
+              reply,
+              ttsProvider,
+              voiceId,
+              patientTone,
+              preUnlockedAudio,
+              ttsProvider === 'gemini' ? geminiStylePrompt : undefined,
+              () => { ttsEnd = Date.now(); }
+            );
+            
+            // Fallback if onPlaybackStarted didn't fire for some reason
+            if (!ttsEnd) ttsEnd = Date.now();
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();

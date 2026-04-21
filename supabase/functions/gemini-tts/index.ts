@@ -62,23 +62,41 @@ serve(async (req) => {
   }
 
   try {
-    // ── Auth guard (token only, no role check) ──
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
+    // ── Parameter & Auth extraction ──
+    const url = new URL(req.url);
+    let text, voiceName, stylePrompt, token;
+
+    if (req.method === 'GET') {
+      text = url.searchParams.get('text');
+      voiceName = url.searchParams.get('voiceName');
+      stylePrompt = url.searchParams.get('stylePrompt');
+      token = url.searchParams.get('token');
+    } else {
+      const body = await req.json();
+      text = body.text;
+      voiceName = body.voiceName;
+      stylePrompt = body.stylePrompt;
+      const authHeader = req.headers.get('Authorization') || '';
+      token = authHeader.replace('Bearer ', '');
+    }
+
+    if (!token) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace('Bearer ', '');
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+      global: { headers: { Authorization: `Bearer ${token}` } } 
+    });
+
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { text, voiceName, stylePrompt } = await req.json();
 
     if (!text) {
       return new Response(
