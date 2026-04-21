@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface StepResult {
   content_type: string;
@@ -188,7 +189,7 @@ export function useStartBatchJob() {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-batch-job`,
+        `${SUPABASE_URL}/functions/v1/process-batch-job`,
         {
           method: 'POST',
           headers: {

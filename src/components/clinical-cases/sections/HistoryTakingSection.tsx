@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { HistorySectionData } from '@/types/structuredCase';
 import { SectionComponentProps } from './types';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL as SUPABASE_URL_FALLBACK } from '@/lib/supabaseUrl';
 import { toast } from 'sonner';
 import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
@@ -345,7 +346,7 @@ export function HistoryTakingSection({
             if (ttsProvider === 'gemini') {
               stopAllTTS();
               const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-              const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+              const SUPABASE_URL = SUPABASE_URL_FALLBACK;
               const { data: { session } } = await supabase.auth.getSession();
               console.log('[Response TTS] Fetching gemini-tts, voice:', geminiVoiceToUse);
               const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {

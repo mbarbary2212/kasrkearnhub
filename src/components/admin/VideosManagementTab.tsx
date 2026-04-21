@@ -19,6 +19,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 import {
   Play,
   Eye,
@@ -810,7 +811,7 @@ function YouTubeUploadCard({ hierarchy }: UploadCardProps) {
       const storagePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
 
       const { data: { session } } = await supabase.auth.getSession();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = SUPABASE_URL;
 
       await uploadVideoToStorage({
         file,

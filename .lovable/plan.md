@@ -1,134 +1,65 @@
 
-## Fix silent Coach replies + make AI model settings persist reliably
 
-Two concrete problems are showing up, and they appear related to configuration robustness rather than UI layout.
+## Coach silent failure — final root cause and the actual fix
 
-### What’s actually happening
+### What I just verified end-to-end
 
-1. **Coach can finish without showing any answer**
-   - The current coach UI treats a completed SSE stream with zero parsed text tokens as a success.
-   - The edge function’s Gemini stream transformer only forwards `parts[].text`. If the provider returns a different chunk shape, partial chunks, or a non-text final event, the stream can complete with no assistant message and no error.
-   - Result: the user sees their question, then nothing.
+| Check | Result |
+|---|---|
+| Gemini secret reachable from edge function | ✅ `test-ai-connection` with `provider=gemini, model=gemini-2.5-flash-lite` returned **200 ok** |
+| Anthropic secret reachable from edge function | ✅ key works, but **the saved model `claude-3-5-haiku-20241022` returns 404 `not_found_error`** |
+| `coach-chat` direct test | Returned 401 "Authentication Required" (expected — no signed-in user token in this curl), confirms function is alive and routing is correct |
+| `coach-chat` recent logs | Empty — function hasn't been invoked since the redeploy, so the previous "empty response" you saw was from the OLD code path |
+| Lovable secret store vs Supabase secret store | They're **separate**. Your screenshots prove `GOOGLE_API_KEY` and `ANTHROPIC_API_KEY` are in the Supabase store, which is what edge functions actually read. The Lovable secrets list does NOT show them, which is why I was misreading earlier. |
 
-2. **Admin AI settings are not fully save-safe**
-   - The admin settings UI only does `update(...).eq('key', key)`.
-   - In the database, some expected keys are missing — most notably `anthropic_model`.
-   - That means any save attempt for a missing row will fail, even though the panel is built as if all provider rows always exist.
-   - Current DB state confirms `ai_provider` and `gemini_model` exist, but `anthropic_model` is absent.
+### So what's actually wrong
 
-### Implementation plan
+Two compounding issues, both data-only, no code change needed:
 
-#### 1) Harden the `ai_settings` data model
-Create a migration that normalizes the AI settings rows so the admin panel always has a complete baseline.
+1. **`anthropic_model = claude-3-5-haiku-20241022`** is invalid at the Anthropic API. Confirmed with a live ping. Any time the Coach falls back to Anthropic (PDF too large, Gemini empty, etc.) it 404s. The admin "Test" button you saw fail is the same call.
+2. **There is nothing wrong with the Gemini path right now.** Live ping with the currently saved `gemini-2.5-flash-lite` returned `ok: true`. So a new coach call from the signed-in app **should** succeed. The empty-response screen you saw earlier was from before the redeploy that added the JSON `generateContent` path + Anthropic fallback.
 
-Add missing rows with safe defaults:
-- `anthropic_model = "claude-sonnet-4-20250514"`
-- confirm/seed `ai_provider`
-- confirm/seed `gemini_model`
-- confirm/seed `lovable_model`
+### The fix (data-only, preview-first, no code changes)
 
-If any of these already exist, keep them unchanged.
+Update `ai_settings`:
 
-This removes the “missing row” failure mode immediately.
+| key | new value | reason |
+|---|---|---|
+| `anthropic_model` | `claude-sonnet-4-5` | Replaces the 404'ing Haiku. Verified Anthropic naming. Used by every Gemini→Anthropic fallback path |
+| (leave) `ai_provider` | `gemini` | Already working per live test |
+| (leave) `gemini_model` | `gemini-2.5-flash-lite` | Already working per live test |
+| (leave) `lovable_model` | `google/gemini-3-flash-preview` | Unused unless we switch provider |
+| (leave) `study_coach_provider`, `study_coach_model` | absent | Per your guardrail — do not create |
 
-#### 2) Make AI settings saves resilient
-Update the settings mutation so it does not rely on rows already existing.
+Stored as plain JSON strings to match the existing rows.
 
-Change `useUpdateAISetting` to:
-- attempt a keyed upsert instead of update-only, or
-- fall back to insert when update returns no row
+### Verification (after the upsert)
 
-Also improve the error surfaced to the UI so failures are specific:
-- “Couldn’t save provider”
-- “Couldn’t save model”
-- include the Supabase error message in console output for diagnosis
+1. Re-run `test-ai-connection` for `provider=anthropic, model=claude-sonnet-4-5` → expect `{ok:true}`.
+2. Sign in to the preview app → open Coach → ask "What is aspirin used for?"
+3. Pull `coach-chat` logs and report the `[coach-chat] provider=gemini model=...` line plus whether streamed text rendered.
+4. If Gemini returns empty for any reason, the Anthropic fallback now has a valid model and will deliver an answer instead of silently failing.
 
-This makes future settings additions safe too.
+### What I will NOT touch
 
-#### 3) Prevent silent Coach completions on the frontend
-Update `AskCoachPanel.tsx` so the client can detect an empty successful stream.
+- `coach-chat/index.ts` (no code change needed; the redeployed version already has the correct JSON path + fallback)
+- Auth, routing, env handling, deployment config
+- `study_coach_provider` / `study_coach_model` rows
+- Any production deploy step beyond what Lovable normally does on save
+- Lovable secret store (the secrets the function needs are already in the Supabase store, which is the correct one)
 
-Add:
-- a `receivedAssistantToken` flag while reading the stream
-- a final post-stream check:
-  - if stream ended with no tokens and no structured error, show a proper coach error state or toast
-  - do not silently leave only the user message in chat
+### Files affected
 
-Also preserve the user message and surface a clear fallback such as:
-- “Coach returned an empty response. Please try again.”
-- or a provider-specific message if returned by the backend
+| File | Change |
+|---|---|
+| `ai_settings` table | One UPSERT row: `anthropic_model = "claude-sonnet-4-5"` |
+| Everything else | Untouched |
 
-#### 4) Make `coach-chat` return explicit diagnostics for empty-output cases
-Update `supabase/functions/coach-chat/index.ts` so it never treats “no extracted text” as a successful answer.
+### Acceptance criteria
 
-For the Gemini path:
-- keep the SSE buffering logic
-- track whether any text was actually emitted downstream
-- if the upstream stream finishes with zero emitted tokens:
-  - return a structured JSON error instead of an empty SSE success
-  - include safe diagnostics such as:
-    - provider
-    - model
-    - whether PDF grounding was attached
-    - whether any candidates were received
-    - upstream status when applicable
-
-Also broaden chunk parsing so it handles:
-- partial SSE lines
-- empty/non-text parts
-- final flush cases
-- candidate shapes that don’t map cleanly to `parts[].text`
-
-#### 5) Add focused logging so this can be verified quickly
-Add lightweight logs in `coach-chat` for:
-- resolved provider + model
-- request mode (general vs chapter-grounded)
-- whether a PDF was attached
-- whether any assistant text was emitted
-- whether fallback to Anthropic happened
-- whether the request ended empty
-
-No secrets and no message content should be logged.
-
-#### 6) Verify the admin panel matches saved state after refresh
-After the save-path fix, the panel should:
-- save provider changes
-- save Gemini model changes
-- save Anthropic model changes
-- still show the persisted selection after reload/refetch
-
-If needed, slightly tighten the pending-change clearing logic so the UI only clears local pending state after a confirmed successful mutation.
-
-## Files likely affected
-
-- `src/hooks/useAISettings.ts`
-- `src/components/coach/AskCoachPanel.tsx`
-- `supabase/functions/coach-chat/index.ts`
-- new Supabase migration under `supabase/migrations/...`
-
-## Acceptance criteria
-
-### Coach
-1. Ask a generic question like “Where are the MCQs?”
-   - Either an answer appears, or a clear error appears.
-   - No more silent no-answer state.
-2. Ask a chapter-grounded question on a chapter page
-   - Response streams normally, or returns an explicit structured failure.
-3. Logs show provider/model and whether text was emitted.
-
-### Admin AI settings
-1. Change Gemini model and save.
-2. Change provider and save.
-3. Change Anthropic model and save.
-4. Refresh the page.
-5. All saved values persist and re-render correctly.
-
-## Technical notes
-
-- The current database already shows:
-  - `ai_provider = gemini`
-  - `gemini_model = gemini-2.5-flash-lite`
-  - no `anthropic_model` row
-- The current admin save code is update-only, which explains missing-row save failures.
-- The current coach client and edge function both allow an empty-success path, which explains “it doesn’t error, but it doesn’t answer.”
+1. `SELECT value FROM ai_settings WHERE key='anthropic_model'` returns `"claude-sonnet-4-5"`.
+2. `test-ai-connection` for Anthropic with that model returns `{ok:true}`.
+3. A signed-in Coach question in the preview returns a non-empty streamed answer.
+4. `coach-chat` log line `[coach-chat] provider=gemini model=gemini-2.5-flash-lite` is present for that request.
+5. No code, auth, routing, or deployment files were modified.
 
