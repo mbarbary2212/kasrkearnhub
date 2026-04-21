@@ -81,7 +81,7 @@ export function HistoryTakingSection({
   const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
   const ttsGeminiVoice = patientGender === 'female'
-    ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoede') as string
+    ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') as string
     : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore') as string;
   const toneStyleMap: Record<string, string> = {
     worried:   '[تحدث بالعامية المصرية. نبرتك قلقة وخايف من الموضوع]',
@@ -361,10 +361,11 @@ export function HistoryTakingSection({
 
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-          const voiceId = voiceIdOverride
-            || (gender === 'female'
-              ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-              : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+          const voiceId = voiceIdOverride || (
+            ttsProvider === 'gemini'
+              ? (gender === 'female' ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore'))
+              : (gender === 'female' ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY'))
+          ) as string;
           
           setIsSpeaking(true);
           try {

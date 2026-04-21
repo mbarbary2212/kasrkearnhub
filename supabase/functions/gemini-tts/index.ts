@@ -68,10 +68,11 @@ serve(async (req) => {
 
     async function streamFromGemini(payload: any) {
       const { text, voiceName, stylePrompt } = payload;
-      const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+      let GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
+      
       if (!GEMINI_API_KEY) {
-         console.error('[GEMINI] GOOGLE_API_KEY is not set in environment');
-         throw new Error('GOOGLE_API_KEY is missing');
+         console.error('[GEMINI] Neither GOOGLE_API_KEY nor GEMINI_API_KEY is set');
+         throw new Error('Gemini API key is missing');
       }
 
       async function callGemini(inputText: string, voice: string) {
@@ -216,7 +217,17 @@ serve(async (req) => {
     });
 
   } catch (err) {
-    console.error('Master Error:', (err as Error).message);
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const msg = (err as Error).message;
+    console.error('Master Error:', msg);
+    
+    // Return error in a header so it's visible in the Network tab even if the body is ignored by Audio tag
+    return new Response(JSON.stringify({ error: msg }), { 
+      status: 500, 
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'X-Error-Message': msg.substring(0, 200).replace(/\n/g, ' ')
+      } 
+    });
   }
 });
