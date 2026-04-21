@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 function addWavHeader(
@@ -57,7 +57,6 @@ function addWavHeader(
     return buffer;
   } catch (err) {
     console.error('>>>> WAV_HEADER_ERROR:', err);
-    // Return minimal silent WAV if processing fails
     return new ArrayBuffer(44); 
   }
 }
@@ -66,7 +65,6 @@ async function callGemini(inputText: string, voiceName: string, stylePrompt?: st
   const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
   if (!GEMINI_API_KEY) throw new Error('API Key missing');
 
-  // Use gemini-2.0-flash-exp
   const modelId = 'gemini-2.0-flash-exp';
   const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
   const prompt = stylePrompt ? `${stylePrompt}\n\n${inputText}` : inputText;
@@ -96,11 +94,7 @@ async function callGemini(inputText: string, voiceName: string, stylePrompt?: st
 
   const result = await response.json();
   const data = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  
-  if (!data) {
-    console.error('>>>> GEMINI_NO_AUDIO:', JSON.stringify(result));
-    throw new Error('Gemini did not return any audio data');
-  }
+  if (!data) throw new Error('No audio data returned from Gemini');
   return data;
 }
 
@@ -115,7 +109,6 @@ serve(async (req) => {
   try {
     const url = new URL(req.url);
 
-    // GET FLOW (Streaming)
     if (req.method === 'GET') {
       const tokenId = url.searchParams.get('token_id');
       if (!tokenId) return new Response('Missing token_id', { status: 400, headers: corsHeaders });
@@ -127,20 +120,15 @@ serve(async (req) => {
         .select()
         .single();
 
-      if (tokenError || !tokenData) {
-        return new Response('Invalid token', { status: 401, headers: corsHeaders });
-      }
+      if (tokenError || !tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
 
       const { text, voiceName, stylePrompt } = tokenData.payload;
       const audioData = await callGemini(text, voiceName, stylePrompt);
       const wavBuffer = addWavHeader(audioData);
 
-      return new Response(wavBuffer, {
-        headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
-      });
+      return new Response(wavBuffer, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav' } });
     }
 
-    // POST FLOW (Handshake)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return new Response('Unauthorized', { status: 401 });
     const token = authHeader.replace('Bearer ', '');
@@ -149,6 +137,7 @@ serve(async (req) => {
 
     const payload = await req.json();
     const { text, voiceName, stylePrompt } = payload;
+    if (!text) return new Response('Missing text in body', { status: 400, headers: corsHeaders });
 
     // VALIDATION: Try reaching Gemini NOW so we catch errors early
     console.log('>>>> Performing pre-handshake validation...');
@@ -164,7 +153,6 @@ serve(async (req) => {
       });
     }
 
-    // Create token if validation passed
     const { data: tokenRow, error: insertError } = await svcClient
       .from('tts_tokens')
       .insert({ user_id: user.id, payload })
@@ -183,8 +171,8 @@ serve(async (req) => {
       status: 500,
       headers: { 
         ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'X-Error-Message': msg.substring(0, 200).replace(/\n/g, ' ')
+        'Content-Type': 'application/json', 
+        'X-Error-Message': msg.substring(0, 200).replace(/\n/g, ' ') 
       }
     });
   }
