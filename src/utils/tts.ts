@@ -137,28 +137,35 @@ export async function speakArabic(
       if (!accessToken) throw new Error('No session token — user not logged in');
 
       const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
-      const params = new URLSearchParams({
-        text,
-        token: accessToken,
+      
+      // PHASE 1: Handshake (POST to get token)
+      console.log(`[TTS] Handshake with ${provider}...`);
+      const handshakeBody = provider === 'elevenlabs'
+        ? { text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }
+        : { text, voiceName: voiceId, stylePrompt };
+
+      const handshakeRes = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(handshakeBody),
       });
 
-      if (provider === 'elevenlabs') {
-        params.append('voiceId', voiceId);
-        if (tone) params.append('tone', tone);
-        params.append('speed', getToneVoiceSettings(tone).speed.toString());
-      } else {
-        params.append('voiceName', voiceId);
-        if (stylePrompt) params.append('stylePrompt', stylePrompt);
-      }
+      if (!handshakeRes.ok) throw new Error(`Handshake failed: ${handshakeRes.status}`);
+      const { token_id } = await handshakeRes.json();
 
-      const streamingUrl = `${SUPABASE_URL}/functions/v1/${functionName}?${params.toString()}`;
-      console.log(`[TTS] Streaming from ${provider}, function: ${functionName}`);
+      // PHASE 2: Streaming (GET with token_id)
+      const streamingUrl = `${SUPABASE_URL}/functions/v1/${functionName}?token_id=${token_id}`;
+      console.log(`[TTS] Handshake success. Streaming from token: ${token_id}`);
 
       const audio = preUnlockedAudio || new Audio();
+      audio.crossOrigin = "anonymous";
       audio.src = streamingUrl;
       currentAudio = audio;
 
-      return new Promise<void>((resolve) => {
+      return new Promise<void>((resolve, reject) => {
         const handlePlaying = () => {
           console.log('[TTS] Audio started playing (streaming)');
           onPlaybackStarted?.();
@@ -167,38 +174,87 @@ export async function speakArabic(
         audio.addEventListener('playing', handlePlaying);
 
         audio.addEventListener('ended', () => {
+          console.log('[TTS] Audio ended (streaming)');
           if (currentAudio === audio) currentAudio = null;
           resolve();
         });
+
         audio.addEventListener('error', (e) => {
-          console.error('[TTS] Streaming audio error:', e);
+          console.error('[TTS] Streaming audio error event:', audio.error);
           if (currentAudio === audio) currentAudio = null;
-          resolve();
+          reject(new Error(`Streaming failed: ${audio.error?.message || 'Unknown error'}`));
         });
+
         audio.addEventListener('pause', () => {
           if (!audio.src || audio.src === '') resolve();
         });
 
         audio.play().catch((err) => {
-          console.error('[TTS] Play failed:', err);
+          console.error('[TTS] Play promise rejected:', err);
           if (currentAudio === audio) currentAudio = null;
-          resolve();
+          reject(err);
         });
       });
     } catch (err) {
-      console.error(`[TTS] ${provider} streaming failed:`, err);
+      console.warn(`[TTS] ${provider} handshake/streaming failed, falling back to blob method:`, err);
+      
+      // STABLE FALLBACK: Use the original POST + blob method (10s delay but guaranteed sound)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
+        
+        const body = provider === 'elevenlabs' 
+          ? { text, voiceId, tone, speed: getToneVoiceSettings(tone).speed, legacy: true }
+          : { text, voiceName: voiceId, stylePrompt, legacy: true };
+
+        console.log(`[TTS] ${provider} fallback: Fetching full blob...`);
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) throw new Error(`Fallback failed: ${res.status}`);
+        
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const audio = preUnlockedAudio || new Audio();
+        audio.src = blobUrl;
+        currentAudio = audio;
+        
+        onPlaybackStarted?.(); // Mark started for telemetry
+        
+        return new Promise<void>((resolve) => {
+          audio.onended = () => {
+            URL.revokeObjectURL(blobUrl);
+            if (currentAudio === audio) currentAudio = null;
+            resolve();
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(blobUrl);
+            if (currentAudio === audio) currentAudio = null;
+            resolve();
+          };
+          audio.play().catch(() => resolve());
+        });
+      } catch (fallbackErr) {
+        console.error('[TTS] Fallback also failed:', fallbackErr);
+      }
     }
   }
 
-  // Browser fallback (also default for provider === 'browser')
-  if ('speechSynthesis' in window) {
-    return new Promise<void>((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ar-EG';
-      utterance.rate = 1.1;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-      window.speechSynthesis.speak(utterance);
-    });
-  }
+  // Final fallback (browser native - mostly for dev, no patient tone/voice support)
+  return new Promise<void>((resolve) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ar-SA';
+    utterance.rate = 0.9;
+    utterance.onstart = () => onPlaybackStarted?.();
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    window.speechSynthesis.speak(utterance);
+  });
 }

@@ -17,7 +17,6 @@ function addWavHeader(
     Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0)).buffer
   );
 
-  // Downsample using linear interpolation
   const ratio = inputSampleRate / outputSampleRate;
   const outputLength = Math.floor(pcmBuffer.length / ratio);
   const downsampled = new Int16Array(outputLength);
@@ -62,63 +61,19 @@ serve(async (req) => {
   }
 
   try {
-    // ── Parameter & Auth extraction ──
-    const url = new URL(req.url);
-    let text, voiceName, stylePrompt, token;
-
-    if (req.method === 'GET') {
-      text = url.searchParams.get('text');
-      voiceName = url.searchParams.get('voiceName');
-      stylePrompt = url.searchParams.get('stylePrompt');
-      token = url.searchParams.get('token');
-    } else {
-      const body = await req.json();
-      text = body.text;
-      voiceName = body.voiceName;
-      stylePrompt = body.stylePrompt;
-      const authHeader = req.headers.get('Authorization') || '';
-      token = authHeader.replace('Bearer ', '');
-    }
-
-    if (!token) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const svcClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
-      global: { headers: { Authorization: `Bearer ${token}` } } 
-    });
+    async function streamFromGemini(payload: any) {
+      const { text, voiceName, stylePrompt } = payload;
+      const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+      if (!GEMINI_API_KEY) throw new Error('GOOGLE_API_KEY is not set');
 
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-
-    if (!text) {
-      return new Response(
-        JSON.stringify({ error: 'text is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-    if (!GEMINI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'GOOGLE_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    async function callGemini(inputText: string, voiceName: string) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      try {
+      async function callGemini(inputText: string, voice: string) {
         const response = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
+          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-tts:generateContent',
           {
             method: 'POST',
             headers: {
@@ -131,86 +86,84 @@ serve(async (req) => {
                 responseModalities: ['AUDIO'],
                 speechConfig: {
                   voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName },
+                    prebuiltVoiceConfig: { voiceName: voice },
                   },
                 },
               },
             }),
-            signal: controller.signal,
           }
         );
-        clearTimeout(timeoutId);
-        console.log('[gemini-tts] Gemini API responded:', response.status);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Gemini TTS API error:', response.status, errorText);
-          return { ok: false, status: response.status, audioData: null, finishReason: null };
-        }
+
+        if (!response.ok) throw new Error(`Gemini status ${response.status}`);
         const result = await response.json();
-        const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        const finishReason = result?.candidates?.[0]?.finishReason;
-        return { ok: true, status: 200, audioData, finishReason };
+        const data = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (!data) throw new Error('No audio data returned from Gemini');
+        return data;
+      }
+
+      const voice = voiceName || 'Kore';
+      const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
+      
+      let audioData;
+      try {
+        audioData = await callGemini(finalText, voice);
       } catch (err) {
-        clearTimeout(timeoutId);
-        if ((err as Error).name === 'AbortError') {
-          console.error('[gemini-tts] Gemini API timed out after 15s');
-          return { ok: false, status: 504, audioData: null, finishReason: 'TIMEOUT' };
-        }
-        throw err;
+        if (stylePrompt) audioData = await callGemini(text, voice);
+        else throw err;
       }
+
+      return addWavHeader(audioData);
     }
 
-    const voice = voiceName || 'Kore';
-    const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const tokenId = url.searchParams.get('token_id');
+      if (!tokenId) return new Response('Missing token_id', { status: 400 });
 
-    // First attempt with style prompt (with retry on 500)
-    console.log('[gemini-tts] Attempt 1 with style prompt:', !!stylePrompt);
-    let result = await callGemini(finalText, voice);
+      const { data: tokenData, error: tokenError } = await svcClient
+        .from('tts_tokens')
+        .delete()
+        .eq('id', tokenId)
+        .select()
+        .single();
 
-    // Retry once on transient 500 errors from Gemini API
-    if (!result.ok && result.status === 500) {
-      console.log('[gemini-tts] Got 500 from Gemini, retrying after 500ms...');
-      await new Promise(r => setTimeout(r, 500));
-      result = await callGemini(finalText, voice);
+      if (tokenError || !tokenData) return new Response('Invalid token', { status: 401 });
+
+      const wavBuffer = await streamFromGemini(tokenData.payload);
+      return new Response(wavBuffer, {
+        headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
+      });
     }
 
-    if (!result.ok) {
-      return new Response(
-        JSON.stringify({ error: `Gemini TTS API error: ${result.status}` }),
-        { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // If no audio and we had a style prompt, retry without it
-    if (!result.audioData && stylePrompt) {
-      console.log('[gemini-tts] No audio (finishReason:', result.finishReason, ') — retrying without style prompt');
-      result = await callGemini(text, voice);
-      if (!result.ok) {
-        return new Response(
-          JSON.stringify({ error: `Gemini TTS API error on retry: ${result.status}` }),
-          { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    const audioData = result.audioData;
-    if (!audioData) {
-      console.error('[gemini-tts] No audio data after all attempts, finishReason:', result.finishReason);
-      return new Response(
-        JSON.stringify({ error: 'No audio data returned from Gemini' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const wavBuffer = addWavHeader(audioData);
-    return new Response(wavBuffer, {
-      headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
+    // POST FLOW
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return new Response('Unauthorized', { status: 401 });
+    const token = authHeader.replace('Bearer ', '');
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+      global: { headers: { Authorization: `Bearer ${token}` } } 
     });
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    if (authError || !user) return new Response('Invalid auth', { status: 401 });
+
+    const payload = await req.json();
+    if (payload.legacy === true) {
+      const wavBuffer = await streamFromGemini(payload);
+      return new Response(wavBuffer, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav' } });
+    }
+
+    const { data: tokenRow, error: insertError } = await svcClient
+      .from('tts_tokens')
+      .insert({ user_id: user.id, payload })
+      .select('id')
+      .single();
+
+    if (insertError) throw insertError;
+    return new Response(JSON.stringify({ token_id: tokenRow.id }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
   } catch (err) {
-    console.error('gemini-tts error:', err);
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('Master Error:', (err as Error).message);
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
