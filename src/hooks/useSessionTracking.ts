@@ -1,8 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabaseUrl';
 
 const CLIENT_ID_KEY = 'session_client_id';
 const SESSION_ID_KEY = 'current_session_id';

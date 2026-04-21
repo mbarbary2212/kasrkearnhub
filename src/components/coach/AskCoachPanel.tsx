@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import studyCoachIcon from '@/assets/study-coach-icon.png';
 import { CoachErrorState, type CoachErrorCode } from './CoachErrorState';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -38,7 +39,7 @@ interface CoachError {
   message: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/coach-chat`;
+const CHAT_URL = `${SUPABASE_URL}/functions/v1/coach-chat`;
 
 const SUGGESTED_QUESTIONS = [
   { icon: BookOpen, text: "Explain this concept in simpler terms", category: "Understanding" },

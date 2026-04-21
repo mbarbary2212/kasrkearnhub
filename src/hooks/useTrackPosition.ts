@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabaseUrl';
 
 interface TrackPositionProps {
   year_number?: number | null;
@@ -41,9 +42,8 @@ function flushGlobalPosition() {
   const payload = buildPayload(globalPosition);
   if (!payload) return;
 
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/student_last_position?on_conflict=user_id`;
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  const token = globalAccessToken || anonKey;
+  const url = `${SUPABASE_URL}/rest/v1/student_last_position?on_conflict=user_id`;
+  const token = globalAccessToken || SUPABASE_ANON_KEY;
 
   fetch(url, {
     method: 'POST',

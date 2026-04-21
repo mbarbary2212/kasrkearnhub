@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface ActivityLogPayload {
   action: string;
@@ -27,9 +28,8 @@ export async function logActivity(payload: ActivityLogPayload): Promise<void> {
     }
 
     // Fire and forget - don't await the result in calling code
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     fetch(
-      `${supabaseUrl}/functions/v1/log-activity`,
+      `${SUPABASE_URL}/functions/v1/log-activity`,
       {
         method: 'POST',
         headers: {
