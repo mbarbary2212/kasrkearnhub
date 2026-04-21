@@ -18,7 +18,9 @@ function createWavHeader(dataSize = 0): Uint8Array {
     for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   };
   writeString(0, 'RIFF');
-  view.setUint32(4, dataSize > 0 ? 36 + dataSize : 0x7FFFFFFF, true); 
+  // Use a smaller dummy size (approx 5MB) to avoid browsers waiting for a 2GB file
+  const dummySize = 5 * 1024 * 1024; 
+  view.setUint32(4, 36 + dummySize, true); 
   writeString(8, 'WAVE');
   writeString(12, 'fmt ');
   view.setUint32(16, 16, true);
@@ -29,7 +31,7 @@ function createWavHeader(dataSize = 0): Uint8Array {
   view.setUint16(32, blockAlign, true);
   view.setUint16(34, bitsPerSample, true);
   writeString(36, 'data');
-  view.setUint32(40, dataSize > 0 ? dataSize : 0x7FFFFFFF, true); 
+  view.setUint32(40, dummySize, true); 
   return new Uint8Array(buffer);
 }
 
@@ -43,17 +45,18 @@ async function streamGemini(
   const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
   const modelId = 'gemini-3.1-flash-tts-preview';
   const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
-  const prompt = stylePrompt ? `${stylePrompt}\n\n${inputText}` : inputText;
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?key=${apiKey}`;
 
-  console.log(`[Timer] T+0ms: Fetching Google Stream...`);
+  console.log(`[Timer] T+0ms: Fetching Google Stream (SystemInstruction optimization)...`);
 
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
+      // MOVE STYLE TO SYSTEM INSTRUCTION FOR FASTER REASONING
+      system_instruction: stylePrompt ? { parts: [{ text: stylePrompt }] } : undefined,
+      contents: [{ parts: [{ text: inputText }] }],
       generationConfig: {
         responseModalities: ["AUDIO"],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
@@ -67,7 +70,11 @@ async function streamGemini(
     }),
   });
 
-  if (!response.ok) throw new Error(`Google API Stream Error: ${response.status} - ${await response.text()}`);
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`[Timer] T+${Date.now() - startTime}ms: GOOGLE_API_ERROR:`, err);
+    throw new Error(`Google API Stream Error: ${response.status} - ${err}`);
+  }
 
   const reader = response.body?.getReader();
   if (!reader) throw new Error('No body in Google response');
@@ -82,8 +89,6 @@ async function streamGemini(
 
     buffer += decoder.decode(value, { stream: true });
     
-    // Look for audio data in the incoming text stream without waiting for full JSON closing
-    // We search for "inlineData": {"data": "..."
     const audioMarker = '"inlineData":';
     const dataMarker = '"data":';
     
@@ -103,7 +108,7 @@ async function streamGemini(
       const b64 = buffer.substring(startQuote + 1, endQuote);
       if (b64) {
         if (audioBytesTotal === 0) {
-          console.log(`[Timer] T+${Date.now() - startTime}ms: RECEIVED FIRST AUDIO CHUNK`);
+          console.log(`[Timer] T+${Date.now() - startTime}ms: FIRST_CHUNK_ROUTED`);
         }
         const raw = atob(b64);
         const bytes = new Uint8Array(raw.length);
@@ -112,10 +117,10 @@ async function streamGemini(
         audioBytesTotal += bytes.length;
       }
       
-      // Advance buffer past this part
       buffer = buffer.substring(endQuote + 1);
     }
   }
+  console.log(`[Timer] T+${Date.now() - startTime}ms: STREAM_FINISHED. Bytes=${audioBytesTotal}`);
 }
 
 serve(async (req) => {
@@ -134,6 +139,8 @@ serve(async (req) => {
       if (error || !tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
 
       const { text, voiceName, stylePrompt } = tokenData.payload;
+      console.log(`[Timer] GET_RECEIVED: Token=${tokenId}`);
+      
       const stream = new ReadableStream({
         async start(controller) {
           try {

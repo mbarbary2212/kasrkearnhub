@@ -273,10 +273,9 @@ export function HistoryTakingSection({
   const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Clear any running typewriter
-    // If we're waiting for AI or TTS hasn't started playing yet, show nothing or pulse
+    // If we're waiting for AI or TTS hasn't started playing yet, show text in dimmed state
     if (isWaitingForAi || (isSpeaking && !ttsFirstByte)) {
-      setDisplayedText(''); 
+      setDisplayedText(lastAiMessage); // Show it, but we'll style it to be dimmed
       if (typewriterTimerRef.current) {
         clearInterval(typewriterTimerRef.current);
         typewriterTimerRef.current = null;
@@ -316,7 +315,7 @@ export function HistoryTakingSection({
         typewriterTimerRef.current = null;
       }
     };
-  }, [lastAiMessage, isSpeaking]);
+  }, [lastAiMessage, isSpeaking, ttsFirstByte, isWaitingForAi]);
 
   // Auto-scroll voice bubble to bottom as typewriter reveals text
   useEffect(() => {
@@ -1033,11 +1032,21 @@ export function HistoryTakingSection({
               <div
                 ref={voiceBubbleRef}
                 className={cn(
-                  'rounded-xl bg-card border px-4 py-3 text-base text-card-foreground max-w-sm w-full max-h-40 overflow-y-auto transition-opacity duration-500',
-                  displayedText ? 'opacity-100' : 'opacity-0'
+                  'rounded-xl border px-4 py-3 text-base max-w-sm w-full max-h-40 overflow-y-auto transition-all duration-500',
+                  displayedText ? 'opacity-100' : 'opacity-0',
+                  (isWaitingForAi || (isSpeaking && !ttsFirstByte)) 
+                    ? 'bg-muted/50 text-muted-foreground italic scale-95 border-dashed blur-[0.5px]' 
+                    : 'bg-card text-card-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.15)]'
                 )}
                 dir="rtl"
               >
+                {(isWaitingForAi || (isSpeaking && !ttsFirstByte)) && (
+                  <span className="inline-flex gap-1 ml-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
+                  </span>
+                )}
                 {displayedText || '\u00A0'}
               </div>
             </div>
