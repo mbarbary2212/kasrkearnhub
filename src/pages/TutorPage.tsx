@@ -9,13 +9,14 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { ArrowLeft, Send, Loader2, Bot, User, Sparkles, BookOpen, Stethoscope, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
+const CHAT_URL = `${SUPABASE_URL}/functions/v1/med-tutor-chat`;
 
 const SUGGESTED_QUESTIONS = [
   { icon: BookOpen, text: "Explain the renin-angiotensin-aldosterone system", category: "Physiology" },

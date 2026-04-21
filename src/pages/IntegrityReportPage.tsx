@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, ShieldAlert, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 interface IntegrityResult {
   issue: string;
@@ -41,7 +42,7 @@ export default function IntegrityReportPage() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-pilot`,
+        `${SUPABASE_URL}/functions/v1/integrity-pilot`,
         {
           method: 'POST',
           headers: {

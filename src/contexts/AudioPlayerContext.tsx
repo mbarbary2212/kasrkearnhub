@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 interface AudioResource {
   id: string;
@@ -64,7 +65,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-audio-signed-url`,
+        `${SUPABASE_URL}/functions/v1/get-audio-signed-url`,
         {
           method: 'POST',
           headers: {

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/activityLog';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface TrueFalseQuestion {
   id: string;
@@ -341,7 +342,7 @@ export function useBulkCreateTrueFalseQuestions() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-true-false`,
+        `${SUPABASE_URL}/functions/v1/bulk-import-true-false`,
         {
           method: 'POST',
           headers: {

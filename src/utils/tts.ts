@@ -23,8 +23,7 @@ export const ELEVENLABS_VOICES: Record<'male' | 'female', ElevenLabsVoice[]> = {
   ],
 };
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabaseUrl';
 
 /** Module-level reference to the currently playing audio (ElevenLabs or Gemini) */
 let currentAudio: HTMLAudioElement | null = null;

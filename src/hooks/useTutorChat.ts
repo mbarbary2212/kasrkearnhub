@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface Message {
   role: 'user' | 'assistant';
@@ -16,7 +17,7 @@ export interface TutorError {
   action_label?: string;
 }
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/med-tutor-chat`;
+const CHAT_URL = `${SUPABASE_URL}/functions/v1/med-tutor-chat`;
 
 export function useTutorChat() {
   const [messages, setMessages] = useState<Message[]>([]);

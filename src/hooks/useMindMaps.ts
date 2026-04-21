@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 export interface MindMap {
   id: string;
@@ -105,7 +106,7 @@ export function useGenerateMindMap() {
       if (!session) throw new Error('Not authenticated');
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-mind-map`,
+        `${SUPABASE_URL}/functions/v1/generate-mind-map`,
         {
           method: 'POST',
           headers: {
