@@ -186,7 +186,7 @@ export function IntegrityCheckTab() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-orphaned-all`,
+        `${SUPABASE_URL}/functions/v1/integrity-orphaned-all`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -215,7 +215,7 @@ export function IntegrityCheckTab() {
     try {
       const token = await getAuthToken();
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-pilot-v2`,
+        `${SUPABASE_URL}/functions/v1/integrity-pilot-v2`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

@@ -693,7 +693,7 @@ export function AdminContentActions({ chapterId, moduleId, topicId, contentType,
     try {
       const storagePath = `${Date.now()}_${ytFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
       const { data: { session } } = await supabase.auth.getSession();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseUrl = SUPABASE_URL;
 
       await uploadVideoToStorage({
         file: ytFile,

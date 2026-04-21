@@ -346,7 +346,7 @@ export function HistoryTakingSection({
             if (ttsProvider === 'gemini') {
               stopAllTTS();
               const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-              const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+              const SUPABASE_URL = SUPABASE_URL_FALLBACK;
               const { data: { session } } = await supabase.auth.getSession();
               console.log('[Response TTS] Fetching gemini-tts, voice:', geminiVoiceToUse);
               const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {

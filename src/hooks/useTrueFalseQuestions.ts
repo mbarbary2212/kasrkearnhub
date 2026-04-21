@@ -342,7 +342,7 @@ export function useBulkCreateTrueFalseQuestions() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-true-false`,
+        `${SUPABASE_URL}/functions/v1/bulk-import-true-false`,
         {
           method: 'POST',
           headers: {

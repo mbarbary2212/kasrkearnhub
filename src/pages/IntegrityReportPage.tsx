@@ -42,7 +42,7 @@ export default function IntegrityReportPage() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integrity-pilot`,
+        `${SUPABASE_URL}/functions/v1/integrity-pilot`,
         {
           method: 'POST',
           headers: {

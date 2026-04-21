@@ -106,7 +106,7 @@ export function useGenerateMindMap() {
       if (!session) throw new Error('Not authenticated');
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-mind-map`,
+        `${SUPABASE_URL}/functions/v1/generate-mind-map`,
         {
           method: 'POST',
           headers: {

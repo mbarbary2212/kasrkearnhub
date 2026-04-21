@@ -189,7 +189,7 @@ export function useStartBatchJob() {
       if (!session) throw new Error('Not authenticated');
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-batch-job`,
+        `${SUPABASE_URL}/functions/v1/process-batch-job`,
         {
           method: 'POST',
           headers: {

@@ -409,7 +409,7 @@ export function useBulkCreateMcqs() {
 
       // Call edge function which uses service role key
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-mcqs`,
+        `${SUPABASE_URL}/functions/v1/bulk-import-mcqs`,
         {
           method: 'POST',
           headers: {
@@ -474,7 +474,7 @@ export function useBulkUpdateMcqs() {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bulk-import-mcqs`,
+        `${SUPABASE_URL}/functions/v1/bulk-import-mcqs`,
         {
           method: 'POST',
           headers: {
