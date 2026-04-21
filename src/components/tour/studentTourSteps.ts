@@ -5,15 +5,14 @@ export const studentTourSteps: DriveStep[] = [
     popover: {
       title: 'The KALM workflow',
       description:
-        'KALM is built around four steps you repeat for every chapter: <strong>Learn</strong> (videos, flashcards, visual explanations, Socratic documents) → <strong>Interact</strong> (cases) → <strong>Practice</strong> (MCQs, SBA, OSCE, short essays, case scenarios) → <strong>Test</strong> yourself in a controlled environment of your choice. This tour shows where each of those lives.',
+        'Every chapter follows four steps: <strong>Learn</strong> (videos, flashcards, etc.) → <strong>Interact</strong> (cases) → <strong>Practice</strong> (MCQs, OSCE, etc.) → <strong>Test</strong> yourself.',
     },
   },
   {
     element: '[data-tour="continue-card"]',
     popover: {
-      title: 'Resume exactly where you stopped',
-      description:
-        'KALM tracks your last position — mid-video, mid-MCQ, mid-case — and drops you back in one click. No need to remember what you were doing.',
+      title: 'Resume where you stopped',
+      description: 'One click and you\'re back — mid-video, mid-MCQ, mid-case. No remembering.',
       side: 'bottom',
       align: 'center',
     },
@@ -21,9 +20,8 @@ export const studentTourSteps: DriveStep[] = [
   {
     element: '[data-tour="today-plan"]',
     popover: {
-      title: 'Priorities built from your actual data',
-      description:
-        'This panel reads your weak chapters, your classification tier (Safe / At Risk / Critical), and your exam dates, and surfaces what to tackle today. A second opinion on what you think you should study.',
+      title: 'Your priorities',
+      description: 'Built from your weak chapters, classification tier, and exam dates. A second opinion on what to study today.',
       side: 'left',
       align: 'center',
     },
@@ -31,9 +29,8 @@ export const studentTourSteps: DriveStep[] = [
   {
     element: '[data-tour="flashcards-due"]',
     popover: {
-      title: 'Spaced-repetition flashcards (FSRS)',
-      description:
-        'These are flashcards from chapters you have already learned, scheduled by FSRS to appear exactly when your brain is about to forget them. Reviewing them daily is what keeps last month\'s study alive next month.',
+      title: 'FSRS flashcards',
+      description: 'Cards your brain is about to forget, scheduled by FSRS. Ten minutes daily keeps last month\'s study alive.',
       side: 'left',
       align: 'center',
     },
@@ -42,8 +39,7 @@ export const studentTourSteps: DriveStep[] = [
     element: '[data-tour="study-plan"]',
     popover: {
       title: 'Your day, planned',
-      description:
-        'Fill in <strong>Coach → Plan</strong> (exam date, daily hours, ambition) and this panel shows today\'s tasks with time estimates. Skip the Plan inputs and the panel stays empty.',
+      description: 'Fill <strong>Coach → Plan</strong> (exam date, hours, ambition) and your tasks appear here with time estimates.',
       side: 'left',
       align: 'center',
     },
@@ -51,39 +47,41 @@ export const studentTourSteps: DriveStep[] = [
   {
     element: '[data-tour="modules"]',
     popover: {
-      title: 'The full curriculum',
-      description:
-        'Use Modules to revise a specific area or open a chapter the plan did not pick. Each module shows a readiness bar. It turns green only after Practice is cleared — not after videos alone.',
+      title: 'Full curriculum',
+      description: 'Revise or jump to any chapter. Readiness bar turns green only after Practice — not just videos.',
       side: 'top',
       align: 'center',
     },
   },
   {
     popover: {
-      title: 'Every chapter has four tabs — do them in order',
+      title: 'Inside every chapter — four tabs',
       description:
-        '<strong>Resources</strong> — Learn. Videos, flashcards, visual explanations, Socratic documents.<br><strong>Interactive</strong> — Interact. Clinical cases, structured cases, virtual patient.<br><strong>Practice</strong> — MCQs, SBA, OSCE, matching, short essays, case scenarios.<br><strong>Test Yourself</strong> — Chapter exam in the format and time you choose.<br><br>The four tabs map 1-to-1 to the four steps of the workflow.',
+        '<strong>Resources</strong> — Learn.<br><strong>Interactive</strong> — Apply.<br><strong>Practice</strong> — Stress-test.<br><strong>Test Yourself</strong> — Verify.',
     },
   },
   {
+    element: '[data-tour="coach-icon"]',
     popover: {
-      title: 'The Coach reads your chapter',
-      description:
-        'Open the Coach when something does not click. It reads the chapter PDF you are currently in and answers from that material. For best results, open a chapter first.',
+      title: 'Ask the Coach',
+      description: 'Stuck? Click the icon bottom-right. It reads your chapter PDF and answers from that. Open a chapter first.',
+      side: 'left',
+      align: 'center',
     },
   },
   {
+    element: '[data-tour="coach"]',
     popover: {
-      title: 'The honest verdict — Coach → Progress',
-      description:
-        'Readiness by chapter, weakest topics, days to exam. Check it weekly to decide what next week looks like.',
+      title: 'Coach page — plan and progress',
+      description: 'The sidebar Coach holds your <strong>Goals</strong>, adaptive <strong>Plan</strong>, and honest <strong>Progress</strong>. Check Progress weekly.',
+      side: 'right',
+      align: 'center',
     },
   },
   {
     popover: {
       title: 'Daily rhythm',
-      description:
-        'Morning: Daily Reviews (flashcards) → today\'s priorities or plan. In each chapter: Learn → Interact → Practice → Test.',
+      description: 'Morning: Daily Reviews → priorities or plan. In each chapter: Learn → Interact → Practice → Test.',
     },
   },
 ];
