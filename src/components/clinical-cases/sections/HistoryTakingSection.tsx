@@ -65,10 +65,17 @@ export function HistoryTakingSection({
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
 
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, isPlatformAdmin, role } = useAuth();
   const [metrics, setMetrics] = useState<PerformanceMetrics>(INITIAL_METRICS);
   const lastPartialTimeRef = useRef<number>(0);
   const sttLatencyRef = useRef<number>(0);
+
+  // Debug role access
+  useEffect(() => {
+    if (isPlatformAdmin) {
+      console.log('[Telemetry] Admin access confirmed, role:', role);
+    }
+  }, [isPlatformAdmin, role]);
 
   // TTS settings
   const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
@@ -450,7 +457,7 @@ export function HistoryTakingSection({
         lastPartialTimeRef.current = 0;
       }
     }
-  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase]);
+  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase, isSuperAdmin]);
 
   // Keep ref in sync with latest sendChatMessage
   useEffect(() => {
@@ -843,7 +850,7 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
-          {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
+          {isPlatformAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
@@ -1100,7 +1107,7 @@ export function HistoryTakingSection({
   return (
     <div className="space-y-5 relative">
       {watermark}
-      {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
+      {isPlatformAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
       {questions.length > 0 && (
         <div className="space-y-3">

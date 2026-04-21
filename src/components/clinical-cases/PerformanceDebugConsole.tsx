@@ -11,7 +11,7 @@ interface PerformanceDebugConsoleProps {
 }
 
 export function PerformanceDebugConsole({ metrics, onClose }: PerformanceDebugConsoleProps) {
-  if (metrics.timestamp === 0) return null;
+  const hasData = metrics.timestamp !== 0;
 
   return (
     <Card className="fixed bottom-4 right-4 z-50 w-64 shadow-2xl border-primary/20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -32,45 +32,53 @@ export function PerformanceDebugConsole({ metrics, onClose }: PerformanceDebugCo
         </div>
 
         <div className="space-y-2.5">
-          {/* STT Metric */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Mic className="w-3 h-3" />
-              STT Recognition
+          {!hasData ? (
+            <div className="text-[11px] text-muted-foreground italic py-2 text-center">
+              Waiting for first interaction...
             </div>
-            <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.stt))}>
-              {formatMs(metrics.stt)}
-            </span>
-          </div>
+          ) : (
+            <>
+              {/* STT Metric */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Mic className="w-3 h-3" />
+                  STT Recognition
+                </div>
+                <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.stt))}>
+                  {formatMs(metrics.stt)}
+                </span>
+              </div>
 
-          {/* LLM Metric */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Cpu className="w-3 h-3" />
-              LLM Reasoning
-            </div>
-            <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.llm))}>
-              {formatMs(metrics.llm)}
-            </span>
-          </div>
+              {/* LLM Metric */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Cpu className="w-3 h-3" />
+                  LLM Reasoning
+                </div>
+                <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.llm))}>
+                  {formatMs(metrics.llm)}
+                </span>
+              </div>
 
-          {/* TTS Metric */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Volume2 className="w-3 h-3" />
-              TTS Generation
-            </div>
-            <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.tts))}>
-              {formatMs(metrics.tts)}
-            </span>
-          </div>
+              {/* TTS Metric */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Volume2 className="w-3 h-3" />
+                  TTS Generation
+                </div>
+                <span className={cn("text-xs font-mono font-bold", getLatencyColor(metrics.tts))}>
+                  {formatMs(metrics.tts)}
+                </span>
+              </div>
 
-          <div className="pt-2 border-t mt-2 flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase text-muted-foreground">Total Turn</span>
-            <Badge variant="outline" className={cn("text-[10px] tabular-nums font-mono", getLatencyColor(metrics.total))}>
-              {formatMs(metrics.total)}
-            </Badge>
-          </div>
+              <div className="pt-2 border-t mt-2 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground">Total Turn</span>
+                <Badge variant="outline" className={cn("text-[10px] tabular-nums font-mono", getLatencyColor(metrics.total))}>
+                  {formatMs(metrics.total)}
+                </Badge>
+              </div>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>
