@@ -46,8 +46,9 @@ export function WorkflowGuide({ open, onOpenChange, mode }: WorkflowGuideProps) 
         <DialogHeader>
           <DialogTitle className="text-lg">{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-1 mt-2">
-          {steps.map((step, i) => {
+        <ScrollArea className="max-h-[70vh] mt-2 pr-2">
+          <div className="space-y-1">
+            {steps.map((step, i) => {
             const Icon = step.icon;
             return (
               <div key={i} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
@@ -63,8 +64,9 @@ export function WorkflowGuide({ open, onOpenChange, mode }: WorkflowGuideProps) 
                 </div>
               </div>
             );
-          })}
-        </div>
+            })}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
