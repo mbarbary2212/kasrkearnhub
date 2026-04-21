@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BookOpen, GalleryHorizontal, CalendarCheck, FlaskConical, Compass, HelpCircle, Upload, BarChart3, MessageSquare, Flag, Inbox, Stethoscope, BookOpenCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface WorkflowGuideProps {
   open: boolean;
@@ -9,14 +10,14 @@ interface WorkflowGuideProps {
 }
 
 const studentSteps = [
-  { icon: GalleryHorizontal, title: 'Daily Reviews first', description: 'Clear the flashcards scheduled by FSRS before tackling new material. Ten minutes here is what keeps last month\'s study alive next month.' },
-  { icon: CalendarCheck, title: 'Follow your daily priorities', description: 'The priorities panel picks what to study based on your weak chapters, your classification tier, and your exam dates. Treat it as a second opinion on what you were going to pick.' },
-  { icon: BookOpen, title: 'Resources: Learn', description: 'Start every chapter on the Resources tab. Videos, flashcards, visual explanations, Socratic documents — this is where you learn the material.' },
-  { icon: Stethoscope, title: 'Interactive: Interact', description: 'If the chapter has a clinical case, structured case, or virtual patient, do it after Resources. This is where passive knowledge becomes clinical reasoning.' },
-  { icon: FlaskConical, title: 'Practice: Stress-test', description: 'MCQs, SBA, OSCE, matching, short essays, case scenarios. Skipping Practice is why students blank on exams.' },
-  { icon: BookOpenCheck, title: 'Test Yourself', description: 'Chapter exam in the format and time you choose. Pass it and the chapter readiness bar turns green.' },
-  { icon: HelpCircle, title: 'Coach: grounded help', description: 'Stuck mid-chapter? Open the Coach — it reads your chapter PDF and answers from that material, not from generic textbook knowledge.' },
-  { icon: BarChart3, title: 'Progress: honest verdict', description: 'Coach → Progress tab shows readiness by chapter, weakest topics, and days to exam. Check it weekly.' },
+  { icon: GalleryHorizontal, title: 'Daily Reviews first', description: 'FSRS flashcards before new material. Ten minutes daily = hours saved at exams.' },
+  { icon: CalendarCheck, title: 'Follow priorities', description: 'Picked from your weak chapters, tier, and exam dates. A second opinion on what to study.' },
+  { icon: BookOpen, title: 'Resources: Learn', description: 'Videos, flashcards, visual explanations, Socratic documents.' },
+  { icon: Stethoscope, title: 'Interactive: Apply', description: 'Clinical cases, structured cases, virtual patient — after Resources.' },
+  { icon: FlaskConical, title: 'Practice: Stress-test', description: 'MCQs, SBA, OSCE, short essays, case scenarios. Non-negotiable.' },
+  { icon: BookOpenCheck, title: 'Test Yourself', description: 'Chapter exam in your chosen format. Pass it → bar turns green.' },
+  { icon: HelpCircle, title: 'Coach: grounded help', description: 'Bottom-right icon. Reads your chapter PDF and answers from it.' },
+  { icon: BarChart3, title: 'Progress: honest verdict', description: 'Sidebar Coach → Progress. Readiness, weak chapters, days to exam. Weekly.' },
 ];
 
 const adminSteps = [
