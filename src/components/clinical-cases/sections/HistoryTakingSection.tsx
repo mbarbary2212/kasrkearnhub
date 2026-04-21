@@ -118,6 +118,7 @@ export function HistoryTakingSection({
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isWaitingForAi, setIsWaitingForAi] = useState(false);
   const [ttsFirstByte, setTtsFirstByte] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
@@ -273,9 +274,14 @@ export function HistoryTakingSection({
 
   useEffect(() => {
     // Clear any running typewriter
-    if (typewriterTimerRef.current) {
-      clearInterval(typewriterTimerRef.current);
-      typewriterTimerRef.current = null;
+    // If we're waiting for AI or TTS hasn't started playing yet, show nothing or pulse
+    if (isWaitingForAi || (isSpeaking && !ttsFirstByte)) {
+      setDisplayedText(''); 
+      if (typewriterTimerRef.current) {
+        clearInterval(typewriterTimerRef.current);
+        typewriterTimerRef.current = null;
+      }
+      return;
     }
 
     // Hard sync: when TTS stops, show full text immediately
@@ -286,10 +292,9 @@ export function HistoryTakingSection({
     }
 
     // Start typewriter when actual playback (first byte) begins
-    if (isSpeaking && ttsFirstByte && lastAiMessage) {
+    if (isSpeaking && ttsFirstByte && lastAiMessage && !typewriterTimerRef.current) {
       const text = lastAiMessage;
-      // Use a consistent speed for Arabic (roughly 15-20 bytes per second is common for clear speech)
-      const charDelay = 35; 
+      const charDelay = 35; // Standard Arabic reading speed
       let idx = 0;
       setDisplayedText('');
 
@@ -335,6 +340,7 @@ export function HistoryTakingSection({
     setChatMessages(updatedMessages);
     setChatInput('');
     setIsSending(true);
+    setIsWaitingForAi(true);
 
     const llmStart = Date.now();
     let llmEnd = 0;
@@ -419,7 +425,7 @@ export function HistoryTakingSection({
         const llmLatency = llmEnd ? llmEnd - llmStart : 0;
         const ttAudioEnd = Date.now();
         const fullTtsDuration = ttsEnd ? ttAudioEnd - llmEnd : 0;
-        const ttfbLatency = ttsEnd ? ttsEnd - llmEnd : 0;
+        const ttfbLatency = ttsEnd && llmEnd ? ttsEnd - llmEnd : 0;
 
         setMetrics({
           stt: sttLatencyRef.current,

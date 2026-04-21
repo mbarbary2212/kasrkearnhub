@@ -59,10 +59,10 @@ async function streamGemini(
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
       },
       safetySettings: [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "OFF" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "OFF" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "OFF" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "OFF" }
       ]
     }),
   });
@@ -75,48 +75,47 @@ async function streamGemini(
   const decoder = new TextDecoder();
   let buffer = "";
   let audioBytesTotal = 0;
-  let firstChunkTime = 0;
-
+  
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
     
-    let braceDepth = 0;
-    let startPos = -1;
+    // Look for audio data in the incoming text stream without waiting for full JSON closing
+    // We search for "inlineData": {"data": "..."
+    const audioMarker = '"inlineData":';
+    const dataMarker = '"data":';
     
-    for (let i = 0; i < buffer.length; i++) {
-        if (buffer[i] === '{') {
-            if (braceDepth === 0) startPos = i;
-            braceDepth++;
-        } else if (buffer[i] === '}') {
-            braceDepth--;
-            if (braceDepth === 0 && startPos !== -1) {
-                const jsonStr = buffer.substring(startPos, i + 1);
-                try {
-                    const json = JSON.parse(jsonStr);
-                    const base64Audio = json?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-                    if (base64Audio) {
-                        if (audioBytesTotal === 0) {
-                            firstChunkTime = Date.now() - startTime;
-                            console.log(`[Timer] T+${firstChunkTime}ms: RECEIVED FIRST AUDIO CHUNK`);
-                        }
-                        const raw = atob(base64Audio);
-                        const bytes = new Uint8Array(raw.length);
-                        for (let j = 0; j < raw.length; j++) bytes[j] = raw.charCodeAt(j);
-                        controller.enqueue(bytes);
-                        audioBytesTotal += bytes.length;
-                    }
-                } catch (e) { }
-                buffer = buffer.substring(startPos + jsonStr.length);
-                i = -1; 
-                startPos = -1;
-            }
+    while (true) {
+      const audioIdx = buffer.indexOf(audioMarker);
+      if (audioIdx === -1) break;
+      
+      const dataIdx = buffer.indexOf(dataMarker, audioIdx);
+      if (dataIdx === -1) break;
+      
+      const startQuote = buffer.indexOf('"', dataIdx + dataMarker.length);
+      if (startQuote === -1) break;
+      
+      const endQuote = buffer.indexOf('"', startQuote + 1);
+      if (endQuote === -1) break;
+      
+      const b64 = buffer.substring(startQuote + 1, endQuote);
+      if (b64) {
+        if (audioBytesTotal === 0) {
+          console.log(`[Timer] T+${Date.now() - startTime}ms: RECEIVED FIRST AUDIO CHUNK`);
         }
+        const raw = atob(b64);
+        const bytes = new Uint8Array(raw.length);
+        for (let j = 0; j < raw.length; j++) bytes[j] = raw.charCodeAt(j);
+        controller.enqueue(bytes);
+        audioBytesTotal += bytes.length;
+      }
+      
+      // Advance buffer past this part
+      buffer = buffer.substring(endQuote + 1);
     }
   }
-  console.log(`[Timer] T+${Date.now() - startTime}ms: STREAM COMPLETE. TotalBytes=${audioBytesTotal}`);
 }
 
 serve(async (req) => {
@@ -131,19 +130,13 @@ serve(async (req) => {
       const tokenId = url.searchParams.get('token_id');
       if (!tokenId) return new Response('Missing token_id', { status: 400, headers: corsHeaders });
 
-      let tokenData = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        const { data, error } = await svcClient.from('tts_tokens').delete().eq('id', tokenId).select().single();
-        if (!error && data) { tokenData = data; break; }
-        if (attempt < 3) await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      if (!tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
+      const { data: tokenData, error } = await svcClient.from('tts_tokens').delete().eq('id', tokenId).select().single();
+      if (error || !tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
 
       const { text, voiceName, stylePrompt } = tokenData.payload;
       const stream = new ReadableStream({
         async start(controller) {
           try {
-            console.log(`[Timer] RETRIEVAL_SUCCESS. Starting stream...`);
             controller.enqueue(createWavHeader(0));
             await streamGemini(text, voiceName, stylePrompt, controller);
             controller.close();
