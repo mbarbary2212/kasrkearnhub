@@ -67,7 +67,7 @@ async function callGemini(inputText: string, voiceName: string, stylePrompt?: st
     throw new Error('CONFIG_ERROR: Google API Key is missing in Edge Function environment variables.');
   }
 
-  const modelId = 'gemini-2.0-flash-exp';
+  const modelId = 'gemini-3.1-flash-tts-preview';
   const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
   const prompt = stylePrompt ? `${stylePrompt}\n\n${inputText}` : inputText;
 
