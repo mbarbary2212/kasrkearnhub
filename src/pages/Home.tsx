@@ -696,6 +696,9 @@ function LoggedInHome() {
             </Card>
           )}
 
+          {/* Tour anchor — permanent so the spotlight tour can find it even when no data renders below */}
+          <div data-tour="today-plan" />
+
           {/* Where You Stand */}
           {isStudent && (dashboard?.insights?.some(i => i.type === 'strong') || weakChapters.length > 0) && (
             <Card>
