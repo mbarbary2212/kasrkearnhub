@@ -118,18 +118,47 @@ serve(async (req) => {
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const tokenId = url.searchParams.get('token_id');
-      if (!tokenId) return new Response('Missing token_id', { status: 400 });
+      
+      let payloadToStream: any;
+      
+      if (tokenId) {
+        // 1. New Handshake Flow
+        const { data: tokenData, error: tokenError } = await svcClient
+          .from('tts_tokens')
+          .delete()
+          .eq('id', tokenId)
+          .select()
+          .single();
 
-      const { data: tokenData, error: tokenError } = await svcClient
-        .from('tts_tokens')
-        .delete()
-        .eq('id', tokenId)
-        .select()
-        .single();
+        if (tokenError || !tokenData) {
+          return new Response('Invalid or expired token', { status: 401, headers: corsHeaders });
+        }
+        payloadToStream = tokenData.payload;
+      } else {
+        // 2. Legacy Flow (Backward Compatibility)
+        const text = url.searchParams.get('text');
+        const token = url.searchParams.get('token');
+        const voiceName = url.searchParams.get('voiceName');
+        const stylePrompt = url.searchParams.get('stylePrompt');
 
-      if (tokenError || !tokenData) return new Response('Invalid token', { status: 401 });
+        if (!text || !token) {
+          return new Response('Missing token_id or legacy params', { status: 400, headers: corsHeaders });
+        }
 
-      const wavBuffer = await streamFromGemini(tokenData.payload);
+        // Validate legacy token
+        const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+          global: { headers: { Authorization: `Bearer ${token}` } } 
+        });
+        const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+        if (authError || !user) {
+          return new Response('Invalid legacy auth', { status: 401, headers: corsHeaders });
+        }
+        
+        payloadToStream = { text, voiceName, stylePrompt };
+      }
+
+      console.log(`[GET] Streaming Gemini audio for ${tokenId ? 'Handshake' : 'Legacy'} request`);
+      const wavBuffer = await streamFromGemini(payloadToStream);
       return new Response(wavBuffer, {
         headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
       });

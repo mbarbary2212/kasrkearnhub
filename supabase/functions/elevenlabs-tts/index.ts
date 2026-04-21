@@ -97,25 +97,48 @@ serve(async (req) => {
     if (req.method === 'GET') {
       const url = new URL(req.url);
       const tokenId = url.searchParams.get('token_id');
+      
+      let payloadToStream: any;
 
-      if (!tokenId) {
-        return new Response(JSON.stringify({ error: 'Missing token_id' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (tokenId) {
+        // 1. New Handshake Flow
+        const { data: tokenData, error: tokenError } = await svcClient
+          .from('tts_tokens')
+          .delete()
+          .eq('id', tokenId)
+          .select()
+          .single();
+
+        if (tokenError || !tokenData) {
+          return new Response('Invalid or expired token', { status: 401, headers: corsHeaders });
+        }
+        payloadToStream = tokenData.payload;
+      } else {
+        // 2. Legacy Flow (Backward Compatibility)
+        const text = url.searchParams.get('text');
+        const token = url.searchParams.get('token');
+        const voiceId = url.searchParams.get('voiceId') || 'DWMVT5WflKt0P8OPpIrY'; // Default to Hanafi
+        const tone = url.searchParams.get('tone');
+        const speed = parseFloat(url.searchParams.get('speed') || '1.1');
+
+        if (!text || !token) {
+          return new Response('Missing token_id or legacy params', { status: 400, headers: corsHeaders });
+        }
+
+        // Validate legacy token
+        const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+          global: { headers: { Authorization: `Bearer ${token}` } } 
+        });
+        const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+        if (authError || !user) {
+          return new Response('Invalid legacy auth', { status: 401, headers: corsHeaders });
+        }
+        
+        payloadToStream = { text, voiceId, tone, speed };
       }
 
-      // Atomically consume token
-      const { data: tokenData, error: tokenError } = await svcClient
-        .from('tts_tokens')
-        .delete()
-        .eq('id', tokenId)
-        .select()
-        .single();
-
-      if (tokenError || !tokenData) {
-        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-
-      console.log(`[GET] Handshake active for user ${tokenData.user_id}`);
-      const response = await streamFromElevenLabs(tokenData.payload);
+      console.log(`[GET] Streaming ElevenLabs audio for ${tokenId ? 'Handshake' : 'Legacy'} request`);
+      const response = await streamFromElevenLabs(payloadToStream);
 
       return new Response(response.body, {
         headers: {
@@ -144,10 +167,11 @@ serve(async (req) => {
     }
 
     const payload = await req.json();
-    const { text, voiceId, legacy } = payload;
+    const { text, legacy } = payload;
+    const voiceId = payload.voiceId || 'DWMVT5WflKt0P8OPpIrY'; // Default to Hanafi
 
-    if (!text || !voiceId) {
-      return new Response(JSON.stringify({ error: 'Missing parameters' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    if (!text) {
+      return new Response(JSON.stringify({ error: 'Missing text parameter' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (legacy === true) {
