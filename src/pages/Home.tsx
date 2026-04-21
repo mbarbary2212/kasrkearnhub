@@ -725,6 +725,7 @@ function LoggedInHome() {
 
           {/* Today's Study Plan — rendered via DashboardTodayPlan component */}
           {isStudent && suggestions.length > 0 && (
+            <div data-tour="study-plan">
             <DashboardTodayPlan
               suggestions={suggestions}
               studyPlan={dashboard?.studyPlan ?? null}
@@ -767,6 +768,7 @@ function LoggedInHome() {
                 navigate(`/module/${moduleId}/chapter/${chapterId}?section=${tab || 'resources'}${subtabParam}`);
               }}
             />
+            </div>
           )}
         </div>
       </div>

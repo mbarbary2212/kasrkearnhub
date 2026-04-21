@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BookOpen, GalleryHorizontal, CalendarCheck, FlaskConical, Compass, HelpCircle, Upload, BarChart3, MessageSquare, Flag, Inbox } from 'lucide-react';
+import { BookOpen, GalleryHorizontal, CalendarCheck, FlaskConical, Compass, HelpCircle, Upload, BarChart3, MessageSquare, Flag, Inbox, Stethoscope, BookOpenCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface WorkflowGuideProps {
@@ -9,12 +9,14 @@ interface WorkflowGuideProps {
 }
 
 const studentSteps = [
-  { icon: BookOpen, title: 'Start here', description: 'Resume from where you left off using the continue card.' },
-  { icon: GalleryHorizontal, title: 'Complete your reviews', description: 'Do your flashcards first to maintain retention.' },
-  { icon: CalendarCheck, title: "Follow today's priorities", description: 'Use the suggested tasks instead of choosing randomly.' },
-  { icon: FlaskConical, title: 'Practice', description: 'Test your understanding and identify weak areas.' },
-  { icon: Compass, title: 'Go deeper when needed', description: 'Use modules to explore topics more thoroughly.' },
-  { icon: HelpCircle, title: 'Ask for help', description: 'Use Connect when something is unclear.' },
+  { icon: GalleryHorizontal, title: 'Daily Reviews first', description: 'Clear the flashcards scheduled by FSRS before tackling new material. Ten minutes here is what keeps last month\'s study alive next month.' },
+  { icon: CalendarCheck, title: 'Follow your daily priorities', description: 'The priorities panel picks what to study based on your weak chapters, your classification tier, and your exam dates. Treat it as a second opinion on what you were going to pick.' },
+  { icon: BookOpen, title: 'Resources: Learn', description: 'Start every chapter on the Resources tab. Videos, flashcards, visual explanations, Socratic documents — this is where you learn the material.' },
+  { icon: Stethoscope, title: 'Interactive: Interact', description: 'If the chapter has a clinical case, structured case, or virtual patient, do it after Resources. This is where passive knowledge becomes clinical reasoning.' },
+  { icon: FlaskConical, title: 'Practice: Stress-test', description: 'MCQs, SBA, OSCE, matching, short essays, case scenarios. Skipping Practice is why students blank on exams.' },
+  { icon: BookOpenCheck, title: 'Test Yourself', description: 'Chapter exam in the format and time you choose. Pass it and the chapter readiness bar turns green.' },
+  { icon: HelpCircle, title: 'Coach: grounded help', description: 'Stuck mid-chapter? Open the Coach — it reads your chapter PDF and answers from that material, not from generic textbook knowledge.' },
+  { icon: BarChart3, title: 'Progress: honest verdict', description: 'Coach → Progress tab shows readiness by chapter, weakest topics, and days to exam. Check it weekly.' },
 ];
 
 const adminSteps = [
