@@ -37,6 +37,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { normalizeText } from '@/lib/duplicateDetection';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 
 // Parse CSV line handling quoted values
 function parseCSVLine(line: string): string[] {

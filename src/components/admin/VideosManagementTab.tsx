@@ -19,6 +19,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { isValidVideoUrl, normalizeVideoInput } from '@/lib/video';
+import { SUPABASE_URL } from '@/lib/supabaseUrl';
 import {
   Play,
   Eye,
