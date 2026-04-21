@@ -3,7 +3,7 @@
 // Supports: Lovable AI Gateway & Direct Google Gemini
 // ============================================
 
-export type AIProviderName = 'lovable' | 'gemini' | 'anthropic';
+export type AIProviderName = 'lovable' | 'gemini' | 'anthropic' | 'groq';
 
 export interface AIProvider {
   name: AIProviderName;
@@ -22,6 +22,7 @@ export interface AISettings {
   gemini_model: string;
   lovable_model: string;
   anthropic_model: string;
+  groq_model: string;
   ai_content_factory_enabled: boolean;
   ai_content_factory_disabled_message: string;
 }
@@ -31,6 +32,7 @@ const DEFAULT_SETTINGS: AISettings = {
   gemini_model: 'gemini-3.1-pro-preview',
   lovable_model: 'google/gemini-3-flash-preview',
   anthropic_model: 'claude-sonnet-4-20250514',
+  groq_model: 'llama-3.3-70b-versatile',
   ai_content_factory_enabled: true,
   ai_content_factory_disabled_message: 'AI content generation is currently disabled by the administrator.',
 };
@@ -83,6 +85,9 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
       case 'anthropic_model':
         settings.anthropic_model = (value as string) || DEFAULT_SETTINGS.anthropic_model;
         break;
+      case 'groq_model':
+        settings.groq_model = (value as string) || DEFAULT_SETTINGS.groq_model;
+        break;
       case 'ai_content_factory_enabled':
         settings.ai_content_factory_enabled = value === true || value === 'true';
         break;
@@ -103,6 +108,7 @@ export function getAIProvider(settings: AISettings): AIProvider {
     gemini: settings.gemini_model,
     lovable: settings.lovable_model,
     anthropic: settings.anthropic_model,
+    groq: settings.groq_model,
   };
   return {
     name: settings.ai_provider,
@@ -157,6 +163,8 @@ export async function callAI(
     return callGeminiDirect(enriched, userPrompt, provider.model, customApiKey);
   } else if (provider.name === 'anthropic') {
     return callAnthropicDirect(enriched, userPrompt, provider.model, customApiKey);
+  } else if (provider.name === 'groq') {
+    return callGroqDirect(enriched, userPrompt, provider.model, customApiKey);
   } else {
     return callLovableGateway(enriched, userPrompt, provider.model);
   }
@@ -179,6 +187,8 @@ export async function callAIWithMessages(
     return callAnthropicWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else if (provider.name === 'gemini') {
     return callGeminiWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
+  } else if (provider.name === 'groq') {
+    return callGroqWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else {
     return callLovableWithMessages(enriched, messages, provider.model, temp, maxTokens);
   }
@@ -717,6 +727,70 @@ async function callGeminiWithMessages(
     return { success: true, content };
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown Gemini error';
+    return { success: false, error: msg, status: 500 };
+  }
+}
+
+/**
+ * Direct Groq API call
+ */
+async function callGroqDirect(
+  systemPrompt: string,
+  userPrompt: string,
+  model: string,
+  customApiKey?: string
+): Promise<AICallResult> {
+  return callGroqWithMessages(systemPrompt, [{ role: 'user', content: userPrompt }], model, 0.7, 4096, customApiKey);
+}
+
+/**
+ * Groq API call with conversation history (OpenAI compatible)
+ */
+async function callGroqWithMessages(
+  systemPrompt: string,
+  messages: { role: string; content: string }[],
+  model: string,
+  temperature: number,
+  maxTokens: number,
+  customApiKey?: string
+): Promise<AICallResult> {
+  const apiKey = customApiKey || Deno.env.get('GROQ_API_KEY');
+  if (!apiKey) {
+    return { success: false, error: 'GROQ_API_KEY not configured. Add it in Supabase Edge Function secrets.', status: 500 };
+  }
+
+  try {
+    const response = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        temperature,
+        max_tokens: maxTokens,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Groq API error (${response.status}):`, errorText);
+      if (response.status === 429) return { success: false, error: 'Groq rate limit exceeded.', status: 429 };
+      return { success: false, error: `Groq API error: ${response.status}`, status: response.status };
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    if (!content) return { success: false, error: 'Groq returned empty response', status: 500 };
+    return { success: true, content };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown Groq error';
+    console.error('Groq API call failed:', msg);
     return { success: false, error: msg, status: 500 };
   }
 }

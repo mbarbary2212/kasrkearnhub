@@ -95,7 +95,10 @@ serve(async (req) => {
       systemPrompt += `\n\nAdditional reference for the conversation (use as context for your responses):\n${englishReference}`;
     }
 
-    const provider = getAIProvider(aiSettings);
+    const provider = {
+      name: 'groq' as const,
+      model: aiSettings.groq_model || 'llama-3.3-70b-versatile',
+    };
 
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
