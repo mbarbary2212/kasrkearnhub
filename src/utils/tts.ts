@@ -153,7 +153,11 @@ export async function speakArabic(
         body: JSON.stringify(handshakeBody),
       });
 
-      if (!handshakeRes.ok) throw new Error(`Handshake failed: ${handshakeRes.status}`);
+      if (!handshakeRes.ok) {
+        const errText = await handshakeRes.text();
+        console.error(`[TTS] Handshake failed (${handshakeRes.status}):`, errText);
+        throw new Error(`Handshake failed: ${errText || handshakeRes.status}`);
+      }
       const { token_id } = await handshakeRes.json();
 
       // PHASE 2: Streaming (GET with token_id)
@@ -218,7 +222,11 @@ export async function speakArabic(
           body: JSON.stringify(body),
         });
 
-        if (!res.ok) throw new Error(`Fallback failed: ${res.status}`);
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error(`[TTS] Fallback failed (${res.status}):`, errText);
+            throw new Error(`Fallback failed: ${errText || res.status}`);
+        }
         
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);

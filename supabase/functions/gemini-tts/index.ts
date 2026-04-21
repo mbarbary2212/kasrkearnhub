@@ -63,7 +63,9 @@ function addWavHeader(
 
 async function callGemini(inputText: string, voiceName: string, stylePrompt?: string) {
   const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
-  if (!GEMINI_API_KEY) throw new Error('API Key missing');
+  if (!GEMINI_API_KEY) {
+    throw new Error('CONFIG_ERROR: Google API Key is missing in Edge Function environment variables.');
+  }
 
   const modelId = 'gemini-2.0-flash-exp';
   const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
@@ -89,12 +91,17 @@ async function callGemini(inputText: string, voiceName: string, stylePrompt?: st
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Google API Error ${response.status}: ${errText}`);
+    let parsedError = errText;
+    try {
+        const json = JSON.parse(errText);
+        parsedError = json.error?.message || errText;
+    } catch { /* ignore */ }
+    throw new Error(`GOOGLE_API_ERROR: ${parsedError} (Status: ${response.status})`);
   }
 
   const result = await response.json();
   const data = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!data) throw new Error('No audio data returned from Gemini');
+  if (!data) throw new Error('EMPTY_AUDIO_RESPONSE: No audio data returned from Gemini');
   return data;
 }
 
@@ -102,8 +109,8 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
   const svcClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
@@ -120,7 +127,7 @@ serve(async (req) => {
         .select()
         .single();
 
-      if (tokenError || !tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
+      if (tokenError || !tokenData) return new Response('Invalid or expired token', { status: 401, headers: corsHeaders });
 
       const { text, voiceName, stylePrompt } = tokenData.payload;
       const audioData = await callGemini(text, voiceName, stylePrompt);
@@ -129,25 +136,34 @@ serve(async (req) => {
       return new Response(wavBuffer, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav' } });
     }
 
+    // POST section (Handshake)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) return new Response('Unauthorized', { status: 401 });
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await (createClient(supabaseUrl, supabaseAnonKey)).auth.getUser(token);
-    if (authError || !user) return new Response('Invalid auth', { status: 401 });
+    if (authError || !user) return new Response('Invalid auth token', { status: 401 });
 
     const payload = await req.json();
-    const { text, voiceName, stylePrompt } = payload;
+    const { text, voiceName, stylePrompt, legacy } = payload;
     if (!text) return new Response('Missing text in body', { status: 400, headers: corsHeaders });
 
-    // VALIDATION: Try reaching Gemini NOW so we catch errors early
-    console.log('>>>> Performing pre-handshake validation...');
+    // For legacy/fallback, we return the full blob immediately
+    if (legacy) {
+        console.log('>>>> Full blob requested (legacy fallback)');
+        const audioData = await callGemini(text, voiceName, stylePrompt);
+        const wavBuffer = addWavHeader(audioData);
+        return new Response(wavBuffer, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav' } });
+    }
+
+    // PRE-HANDSHAKE VALIDATION: Test Gemini NOW to catch errors
+    console.log('>>>> Testing Gemini connection for handshake...');
     try {
       await callGemini("Connection test", voiceName || "Kore", stylePrompt);
-      console.log('>>>> Pre-handshake validation SUCCESS');
+      console.log('>>>> Gemini test success');
     } catch (err) {
       const msg = (err as Error).message;
-      console.error('>>>> PRE_HANDSHAKE_FAILED:', msg);
-      return new Response(JSON.stringify({ error: `Handshake failed: ${msg}` }), {
+      console.error('>>>> GEMINI_TEST_FAILED:', msg);
+      return new Response(JSON.stringify({ error: `Handshake rejected: ${msg}` }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
