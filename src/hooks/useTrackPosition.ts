@@ -50,7 +50,7 @@ function flushGlobalPosition() {
     keepalive: true,
     headers: {
       'Content-Type': 'application/json',
-      'apikey': anonKey,
+      'apikey': SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${token}`,
       'Prefer': 'resolution=merge-duplicates',
     },
