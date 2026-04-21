@@ -3,9 +3,14 @@ import { useTheme } from 'next-themes';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Sun, Moon, Monitor, Palette, LayoutGrid, Type, Layers, Info } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Sun, Moon, Monitor, Palette, LayoutGrid, Type, Layers, Info, Users } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -25,6 +30,42 @@ const FONT_SIZE_OPTIONS = [
 
 export function AppearanceTab() {
   const { theme, setTheme } = useTheme();
+  const { user } = useAuthContext();
+
+  const [showOnlineCount, setShowOnlineCount] = useState(true);
+  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    supabase
+      .from('profiles')
+      .select('show_online_count')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data) setShowOnlineCount(data.show_online_count ?? true);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const handleToggleOnlineCount = async (checked: boolean) => {
+    if (!user?.id) return;
+    const previous = showOnlineCount;
+    setShowOnlineCount(checked);
+    setIsSavingDisplay(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ show_online_count: checked })
+      .eq('id', user.id);
+    setIsSavingDisplay(false);
+    if (error) {
+      setShowOnlineCount(previous);
+      toast.error(error.message || 'Failed to update preference');
+    } else {
+      toast.success(checked ? 'Active users count shown' : 'Active users count hidden');
+    }
+  };
 
   const [density, setDensity] = useState<'comfortable' | 'compact'>(() => {
     return (localStorage.getItem(DENSITY_KEY) as 'comfortable' | 'compact') || 'comfortable';
@@ -63,6 +104,35 @@ export function AppearanceTab() {
   return (
     <TooltipProvider delayDuration={150}>
     <div className="space-y-6">
+      {/* Header Display */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Users className="h-4 w-4" />
+            Header Display
+          </CardTitle>
+          <CardDescription>Control what appears in the top bar.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label htmlFor="show-online-count-settings" className="text-sm font-medium">
+                Show active users count
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Turn off if you find the online-user pill in the header distracting.
+              </p>
+            </div>
+            <Switch
+              id="show-online-count-settings"
+              checked={showOnlineCount}
+              disabled={isSavingDisplay || !user}
+              onCheckedChange={handleToggleOnlineCount}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Theme */}
       <Card>
         <CardHeader>
