@@ -37,3 +37,8 @@ wrangler.toml
 .env
 .env.local
 .env.*.local
+
+# AI Assistant local config and logs
+.gemini/
+.brain/
+.scratch/
