@@ -69,11 +69,18 @@ serve(async (req) => {
     async function streamFromGemini(payload: any) {
       const { text, voiceName, stylePrompt } = payload;
       const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-      if (!GEMINI_API_KEY) throw new Error('GOOGLE_API_KEY is not set');
+      if (!GEMINI_API_KEY) {
+         console.error('[GEMINI] GOOGLE_API_KEY is not set in environment');
+         throw new Error('GOOGLE_API_KEY is missing');
+      }
 
       async function callGemini(inputText: string, voice: string) {
+        // Use gemini-2.0-flash-exp (more common for multimodal/audio)
+        const modelId = 'gemini-2.0-flash-exp'; 
+        console.log(`[GEMINI] Calling model: ${modelId} with voice: ${voice}`);
+        
         const response = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-tts:generateContent',
+          `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`,
           {
             method: 'POST',
             headers: {
@@ -94,22 +101,39 @@ serve(async (req) => {
           }
         );
 
-        if (!response.ok) throw new Error(`Gemini status ${response.status}`);
+        if (!response.ok) {
+          const errBody = await response.text();
+          console.error(`[GEMINI] Google API Error: ${response.status} - ${errBody}`);
+          throw new Error(`Gemini status ${response.status}: ${errBody}`);
+        }
+        
         const result = await response.json();
         const data = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (!data) throw new Error('No audio data returned from Gemini');
+        if (!data) {
+          console.error('[GEMINI] No audio data in response:', JSON.stringify(result));
+          throw new Error('No audio data returned from Gemini');
+        }
         return data;
       }
 
-      const voice = voiceName || 'Kore';
+      // Valid voice names for Gemini 2.0: 'Kore', 'Puck', 'Fenrir', 'Aoide', 'Charon'
+      // If the incoming voiceName looks like a long UUID (ElevenLabs ID), fallback to 'Kore'.
+      const isUuid = voiceName && /^[0-9a-f]{8}-/i.test(voiceName) || (voiceName && voiceName.length > 15);
+      const voice = !voiceName || isUuid ? 'Kore' : voiceName;
+      
       const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
       
       let audioData;
       try {
         audioData = await callGemini(finalText, voice);
       } catch (err) {
-        if (stylePrompt) audioData = await callGemini(text, voice);
-        else throw err;
+        console.warn('[GEMINI] Primary attempt failed, trying fallback without style prompt...');
+        try {
+          audioData = await callGemini(text, voice);
+        } catch (fallbackErr) {
+           console.error('[GEMINI] Final fallback failed:', fallbackErr);
+           throw fallbackErr;
+        }
       }
 
       return addWavHeader(audioData);
