@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { driver, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
+import '@/components/tour/tourStyles.css';
 
 type TourRole = 'student' | 'admin';
 
