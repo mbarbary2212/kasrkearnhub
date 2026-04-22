@@ -12,13 +12,7 @@ export function ScheduledReviewBanner() {
   const total = dueCards + dueMCQs;
   if (total === 0) return null;
 
-  const handleStart = () => {
-    if (dueCards > 0) {
-      navigate('/review/flashcards');
-    } else {
-      navigate('/progress?tab=plan');
-    }
-  };
+  const bothDue = dueCards > 0 && dueMCQs > 0;
 
   return (
     <div className="rounded-lg border bg-primary/5 border-primary/20 p-3">
@@ -40,9 +34,26 @@ export function ScheduledReviewBanner() {
             )}
           </div>
         </div>
-        <Button size="sm" onClick={handleStart} className="gap-1">
-          Start Review →
-        </Button>
+        {bothDue ? (
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate('/review/flashcards')} className="gap-1">
+              <GalleryHorizontal className="w-3.5 h-3.5" />
+              Flashcards ({dueCards})
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => navigate('/review/mcqs')} className="gap-1">
+              <FileQuestion className="w-3.5 h-3.5" />
+              MCQs ({dueMCQs})
+            </Button>
+          </div>
+        ) : dueCards > 0 ? (
+          <Button size="sm" onClick={() => navigate('/review/flashcards')} className="gap-1">
+            Start Flashcards →
+          </Button>
+        ) : (
+          <Button size="sm" onClick={() => navigate('/review/mcqs')} className="gap-1">
+            Start MCQ Review →
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -52,6 +52,7 @@ const ExamResultsPage = lazy(() => import("./pages/ExamResultsPage"));
 const CasePreviewEditorPage = lazy(() => import("./pages/CasePreviewEditorPage"));
 const CaseSummaryPage = lazy(() => import("./pages/CaseSummaryPage"));
 const FlashcardReviewPage = lazy(() => import("./pages/FlashcardReviewPage"));
+const MCQReviewPage = lazy(() => import("./pages/MCQReviewPage"));
 const StudentSettingsPage = lazy(() => import("./pages/StudentSettingsPage"));
 const CustomizeContentPage = lazy(() => import("./pages/CustomizeContentPage"));
 const FormativePage = lazy(() => import("./pages/FormativePage"));
@@ -168,6 +169,7 @@ const App = () => {
                 <Route path="/structured-case/:caseId/edit" element={<ProtectedRoute requiredRole="admin"><RouteErrorBoundary><CasePreviewEditorPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/case-summary/:attemptId" element={<ProtectedRoute><RouteErrorBoundary><CaseSummaryPage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/review/flashcards" element={<ProtectedRoute><RouteErrorBoundary><FlashcardReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
+                <Route path="/review/mcqs" element={<ProtectedRoute><RouteErrorBoundary><MCQReviewPage /></RouteErrorBoundary></ProtectedRoute>} />
                 
                 <Route path="/formative" element={<ProtectedRoute><RouteErrorBoundary><FormativePage /></RouteErrorBoundary></ProtectedRoute>} />
                 <Route path="/connect/discussions" element={<ProtectedRoute><RouteErrorBoundary><DiscussionsPage /></RouteErrorBoundary></ProtectedRoute>} />
