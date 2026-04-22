@@ -277,35 +277,36 @@ export function StudentSidebar() {
           })}
         </div>
 
-        {/* Connect — with chevron */}
-        <NavButton
-          id="connect"
-          icon={MessageCircle}
-          label="Connect"
-          onClick={() => collapsed ? goTo('/connect/discussions') : setConnectOpen(o => !o)}
-          badge={
-            !collapsed ? (
-              <span className="ml-auto flex items-center gap-1.5">
-                {badges.total > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="h-4 min-w-4 px-1 text-[10px] font-semibold leading-none"
-                  >
-                    {badges.total > 99 ? '99+' : badges.total}
-                  </Badge>
-                )}
-                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', connectOpen && 'rotate-180')} />
-              </span>
-            ) : (
-              badges.total > 0 ? (
-                <span
-                  aria-label={`${badges.total} new`}
-                  className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"
-                />
+        {/* Connect — with chevron + notification badge */}
+        <div className="relative">
+          <NavButton
+            id="connect"
+            icon={MessageCircle}
+            label="Connect"
+            onClick={() => collapsed ? goTo('/connect/discussions') : setConnectOpen(o => !o)}
+            badge={
+              !collapsed ? (
+                <span className="ml-auto flex items-center gap-1.5">
+                  {badges.total > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="h-4 min-w-4 px-1 text-[10px] font-semibold leading-none"
+                    >
+                      {badges.total > 99 ? '99+' : badges.total}
+                    </Badge>
+                  )}
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', connectOpen && 'rotate-180')} />
+                </span>
               ) : undefined
-            )
-          }
-        />
+            }
+          />
+          {collapsed && badges.total > 0 && (
+            <span
+              aria-label={`${badges.total} new`}
+              className="pointer-events-none absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card"
+            />
+          )}
+        </div>
         {connectOpen && !collapsed && (
           <div className="flex flex-col gap-0.5 ml-4 pl-2 border-l border-border/30">
             {connectSubItems.map(sub => {
