@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, User, Loader2, Send, Info } from "lucide-react";
+import { Search, User, Loader2, Send, Info, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,9 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [invitingUser, setInvitingUser] = useState<string | null>(null);
+  // Track users we just invited from this modal session so the UI can show
+  // a clear "Pending" confirmation even after the result list refreshes.
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
   // Debounce search input by 300ms to avoid burning rate-limit budget
   useEffect(() => {
@@ -39,8 +42,11 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
       {
         onSuccess: () => {
           setInvitingUser(null);
-          setSearchTerm("");
-          setDebouncedTerm("");
+          setInvitedIds((prev) => {
+            const next = new Set(prev);
+            next.add(userId);
+            return next;
+          });
         },
         onError: () => {
           setInvitingUser(null);
@@ -79,15 +85,16 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
           <div className="flex items-start gap-2 p-3 rounded-md bg-muted/60 text-xs text-muted-foreground">
             <Info className="h-4 w-4 mt-0.5 shrink-0" />
             <p>
-              Don't know the exact name? Ask your colleague for their name as it appears in the app.
-              For privacy, we only show names (not emails).
+              Search by your colleague's <strong>full name</strong> or by the part of their
+              email <strong>before the @</strong> (e.g. <em>salma_amr</em>).
+              Type at least 2 characters. For privacy, only names and avatars are shown.
             </p>
           </div>
 
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name..."
+              placeholder="Search by name or email handle..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -112,7 +119,9 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
               </div>
             ) : users && users.length > 0 ? (
               <div className="space-y-2">
-                {users.map((user) => (
+                {users.map((user) => {
+                  const isInvited = invitedIds.has(user.id);
+                  return (
                   <div
                     key={user.id}
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent/50"
@@ -130,22 +139,30 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
                         </p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleInvite(user.id)}
-                      disabled={sending && invitingUser === user.id}
-                    >
-                      {sending && invitingUser === user.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Send className="h-3 w-3 mr-1" />
-                          Invite
-                        </>
-                      )}
-                    </Button>
+                    {isInvited ? (
+                      <Button size="sm" variant="secondary" disabled>
+                        <Check className="h-3 w-3 mr-1" />
+                        Pending
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleInvite(user.id)}
+                        disabled={sending && invitingUser === user.id}
+                      >
+                        {sending && invitingUser === user.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Send className="h-3 w-3 mr-1" />
+                            Invite
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : !errorMsg ? (
               <div className="text-center py-8 text-muted-foreground">
