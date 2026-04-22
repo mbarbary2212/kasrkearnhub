@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useConnectBadges } from '@/hooks/useConnectBadges';
 import {
   LayoutDashboard, BookOpen, MoreHorizontal,
   MessageCircle, ClipboardCheck, Settings,
