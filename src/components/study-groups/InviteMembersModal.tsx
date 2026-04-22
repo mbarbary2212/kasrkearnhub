@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, User, Loader2, Send, Info } from "lucide-react";
+import { Search, User, Loader2, Send, Info, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,9 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [invitingUser, setInvitingUser] = useState<string | null>(null);
+  // Track users we just invited from this modal session so the UI can show
+  // a clear "Pending" confirmation even after the result list refreshes.
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
   // Debounce search input by 300ms to avoid burning rate-limit budget
   useEffect(() => {
@@ -39,8 +42,11 @@ export function InviteMembersModal({ open, onOpenChange, groupId }: InviteMember
       {
         onSuccess: () => {
           setInvitingUser(null);
-          setSearchTerm("");
-          setDebouncedTerm("");
+          setInvitedIds((prev) => {
+            const next = new Set(prev);
+            next.add(userId);
+            return next;
+          });
         },
         onError: () => {
           setInvitingUser(null);
