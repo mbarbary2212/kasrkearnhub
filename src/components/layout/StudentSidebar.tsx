@@ -61,6 +61,15 @@ export function StudentSidebar() {
 
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
+  const badges = useConnectBadges();
+
+  const subBadgeMap: Record<string, number> = {
+    messages: badges.messages,
+    inquiry: badges.inquiry,
+    feedback: badges.feedback,
+    discussions: badges.discussions,
+    'study-groups': badges.studyGroups,
+  };
 
   const [collapsed, setCollapsed] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
