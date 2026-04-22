@@ -677,7 +677,7 @@ function LoggedInHome() {
           {isStudent && dueMCQCount > 0 && (
             <Card
               className="cursor-pointer hover:shadow-md transition-all hover:border-primary/50 group"
-              onClick={() => navigate('/review/flashcards')}
+              onClick={() => navigate('/review/mcqs')}
             >
               <CardContent className="py-3 px-4">
                 <div className="flex items-center gap-3">

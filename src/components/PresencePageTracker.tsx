@@ -32,7 +32,7 @@ export function PresencePageTracker() {
       } else {
         updatePresence({ page: 'module' });
       }
-    } else if (path.startsWith('/review/flashcards')) {
+    } else if (path.startsWith('/review/flashcards') || path.startsWith('/review/mcqs')) {
       updatePresence({ page: 'practice' });
     } else if (path.startsWith('/virtual-patient/')) {
       updatePresence({ page: 'virtual_patient' });
