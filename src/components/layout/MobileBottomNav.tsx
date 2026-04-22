@@ -95,6 +95,14 @@ export function MobileBottomNav() {
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
   const { isAdmin } = useAuthContext();
+  const badges = useConnectBadges();
+  const connectBadgeMap: Record<string, number> = {
+    messages: badges.messages,
+    inquiry: badges.inquiry,
+    feedback: badges.feedback,
+    discussions: badges.discussions,
+    'study-groups': badges.studyGroups,
+  };
 
   const tabs = isAdmin ? adminTabs : studentTabs;
   const moreItems = isAdmin ? adminMoreItems : studentMoreItems;
