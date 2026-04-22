@@ -285,14 +285,32 @@ export function StudentSidebar() {
           onClick={() => collapsed ? goTo('/connect/discussions') : setConnectOpen(o => !o)}
           badge={
             !collapsed ? (
-              <ChevronDown className={cn('h-3.5 w-3.5 ml-auto transition-transform', connectOpen && 'rotate-180')} />
-            ) : undefined
+              <span className="ml-auto flex items-center gap-1.5">
+                {badges.total > 0 && (
+                  <Badge
+                    variant="destructive"
+                    className="h-4 min-w-4 px-1 text-[10px] font-semibold leading-none"
+                  >
+                    {badges.total > 99 ? '99+' : badges.total}
+                  </Badge>
+                )}
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', connectOpen && 'rotate-180')} />
+              </span>
+            ) : (
+              badges.total > 0 ? (
+                <span
+                  aria-label={`${badges.total} new`}
+                  className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"
+                />
+              ) : undefined
+            )
           }
         />
         {connectOpen && !collapsed && (
           <div className="flex flex-col gap-0.5 ml-4 pl-2 border-l border-border/30">
             {connectSubItems.map(sub => {
               const SubIcon = sub.icon;
+              const subCount = subBadgeMap[sub.id] || 0;
               return (
                 <button
                   key={sub.id}
@@ -301,6 +319,14 @@ export function StudentSidebar() {
                 >
                   <SubIcon className="h-4 w-4 shrink-0" />
                   <span className="truncate">{sub.label}</span>
+                  {subCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-auto h-4 min-w-4 px-1 text-[10px] font-semibold leading-none"
+                    >
+                      {subCount > 99 ? '99+' : subCount}
+                    </Badge>
+                  )}
                 </button>
               );
             })}
