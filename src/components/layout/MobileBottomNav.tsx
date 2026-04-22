@@ -320,6 +320,7 @@ export function MobileBottomNav() {
             const isCoachImg = tab.icon === 'coach-img';
             const Icon = isCoachImg ? null : (tab.icon as React.ElementType);
             const showDueBadge = tab.id === 'coach' && dueCount > 0;
+            const showConnectBadge = tab.id === 'connect' && badges.total > 0;
 
             return (
               <button
@@ -352,6 +353,11 @@ export function MobileBottomNav() {
                   {showDueBadge && (
                     <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center bg-primary text-primary-foreground text-[10px] font-bold rounded-full">
                       {dueCount}
+                    </span>
+                  )}
+                  {showConnectBadge && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
+                      {badges.total > 99 ? '99+' : badges.total}
                     </span>
                   )}
                 </div>
