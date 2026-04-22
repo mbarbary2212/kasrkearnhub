@@ -9,6 +9,8 @@ import { MessagesCard } from '@/components/connect/MessagesCard';
 import { MyQuestionsCard } from '@/components/connect/MyQuestionsCard';
 import { DiscussionSection } from '@/components/discussion';
 import { StudyGroupList, GroupDetailView } from '@/components/study-groups';
+import { Badge } from '@/components/ui/badge';
+import { useConnectBadges } from '@/hooks/useConnectBadges';
 
 export default function ConnectPage() {
   const [searchParams] = useSearchParams();
@@ -17,6 +19,7 @@ export default function ConnectPage() {
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const badges = useConnectBadges();
 
   // Handle ?view= query param from sidebar navigation
   useEffect(() => {
