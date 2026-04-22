@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useConnect } from '@/contexts/ConnectContext';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useConnectBadges } from '@/hooks/useConnectBadges';
 import {
   LayoutDashboard, BookOpen, MoreHorizontal,
   MessageCircle, ClipboardCheck, Settings,
@@ -94,6 +95,14 @@ export function MobileBottomNav() {
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
   const { isAdmin } = useAuthContext();
+  const badges = useConnectBadges();
+  const connectBadgeMap: Record<string, number> = {
+    messages: badges.messages,
+    inquiry: badges.inquiry,
+    feedback: badges.feedback,
+    discussions: badges.discussions,
+    'study-groups': badges.studyGroups,
+  };
 
   const tabs = isAdmin ? adminTabs : studentTabs;
   const moreItems = isAdmin ? adminMoreItems : studentMoreItems;
@@ -255,6 +264,7 @@ export function MobileBottomNav() {
           <div className="flex flex-col gap-0.5">
             {connectItems.map((item) => {
               const Icon = item.icon;
+              const count = connectBadgeMap[item.id] || 0;
               return (
                 <button
                   key={item.id}
@@ -263,6 +273,11 @@ export function MobileBottomNav() {
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium">{item.label}</span>
+                  {count > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
+                      {count > 99 ? '99+' : count}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -305,6 +320,7 @@ export function MobileBottomNav() {
             const isCoachImg = tab.icon === 'coach-img';
             const Icon = isCoachImg ? null : (tab.icon as React.ElementType);
             const showDueBadge = tab.id === 'coach' && dueCount > 0;
+            const showConnectBadge = tab.id === 'connect' && badges.total > 0;
 
             return (
               <button
@@ -337,6 +353,11 @@ export function MobileBottomNav() {
                   {showDueBadge && (
                     <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center bg-primary text-primary-foreground text-[10px] font-bold rounded-full">
                       {dueCount}
+                    </span>
+                  )}
+                  {showConnectBadge && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
+                      {badges.total > 99 ? '99+' : badges.total}
                     </span>
                   )}
                 </div>

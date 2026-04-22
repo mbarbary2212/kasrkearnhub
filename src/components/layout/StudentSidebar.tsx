@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
+import { useConnectBadges } from '@/hooks/useConnectBadges';
+import { Badge } from '@/components/ui/badge';
 
 // ── Storage key ────────────────────────────────────────
 const COLLAPSED_KEY = 'kalmhub:sidebar-collapsed';
@@ -59,6 +61,15 @@ export function StudentSidebar() {
 
   const { data: lastPosition } = useLastPosition();
   const { openConnect } = useConnect();
+  const badges = useConnectBadges();
+
+  const subBadgeMap: Record<string, number> = {
+    messages: badges.messages,
+    inquiry: badges.inquiry,
+    feedback: badges.feedback,
+    discussions: badges.discussions,
+    'study-groups': badges.studyGroups,
+  };
 
   const [collapsed, setCollapsed] = useState(false);
   const [connectOpen, setConnectOpen] = useState(false);
@@ -266,22 +277,41 @@ export function StudentSidebar() {
           })}
         </div>
 
-        {/* Connect — with chevron */}
-        <NavButton
-          id="connect"
-          icon={MessageCircle}
-          label="Connect"
-          onClick={() => collapsed ? goTo('/connect/discussions') : setConnectOpen(o => !o)}
-          badge={
-            !collapsed ? (
-              <ChevronDown className={cn('h-3.5 w-3.5 ml-auto transition-transform', connectOpen && 'rotate-180')} />
-            ) : undefined
-          }
-        />
+        {/* Connect — with chevron + notification badge */}
+        <div className="relative">
+          <NavButton
+            id="connect"
+            icon={MessageCircle}
+            label="Connect"
+            onClick={() => collapsed ? goTo('/connect/discussions') : setConnectOpen(o => !o)}
+            badge={
+              !collapsed ? (
+                <span className="ml-auto flex items-center gap-1.5">
+                  {badges.total > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="h-4 min-w-4 px-1 text-[10px] font-semibold leading-none"
+                    >
+                      {badges.total > 99 ? '99+' : badges.total}
+                    </Badge>
+                  )}
+                  <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', connectOpen && 'rotate-180')} />
+                </span>
+              ) : undefined
+            }
+          />
+          {collapsed && badges.total > 0 && (
+            <span
+              aria-label={`${badges.total} new`}
+              className="pointer-events-none absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive ring-2 ring-card"
+            />
+          )}
+        </div>
         {connectOpen && !collapsed && (
           <div className="flex flex-col gap-0.5 ml-4 pl-2 border-l border-border/30">
             {connectSubItems.map(sub => {
               const SubIcon = sub.icon;
+              const subCount = subBadgeMap[sub.id] || 0;
               return (
                 <button
                   key={sub.id}
@@ -290,6 +320,14 @@ export function StudentSidebar() {
                 >
                   <SubIcon className="h-4 w-4 shrink-0" />
                   <span className="truncate">{sub.label}</span>
+                  {subCount > 0 && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-auto h-4 min-w-4 px-1 text-[10px] font-semibold leading-none"
+                    >
+                      {subCount > 99 ? '99+' : subCount}
+                    </Badge>
+                  )}
                 </button>
               );
             })}
