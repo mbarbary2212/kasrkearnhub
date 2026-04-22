@@ -21,6 +21,7 @@ const PROVIDERS: { value: AIProvider; label: string }[] = [
   { value: 'lovable', label: 'Lovable AI Gateway' },
   { value: 'gemini', label: 'Google Gemini (Direct)' },
   { value: 'anthropic', label: 'Anthropic Claude (Direct)' },
+  { value: 'groq', label: 'Groq (Llama / Mixtral)' },
 ];
 
 export function ManageModelsPanel() {
@@ -56,7 +57,7 @@ export function ManageModelsPanel() {
   const grouped = (models ?? []).reduce<Record<AIProvider, typeof models>>((acc, m) => {
     (acc[m.provider] ||= [] as never).push(m);
     return acc;
-  }, { lovable: [], gemini: [], anthropic: [] } as Record<AIProvider, typeof models>);
+  }, { lovable: [], gemini: [], anthropic: [], groq: [] } as Record<AIProvider, typeof models>);
 
   return (
     <Card>
