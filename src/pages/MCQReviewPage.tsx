@@ -10,6 +10,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { McqAnswerArea } from '@/components/question-session/McqAnswerArea';
 import { MCQFSRSRatingButtons } from '@/components/question-session/MCQFSRSRatingButtons';
 import type { Mcq, McqChoice } from '@/hooks/useMcqs';
+import { logActivity } from '@/lib/activityLog';
 
 const SESSION_CAP = 30;
 
@@ -135,6 +136,18 @@ export default function MCQReviewPage() {
 
   const advance = () => {
     if (currentIndex >= session.length - 1) {
+      // Fire-and-forget: log the completed review session with reviewed count.
+      // reviewedCount state hasn't flushed yet at this point — derive final count
+      // by adding 1 for the rating that just triggered this advance.
+      const finalReviewed = reviewedCount + 1;
+      logActivity({
+        action: 'completed_mcq_review_session',
+        entity_type: 'mcq_review_session',
+        metadata: {
+          reviewed_count: finalReviewed,
+          session_size: session.length,
+        },
+      });
       setCompleted(true);
       return;
     }
