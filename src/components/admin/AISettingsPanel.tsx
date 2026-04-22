@@ -440,7 +440,7 @@ function ProviderModelCard({
 // Voice Provider Section
 // ============================================
 
-function VoiceProviderSection({
+function InteractiveCaseSection({
   getValue,
   handleChange,
   handleSave,
@@ -464,6 +464,18 @@ function VoiceProviderSection({
 
   const [voiceOpen, setVoiceOpen] = useState(false);
 
+  // Generation logic (independent of global ai_provider)
+  const icProvider = getValue('interactive_case_provider', 'gemini') as AIProvider;
+  const icModel = getValue('interactive_case_model', '') as string;
+  const { data: icCatalog, isLoading: icCatalogLoading } = useAIModelCatalog(icProvider, { activeOnly: true });
+
+  const IC_PROVIDERS: { value: AIProvider; label: string }[] = [
+    ...(isSuperAdmin ? [{ value: 'lovable' as AIProvider, label: 'Lovable AI Gateway' }] : []),
+    { value: 'gemini', label: 'Google Gemini' },
+    { value: 'anthropic', label: 'Anthropic Claude' },
+    { value: 'groq', label: 'Groq (Llama / Mixtral)' },
+  ];
+
   return (
     <Card>
       <Collapsible open={voiceOpen} onOpenChange={setVoiceOpen}>
@@ -472,53 +484,165 @@ function VoiceProviderSection({
             <CardTitle className="flex items-center gap-2">
               <ChevronRight className={`w-4 h-4 transition-transform ${voiceOpen ? 'rotate-90' : ''}`} />
               <Volume2 className="w-5 h-5" />
-              Voice Provider (TTS)
+              Interactive Case AI
             </CardTitle>
-            <CardDescription>Choose how patient voice responses are spoken during history taking</CardDescription>
+            <CardDescription>
+              Independent picks for the patient's reasoning model, speech-to-text, and voice output. Does not affect the global AI Content Factory.
+            </CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {providers.map((p) => (
-                <button
-                  key={p.value}
-                  onClick={() => handleChange('tts_provider', p.value)}
-                  className={cn(
-                    'flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all',
-                    ttsProvider === p.value
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-muted-foreground/50'
-                  )}
-                >
-                  <div className="flex items-center gap-2 w-full">
-                    <span className="font-medium text-sm">{p.label}</span>
-                    {ttsProvider === p.value && <Check className="w-4 h-4 text-primary ml-auto" />}
+            <Tabs defaultValue="tts" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="logic" className="text-xs sm:text-sm">
+                  <Brain className="w-3.5 h-3.5 mr-1.5" /> Generation logic
+                </TabsTrigger>
+                <TabsTrigger value="stt" className="text-xs sm:text-sm">
+                  <Mic className="w-3.5 h-3.5 mr-1.5" /> Speech input (STT)
+                </TabsTrigger>
+                <TabsTrigger value="tts" className="text-xs sm:text-sm">
+                  <Volume2 className="w-3.5 h-3.5 mr-1.5" /> Voice output (TTS)
+                </TabsTrigger>
+              </TabsList>
+
+              {/* === Generation logic === */}
+              <TabsContent value="logic" className="space-y-4 pt-4">
+                <div className="p-3 rounded-md bg-muted/40 border text-xs text-muted-foreground flex gap-2">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    Used for the patient's understanding, replies, and case marking. Independent of the global AI provider — picking Groq here will not change content generation elsewhere in the app.
+                  </span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Provider</Label>
+                    <Select
+                      value={icProvider}
+                      onValueChange={(v) => {
+                        handleChange('interactive_case_provider', v);
+                        // clear model when switching provider so admin re-picks one from the new catalog
+                        handleChange('interactive_case_model', '');
+                      }}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {IC_PROVIDERS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{p.description}</p>
-                </button>
-              ))}
-            </div>
 
-            {'tts_provider' in pendingChanges && (
-              <Button size="sm" onClick={() => handleSave('tts_provider')} disabled={updateIsPending}>
-                <Save className="w-4 h-4 mr-1" /> Save Provider
-              </Button>
-            )}
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Model</Label>
+                    <Select
+                      value={icModel || ''}
+                      onValueChange={(v) => handleChange('interactive_case_model', v)}
+                      disabled={icCatalogLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={icCatalogLoading ? 'Loading…' : (icCatalog && icCatalog.length === 0 ? 'No models registered for this provider' : 'Pick a model')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(icCatalog ?? []).map((m) => (
+                          <SelectItem key={m.model_id} value={m.model_id}>{m.label}</SelectItem>
+                        ))}
+                        {!!icModel && !(icCatalog ?? []).some(m => m.model_id === icModel) && (
+                          <SelectItem value={icModel}>{icModel} (current)</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {icProvider === 'groq' && (icCatalog ?? []).length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Register Groq models below in <strong>Manage AI Models</strong> (e.g. <code>llama-3.3-70b-versatile</code>) to populate this list.
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            {/* Voice Registry — nested inside the collapsible */}
-            {ttsProvider === 'elevenlabs' && (
-              <div className="pt-4 border-t">
-                <TTSVoicesCard />
-              </div>
-            )}
+                {('interactive_case_provider' in pendingChanges || 'interactive_case_model' in pendingChanges) && (
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      if ('interactive_case_provider' in pendingChanges) await handleSave('interactive_case_provider');
+                      if ('interactive_case_model' in pendingChanges) await handleSave('interactive_case_model');
+                    }}
+                    disabled={updateIsPending}
+                  >
+                    <Save className="w-4 h-4 mr-1" /> Save Generation Settings
+                  </Button>
+                )}
 
-            {ttsProvider === 'gemini' && (
-              <div className="pt-4 border-t">
-                <GeminiVoicesCard />
-              </div>
-            )}
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-xs">
+                    <strong>Phase 1 — UI only.</strong> This setting is persisted now but the Interactive Case runtime still reads the global provider until Phase 2 wires it through <code>patient-history-chat</code>. Groq calls also require <code>GROQ_API_KEY</code> to be set in Edge Function secrets.
+                  </AlertDescription>
+                </Alert>
+              </TabsContent>
 
+              {/* === Speech input (STT) === */}
+              <TabsContent value="stt" className="space-y-3 pt-4">
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Current STT configuration</span>
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li><strong>Engine:</strong> ElevenLabs Scribe (<code>scribe_v2_realtime</code>)</li>
+                    <li><strong>VAD silence threshold:</strong> 1.5 s</li>
+                    <li><strong>Secret required:</strong> <code>ELEVENLABS_API_KEY</code></li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Latency, error rate, and provider performance for live sessions are visible in the <strong>Perf Logs</strong> tab. No admin controls in Phase 1 — additional STT engines will surface here in a later phase.
+                  </p>
+                </div>
+              </TabsContent>
+
+              {/* === Voice output (TTS) === */}
+              <TabsContent value="tts" className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {providers.map((p) => (
+                    <button
+                      key={p.value}
+                      onClick={() => handleChange('tts_provider', p.value)}
+                      className={cn(
+                        'flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all',
+                        ttsProvider === p.value
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-muted-foreground/50'
+                      )}
+                    >
+                      <div className="flex items-center gap-2 w-full">
+                        <span className="font-medium text-sm">{p.label}</span>
+                        {ttsProvider === p.value && <Check className="w-4 h-4 text-primary ml-auto" />}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{p.description}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {'tts_provider' in pendingChanges && (
+                  <Button size="sm" onClick={() => handleSave('tts_provider')} disabled={updateIsPending}>
+                    <Save className="w-4 h-4 mr-1" /> Save Provider
+                  </Button>
+                )}
+
+                {ttsProvider === 'elevenlabs' && (
+                  <div className="pt-4 border-t">
+                    <TTSVoicesCard />
+                  </div>
+                )}
+
+                {ttsProvider === 'gemini' && (
+                  <div className="pt-4 border-t">
+                    <GeminiVoicesCard />
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
