@@ -16,7 +16,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Input } from '@/components/ui/input';
 import { 
   Sparkles, Settings, AlertTriangle, Save, RefreshCw, Zap, Cloud,
-  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2, Loader2, PlugZap
+  ChevronDown, ChevronRight, BookOpen, Shield, History, Check, Volume2, Loader2, PlugZap,
+  Mic, Brain, Info
 } from 'lucide-react';
 
 // ELEVENLABS_VOICES import removed - voices now managed via TTSVoicesCard only
@@ -273,8 +274,8 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
         </Collapsible>
       </Card>
 
-      {/* Voice Provider Section */}
-      <VoiceProviderSection
+      {/* Interactive Case AI Section (Generation / STT / TTS subtabs) */}
+      <InteractiveCaseSection
         getValue={getValue}
         handleChange={handleChange}
         handleSave={handleSave}
