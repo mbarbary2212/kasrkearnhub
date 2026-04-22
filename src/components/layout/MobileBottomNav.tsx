@@ -264,6 +264,7 @@ export function MobileBottomNav() {
           <div className="flex flex-col gap-0.5">
             {connectItems.map((item) => {
               const Icon = item.icon;
+              const count = connectBadgeMap[item.id] || 0;
               return (
                 <button
                   key={item.id}
@@ -272,6 +273,11 @@ export function MobileBottomNav() {
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" />
                   <span className="text-sm font-medium">{item.label}</span>
+                  {count > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] px-1.5 flex items-center justify-center bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full">
+                      {count > 99 ? '99+' : count}
+                    </span>
+                  )}
                 </button>
               );
             })}
