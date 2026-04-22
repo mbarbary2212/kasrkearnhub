@@ -13,6 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useLastPosition, buildResumeUrl } from '@/hooks/useLastPosition';
+import { useConnectBadges } from '@/hooks/useConnectBadges';
+import { Badge } from '@/components/ui/badge';
 
 // ── Storage key ────────────────────────────────────────
 const COLLAPSED_KEY = 'kalmhub:sidebar-collapsed';
