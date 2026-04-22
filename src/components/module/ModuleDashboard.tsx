@@ -134,7 +134,7 @@ export function ModuleDashboard({ lastPosition, dashboard, moduleId }: ModuleDas
       {dueMCQCount > 0 ? (
         <Card
           className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => navigate('/progress?tab=plan')}
+          onClick={() => navigate('/review/mcqs')}
         >
           <div className="flex items-center gap-2 text-sm">
             <span>🧠</span>

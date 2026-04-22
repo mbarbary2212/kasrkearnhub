@@ -24,11 +24,13 @@ const ALLOWED_ENTITY_TYPES = [
   'mcq', 'essay', 'osce', 'flashcard',
   'resource', 'lecture', 'clinical_case', 'matching',
   'department',
+  'mcq_review_session',
 ];
 
 const ALLOWED_ACTIONS = [
   // MCQ
   'created_mcq', 'updated_mcq', 'deleted_mcq', 'bulk_upload_mcq',
+  'completed_mcq_review_session',
   // Essay
   'created_essay', 'updated_essay', 'deleted_essay', 'bulk_upload_essay',
   // OSCE

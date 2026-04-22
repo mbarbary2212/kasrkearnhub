@@ -9,6 +9,8 @@ import { MessagesCard } from '@/components/connect/MessagesCard';
 import { MyQuestionsCard } from '@/components/connect/MyQuestionsCard';
 import { DiscussionSection } from '@/components/discussion';
 import { StudyGroupList, GroupDetailView } from '@/components/study-groups';
+import { Badge } from '@/components/ui/badge';
+import { useConnectBadges } from '@/hooks/useConnectBadges';
 
 export default function ConnectPage() {
   const [searchParams] = useSearchParams();
@@ -17,6 +19,7 @@ export default function ConnectPage() {
   const [showDiscussion, setShowDiscussion] = useState(false);
   const [showStudyGroups, setShowStudyGroups] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const badges = useConnectBadges();
 
   // Handle ?view= query param from sidebar navigation
   useEffect(() => {
@@ -96,7 +99,14 @@ export default function ConnectPage() {
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-2">
                 <HelpCircle className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle className="text-lg">Ask a Question</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Ask a Question
+                {badges.inquiry > 0 && (
+                  <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                    {badges.inquiry} new repl{badges.inquiry === 1 ? 'y' : 'ies'}
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription>Submit questions about content or technical issues</CardDescription>
             </CardHeader>
             <CardContent>
@@ -115,7 +125,14 @@ export default function ConnectPage() {
               <div className="w-12 h-12 bg-accent/50 rounded-lg flex items-center justify-center mb-2">
                 <MessageSquare className="w-6 h-6 text-accent-foreground" />
               </div>
-              <CardTitle className="text-lg">Give Feedback</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Give Feedback
+                {badges.feedback > 0 && (
+                  <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                    {badges.feedback} new repl{badges.feedback === 1 ? 'y' : 'ies'}
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription>Share suggestions, report issues, or provide general feedback</CardDescription>
             </CardHeader>
             <CardContent>
@@ -134,7 +151,14 @@ export default function ConnectPage() {
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-2">
                 <MessagesSquare className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle className="text-lg">Open Discussions</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Open Discussions
+                {badges.discussions > 0 && (
+                  <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                    {badges.discussions} new
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription>Public forum for all students to discuss topics</CardDescription>
             </CardHeader>
             <CardContent>
@@ -156,7 +180,14 @@ export default function ConnectPage() {
               <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center mb-2">
                 <Users className="w-6 h-6 text-secondary-foreground" />
               </div>
-              <CardTitle className="text-lg">Study Groups</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                Study Groups
+                {badges.studyGroups > 0 && (
+                  <Badge variant="destructive" className="h-5 px-1.5 text-[10px]">
+                    {badges.studyGroups} pending
+                  </Badge>
+                )}
+              </CardTitle>
               <CardDescription>Create or join private study groups with selected classmates</CardDescription>
             </CardHeader>
             <CardContent>

@@ -1,65 +1,79 @@
 
 
-## Coach silent failure — final root cause and the actual fix
+# Phase 1 — Groq scoped to Interactive Cases only, with independent picks for Generation, STT, and TTS
 
-### What I just verified end-to-end
+## Confirming your model (this is exactly what you'll get)
 
-| Check | Result |
-|---|---|
-| Gemini secret reachable from edge function | ✅ `test-ai-connection` with `provider=gemini, model=gemini-2.5-flash-lite` returned **200 ok** |
-| Anthropic secret reachable from edge function | ✅ key works, but **the saved model `claude-3-5-haiku-20241022` returns 404 `not_found_error`** |
-| `coach-chat` direct test | Returned 401 "Authentication Required" (expected — no signed-in user token in this curl), confirms function is alive and routing is correct |
-| `coach-chat` recent logs | Empty — function hasn't been invoked since the redeploy, so the previous "empty response" you saw was from the OLD code path |
-| Lovable secret store vs Supabase secret store | They're **separate**. Your screenshots prove `GOOGLE_API_KEY` and `ANTHROPIC_API_KEY` are in the Supabase store, which is what edge functions actually read. The Lovable secrets list does NOT show them, which is why I was misreading earlier. |
+Three **fully independent** pickers inside the new "Interactive Case AI" card. Choosing one does NOT affect the others, and none of them affect the global AI Factory.
 
-### So what's actually wrong
+| Subtab | What it controls | Provider choices | Model choices |
+|---|---|---|---|
+| **Generation logic** | The LLM that runs the patient's understanding, response generation, and case marking inside Interactive Cases | Lovable, Gemini, Anthropic, **Groq** | Filtered from `ai_model_catalog` by chosen provider |
+| **Speech input (STT)** | The speech-to-text engine that transcribes the student's voice | ElevenLabs Scribe (current), with room for future providers | Read-only info in Phase 1 |
+| **Voice output (TTS)** | The voice that speaks the patient's reply | Browser, ElevenLabs, Gemini (existing) | Existing male/female voice registries |
 
-Two compounding issues, both data-only, no code change needed:
+So yes — you can set **Generation = Groq**, **STT = ElevenLabs**, **TTS = Gemini** at the same time. Or any other combination. They are saved as separate `study_settings` keys and read independently.
 
-1. **`anthropic_model = claude-3-5-haiku-20241022`** is invalid at the Anthropic API. Confirmed with a live ping. Any time the Coach falls back to Anthropic (PDF too large, Gemini empty, etc.) it 404s. The admin "Test" button you saw fail is the same call.
-2. **There is nothing wrong with the Gemini path right now.** Live ping with the currently saved `gemini-2.5-flash-lite` returned `ok: true`. So a new coach call from the signed-in app **should** succeed. The empty-response screen you saw earlier was from before the redeploy that added the JSON `generateContent` path + Anthropic fallback.
+The global "AI Content Factory" card stays exactly as it is today (Lovable / Gemini / Anthropic only, no Groq, no changes to its content-type table or its logic).
 
-### The fix (data-only, preview-first, no code changes)
+## What Mohamed will see in preview
 
-Update `ai_settings`:
+In **Admin → AI Settings**:
 
-| key | new value | reason |
-|---|---|---|
-| `anthropic_model` | `claude-sonnet-4-5` | Replaces the 404'ing Haiku. Verified Anthropic naming. Used by every Gemini→Anthropic fallback path |
-| (leave) `ai_provider` | `gemini` | Already working per live test |
-| (leave) `gemini_model` | `gemini-2.5-flash-lite` | Already working per live test |
-| (leave) `lovable_model` | `google/gemini-3-flash-preview` | Unused unless we switch provider |
-| (leave) `study_coach_provider`, `study_coach_model` | absent | Per your guardrail — do not create |
+1. **AI Content Factory Settings** card → unchanged. No Groq tile. No change to "Model per Content Type". Same save flow.
+2. **Voice Provider (TTS)** card → renamed to **"Interactive Case AI"** and reorganized into 3 subtabs using the existing `Tabs` primitive:
+   - **Generation logic** → independent Provider dropdown (Lovable / Gemini / Anthropic / Groq) + Model dropdown filtered from `ai_model_catalog` by that provider. Persists to new keys `interactive_case_provider` and `interactive_case_model`. Includes a small caption: *"Used for the patient's understanding, replies, and case marking. Independent of the global AI provider."*
+   - **Speech input (STT)** → static info block (ElevenLabs Scribe v2 realtime, VAD 1.5s) + link hint to Perf Logs. No new controls in Phase 1.
+   - **Voice output (TTS)** → existing Browser / ElevenLabs / Gemini provider cards, gendered voice pickers, `TTSVoicesCard`, `GeminiVoicesCard`. Identical behaviour to today, just nested here.
+3. **Manage AI Models** → adds a Groq group so you can register Groq model IDs (e.g. `llama-3.3-70b-versatile`). Groq models surface ONLY in the Generation logic dropdown above. They do not appear in the global factory.
 
-Stored as plain JSON strings to match the existing rows.
+No student-facing changes. No DB migration. No edge-function changes in Phase 1.
 
-### Verification (after the upsert)
+## Files touched (exactly these)
 
-1. Re-run `test-ai-connection` for `provider=anthropic, model=claude-sonnet-4-5` → expect `{ok:true}`.
-2. Sign in to the preview app → open Coach → ask "What is aspirin used for?"
-3. Pull `coach-chat` logs and report the `[coach-chat] provider=gemini model=...` line plus whether streamed text rendered.
-4. If Gemini returns empty for any reason, the Anthropic fallback now has a valid model and will deliver an answer instead of silently failing.
+1. **`src/hooks/useAIModelCatalog.ts`** — extend `AIProvider` union to include `'groq'`.
+2. **`src/components/admin/ManageModelsPanel.tsx`** — add `{ value: 'groq', label: 'Groq (Llama / Mixtral)' }` to `PROVIDERS`; initialise `groq: []` in the grouping accumulator.
+3. **`src/components/admin/AISettingsPanel.tsx`** — scoped edits only:
+   - Do NOT add Groq to `AI_PROVIDERS` (global factory grid stays as-is).
+   - Do NOT modify `ContentTypeModelSection`.
+   - Rename `VoiceProviderSection` → `InteractiveCaseSection`, retitle the card "Interactive Case AI", wrap its body in `<Tabs defaultValue="tts">` with three triggers: Generation logic / Speech input / Voice output.
+   - **Generation logic** subtab: new Provider+Model picker reading/writing `interactive_case_provider` and `interactive_case_model` via the existing `useAISettings` getter and `pendingChanges` save flow. Independent of every other key.
+   - **Speech input** subtab: static info block.
+   - **Voice output** subtab: existing TTS provider cards + voice registries moved verbatim. No internal logic change.
 
-### What I will NOT touch
+## Files explicitly NOT touched
 
-- `coach-chat/index.ts` (no code change needed; the redeployed version already has the correct JSON path + fallback)
-- Auth, routing, env handling, deployment config
-- `study_coach_provider` / `study_coach_model` rows
-- Any production deploy step beyond what Lovable normally does on save
-- Lovable secret store (the secrets the function needs are already in the Supabase store, which is the correct one)
+- `supabase/functions/patient-history-chat/**`, `ai-provider.ts` — backend already routes Groq when called with `provider='groq'`. Wiring `interactive_case_provider` into runtime is **Phase 2** (separate prompt) so you can verify the UI in isolation first.
+- Global `ai_provider` / `ai_model` / `content_type_model_overrides` rows.
+- `useAISettings`, `useAIModelCatalog` query logic, `ProviderModelCard`, `TTSVoicesCard`, `GeminiVoicesCard` internals.
+- Student UI, study coach, FSRS, tour styling, study groups, Connect badges.
 
-### Files affected
+## What stays identical (regression checks)
 
-| File | Change |
-|---|---|
-| `ai_settings` table | One UPSERT row: `anthropic_model = "claude-sonnet-4-5"` |
-| Everything else | Untouched |
+- Global AI Factory card looks and behaves exactly as today.
+- Saving a different global provider behaves identically.
+- TTS provider selection, voice registries, ElevenLabs/Gemini voice persistence — unchanged.
+- Existing `clinical_case` row in "Model per Content Type" remains (still readable until Phase 2 supersedes it at runtime).
 
-### Acceptance criteria
+## Required follow-up (Phase 2, separate prompt)
 
-1. `SELECT value FROM ai_settings WHERE key='anthropic_model'` returns `"claude-sonnet-4-5"`.
-2. `test-ai-connection` for Anthropic with that model returns `{ok:true}`.
-3. A signed-in Coach question in the preview returns a non-empty streamed answer.
-4. `coach-chat` log line `[coach-chat] provider=gemini model=gemini-2.5-flash-lite` is present for that request.
-5. No code, auth, routing, or deployment files were modified.
+Make `patient-history-chat` (and any sibling Interactive Case edge function) read `interactive_case_provider` / `interactive_case_model` from `study_settings` instead of the global `ai_provider` / `ai_model`. Phase 1 ships the UI + setting persistence only, so you can confirm the picker layout and the independence model before runtime is rewired.
+
+## Pre-deploy required
+
+`GROQ_API_KEY` must be added in Lovable Cloud Secrets before Phase 2 takes effect. Phase 1 does not require it.
+
+## Verification (preview, before production)
+
+1. Admin → AI Settings → confirm AI Content Factory card is unchanged (no Groq, no layout change).
+2. Scroll to "Interactive Case AI" → confirm 3 subtabs render.
+3. Generation logic → set Provider = Groq, pick a Groq model → Save → reload → setting persists. Switch to Anthropic, then Gemini — dropdown filters correctly each time.
+4. Voice output → confirm Browser / ElevenLabs / Gemini cards and voice registries behave exactly as before. Confirm changing TTS does NOT change Generation logic and vice versa.
+5. Speech input → confirm static info block renders.
+6. Manage AI Models → confirm Groq group renders and Add-model dialog includes Groq.
+7. Confirm no change in student-facing Interactive Cases yet (expected — Phase 2 wires the runtime).
+
+## Rollback
+
+Revert the 3 edited files. No DB or edge-function changes to undo.
 
