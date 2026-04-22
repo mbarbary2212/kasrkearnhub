@@ -80,9 +80,7 @@ export default function MCQReviewPage() {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [ratingCounts, setRatingCounts] = useState<Record<string, number>>({
-    Again: 0, Hard: 0, Good: 0, Easy: 0,
-  });
+  const [reviewedCount, setReviewedCount] = useState(0);
 
   // Snapshot the queue as loaded so removing one doesn't shift indexes mid-session
   const session = useMemo(() => queue ?? [], [queue]);
@@ -109,15 +107,12 @@ export default function MCQReviewPage() {
 
   // Session summary
   if (completed) {
-    const reviewed = ratingCounts.Again + ratingCounts.Hard + ratingCounts.Good + ratingCounts.Easy;
-    const goodOrEasy = ratingCounts.Good + ratingCounts.Easy;
-    const hardOrAgain = ratingCounts.Hard + ratingCounts.Again;
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 gap-4 text-center">
         <CheckCircle2 className="w-16 h-16 text-green-500" />
         <h2 className="text-2xl font-bold text-foreground">Review session complete</h2>
         <p className="text-muted-foreground max-w-md">
-          {reviewed} MCQ{reviewed !== 1 ? 's' : ''} reviewed · {goodOrEasy} as Good or Easy · {hardOrAgain} as Hard or Again
+          {reviewedCount} MCQ{reviewedCount !== 1 ? 's' : ''} reviewed. Great work.
         </p>
         <Button size="lg" onClick={() => navigate('/')} className="gap-2 mt-2">
           <Home className="w-4 h-4" /> Back to Dashboard
@@ -206,16 +201,8 @@ export default function MCQReviewPage() {
             <div className="pt-2">
               <MCQFSRSRatingButtons
                 mcqId={current.id}
-                onRated={(scheduledDays) => {
-                  // Tally last rating from button text isn't returned; track via wrapping handler
-                  // We don't know which rating was picked here, so tally Good as a default fallback.
-                  // Better: read it back from the schedule — Again ~< 1 day. We approximate:
-                  let bucket = 'Good';
-                  if (scheduledDays < 1) bucket = 'Again';
-                  else if (scheduledDays < 4) bucket = 'Hard';
-                  else if (scheduledDays < 14) bucket = 'Good';
-                  else bucket = 'Easy';
-                  setRatingCounts(prev => ({ ...prev, [bucket]: (prev[bucket] || 0) + 1 }));
+                onRated={() => {
+                  setReviewedCount(c => c + 1);
                   advance();
                 }}
               />
