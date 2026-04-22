@@ -30,7 +30,7 @@ export class ChunkLoadErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error) {
     if (isChunkLoadError(error)) {
       console.warn('[ChunkLoadErrorBoundary] Detected chunk load error:', error.message);
-      
+
       // Auto-reload once if we haven't already tried
       const hasAutoReloaded = sessionStorage.getItem(AUTO_RELOAD_KEY);
       if (!hasAutoReloaded) {
@@ -55,7 +55,7 @@ export class ChunkLoadErrorBoundary extends Component<Props, State> {
             <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
               <AlertCircle className="w-8 h-8 text-primary" />
             </div>
-            
+
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-foreground">
                 App Updated
@@ -65,7 +65,7 @@ export class ChunkLoadErrorBoundary extends Component<Props, State> {
               </p>
             </div>
 
-            <Button 
+            <Button
               onClick={this.handleReload}
               size="lg"
               className="gap-2"
@@ -90,7 +90,7 @@ export class ChunkLoadErrorBoundary extends Component<Props, State> {
 function isChunkLoadError(error: Error): boolean {
   const message = error.message || '';
   const name = error.name || '';
-  
+
   return (
     message.includes('Failed to fetch dynamically imported module') ||
     message.includes('Loading chunk') ||
@@ -127,10 +127,10 @@ function getErrorMessage(reason: unknown): string {
 function isChunkAssetFilename(filename: string | undefined): boolean {
   if (!filename) return false;
   // Match hashed JS/CSS chunk files
-  return /\.[a-f0-9]{8,}\.js$/i.test(filename) || 
-         /\.[a-f0-9]{8,}\.css$/i.test(filename) ||
-         /chunk.*\.js$/i.test(filename) ||
-         /assets\/.*\.js$/i.test(filename);
+  return /\.[a-f0-9]{8,}\.js$/i.test(filename) ||
+    /\.[a-f0-9]{8,}\.css$/i.test(filename) ||
+    /chunk.*\.js$/i.test(filename) ||
+    /assets\/.*\.js$/i.test(filename);
 }
 
 // Global handler for unhandled promise rejections (catches lazy load failures)
@@ -138,21 +138,21 @@ export function setupChunkErrorHandler() {
   window.addEventListener('unhandledrejection', (event) => {
     const reason = event.reason;
     const message = getErrorMessage(reason);
-    
+
     // Check if it's an Error instance with chunk load error
     const isErrorInstance = reason instanceof Error && isChunkLoadError(reason);
-    
+
     // Also check string/object messages directly
-    const isChunkMessage = 
+    const isChunkMessage =
       message.includes('Failed to fetch dynamically imported module') ||
       message.includes('Loading chunk') ||
       message.includes('ChunkLoadError') ||
       message.includes('Importing a module script failed') ||
       message.includes('error loading dynamically imported module');
-    
+
     if (isErrorInstance || isChunkMessage) {
       console.warn('[ChunkErrorHandler] Caught unhandled chunk load error:', message);
-      
+
       const hasAutoReloaded = sessionStorage.getItem(AUTO_RELOAD_KEY);
       if (!hasAutoReloaded) {
         sessionStorage.setItem(AUTO_RELOAD_KEY, 'true');
@@ -166,28 +166,28 @@ export function setupChunkErrorHandler() {
   window.addEventListener('error', (event) => {
     const message = event.message || '';
     const filename = event.filename || '';
-    
+
     // Direct chunk load error messages
-    const isChunkMessage = 
+    const isChunkMessage =
       message.includes('Failed to fetch dynamically imported module') ||
       message.includes('Loading chunk') ||
       message.includes('ChunkLoadError') ||
       message.includes('Importing a module script failed');
-    
+
     // Safari "Script error." with chunk asset filename
-    const isSafariScriptError = 
+    const isSafariScriptError =
       message === 'Script error.' && isChunkAssetFilename(filename);
-    
+
     // Generic script error where filename indicates a chunk asset failed
-    const isChunkAssetError = 
+    const isChunkAssetError =
       isChunkAssetFilename(filename) && (
         message.toLowerCase().includes('error') ||
         message.toLowerCase().includes('failed')
       );
-    
+
     if (isChunkMessage || isSafariScriptError || isChunkAssetError) {
       console.warn('[ChunkErrorHandler] Caught chunk load error via error event:', { message, filename });
-      
+
       const hasAutoReloaded = sessionStorage.getItem(AUTO_RELOAD_KEY);
       if (!hasAutoReloaded) {
         sessionStorage.setItem(AUTO_RELOAD_KEY, 'true');

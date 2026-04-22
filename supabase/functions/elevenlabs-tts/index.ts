@@ -40,99 +40,170 @@ serve(async (req) => {
   }
 
   try {
-    // ── Auth guard ──
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const svcClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 1. FLOW: GET (Streaming Audio)
+    // ──────────────────────────────────────────────────────────────────────────
+    async function streamFromElevenLabs(payload: any) {
+      const { text, voiceId, tone, speed: requestSpeed } = payload;
+      const elevenLabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
+      if (!elevenLabsApiKey) throw new Error('ELEVENLABS_API_KEY is not set');
+
+      const toneSettings: Record<string, any> = {
+        calm:        { stability: 0.55, similarity_boost: 0.75, style: 0.2 },
+        worried:     { stability: 0.35, similarity_boost: 0.7,  style: 0.4 },
+        anxious:     { stability: 0.25, similarity_boost: 0.65, style: 0.5 },
+        angry:       { stability: 0.3,  similarity_boost: 0.8,  style: 0.7 },
+        impolite:    { stability: 0.35, similarity_boost: 0.8,  style: 0.6 },
+        in_pain:     { stability: 0.2,  similarity_boost: 0.7,  style: 0.6 },
+        cooperative: { stability: 0.6,  similarity_boost: 0.75, style: 0.3 },
+      };
+
+      const voiceSettings = toneSettings[tone] || toneSettings.calm;
+      const ttsSpeed = typeof requestSpeed === 'number' ? requestSpeed : 1.1;
+
+      const response = await fetchWithRetry(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'xi-api-key': elevenLabsApiKey,
+            'Accept': 'audio/mpeg',
+          },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_multilingual_v2',
+            voice_settings: voiceSettings,
+            speed: ttsSpeed,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`ElevenLabs API error: ${response.status} - ${errText}`);
+      }
+      return response;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 1. FLOW: GET (Streaming Audio via Token)
+    // ──────────────────────────────────────────────────────────────────────────
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const tokenId = url.searchParams.get('token_id');
+      
+      let payloadToStream: any;
+
+      if (tokenId) {
+        // 1. New Handshake Flow
+        const { data: tokenData, error: tokenError } = await svcClient
+          .from('tts_tokens')
+          .delete()
+          .eq('id', tokenId)
+          .select()
+          .single();
+
+        if (tokenError || !tokenData) {
+          return new Response('Invalid or expired token', { status: 401, headers: corsHeaders });
+        }
+        payloadToStream = tokenData.payload;
+      } else {
+        // 2. Legacy Flow (Backward Compatibility)
+        const text = url.searchParams.get('text');
+        const token = url.searchParams.get('token');
+        const voiceId = url.searchParams.get('voiceId') || 'DWMVT5WflKt0P8OPpIrY'; // Default to Hanafi
+        const tone = url.searchParams.get('tone');
+        const speed = parseFloat(url.searchParams.get('speed') || '1.1');
+
+        if (!text || !token) {
+          return new Response('Missing token_id or legacy params', { status: 400, headers: corsHeaders });
+        }
+
+        // Validate legacy token
+        const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+          global: { headers: { Authorization: `Bearer ${token}` } } 
+        });
+        const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+        if (authError || !user) {
+          return new Response('Invalid legacy auth', { status: 401, headers: corsHeaders });
+        }
+        
+        payloadToStream = { text, voiceId, tone, speed };
+      }
+
+      console.log(`[GET] Streaming ElevenLabs audio for ${tokenId ? 'Handshake' : 'Legacy'} request`);
+      const response = await streamFromElevenLabs(payloadToStream);
+
+      return new Response(response.body, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'audio/mpeg',
+          'Transfer-Encoding': 'chunked',
+        },
+      });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 2. FLOW: POST (Token Creation OR Legacy Direct Streaming)
+    // ──────────────────────────────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const userId = user.id;
-    const svcClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: roleData } = await svcClient.from('user_roles').select('role').eq('user_id', userId).single();
-    const userRole = roleData?.role || 'student';
-    const allowedRoles = ['super_admin', 'platform_admin', 'admin', 'teacher', 'department_admin', 'topic_admin', 'student'];
-    if (!allowedRoles.includes(userRole)) {
-      return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    const { text, voiceId, tone, speed: requestSpeed } = await req.json();
-
-    if (!text || !voiceId) {
-      return new Response(
-        JSON.stringify({ error: 'text and voiceId are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const toneSettings: Record<string, any> = {
-      calm:        { stability: 0.55, similarity_boost: 0.75, style: 0.2 },
-      worried:     { stability: 0.35, similarity_boost: 0.7,  style: 0.4 },
-      anxious:     { stability: 0.25, similarity_boost: 0.65, style: 0.5 },
-      angry:       { stability: 0.3,  similarity_boost: 0.8,  style: 0.7 },
-      impolite:    { stability: 0.35, similarity_boost: 0.8,  style: 0.6 },
-      in_pain:     { stability: 0.2,  similarity_boost: 0.7,  style: 0.6 },
-      cooperative: { stability: 0.6,  similarity_boost: 0.75, style: 0.3 },
-    };
-    const voiceSettings = toneSettings[tone] || toneSettings.calm;
-    const ttsSpeed = typeof requestSpeed === 'number' ? requestSpeed : 1.1;
-
-    const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
-    if (!ELEVENLABS_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'ELEVENLABS_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const response = await fetchWithRetry(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=mp3_22050_32`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': ELEVENLABS_API_KEY,
-          'Content-Type': 'application/json',
-          'Accept': 'audio/mpeg',
-        },
-        body: JSON.stringify({
-          text,
-          model_id: 'eleven_multilingual_v2',
-          voice_settings: voiceSettings,
-          speed: ttsSpeed,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ElevenLabs API error:', response.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `ElevenLabs API error: ${response.status}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    return new Response(response.body, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'audio/mpeg',
-        'Transfer-Encoding': 'chunked',
-      },
+    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { 
+      global: { headers: { Authorization: `Bearer ${token}` } } 
     });
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid auth' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    const payload = await req.json();
+    const { text, legacy } = payload;
+    const voiceId = payload.voiceId || 'DWMVT5WflKt0P8OPpIrY'; // Default to Hanafi
+
+    if (!text) {
+      return new Response(JSON.stringify({ error: 'Missing text parameter' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    if (legacy === true) {
+      console.log('[POST] Legacy direct streaming enabled');
+      const response = await streamFromElevenLabs(payload);
+      return new Response(response.body, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'audio/mpeg',
+          'Transfer-Encoding': 'chunked',
+        },
+      });
+    }
+
+    // Default: Return handshake token
+    const { data: tokenRow, error: insertError } = await svcClient
+      .from('tts_tokens')
+      .insert({
+        user_id: user.id,
+        payload
+      })
+      .select('id')
+      .single();
+
+    if (insertError) throw insertError;
+
+    return new Response(JSON.stringify({ token_id: tokenRow.id }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
   } catch (err) {
-    console.error('elevenlabs-tts error:', err);
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('Master Error:', (err as Error).message);
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

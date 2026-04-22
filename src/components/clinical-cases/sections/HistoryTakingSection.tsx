@@ -17,6 +17,9 @@ import { SUPABASE_URL as SUPABASE_URL_FALLBACK } from '@/lib/supabaseUrl';
 import { toast } from 'sonner';
 import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
+import { useAuth } from '@/hooks/useAuth';
+import { PerformanceMetrics, INITIAL_METRICS } from '@/utils/performanceTelemetry';
+import { PerformanceDebugConsole } from '../PerformanceDebugConsole';
 
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   avatarUrl?: string;
@@ -62,11 +65,23 @@ export function HistoryTakingSection({
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
 
+  const { isSuperAdmin, isPlatformAdmin, role } = useAuth();
+  const [metrics, setMetrics] = useState<PerformanceMetrics>(INITIAL_METRICS);
+  const lastPartialTimeRef = useRef<number>(0);
+  const sttLatencyRef = useRef<number>(0);
+
+  // Debug role access
+  useEffect(() => {
+    if (isPlatformAdmin) {
+      console.log('[Telemetry] Admin access confirmed, role:', role);
+    }
+  }, [isPlatformAdmin, role]);
+
   // TTS settings
   const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
   const ttsGeminiVoice = patientGender === 'female'
-    ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoede') as string
+    ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') as string
     : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore') as string;
   const toneStyleMap: Record<string, string> = {
     worried:   '[تحدث بالعامية المصرية. نبرتك قلقة وخايف من الموضوع]',
@@ -103,6 +118,8 @@ export function HistoryTakingSection({
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isWaitingForAi, setIsWaitingForAi] = useState(false);
+  const [ttsFirstByte, setTtsFirstByte] = useState(false);
   const [lastSpoken, setLastSpoken] = useState('');
   const recognitionRef = useRef<any>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -128,6 +145,9 @@ export function HistoryTakingSection({
     onCommittedTranscript: (data) => {
       console.log('[Scribe] Committed transcript:', data.text);
       if (data.text?.trim()) {
+        // Measure STT latency: from last partial to commitment
+        sttLatencyRef.current = lastPartialTimeRef.current ? Date.now() - lastPartialTimeRef.current : 0;
+        
         setLastSpoken(data.text);
         setVoiceErrorCount(0);
         sendChatMessageRef.current(data.text);
@@ -137,6 +157,7 @@ export function HistoryTakingSection({
       }
     },
     onPartialTranscript: (data) => {
+      lastPartialTimeRef.current = Date.now();
       setInterimTranscript(data.text || '');
     },
   });
@@ -252,23 +273,27 @@ export function HistoryTakingSection({
   const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    // Clear any running typewriter
-    if (typewriterTimerRef.current) {
-      clearInterval(typewriterTimerRef.current);
-      typewriterTimerRef.current = null;
+    // If we're waiting for AI or TTS hasn't started playing yet, show text in dimmed state
+    if (isWaitingForAi || (isSpeaking && !ttsFirstByte)) {
+      setDisplayedText(lastAiMessage); // Show it, but we'll style it to be dimmed
+      if (typewriterTimerRef.current) {
+        clearInterval(typewriterTimerRef.current);
+        typewriterTimerRef.current = null;
+      }
+      return;
     }
 
     // Hard sync: when TTS stops, show full text immediately
     if (!isSpeaking) {
       setDisplayedText(lastAiMessage);
+      setTtsFirstByte(false);
       return;
     }
 
-    // Start typewriter when speaking begins with new text
-    if (isSpeaking && lastAiMessage) {
+    // Start typewriter when actual playback (first byte) begins
+    if (isSpeaking && ttsFirstByte && lastAiMessage && !typewriterTimerRef.current) {
       const text = lastAiMessage;
-      const duration = ttsDurationRef.current;
-      const charDelay = duration > 0 ? (duration * 1000) / text.length : 20;
+      const charDelay = 35; // Standard Arabic reading speed
       let idx = 0;
       setDisplayedText('');
 
@@ -290,7 +315,7 @@ export function HistoryTakingSection({
         typewriterTimerRef.current = null;
       }
     };
-  }, [lastAiMessage, isSpeaking]);
+  }, [lastAiMessage, isSpeaking, ttsFirstByte, isWaitingForAi]);
 
   // Auto-scroll voice bubble to bottom as typewriter reveals text
   useEffect(() => {
@@ -314,6 +339,11 @@ export function HistoryTakingSection({
     setChatMessages(updatedMessages);
     setChatInput('');
     setIsSending(true);
+    setIsWaitingForAi(true);
+
+    const llmStart = Date.now();
+    let llmEnd = 0;
+    let ttsEnd = 0;
 
     try {
       const { data: fnData, error } = await supabase.functions.invoke('patient-history-chat', {
@@ -327,6 +357,7 @@ export function HistoryTakingSection({
 
       if (error) throw error;
 
+      llmEnd = Date.now();
       const reply = fnData?.reply || 'Sorry, I could not respond.';
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
@@ -337,55 +368,30 @@ export function HistoryTakingSection({
 
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-          const voiceId = voiceIdOverride
-            || (gender === 'female'
-              ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') as string
-              : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY') as string);
+          const voiceId = voiceIdOverride || (
+            ttsProvider === 'gemini'
+              ? (gender === 'female' ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore'))
+              : (gender === 'female' ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY'))
+          ) as string;
+          
           setIsSpeaking(true);
+          setTtsFirstByte(false);
           try {
-            if (ttsProvider === 'gemini') {
-              stopAllTTS();
-              const geminiVoiceToUse = voiceIdOverride || ttsGeminiVoice;
-              const SUPABASE_URL = SUPABASE_URL_FALLBACK;
-              const { data: { session } } = await supabase.auth.getSession();
-              console.log('[Response TTS] Fetching gemini-tts, voice:', geminiVoiceToUse);
-              const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-tts`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${session?.access_token}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ text: reply, voiceName: geminiVoiceToUse, stylePrompt: geminiStylePrompt }),
-              });
-              if (!res.ok) {
-                console.warn('[Response TTS] Gemini reply failed:', res.status, '— skipping audio');
-              } else {
-                const blob = await res.blob();
-                console.log('[Response TTS] Got blob, size:', blob.size, 'type:', blob.type);
-                if (blob.size < 100) {
-                  console.warn('[Response TTS] Gemini reply blob too small:', blob.size, '— skipping audio');
-                } else {
-                  const blobUrl = URL.createObjectURL(blob);
-                  const audio = preUnlockedAudio || new Audio();
-                  audio.src = blobUrl;
-                  registerCurrentAudio(audio);
-                  console.log('[Response TTS] Calling audio.play()');
-                  await new Promise<void>((resolve, reject) => {
-                    audio.onended = () => { console.log('[Response TTS] Audio ended'); URL.revokeObjectURL(blobUrl); resolve(); };
-                    audio.onerror = (e) => { console.error('[Response TTS] Audio error:', e); URL.revokeObjectURL(blobUrl); resolve(); };
-                    audio.play().then(() => {
-                      console.log('[Response TTS] Audio playing, duration:', audio.duration);
-                    }).catch((err) => {
-                      console.error('[Response TTS] play() rejected:', err);
-                      URL.revokeObjectURL(blobUrl);
-                      resolve();
-                    });
-                  });
-                }
+            await speakArabic(
+              reply,
+              ttsProvider,
+              voiceId,
+              patientTone,
+              preUnlockedAudio,
+              ttsProvider === 'gemini' ? geminiStylePrompt : undefined,
+              () => { 
+                ttsEnd = Date.now(); 
+                setTtsFirstByte(true);
               }
-            } else {
-              await speakArabic(reply, ttsProvider, voiceId, patientTone, preUnlockedAudio);
-            }
+            );
+            
+            // Fallback if onPlaybackStarted didn't fire for some reason
+            if (!ttsEnd) ttsEnd = Date.now();
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();
@@ -404,14 +410,37 @@ export function HistoryTakingSection({
       }
     } catch (err) {
       console.error('Chat error:', err);
+      const msg = (err as Error).message || 'An unexpected error occurred';
+      toast.error(msg);
       setChatMessages(prev => [
         ...prev,
         { role: 'assistant', content: 'عذراً، حدث خطأ. حاول مرة أخرى.' },
       ]);
     } finally {
       setIsSending(false);
+      
+      // Update performance metrics for super_admins
+      if (isSuperAdmin) {
+        const llmLatency = llmEnd ? llmEnd - llmStart : 0;
+        const ttAudioEnd = Date.now();
+        const fullTtsDuration = ttsEnd ? ttAudioEnd - llmEnd : 0;
+        const ttfbLatency = ttsEnd && llmEnd ? ttsEnd - llmEnd : 0;
+
+        setMetrics({
+          stt: sttLatencyRef.current,
+          llm: llmLatency,
+          tts: fullTtsDuration,
+          ttfb: ttfbLatency,
+          total: sttLatencyRef.current + llmLatency + fullTtsDuration,
+          timestamp: Date.now()
+        });
+        
+        // Reset STT for next turn
+        sttLatencyRef.current = 0;
+        lastPartialTimeRef.current = 0;
+      }
     }
-  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase]);
+  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, patientTone, shouldDisableInput, isOverTime, phase, isSuperAdmin]);
 
   // Keep ref in sync with latest sendChatMessage
   useEffect(() => {
@@ -804,6 +833,7 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
+          {isPlatformAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
@@ -929,6 +959,7 @@ export function HistoryTakingSection({
       return (
         <div className="flex flex-col h-[calc(100vh-360px)] min-h-[220px] relative">
           {watermark}
+          {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
@@ -1001,11 +1032,21 @@ export function HistoryTakingSection({
               <div
                 ref={voiceBubbleRef}
                 className={cn(
-                  'rounded-xl bg-card border px-4 py-3 text-base text-card-foreground max-w-sm w-full max-h-40 overflow-y-auto transition-opacity duration-500',
-                  displayedText ? 'opacity-100' : 'opacity-0'
+                  'rounded-xl border px-4 py-3 text-base max-w-sm w-full max-h-40 overflow-y-auto transition-all duration-500',
+                  displayedText ? 'opacity-100' : 'opacity-0',
+                  (isWaitingForAi || (isSpeaking && !ttsFirstByte)) 
+                    ? 'bg-muted/50 text-muted-foreground italic scale-95 border-dashed blur-[0.5px]' 
+                    : 'bg-card text-card-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.15)]'
                 )}
                 dir="rtl"
               >
+                {(isWaitingForAi || (isSpeaking && !ttsFirstByte)) && (
+                  <span className="inline-flex gap-1 ml-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
+                  </span>
+                )}
                 {displayedText || '\u00A0'}
               </div>
             </div>
@@ -1059,6 +1100,7 @@ export function HistoryTakingSection({
   return (
     <div className="space-y-5 relative">
       {watermark}
+      {isPlatformAdmin && <PerformanceDebugConsole metrics={metrics} />}
 
       {questions.length > 0 && (
         <div className="space-y-3">

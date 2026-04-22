@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BookOpen, GalleryHorizontal, CalendarCheck, FlaskConical, Compass, HelpCircle, Upload, BarChart3, MessageSquare, Flag, Inbox } from 'lucide-react';
+import { BookOpen, GalleryHorizontal, CalendarCheck, FlaskConical, Compass, HelpCircle, Upload, BarChart3, MessageSquare, Flag, Inbox, Stethoscope, BookOpenCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface WorkflowGuideProps {
   open: boolean;
@@ -9,12 +10,14 @@ interface WorkflowGuideProps {
 }
 
 const studentSteps = [
-  { icon: BookOpen, title: 'Start here', description: 'Resume from where you left off using the continue card.' },
-  { icon: GalleryHorizontal, title: 'Complete your reviews', description: 'Do your flashcards first to maintain retention.' },
-  { icon: CalendarCheck, title: "Follow today's priorities", description: 'Use the suggested tasks instead of choosing randomly.' },
-  { icon: FlaskConical, title: 'Practice', description: 'Test your understanding and identify weak areas.' },
-  { icon: Compass, title: 'Go deeper when needed', description: 'Use modules to explore topics more thoroughly.' },
-  { icon: HelpCircle, title: 'Ask for help', description: 'Use Connect when something is unclear.' },
+  { icon: GalleryHorizontal, title: 'Daily Reviews first', description: 'FSRS flashcards before new material. Ten minutes daily = hours saved at exams.' },
+  { icon: CalendarCheck, title: 'Follow priorities', description: 'Picked from your weak chapters, tier, and exam dates. A second opinion on what to study.' },
+  { icon: BookOpen, title: 'Resources: Learn', description: 'Videos, flashcards, visual explanations, Socratic documents.' },
+  { icon: Stethoscope, title: 'Interactive: Apply', description: 'Clinical cases, structured cases, virtual patient — after Resources.' },
+  { icon: FlaskConical, title: 'Practice: Stress-test', description: 'MCQs, SBA, OSCE, short essays, case scenarios. Non-negotiable.' },
+  { icon: BookOpenCheck, title: 'Test Yourself', description: 'Chapter exam in your chosen format. Pass it → bar turns green.' },
+  { icon: HelpCircle, title: 'Coach: grounded help', description: 'Bottom-right icon. Reads your chapter PDF and answers from it.' },
+  { icon: BarChart3, title: 'Progress: honest verdict', description: 'Sidebar Coach → Progress. Readiness, weak chapters, days to exam. Weekly.' },
 ];
 
 const adminSteps = [
@@ -43,8 +46,9 @@ export function WorkflowGuide({ open, onOpenChange, mode }: WorkflowGuideProps) 
         <DialogHeader>
           <DialogTitle className="text-lg">{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-1 mt-2">
-          {steps.map((step, i) => {
+        <ScrollArea className="max-h-[70vh] mt-2 pr-2">
+          <div className="space-y-1">
+            {steps.map((step, i) => {
             const Icon = step.icon;
             return (
               <div key={i} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/30 transition-colors">
@@ -60,8 +64,9 @@ export function WorkflowGuide({ open, onOpenChange, mode }: WorkflowGuideProps) 
                 </div>
               </div>
             );
-          })}
-        </div>
+            })}
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

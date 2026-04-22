@@ -6985,6 +6985,30 @@ export type Database = {
           },
         ]
       }
+      tts_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          payload: Json
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          payload: Json
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          payload?: Json
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       tts_voices: {
         Row: {
           created_at: string | null

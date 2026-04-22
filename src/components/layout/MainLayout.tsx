@@ -423,7 +423,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className={cn(
           "fixed z-40 right-3 sm:right-4",
           isStudent ? "bottom-[calc(56px+env(safe-area-inset-bottom)+8px)] sm:bottom-4" : "bottom-4"
-        )}>
+        )} data-tour="coach-icon">
           <AskCoachButton variant="icon" context={{ pageType: 'dashboard' }} className="h-10 w-10 shadow-lg border border-border bg-card/90 backdrop-blur-sm hover:bg-accent" />
         </div>
       )}

@@ -112,10 +112,12 @@ export function createUnlockedAudio(): HTMLAudioElement {
 
 export async function speakArabic(
   text: string,
-  provider: 'browser' | 'elevenlabs',
+  provider: 'browser' | 'elevenlabs' | 'gemini',
   voiceId?: string,
   tone?: PatientTone,
-  preUnlockedAudio?: HTMLAudioElement
+  preUnlockedAudio?: HTMLAudioElement,
+  stylePrompt?: string,
+  onPlaybackStarted?: () => void
 ): Promise<void> {
   // Stop previous audio without destroying the pre-unlocked element
   if (currentAudio && currentAudio !== preUnlockedAudio) {
@@ -128,79 +130,142 @@ export async function speakArabic(
   currentAudio = null;
   window.speechSynthesis?.cancel();
 
-  if (provider === 'elevenlabs' && voiceId) {
+  if ((provider === 'elevenlabs' || provider === 'gemini') && voiceId) {
     try {
-      // Get the user's session token for auth
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
       if (!accessToken) throw new Error('No session token — user not logged in');
 
-      console.log('[TTS] Calling ElevenLabs, provider:', provider, 'voiceId:', voiceId);
-      const res = await fetch(
-        `${SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
+      const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
+      
+      // PHASE 1: Handshake (POST to get token)
+      console.log(`[TTS] Handshake with ${provider}...`);
+      const handshakeBody = provider === 'elevenlabs'
+        ? { text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }
+        : { text, voiceName: voiceId, stylePrompt };
+
+      const handshakeRes = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(handshakeBody),
+      });
+
+      if (!handshakeRes.ok) {
+        const errText = await handshakeRes.text();
+        console.error(`[TTS] Handshake failed (${handshakeRes.status}):`, errText);
+        throw new Error(`Handshake failed: ${errText || handshakeRes.status}`);
+      }
+      const { token_id } = await handshakeRes.json();
+
+      // PHASE 2: Streaming (GET with token_id)
+      const streamingUrl = `${SUPABASE_URL}/functions/v1/${functionName}?token_id=${token_id}`;
+      console.log(`[TTS] Handshake success. Streaming from token: ${token_id}`);
+
+      const audio = preUnlockedAudio || new Audio();
+      audio.crossOrigin = "anonymous";
+      audio.src = streamingUrl;
+      currentAudio = audio;
+
+      return new Promise<void>((resolve, reject) => {
+        let ttfbCaptured = false;
+        const handlePlaying = () => {
+          if (!ttfbCaptured) {
+            console.log('[TTS] Audio started playing (streaming)');
+            onPlaybackStarted?.();
+            ttfbCaptured = true;
+          }
+        };
+        audio.addEventListener('playing', handlePlaying);
+
+        audio.addEventListener('ended', () => {
+          console.log('[TTS] Audio ended (streaming)');
+          if (currentAudio === audio) currentAudio = null;
+          resolve();
+        });
+
+        audio.addEventListener('error', (e) => {
+          console.error('[TTS] Streaming audio error event:', audio.error);
+          if (currentAudio === audio) currentAudio = null;
+          reject(new Error(`Streaming failed: ${audio.error?.message || 'Unknown error'}`));
+        });
+
+        audio.addEventListener('pause', () => {
+          if (!audio.src || audio.src === '') resolve();
+        });
+
+        audio.play().catch((err) => {
+          console.error('[TTS] Play promise rejected:', err);
+          if (currentAudio === audio) currentAudio = null;
+          reject(err);
+        });
+      });
+    } catch (err) {
+      console.warn(`[TTS] ${provider} handshake/streaming failed, falling back to blob method:`, err);
+      
+      // STABLE FALLBACK: Use the original POST + blob method (10s delay but guaranteed sound)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
+        
+        const body = provider === 'elevenlabs' 
+          ? { text, voiceId, tone, speed: getToneVoiceSettings(tone).speed, legacy: true }
+          : { text, voiceName: voiceId, stylePrompt, legacy: true };
+
+        console.log(`[TTS] ${provider} fallback: Fetching full blob...`);
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ text, voiceId, tone, speed: getToneVoiceSettings(tone).speed }),
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            console.error(`[TTS] Fallback failed (${res.status}):`, errText);
+            throw new Error(`Fallback failed: ${errText || res.status}`);
         }
-      );
-
-      console.log('[TTS] Response status:', res.status);
-      if (!res.ok) throw new Error(`ElevenLabs TTS failed: ${res.status}`);
-
-      const blob = await res.blob();
-      console.log('[TTS] Got audio blob, size:', blob.size);
-      const audioUrl = URL.createObjectURL(blob);
-      const audio = preUnlockedAudio || new Audio();
-      audio.src = audioUrl;
-      currentAudio = audio;
-
-      // Return a Promise that resolves when playback finishes
-      return new Promise<void>((resolve) => {
-        audio.addEventListener('ended', () => {
-          if (currentAudio === audio) currentAudio = null;
-          URL.revokeObjectURL(audioUrl);
-          resolve();
-        });
-        audio.addEventListener('error', () => {
-          if (currentAudio === audio) currentAudio = null;
-          URL.revokeObjectURL(audioUrl);
-          resolve(); // resolve gracefully — don't block callers
-        });
-        // If externally stopped via stopAllTTS(), the pause event fires
-        audio.addEventListener('pause', () => {
-          // Only resolve if this audio was cleared (stopAllTTS sets src='')
-          if (!audio.src || audio.src === '') {
-            URL.revokeObjectURL(audioUrl);
+        
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const audio = preUnlockedAudio || new Audio();
+        audio.src = blobUrl;
+        currentAudio = audio;
+        
+        onPlaybackStarted?.(); // Mark started for telemetry
+        
+        return new Promise<void>((resolve) => {
+          audio.onended = () => {
+            URL.revokeObjectURL(blobUrl);
+            if (currentAudio === audio) currentAudio = null;
             resolve();
-          }
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(blobUrl);
+            if (currentAudio === audio) currentAudio = null;
+            resolve();
+          };
+          audio.play().catch(() => resolve());
         });
-        console.log('[TTS] Attempting audio.play()');
-        audio.play().catch((err) => {
-          console.error('[TTS] Play failed:', err);
-          if (currentAudio === audio) currentAudio = null;
-          URL.revokeObjectURL(audioUrl);
-          resolve();
-        });
-      });
-    } catch (err) {
-      console.error('[TTS] ElevenLabs failed:', err);
-      // Fall through to browser TTS
+      } catch (fallbackErr) {
+        console.error('[TTS] Fallback also failed:', fallbackErr);
+      }
     }
   }
 
-  // Browser fallback (also default for provider === 'browser')
-  if ('speechSynthesis' in window) {
-    return new Promise<void>((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ar-EG';
-      utterance.rate = 1.1;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
-      window.speechSynthesis.speak(utterance);
-    });
-  }
+  // Final fallback (browser native - mostly for dev, no patient tone/voice support)
+  return new Promise<void>((resolve) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ar-SA';
+    utterance.rate = 0.9;
+    utterance.onstart = () => onPlaybackStarted?.();
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    window.speechSynthesis.speak(utterance);
+  });
 }

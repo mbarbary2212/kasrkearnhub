@@ -6,193 +6,167 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function addWavHeader(
-  pcmBase64: string,
-  inputSampleRate = 24000,
-  outputSampleRate = 16000,
-  numChannels = 1,
-  bitsPerSample = 16
-): ArrayBuffer {
-  const pcmBuffer = new Int16Array(
-    Uint8Array.from(atob(pcmBase64), c => c.charCodeAt(0)).buffer
-  );
-
-  // Downsample using linear interpolation
-  const ratio = inputSampleRate / outputSampleRate;
-  const outputLength = Math.floor(pcmBuffer.length / ratio);
-  const downsampled = new Int16Array(outputLength);
-  for (let i = 0; i < outputLength; i++) {
-    const pos = i * ratio;
-    const index = Math.floor(pos);
-    const frac = pos - index;
-    const a = pcmBuffer[index] ?? 0;
-    const b = pcmBuffer[index + 1] ?? 0;
-    downsampled[i] = Math.round(a + frac * (b - a));
-  }
-
-  const dataSize = downsampled.byteLength;
-  const byteRate = outputSampleRate * numChannels * bitsPerSample / 8;
+function createWavHeader(dataSize = 0): Uint8Array {
+  const numChannels = 1;
+  const sampleRate = 24000;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * bitsPerSample / 8;
   const blockAlign = numChannels * bitsPerSample / 8;
-  const buffer = new ArrayBuffer(44 + dataSize);
+  const buffer = new ArrayBuffer(44);
   const view = new DataView(buffer);
   const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++)
-      view.setUint8(offset + i, str.charCodeAt(i));
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   };
   writeString(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
+  // Use a smaller dummy size (approx 5MB) to avoid browsers waiting for a 2GB file
+  const dummySize = 5 * 1024 * 1024; 
+  view.setUint32(4, 36 + dummySize, true); 
   writeString(8, 'WAVE');
   writeString(12, 'fmt ');
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
   view.setUint16(22, numChannels, true);
-  view.setUint32(24, outputSampleRate, true);
+  view.setUint32(24, sampleRate, true);
   view.setUint32(28, byteRate, true);
   view.setUint16(32, blockAlign, true);
   view.setUint16(34, bitsPerSample, true);
   writeString(36, 'data');
-  view.setUint32(40, dataSize, true);
-  new Uint8Array(buffer).set(new Uint8Array(downsampled.buffer), 44);
-  return buffer;
+  view.setUint32(40, dummySize, true); 
+  return new Uint8Array(buffer);
+}
+
+async function streamGemini(
+  inputText: string, 
+  voiceName: string, 
+  stylePrompt: string | undefined, 
+  controller: ReadableStreamDefaultController
+) {
+  const startTime = Date.now();
+  const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
+  const modelId = 'gemini-3.1-flash-tts-preview';
+  const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?key=${apiKey}`;
+
+  console.log(`[Timer] T+0ms: Fetching Google Stream (SystemInstruction optimization)...`);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      // MOVE STYLE TO SYSTEM INSTRUCTION FOR FASTER REASONING
+      system_instruction: stylePrompt ? { parts: [{ text: stylePrompt }] } : undefined,
+      contents: [{ parts: [{ text: inputText }] }],
+      generationConfig: {
+        responseModalities: ["AUDIO"],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "OFF" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "OFF" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "OFF" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "OFF" }
+      ]
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`[Timer] T+${Date.now() - startTime}ms: GOOGLE_API_ERROR:`, err);
+    throw new Error(`Google API Stream Error: ${response.status} - ${err}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error('No body in Google response');
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let audioBytesTotal = 0;
+  
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    
+    const audioMarker = '"inlineData":';
+    const dataMarker = '"data":';
+    
+    while (true) {
+      const audioIdx = buffer.indexOf(audioMarker);
+      if (audioIdx === -1) break;
+      
+      const dataIdx = buffer.indexOf(dataMarker, audioIdx);
+      if (dataIdx === -1) break;
+      
+      const startQuote = buffer.indexOf('"', dataIdx + dataMarker.length);
+      if (startQuote === -1) break;
+      
+      const endQuote = buffer.indexOf('"', startQuote + 1);
+      if (endQuote === -1) break;
+      
+      const b64 = buffer.substring(startQuote + 1, endQuote);
+      if (b64) {
+        if (audioBytesTotal === 0) {
+          console.log(`[Timer] T+${Date.now() - startTime}ms: FIRST_CHUNK_ROUTED`);
+        }
+        const raw = atob(b64);
+        const bytes = new Uint8Array(raw.length);
+        for (let j = 0; j < raw.length; j++) bytes[j] = raw.charCodeAt(j);
+        controller.enqueue(bytes);
+        audioBytesTotal += bytes.length;
+      }
+      
+      buffer = buffer.substring(endQuote + 1);
+    }
+  }
+  console.log(`[Timer] T+${Date.now() - startTime}ms: STREAM_FINISHED. Bytes=${audioBytesTotal}`);
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const svcClient = createClient(supabaseUrl, serviceRoleKey);
 
   try {
-    // ── Auth guard (token only, no role check) ──
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const url = new URL(req.url);
+    if (req.method === 'GET') {
+      const tokenId = url.searchParams.get('token_id');
+      if (!tokenId) return new Response('Missing token_id', { status: 400, headers: corsHeaders });
 
-    const anonClient = createClient(supabaseUrl, supabaseAnonKey, { global: { headers: { Authorization: authHeader } } });
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
+      const { data: tokenData, error } = await svcClient.from('tts_tokens').delete().eq('id', tokenId).select().single();
+      if (error || !tokenData) return new Response('Invalid token', { status: 401, headers: corsHeaders });
 
-    const { text, voiceName, stylePrompt } = await req.json();
-
-    if (!text) {
-      return new Response(
-        JSON.stringify({ error: 'text is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const GEMINI_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-    if (!GEMINI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'GOOGLE_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    async function callGemini(inputText: string, voiceName: string) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      try {
-        const response = await fetch(
-          'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent',
-          {
-            method: 'POST',
-            headers: {
-              'X-Goog-Api-Key': GEMINI_API_KEY!,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: inputText }] }],
-              generationConfig: {
-                responseModalities: ['AUDIO'],
-                speechConfig: {
-                  voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName },
-                  },
-                },
-              },
-            }),
-            signal: controller.signal,
+      const { text, voiceName, stylePrompt } = tokenData.payload;
+      console.log(`[Timer] GET_RECEIVED: Token=${tokenId}`);
+      
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            controller.enqueue(createWavHeader(0));
+            await streamGemini(text, voiceName, stylePrompt, controller);
+            controller.close();
+          } catch (err) {
+            console.error('>>>> STREAM_ERROR:', err);
+            controller.error(err);
           }
-        );
-        clearTimeout(timeoutId);
-        console.log('[gemini-tts] Gemini API responded:', response.status);
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Gemini TTS API error:', response.status, errorText);
-          return { ok: false, status: response.status, audioData: null, finishReason: null };
         }
-        const result = await response.json();
-        const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        const finishReason = result?.candidates?.[0]?.finishReason;
-        return { ok: true, status: 200, audioData, finishReason };
-      } catch (err) {
-        clearTimeout(timeoutId);
-        if ((err as Error).name === 'AbortError') {
-          console.error('[gemini-tts] Gemini API timed out after 15s');
-          return { ok: false, status: 504, audioData: null, finishReason: 'TIMEOUT' };
-        }
-        throw err;
-      }
+      });
+      return new Response(stream, { headers: { ...corsHeaders, 'Content-Type': 'audio/wav', 'Cache-Control': 'no-cache' } });
     }
 
-    const voice = voiceName || 'Kore';
-    const finalText = stylePrompt ? `${stylePrompt}\n\n${text}` : text;
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) return new Response('Unauthorized', { status: 401 });
+    const { data: { user }, error: authError } = await (createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)).auth.getUser(authHeader.replace('Bearer ', ''));
+    if (authError || !user) return new Response('Invalid auth', { status: 401 });
 
-    // First attempt with style prompt (with retry on 500)
-    console.log('[gemini-tts] Attempt 1 with style prompt:', !!stylePrompt);
-    let result = await callGemini(finalText, voice);
-
-    // Retry once on transient 500 errors from Gemini API
-    if (!result.ok && result.status === 500) {
-      console.log('[gemini-tts] Got 500 from Gemini, retrying after 500ms...');
-      await new Promise(r => setTimeout(r, 500));
-      result = await callGemini(finalText, voice);
-    }
-
-    if (!result.ok) {
-      return new Response(
-        JSON.stringify({ error: `Gemini TTS API error: ${result.status}` }),
-        { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // If no audio and we had a style prompt, retry without it
-    if (!result.audioData && stylePrompt) {
-      console.log('[gemini-tts] No audio (finishReason:', result.finishReason, ') — retrying without style prompt');
-      result = await callGemini(text, voice);
-      if (!result.ok) {
-        return new Response(
-          JSON.stringify({ error: `Gemini TTS API error on retry: ${result.status}` }),
-          { status: result.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    const audioData = result.audioData;
-    if (!audioData) {
-      console.error('[gemini-tts] No audio data after all attempts, finishReason:', result.finishReason);
-      return new Response(
-        JSON.stringify({ error: 'No audio data returned from Gemini' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const wavBuffer = addWavHeader(audioData);
-    return new Response(wavBuffer, {
-      headers: { ...corsHeaders, 'Content-Type': 'audio/wav' }
-    });
+    const payload = await req.json();
+    const { data: tokenRow, error: insertError } = await svcClient.from('tts_tokens').insert({ user_id: user.id, payload }).select('id').single();
+    if (insertError) throw insertError;
+    return new Response(JSON.stringify({ token_id: tokenRow.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
-    console.error('gemini-tts error:', err);
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('>>>> FATAL_ERROR:', err);
+    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: corsHeaders });
   }
 });
