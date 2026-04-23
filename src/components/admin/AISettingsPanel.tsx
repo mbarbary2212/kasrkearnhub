@@ -469,6 +469,11 @@ function InteractiveCaseSection({
   const icModel = getValue('interactive_case_model', '') as string;
   const { data: icCatalog, isLoading: icCatalogLoading } = useAIModelCatalog(icProvider, { activeOnly: true });
 
+  // Marking logic (independent — used for post-case scoring)
+  const markProvider = getValue('interactive_case_marking_provider', 'gemini') as AIProvider;
+  const markModel = getValue('interactive_case_marking_model', '') as string;
+  const { data: markCatalog, isLoading: markCatalogLoading } = useAIModelCatalog(markProvider, { activeOnly: true });
+
   const IC_PROVIDERS: { value: AIProvider; label: string }[] = [
     ...(isSuperAdmin ? [{ value: 'lovable' as AIProvider, label: 'Lovable AI Gateway' }] : []),
     { value: 'gemini', label: 'Google Gemini' },
@@ -487,16 +492,19 @@ function InteractiveCaseSection({
               Interactive Case AI
             </CardTitle>
             <CardDescription>
-              Independent picks for the patient's reasoning model, speech-to-text, and voice output. Does not affect the global AI Content Factory.
+              Three independent control surfaces: live playback model, post-case marking model, speech input, and voice output. None of these affect the global AI Content Factory or case authoring.
             </CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4">
-            <Tabs defaultValue="tts" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="logic" className="text-xs sm:text-sm">
-                  <Brain className="w-3.5 h-3.5 mr-1.5" /> Generation logic
+            <Tabs defaultValue="live" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="live" className="text-xs sm:text-sm">
+                  <Brain className="w-3.5 h-3.5 mr-1.5" /> Live playback
+                </TabsTrigger>
+                <TabsTrigger value="marking" className="text-xs sm:text-sm">
+                  <Check className="w-3.5 h-3.5 mr-1.5" /> Marking
                 </TabsTrigger>
                 <TabsTrigger value="stt" className="text-xs sm:text-sm">
                   <Mic className="w-3.5 h-3.5 mr-1.5" /> Speech input (STT)
@@ -506,12 +514,12 @@ function InteractiveCaseSection({
                 </TabsTrigger>
               </TabsList>
 
-              {/* === Generation logic === */}
-              <TabsContent value="logic" className="space-y-4 pt-4">
+              {/* === Live playback === */}
+              <TabsContent value="live" className="space-y-4 pt-4">
                 <div className="p-3 rounded-md bg-muted/40 border text-xs text-muted-foreground flex gap-2">
                   <Info className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>
-                    Used for the patient's understanding, replies, and case marking. Independent of the global AI provider — picking Groq here will not change content generation elsewhere in the app.
+                    Used during the conversation: patient understanding + reply generation. Pick a fast model for low latency. Independent of authoring and marking.
                   </span>
                 </div>
 
@@ -571,16 +579,73 @@ function InteractiveCaseSection({
                     }}
                     disabled={updateIsPending}
                   >
-                    <Save className="w-4 h-4 mr-1" /> Save Generation Settings
+                    <Save className="w-4 h-4 mr-1" /> Save Live Playback Settings
                   </Button>
                 )}
+              </TabsContent>
 
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    <strong>Phase 1 — UI only.</strong> This setting is persisted now but the Interactive Case runtime still reads the global provider until Phase 2 wires it through <code>patient-history-chat</code>. Groq calls also require <code>GROQ_API_KEY</code> to be set in Edge Function secrets.
-                  </AlertDescription>
-                </Alert>
+              {/* === Marking === */}
+              <TabsContent value="marking" className="space-y-4 pt-4">
+                <div className="p-3 rounded-md bg-muted/40 border text-xs text-muted-foreground flex gap-2">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    Used after the case to score student answers. Pick a stronger model for accuracy — latency doesn't matter here. Leave unset to fall back to the global provider.
+                  </span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Provider</Label>
+                    <Select
+                      value={markProvider}
+                      onValueChange={(v) => {
+                        handleChange('interactive_case_marking_provider', v);
+                        handleChange('interactive_case_marking_model', '');
+                      }}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {IC_PROVIDERS.map((p) => (
+                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Model</Label>
+                    <Select
+                      value={markModel || ''}
+                      onValueChange={(v) => handleChange('interactive_case_marking_model', v)}
+                      disabled={markCatalogLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={markCatalogLoading ? 'Loading…' : (markCatalog && markCatalog.length === 0 ? 'No models registered for this provider' : 'Pick a model')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(markCatalog ?? []).map((m) => (
+                          <SelectItem key={m.model_id} value={m.model_id}>{m.label}</SelectItem>
+                        ))}
+                        {!!markModel && !(markCatalog ?? []).some(m => m.model_id === markModel) && (
+                          <SelectItem value={markModel}>{markModel} (current)</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {('interactive_case_marking_provider' in pendingChanges || 'interactive_case_marking_model' in pendingChanges) && (
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      if ('interactive_case_marking_provider' in pendingChanges) await handleSave('interactive_case_marking_provider');
+                      if ('interactive_case_marking_model' in pendingChanges) await handleSave('interactive_case_marking_model');
+                    }}
+                    disabled={updateIsPending}
+                  >
+                    <Save className="w-4 h-4 mr-1" /> Save Marking Settings
+                  </Button>
+                )}
               </TabsContent>
 
               {/* === Speech input (STT) === */}
@@ -643,6 +708,13 @@ function InteractiveCaseSection({
                 )}
               </TabsContent>
             </Tabs>
+
+            <div className="mt-4 p-3 rounded-md bg-muted/30 border text-xs text-muted-foreground flex gap-2">
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                <strong>Authoring</strong> (case generation from PDFs) is controlled in <strong>Model per Content Type → Interactive Cases</strong> below. The three surfaces above only affect runtime playback, marking, and voice.
+              </span>
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
