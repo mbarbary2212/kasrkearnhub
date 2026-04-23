@@ -708,6 +708,13 @@ function InteractiveCaseSection({
                 )}
               </TabsContent>
             </Tabs>
+
+            <div className="mt-4 p-3 rounded-md bg-muted/30 border text-xs text-muted-foreground flex gap-2">
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>
+                <strong>Authoring</strong> (case generation from PDFs) is controlled in <strong>Model per Content Type → Interactive Cases</strong> below. The three surfaces above only affect runtime playback, marking, and voice.
+              </span>
+            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
