@@ -37,7 +37,19 @@ export function useScheduleCard() {
           .delete()
           .eq('user_id', user.id)
           .eq('card_id', cardId);
-        if (error) throw error;
+        if (error) {
+          captureWithContext(error, {
+            tags: { feature: 'db_write', table: 'flashcard_states', operation: 'delete' },
+            extra: {
+              student_user_id: user.id,
+              card_id: cardId,
+              error_code: (error as any)?.code,
+              error_message: error.message,
+              supabase_hint: (error as any)?.hint,
+            },
+          });
+          throw error;
+        }
       } else {
         const empty = createEmptyCard();
         const { error } = await supabase
@@ -59,7 +71,19 @@ export function useScheduleCard() {
             } as any,
             { onConflict: 'user_id,card_id' }
           );
-        if (error) throw error;
+        if (error) {
+          captureWithContext(error, {
+            tags: { feature: 'db_write', table: 'flashcard_states', operation: 'upsert' },
+            extra: {
+              student_user_id: user.id,
+              card_id: cardId,
+              error_code: (error as any)?.code,
+              error_message: error.message,
+              supabase_hint: (error as any)?.hint,
+            },
+          });
+          throw error;
+        }
       }
     },
     onSuccess: (_, { unschedule }) => {
@@ -123,7 +147,20 @@ export function useRateCard() {
           } as any,
           { onConflict: 'user_id,card_id' }
         );
-      if (upsertErr) throw upsertErr;
+      if (upsertErr) {
+        captureWithContext(upsertErr, {
+          tags: { feature: 'db_write', table: 'flashcard_states', operation: 'upsert' },
+          extra: {
+            student_user_id: user.id,
+            card_id: cardId,
+            rating,
+            error_code: (upsertErr as any)?.code,
+            error_message: upsertErr.message,
+            supabase_hint: (upsertErr as any)?.hint,
+          },
+        });
+        throw upsertErr;
+      }
 
       // 4. Insert review log
       const { error: logErr } = await supabase
@@ -136,7 +173,20 @@ export function useRateCard() {
           elapsed_days: newCard.elapsed_days,
           reviewed_at: now.toISOString(),
         } as any);
-      if (logErr) throw logErr;
+      if (logErr) {
+        captureWithContext(logErr, {
+          tags: { feature: 'db_write', table: 'flashcard_review_logs', operation: 'insert' },
+          extra: {
+            student_user_id: user.id,
+            card_id: cardId,
+            rating,
+            error_code: (logErr as any)?.code,
+            error_message: logErr.message,
+            supabase_hint: (logErr as any)?.hint,
+          },
+        });
+        throw logErr;
+      }
 
       return { scheduledDays: newCard.scheduled_days };
     },
