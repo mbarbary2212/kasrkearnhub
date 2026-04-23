@@ -503,10 +503,22 @@ export function HistoryTakingSection({
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
-      Sentry.captureMessage(`STT error: ${event.error}`, {
-        level: 'warning',
-        extra: { language: selectedLanguage, mode: selectedMode },
-      });
+      // Skip user-cancelled and "no speech" — those are expected.
+      if (event.error !== 'aborted' && event.error !== 'no-speech') {
+        captureWithContext(new Error(`Browser STT error: ${event.error}`), {
+          tags: {
+            feature: 'interactive_case',
+            subfeature: 'stt',
+            provider: 'browser',
+            stt_error_code: event.error,
+          },
+          extra: {
+            case_id: caseId,
+            language: selectedLanguage,
+            mode: selectedMode,
+          },
+        });
+      }
       const errorMessages: Record<string, string> = {
         'not-allowed': 'Microphone access denied. Please allow microphone permissions.',
         'no-speech': 'No speech detected. Please try again.',
