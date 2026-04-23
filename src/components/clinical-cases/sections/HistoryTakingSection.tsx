@@ -347,6 +347,12 @@ export function HistoryTakingSection({
     let ttsEnd = 0;
 
     try {
+      addAppBreadcrumb('ai_call', 'patient-history-chat starting', {
+        case_id: caseId,
+        mode: selectedMode || 'chat',
+        language: selectedLanguage || 'en',
+        message_count: updatedMessages.length,
+      });
       const { data: fnData, error } = await supabase.functions.invoke('patient-history-chat', {
         body: {
           case_id: caseId,
@@ -411,6 +417,21 @@ export function HistoryTakingSection({
       }
     } catch (err) {
       console.error('Chat error:', err);
+      captureWithContext(err, {
+        tags: {
+          feature: 'ai_call',
+          ai_task: 'clinical_case_reply',
+          provider: 'edge_function',
+          subfeature: 'patient_history_chat',
+        },
+        extra: {
+          case_id: caseId,
+          mode: selectedMode,
+          language: selectedLanguage,
+          message_count: updatedMessages.length,
+          error_message: (err as Error)?.message,
+        },
+      });
       const msg = (err as Error).message || 'An unexpected error occurred';
       toast.error(msg);
       setChatMessages(prev => [
@@ -520,6 +541,9 @@ export function HistoryTakingSection({
     setScribeConnecting(true);
     try {
       console.log('[Scribe] Requesting token from elevenlabs-scribe-token...');
+      addAppBreadcrumb('ai_call', 'elevenlabs-scribe-token starting', {
+        case_id: caseId,
+      });
       const { data: tokenData, error } = await supabase.functions.invoke('elevenlabs-scribe-token');
       console.log('[Scribe] Token response:', { tokenData, error });
       if (error || !tokenData?.token) {
@@ -539,9 +563,18 @@ export function HistoryTakingSection({
     } catch (err) {
       wsFailCountRef.current++;
       console.warn(`ElevenLabs Scribe failed (${wsFailCountRef.current}/3), falling back to browser STT:`, err);
-      Sentry.captureMessage('ElevenLabs Scribe fallback to browser STT', {
-        level: 'info',
-        extra: { error: String(err), failCount: wsFailCountRef.current },
+      captureWithContext(err, {
+        tags: {
+          feature: 'interactive_case',
+          subfeature: 'stt',
+          provider: 'elevenlabs',
+        },
+        extra: {
+          case_id: caseId,
+          fail_count: wsFailCountRef.current,
+          will_fallback_to_browser_stt: wsFailCountRef.current < 3,
+          error_message: (err as Error)?.message,
+        },
       });
       if (wsFailCountRef.current >= 3) {
         scribeDisabledRef.current = true;
