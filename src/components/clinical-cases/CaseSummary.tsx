@@ -31,6 +31,7 @@ import {
 } from '@/types/structuredCase';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { captureWithContext, addAppBreadcrumb } from '@/lib/sentry';
 
 export function CaseSummary() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -92,9 +93,29 @@ export function CaseSummary() {
     if (elapsed >= 5000) {
       scoringRetryTriggered.current = true;
       console.log('Scoring retry: triggering score-case-answers from summary page');
+      addAppBreadcrumb('ai_call', 'score-case-answers retry from summary', {
+        attempt_id: attemptId,
+        case_id: attempt?.case?.id,
+      });
       supabase.functions.invoke('score-case-answers', {
         body: { attempt_id: attemptId, case_id: attempt?.case?.id },
-      }).catch(err => console.warn('Scoring retry error:', err));
+      }).catch(err => {
+        console.warn('Scoring retry error:', err);
+        captureWithContext(err, {
+          tags: {
+            feature: 'ai_call',
+            ai_task: 'case_marking',
+            provider: 'edge_function',
+            subfeature: 'score_case_answers',
+            retry: true,
+          },
+          extra: {
+            attempt_id: attemptId,
+            case_id: attempt?.case?.id,
+            error_message: (err as Error)?.message,
+          },
+        });
+      });
     }
   }, [sectionAnswers, attemptId, attempt]);
 
