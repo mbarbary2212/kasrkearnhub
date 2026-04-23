@@ -1,7 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import * as Sentry from 'https://deno.land/x/sentry@8.45.0/index.mjs';
 import { getAISettings, getInteractiveCaseMarkingProvider, callAI } from '../_shared/ai-provider.ts';
 import { buildScoringPrompt } from './prompts.ts';
+
+Sentry.init({
+  dsn: Deno.env.get('SENTRY_DSN'),
+  tracesSampleRate: 0.2,
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -92,6 +98,13 @@ serve(async (req) => {
     const provider = await getInteractiveCaseMarkingProvider(supabase, aiSettings);
     console.log(`[score-case-answers] Using provider: ${provider.name} / model: ${provider.model}`);
 
+    Sentry.addBreadcrumb({
+      category: 'ai_call',
+      message: `${provider.name} case_marking starting`,
+      level: 'info',
+      data: { case_id, attempt_id, model: provider.model, sections: unscoredAnswers.length },
+    });
+
     // 3. Score ALL sections in parallel
     const scoringResults = await Promise.allSettled(
       unscoredAnswers.map(async (answer) => {
@@ -116,6 +129,21 @@ Return ONLY valid JSON with this shape:
         const result = await callAI(systemPrompt, userPrompt, provider);
 
         if (!result.success || !result.content) {
+          Sentry.captureException(new Error(result.error || 'No AI response content'), {
+            tags: {
+              feature: 'ai_call',
+              provider: provider.name,
+              ai_task: 'case_marking',
+              section_type: sectionType,
+            },
+            extra: {
+              model: provider.model,
+              case_id,
+              attempt_id,
+              http_status: result.status,
+              error_message: result.error,
+            },
+          });
           throw new Error(result.error || 'No AI response content');
         }
 
@@ -178,6 +206,9 @@ Return ONLY valid JSON with this shape:
       .eq('id', attempt_id);
 
     const failedCount = scoringResults.filter(r => r.status === 'rejected').length;
+    if (failedCount > 0) {
+      Sentry.flush(2000).catch(() => {});
+    }
 
     return new Response(
       JSON.stringify({
@@ -192,6 +223,10 @@ Return ONLY valid JSON with this shape:
     );
   } catch (err) {
     console.error('score-case-answers error:', err);
+    Sentry.captureException(err, {
+      tags: { feature: 'ai_call', ai_task: 'case_marking' },
+    });
+    Sentry.flush(2000).catch(() => {});
     return new Response(
       JSON.stringify({ error: (err as Error).message || 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

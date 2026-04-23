@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 import type { Json, Database } from '@/integrations/supabase/types';
 import { updateChapterMetrics } from '@/lib/updateChapterMetrics';
+import { captureWithContext } from '@/lib/sentry';
 
 // Types matching the database schema
 export type QuestionAttemptStatus = 'unseen' | 'attempted' | 'correct' | 'incorrect';
@@ -277,7 +278,26 @@ export function useSaveQuestionAttempt() {
         p_score:           score ?? null,
       });
 
-      if (error) throw error;
+      if (error) {
+        captureWithContext(error, {
+          tags: {
+            feature: 'db_write',
+            table: 'question_attempts',
+            operation: 'insert',
+          },
+          extra: {
+            student_user_id: user.id,
+            question_id: questionId,
+            question_type: questionType,
+            chapter_id: chapterId,
+            module_id: moduleId,
+            error_code: (error as any)?.code,
+            error_message: error.message,
+            supabase_hint: (error as any)?.hint,
+          },
+        });
+        throw error;
+      }
 
       return {
         success: true,

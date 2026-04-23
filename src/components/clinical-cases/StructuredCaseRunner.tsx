@@ -47,6 +47,7 @@ import {
 } from './sections';
 import { supabase } from '@/integrations/supabase/client';
 import { stopAllTTS } from '@/utils/tts';
+import { captureWithContext, addAppBreadcrumb } from '@/lib/sentry';
 
 // ── Props ────────────────────────────────────────────
 interface StructuredCaseRunnerProps {
@@ -127,6 +128,11 @@ export function StructuredCaseRunner({
     setIsSubmittingSection(true);
 
     try {
+      addAppBreadcrumb('interactive_case', 'section submit', {
+        case_id: caseId,
+        attempt_id: attemptId,
+        stage: currentSection,
+      });
       // Save answer to case_section_answers
       const { error } = await supabase
         .from('case_section_answers')
@@ -155,6 +161,21 @@ export function StructuredCaseRunner({
       toast.success(`${SECTION_LABELS[currentSection]} submitted`);
     } catch (err) {
       console.error('Failed to save section answer:', err);
+      captureWithContext(err, {
+        tags: {
+          feature: 'db_write',
+          table: 'case_section_answers',
+          operation: 'upsert',
+        },
+        extra: {
+          case_id: caseId,
+          attempt_id: attemptId,
+          stage: currentSection,
+          error_code: (err as any)?.code,
+          error_message: (err as Error)?.message,
+          supabase_hint: (err as any)?.hint,
+        },
+      });
       toast.error('Failed to save your answer. Please try again.');
     } finally {
       setIsSubmittingSection(false);
@@ -166,8 +187,13 @@ export function StructuredCaseRunner({
     try {
       const timeTaken = Math.round((Date.now() - startTime) / 1000);
 
+      addAppBreadcrumb('interactive_case', 'case finish requested', {
+        case_id: caseId,
+        attempt_id: attemptId,
+        time_taken_seconds: timeTaken,
+      });
       // Mark attempt as completed
-      await supabase
+      const { error: completeErr } = await supabase
         .from('virtual_patient_attempts')
         .update({
           is_completed: true,
@@ -175,22 +201,66 @@ export function StructuredCaseRunner({
           time_taken_seconds: timeTaken,
         })
         .eq('id', attemptId);
+      if (completeErr) {
+        captureWithContext(completeErr, {
+          tags: {
+            feature: 'db_write',
+            table: 'virtual_patient_attempts',
+            operation: 'update',
+          },
+          extra: {
+            case_id: caseId,
+            attempt_id: attemptId,
+            error_code: (completeErr as any)?.code,
+            error_message: (completeErr as Error)?.message,
+            supabase_hint: (completeErr as any)?.hint,
+          },
+        });
+      }
 
       // Await scoring with a 15s timeout so the request isn't aborted by navigation
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
+        addAppBreadcrumb('ai_call', 'score-case-answers starting', {
+          attempt_id: attemptId,
+          case_id: caseId,
+        });
         await supabase.functions.invoke('score-case-answers', {
           body: { attempt_id: attemptId, case_id: caseId },
         });
         clearTimeout(timeout);
       } catch (err) {
         console.warn('Scoring request error (CaseSummary retry will handle):', err);
+        captureWithContext(err, {
+          tags: {
+            feature: 'ai_call',
+            ai_task: 'case_marking',
+            provider: 'edge_function',
+            subfeature: 'score_case_answers',
+          },
+          extra: {
+            attempt_id: attemptId,
+            case_id: caseId,
+            error_message: (err as Error)?.message,
+          },
+        });
       }
 
       onComplete(attemptId);
     } catch (err) {
       console.error('Failed to finish case:', err);
+      captureWithContext(err, {
+        tags: {
+          feature: 'interactive_case',
+          subfeature: 'state_machine',
+        },
+        extra: {
+          case_id: caseId,
+          attempt_id: attemptId,
+          error_message: (err as Error)?.message,
+        },
+      });
       toast.error('Failed to submit case');
     } finally {
       setIsFinishing(false);

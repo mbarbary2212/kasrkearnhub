@@ -35,3 +35,38 @@ export function initSentry() {
 export function captureToAll(err: unknown) {
   Sentry.captureException(err);
 }
+
+/**
+ * Capture an exception with structured tags + extras so we can filter
+ * in the Sentry UI by feature/provider/table/etc.
+ * Validation errors and expected "no rows" results should NOT be sent here.
+ */
+export function captureWithContext(
+  err: unknown,
+  options: {
+    tags?: Record<string, string | number | boolean | undefined>;
+    extra?: Record<string, unknown>;
+  } = {},
+) {
+  const cleanTags: Record<string, string | number | boolean> = {};
+  for (const [k, v] of Object.entries(options.tags || {})) {
+    if (v !== undefined && v !== null && v !== '') cleanTags[k] = v;
+  }
+  Sentry.captureException(err, {
+    tags: cleanTags,
+    extra: options.extra,
+  });
+}
+
+/**
+ * Drop a structured breadcrumb so error reports show the timeline of
+ * AI calls and case-stage transitions leading up to a failure.
+ */
+export function addAppBreadcrumb(
+  category: 'ai_call' | 'db_write' | 'interactive_case',
+  message: string,
+  data?: Record<string, unknown>,
+  level: 'info' | 'warning' | 'error' = 'info',
+) {
+  Sentry.addBreadcrumb({ category, message, level, data });
+}

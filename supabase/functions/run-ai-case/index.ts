@@ -607,6 +607,22 @@ Student response: ${userMessage}`;
       }
 
       if (!aiResult.success) {
+        Sentry.captureException(new Error(aiResult.error || 'AI call failed'), {
+          tags: {
+            feature: 'ai_call',
+            provider: resolvedProvider.name,
+            ai_task: 'ai_case_turn',
+          },
+          extra: {
+            model: resolvedProvider.model,
+            case_id: caseId,
+            attempt_id: attemptId,
+            turn_number: turnNumber,
+            http_status: aiResult.status,
+            error_message: aiResult.error,
+          },
+        });
+        Sentry.flush(2000).catch(() => {});
         return new Response(JSON.stringify({ error: aiResult.error }), {
           status: aiResult.status || 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
