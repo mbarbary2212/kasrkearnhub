@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getAISettings, getAIProvider, callAI } from '../_shared/ai-provider.ts';
+import { getAISettings, getInteractiveCaseMarkingProvider, callAI } from '../_shared/ai-provider.ts';
 import { buildScoringPrompt } from './prompts.ts';
 
 const corsHeaders = {
@@ -88,8 +88,9 @@ serve(async (req) => {
       );
     }
 
-    // 2. Get AI provider (uses platform settings — Gemini/Anthropic with fallback)
-    const provider = getAIProvider(aiSettings);
+    // 2. Get AI provider (uses Interactive Case Marking-specific override, falls back to global)
+    const provider = await getInteractiveCaseMarkingProvider(supabase, aiSettings);
+    console.log(`[score-case-answers] Using provider: ${provider.name} / model: ${provider.model}`);
 
     // 3. Score ALL sections in parallel
     const scoringResults = await Promise.allSettled(
