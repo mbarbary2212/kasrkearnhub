@@ -1,66 +1,39 @@
 
 
-# Revised Plan v3: Model Lifecycle + Tidy Settings (with your corrections)
+# Plan: Wire up Display Density, Reading Size & Flashcard Behaviour
 
-Three corrections applied:
-1. **Home Mind Map** has internal choices → keep its own card, not a switch
-2. **Examiner Avatars** belong with the interactive case AI controls → move to AI & Models section
-3. **Auto-tag content** is an action button (run-on-demand), not a toggle → keep as its own card
-4. **Restore the 5-section sub-nav** from my earlier plan (Student / Curriculum / AI / Diagnostics / Notifications)
+Make the three "Coming soon" controls in **Settings → Appearance** actually work and remove the disabled state.
 
 ---
 
-## Part 1 — Model Lifecycle Improvements (`ManageModelsPanel`)
+## 1. Reading Size (Small / Default / Large)
 
-Unchanged.
+- Persist choice in `localStorage` under `kalm_font_size` as `"0.9"`, `"1"`, or `"1.1"`.
+- On change, set `document.documentElement.style.setProperty('--app-font-scale', value)`.
+- The variable is already consumed by `body { font-size: calc(1rem * var(--app-font-scale, 1)) }` in `index.css` — and `main.tsx` already applies it before first render. So once we write the value, everything scales.
+- Headings, buttons, cards inherit `rem`, so they scale proportionally with no further CSS work.
 
-- **Set as default** — inline link per row; clears `is_default` on other models of the same provider, sets it here
-- **Replace model** — dialog picks a replacement from same provider; rewrites every `ai_settings` row pointing at the old `model_id` (covers `case_authoring_model`, `marking_model`, `interactive_case_model`, `interactive_case_marking_model`, plus per-content-type JSON map); old model auto-deactivates
-- **Edit existing model** — pencil icon reopens the Add dialog pre-filled
-- **Inactive (N) sub-group** — collapsible per provider, hidden from active dropdowns
+## 2. Display Density (Comfortable / Compact)
 
-No DB migration. `ai_model_catalog` already has every column.
+- Persist in `localStorage` under `kalm_density_preference` as `"comfortable"` or `"compact"`.
+- On change, toggle `density-compact` class on `<html>`.
+- `main.tsx` already pre-applies the class on boot; `index.css` already has compact overrides for `main .card`, `space-y-6`, `space-y-4`, and headings.
+- **Extension**: broaden the existing compact rules slightly so dashboard tiles, plan card, and chapter list also tighten (add a few more selectors scoped to `main`).
+
+## 3. Flashcard Behaviour (auto-flip interval, 3–15s)
+
+- Persist in `localStorage` under `kalm_flashcard_interval` as a number string.
+- Update `useFlashcardSettings.ts` so the **default** `intervalSeconds` reads from this global preference (when no per-chapter/per-topic value has been saved yet).
+- Per-session changes the student makes inside the flashcard player still override and persist per chapter/topic, exactly as today — the global setting is just the new-session default.
 
 ---
 
-## Part 2 — Settings Tab Restructure
+## UI changes in `AppearanceTab.tsx`
 
-### Layout
-Left rail (desktop) / horizontal chip row (mobile) with 5 sections, URL-synced via `?tab=settings&section=...`. Default opens to **Student Experience**.
-
-```text
-Settings
-├── 🎓 Student Experience
-│     ├─ [Switch] Hide empty practice tabs
-│     ├─ [Switch] Show platform disclaimer on login
-│     ├─ [Switch] Allow students to pin modules
-│     └─ [Card]   Home Page Mind Map        ← keeps full card (internal choices)
-│
-├── 🧱 Curriculum Structure
-│     ├─ [Switch] Merge surgery modules in student view   (super admin)
-│     └─ [Card]   Auto-tag content with AI sections       (super admin, action button)
-│
-├── 🤖 AI & Models
-│     ├─ [Card]   Manage AI Models          (Part 1 — full CRUD + Replace)
-│     ├─ [Card]   Provider routing          (per-content-type, marking, live playback)
-│     ├─ [Card]   Examiner Avatars          ← moved here (interactive case asset)
-│     └─ [Card]   TTS / STT voices
-│
-├── 🩺 Diagnostics                          (super admin)
-│     └─ [Card]   Sentry & Error Reporting  (the 5 test buttons + status)
-│
-└── 📧 My Notifications
-      └─ [Card]   Email Notification Preferences
-```
-
-### Switch vs Card rules
-- **Switch row** (compact, inline, saves on toggle) → only for pure boolean settings with no extra config: Hide Empty Tabs, Disclaimer, Module Pin, Merge Surgery
-- **Card** → anything with internal choices, action buttons, or sub-config: Home Mind Map, Auto-Tag (action), Examiner Avatars, all AI panels, Sentry tests, Email prefs
-
-### URL behaviour
-- `?tab=settings` → opens Student Experience
-- `?tab=settings&section=ai-models` → deep-links to AI & Models
-- Sentry test deep-link → `?tab=settings&section=diagnostics`
+- Remove `disabled` prop and the "Coming soon" badges from all three controls.
+- Wire each control's `onValueChange` to write to `localStorage` + apply the live effect.
+- Read initial values from `localStorage` so the UI reflects the active state on mount.
+- Add a tiny "Saved" toast on change (matches existing settings pattern).
 
 ---
 
@@ -68,29 +41,20 @@ Settings
 
 | File | Change |
 |---|---|
-| `src/components/admin/PlatformSettingsTab.tsx` | Replace flat list with sub-nav layout + section router (URL-synced) |
-| `src/components/admin/settings-sections/StudentExperienceSection.tsx` (new) | 3 inline switches + HomeMindMapSettings card |
-| `src/components/admin/settings-sections/CurriculumSection.tsx` (new) | Merge Surgery switch + SystemAutoTagCard (super admin gating) |
-| `src/components/admin/settings-sections/AIAndModelsSection.tsx` (new) | ManageModelsPanel + AISettingsPanel + ExaminerAvatarsCard |
-| `src/components/admin/settings-sections/DiagnosticsSection.tsx` (new) | SentryDiagnosticsSection |
-| `src/components/admin/settings-sections/NotificationsSection.tsx` (new) | EmailNotificationPreferences |
-| `src/components/admin/ManageModelsPanel.tsx` | Add Set-default, Edit, Replace, Inactive sub-group |
-| `src/hooks/useAIModelCatalog.ts` | Add `useSetDefaultAIModel` + `useReplaceAIModel` mutations |
+| `src/components/settings/AppearanceTab.tsx` | Wire 3 controls, remove disabled state + "Coming soon" badges, persist + apply on change |
+| `src/index.css` | Extend `.density-compact main ...` rules to cover dashboard tiles & plan card padding/gaps |
+| `src/hooks/useFlashcardSettings.ts` | Default `intervalSeconds` reads from `kalm_flashcard_interval` (falls back to 7s) |
 
-No database migration. No edge function changes. No student-facing changes.
+No new dependencies. No database changes. No edge functions. `main.tsx` already pre-applies both font-scale and density before first render, so there is **no flash** on reload.
 
 ---
 
 ## Acceptance criteria
 
-1. Settings tab shows 5-section sub-nav; default opens Student Experience.
-2. Booleans without sub-config render as inline switches; everything with depth keeps its card.
-3. Home Mind Map stays a full card (its dropdown choices preserved).
-4. Examiner Avatars now lives under AI & Models alongside interactive-case AI controls.
-5. Auto-Tag stays an action card under Curriculum (not a toggle).
-6. Manage AI Models supports add / edit / deactivate / delete / **set default** / **replace with auto-migration**; inactive models tucked away.
-7. Sentry tests still fire from Diagnostics section.
-8. Deep links like `?tab=settings&section=diagnostics` work.
-9. Super-admin gating preserved (Merge Surgery, Auto-Tag, Diagnostics).
-10. No regression on any existing toggle, hook, or edge function.
+1. Changing **Reading Size** instantly resizes app text; choice survives reload with no flash.
+2. Switching to **Compact** density tightens spacing in dashboard, chapter pages, and cards; switching back restores comfortable spacing.
+3. Setting a **Flashcard auto-flip interval** is used as the default for new flashcard sessions (any chapter/topic that hasn't been customised yet).
+4. All three controls are enabled, "Coming soon" badges removed.
+5. Settings persist per-browser via `localStorage` (no backend changes).
+6. No regressions to existing per-chapter/per-topic flashcard settings — those still override the global default.
 
