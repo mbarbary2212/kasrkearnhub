@@ -4,6 +4,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { createEmptyCard, Rating, type Grade } from 'ts-fsrs';
 import { scheduler, rowToCard } from '@/lib/fsrs';
+import { captureWithContext } from '@/lib/sentry';
 
 // ─── Rating string → ts-fsrs Grade ────────────────────────────
 const RATING_MAP: Record<string, Grade> = {
