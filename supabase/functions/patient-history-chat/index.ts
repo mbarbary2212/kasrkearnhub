@@ -1,6 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import * as Sentry from 'https://deno.land/x/sentry@8.45.0/index.mjs';
 import { getAISettings, getInteractiveCaseProvider, callAIWithMessages } from '../_shared/ai-provider.ts';
+
+Sentry.init({
+  dsn: Deno.env.get('SENTRY_DSN'),
+  tracesSampleRate: 0.2,
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -98,12 +104,34 @@ serve(async (req) => {
     const provider = await getInteractiveCaseProvider(supabase, aiSettings);
     console.log(`[patient-history-chat] Using provider: ${provider.name} / model: ${provider.model}`);
 
+    Sentry.addBreadcrumb({
+      category: 'ai_call',
+      message: `${provider.name} clinical_case_reply starting`,
+      level: 'info',
+      data: { case_id, model: provider.model, message_count: messages.length },
+    });
+
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
       maxTokens: 1024,
     });
 
     if (!result.success || !result.content) {
+      Sentry.captureException(new Error(result.error || 'AI call failed'), {
+        tags: {
+          feature: 'ai_call',
+          provider: provider.name,
+          ai_task: 'clinical_case_reply',
+        },
+        extra: {
+          model: provider.model,
+          case_id,
+          message_count: messages.length,
+          http_status: result.status,
+          error_message: result.error,
+        },
+      });
+      Sentry.flush(2000).catch(() => {});
       return new Response(
         JSON.stringify({ error: result.error || 'AI call failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -116,6 +144,10 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error('patient-history-chat error:', err);
+    Sentry.captureException(err, {
+      tags: { feature: 'ai_call', ai_task: 'clinical_case_reply' },
+    });
+    Sentry.flush(2000).catch(() => {});
     return new Response(
       JSON.stringify({ error: (err as Error).message || 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
