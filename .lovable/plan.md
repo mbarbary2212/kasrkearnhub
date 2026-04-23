@@ -1,96 +1,96 @@
 
 
-# Restructure Interactive Case AI into 3 independent control surfaces + wire Phase 2
+# Revised Plan v3: Model Lifecycle + Tidy Settings (with your corrections)
 
-## Your mental model (confirmed correct)
+Three corrections applied:
+1. **Home Mind Map** has internal choices → keep its own card, not a switch
+2. **Examiner Avatars** belong with the interactive case AI controls → move to AI & Models section
+3. **Auto-tag content** is an action button (run-on-demand), not a toggle → keep as its own card
+4. **Restore the 5-section sub-nav** from my earlier plan (Student / Curriculum / AI / Diagnostics / Notifications)
 
-You want **three fully independent decisions**, none of them coupled:
+---
 
-| # | Stage | Where it's controlled today | Where it should live |
-|---|---|---|---|
-| 1 | **Authoring** — generate the case content (history script, exam findings, rubrics, etc.) | "Model per Content Type" (`Interactive Cases` row → `interactive_case` override) | **Stays exactly where it is.** Admin already controls this per content type. |
-| 2 | **Live playback** — patient reasoning + replies during the conversation | Hardcoded to global provider | **New independent setting**: `interactive_case_provider` + `interactive_case_model` (already saved as `gemini-2.5-pro` in DB) |
-| 3 | **Marking** — score the student's answers after the case ends | Same global provider as everything else | **New independent setting**: `interactive_case_marking_provider` + `interactive_case_marking_model` |
+## Part 1 — Model Lifecycle Improvements (`ManageModelsPanel`)
 
-STT (ElevenLabs) and TTS (Browser/ElevenLabs/Gemini) stay as they are today — already independent.
+Unchanged.
 
-## What changes in the UI
+- **Set as default** — inline link per row; clears `is_default` on other models of the same provider, sets it here
+- **Replace model** — dialog picks a replacement from same provider; rewrites every `ai_settings` row pointing at the old `model_id` (covers `case_authoring_model`, `marking_model`, `interactive_case_model`, `interactive_case_marking_model`, plus per-content-type JSON map); old model auto-deactivates
+- **Edit existing model** — pencil icon reopens the Add dialog pre-filled
+- **Inactive (N) sub-group** — collapsible per provider, hidden from active dropdowns
 
-The "Interactive Case AI" card gets restructured. The current "Generation logic" tab is renamed and split into two clearly-labelled sub-pickers, plus a new pointer to where authoring is controlled:
+No DB migration. `ai_model_catalog` already has every column.
+
+---
+
+## Part 2 — Settings Tab Restructure
+
+### Layout
+Left rail (desktop) / horizontal chip row (mobile) with 5 sections, URL-synced via `?tab=settings&section=...`. Default opens to **Student Experience**.
 
 ```text
-┌─ Interactive Case AI ──────────────────────────────────────┐
-│ Tabs: [Live playback] [Marking] [Speech input] [Voice out] │
-│                                                            │
-│ ── Live playback (NEW LABEL) ───────────────────────────── │
-│   "Used during the conversation: patient understanding     │
-│    + reply generation. Pick fast model for low latency."   │
-│   Provider: [Gemini ▾]   Model: [gemini-2.5-flash ▾]      │
-│   [Save Live Playback Settings]                            │
-│                                                            │
-│ ── Marking (NEW TAB) ───────────────────────────────────── │
-│   "Used after the case to score student answers. Pick a    │
-│    stronger model for accuracy — latency doesn't matter."  │
-│   Provider: [Anthropic ▾]   Model: [claude-sonnet-4 ▾]    │
-│   [Save Marking Settings]                                  │
-│                                                            │
-│ ── Speech input (STT) ─── (unchanged static info) ──────── │
-│ ── Voice output (TTS) ─── (unchanged 3-card picker) ────── │
-│                                                            │
-│ ─ Footer hint ──────────────────────────────────────────── │
-│   "Authoring (case generation from PDFs) is controlled in  │
-│    Model per Content Type → Interactive Cases."            │
-└────────────────────────────────────────────────────────────┘
+Settings
+├── 🎓 Student Experience
+│     ├─ [Switch] Hide empty practice tabs
+│     ├─ [Switch] Show platform disclaimer on login
+│     ├─ [Switch] Allow students to pin modules
+│     └─ [Card]   Home Page Mind Map        ← keeps full card (internal choices)
+│
+├── 🧱 Curriculum Structure
+│     ├─ [Switch] Merge surgery modules in student view   (super admin)
+│     └─ [Card]   Auto-tag content with AI sections       (super admin, action button)
+│
+├── 🤖 AI & Models
+│     ├─ [Card]   Manage AI Models          (Part 1 — full CRUD + Replace)
+│     ├─ [Card]   Provider routing          (per-content-type, marking, live playback)
+│     ├─ [Card]   Examiner Avatars          ← moved here (interactive case asset)
+│     └─ [Card]   TTS / STT voices
+│
+├── 🩺 Diagnostics                          (super admin)
+│     └─ [Card]   Sentry & Error Reporting  (the 5 test buttons + status)
+│
+└── 📧 My Notifications
+      └─ [Card]   Email Notification Preferences
 ```
 
-Default tab opens on **Live playback** (most common change). Each tab's provider/model picker is fully independent — changing one never resets another.
+### Switch vs Card rules
+- **Switch row** (compact, inline, saves on toggle) → only for pure boolean settings with no extra config: Hide Empty Tabs, Disclaimer, Module Pin, Merge Surgery
+- **Card** → anything with internal choices, action buttons, or sub-config: Home Mind Map, Auto-Tag (action), Examiner Avatars, all AI panels, Sentry tests, Email prefs
 
-## Phase 2 wiring (backend)
+### URL behaviour
+- `?tab=settings` → opens Student Experience
+- `?tab=settings&section=ai-models` → deep-links to AI & Models
+- Sentry test deep-link → `?tab=settings&section=diagnostics`
 
-### `supabase/functions/patient-history-chat/index.ts` (Live playback)
-Replace the generic `getAIProvider(aiSettings)` with a dedicated resolver that reads `interactive_case_provider` + `interactive_case_model` from `ai_settings` and falls back to the global provider only if unset. Keep `callAIWithMessages` signature identical.
+---
 
-### `supabase/functions/score-case-answers/index.ts` (Marking)
-Same pattern, but reads `interactive_case_marking_provider` + `interactive_case_marking_model`. Falls back to global provider if unset (so existing scoring keeps working with no settings change required).
-
-### `supabase/functions/_shared/ai-provider.ts`
-Add two helpers:
-- `getInteractiveCaseProvider(settings, overrides)` — resolves Live playback provider+model with fallback
-- `getInteractiveCaseMarkingProvider(settings, overrides)` — resolves Marking provider+model with fallback
-
-Also fix the `'lovable' | 'gemini' | 'anthropic'` validation list on line 77 to include `'groq'` — it's currently missing, which silently downgrades Groq picks to Gemini.
-
-### Authoring (no change)
-`generate-structured-case`, `generate-vp-case`, `run-ai-case` already use `getModelForContentType(settings, "structured_case", overrides)` / `"ai_case"`. Authoring is already separated and respects "Model per Content Type" — confirmed in the DB you have `interactive_case` mapped to `gemini-3.1-pro-preview`. No changes needed.
-
-## Files modified
+## Files to modify
 
 | File | Change |
 |---|---|
-| `src/components/admin/AISettingsPanel.tsx` | Split "Generation logic" tab into "Live playback" + "Marking", add new state for `interactive_case_marking_provider/model`, change `defaultValue` to `"logic"` → `"live"`, add footer hint pointing to "Model per Content Type" for authoring |
-| `supabase/functions/_shared/ai-provider.ts` | Add `getInteractiveCaseProvider` + `getInteractiveCaseMarkingProvider` helpers; fix Groq validation gap on line 77 |
-| `supabase/functions/patient-history-chat/index.ts` | Use new Live playback resolver instead of global `getAIProvider` |
-| `supabase/functions/score-case-answers/index.ts` | Use new Marking resolver instead of global `getAIProvider` |
+| `src/components/admin/PlatformSettingsTab.tsx` | Replace flat list with sub-nav layout + section router (URL-synced) |
+| `src/components/admin/settings-sections/StudentExperienceSection.tsx` (new) | 3 inline switches + HomeMindMapSettings card |
+| `src/components/admin/settings-sections/CurriculumSection.tsx` (new) | Merge Surgery switch + SystemAutoTagCard (super admin gating) |
+| `src/components/admin/settings-sections/AIAndModelsSection.tsx` (new) | ManageModelsPanel + AISettingsPanel + ExaminerAvatarsCard |
+| `src/components/admin/settings-sections/DiagnosticsSection.tsx` (new) | SentryDiagnosticsSection |
+| `src/components/admin/settings-sections/NotificationsSection.tsx` (new) | EmailNotificationPreferences |
+| `src/components/admin/ManageModelsPanel.tsx` | Add Set-default, Edit, Replace, Inactive sub-group |
+| `src/hooks/useAIModelCatalog.ts` | Add `useSetDefaultAIModel` + `useReplaceAIModel` mutations |
 
-No DB migration. No new secrets needed beyond the existing `GROQ_API_KEY` (already used by the shared `callGroqDirect`).
+No database migration. No edge function changes. No student-facing changes.
 
-## Behaviour after Phase 2 lands
+---
 
-- **Authoring** (Generate Case button in admin) → keeps using `Model per Content Type → Interactive Cases` (currently `gemini-3.1-pro-preview`).
-- **Live playback** (student talking to the patient) → uses `interactive_case_provider/model` (currently `gemini-2.5-pro`). You can now switch this to Groq for speed without affecting anything else.
-- **Marking** (post-case scoring) → uses `interactive_case_marking_provider/model`. Unset until you pick one in the new tab; falls back to global Gemini until then, so nothing breaks on day one.
-- **STT/TTS** → unchanged.
+## Acceptance criteria
 
-## QA checklist after switch to default mode
-
-1. Card now shows 4 tabs; "Live playback" is the default open tab.
-2. Picking Groq + a Groq model in **Live playback** and saving → start an interactive case → check `patient-history-chat` logs show `provider: groq`.
-3. Picking Anthropic in **Marking** and saving → finish a case → check `score-case-answers` logs show `provider: anthropic`.
-4. Leaving Marking unset → scoring still runs (falls back to global Gemini).
-5. Changing the **Interactive Cases** row in "Model per Content Type" → only affects new case authoring, not playback or marking.
-6. STT block + TTS card behaviour identical to today.
-
-## Rollback
-
-Revert the 4 files. No DB changes to undo. Existing `interactive_case_provider/model` rows in `ai_settings` become inert again — harmless.
+1. Settings tab shows 5-section sub-nav; default opens Student Experience.
+2. Booleans without sub-config render as inline switches; everything with depth keeps its card.
+3. Home Mind Map stays a full card (its dropdown choices preserved).
+4. Examiner Avatars now lives under AI & Models alongside interactive-case AI controls.
+5. Auto-Tag stays an action card under Curriculum (not a toggle).
+6. Manage AI Models supports add / edit / deactivate / delete / **set default** / **replace with auto-migration**; inactive models tucked away.
+7. Sentry tests still fire from Diagnostics section.
+8. Deep links like `?tab=settings&section=diagnostics` work.
+9. Super-admin gating preserved (Merge Surgery, Auto-Tag, Diagnostics).
+10. No regression on any existing toggle, hook, or edge function.
 
