@@ -7,13 +7,17 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, BookMarked } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Plus, Trash2, BookMarked, Pencil, Star, Replace as ReplaceIcon, ChevronRight } from 'lucide-react';
 import {
   useAIModelCatalog,
   useUpsertAIModel,
   useUpdateAIModel,
   useDeleteAIModel,
+  useSetDefaultAIModel,
+  useReplaceAIModel,
+  type AIModelCatalogEntry,
   type AIProvider,
 } from '@/hooks/useAIModelCatalog';
 
