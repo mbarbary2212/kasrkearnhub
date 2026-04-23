@@ -175,12 +175,11 @@ export function AppearanceTab() {
       </Card>
 
       {/* Display Density */}
-      <Card className="opacity-60">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <LayoutGrid className="h-4 w-4" />
             Display Density
-            <Badge variant="secondary" className="ml-1 text-[10px] uppercase tracking-wide">Coming soon</Badge>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -193,10 +192,12 @@ export function AppearanceTab() {
           <CardDescription>Controls spacing and sizing across the interface.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3 pointer-events-none">
+          <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => setDensity('comfortable')}
-              disabled
+              onClick={() => {
+                setDensity('comfortable');
+                toast.success('Comfortable density applied');
+              }}
               className={cn(
                 'text-left p-4 rounded-lg border-2 transition-all',
                 density === 'comfortable'
@@ -208,8 +209,10 @@ export function AppearanceTab() {
               <p className="text-xs text-muted-foreground mt-1">More spacious layout</p>
             </button>
             <button
-              onClick={() => setDensity('compact')}
-              disabled
+              onClick={() => {
+                setDensity('compact');
+                toast.success('Compact density applied');
+              }}
               className={cn(
                 'text-left p-4 rounded-lg border-2 transition-all',
                 density === 'compact'
@@ -225,12 +228,11 @@ export function AppearanceTab() {
       </Card>
 
       {/* Reading Size */}
-      <Card className="opacity-60">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Type className="h-4 w-4" />
             Reading Size
-            <Badge variant="secondary" className="ml-1 text-[10px] uppercase tracking-wide">Coming soon</Badge>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -243,12 +245,14 @@ export function AppearanceTab() {
           <CardDescription>Adjust text size across the interface.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3 pointer-events-none">
+          <div className="grid grid-cols-3 gap-3">
             {FONT_SIZE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
-                onClick={() => setFontScale(opt.value)}
-                disabled
+                onClick={() => {
+                  setFontScale(opt.value);
+                  toast.success(`Reading size: ${opt.label}`);
+                }}
                 className={cn(
                   'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
                   fontScale === opt.value
@@ -269,30 +273,29 @@ export function AppearanceTab() {
       </Card>
 
       {/* Flashcard Behaviour */}
-      <Card className="opacity-60">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Layers className="h-4 w-4" />
             Flashcard Behaviour
-            <Badge variant="secondary" className="ml-1 text-[10px] uppercase tracking-wide">Coming soon</Badge>
           </CardTitle>
           <CardDescription>
             Default auto-flip speed for flashcard slideshows. Per-chapter settings take priority over this default.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4 pointer-events-none">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm">Auto-flip speed</Label>
               <span className="text-sm font-medium text-muted-foreground">{flashcardInterval}s</span>
             </div>
             <Slider
-              disabled
               min={3}
               max={15}
               step={1}
               value={[flashcardInterval]}
               onValueChange={([v]) => setFlashcardInterval(v)}
+              onValueCommit={([v]) => toast.success(`Default flashcard speed: ${v}s`)}
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>3s (fast)</span>
