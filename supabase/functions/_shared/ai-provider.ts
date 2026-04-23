@@ -74,7 +74,7 @@ export async function getAISettings(serviceClient: any): Promise<AISettings> {
     
     switch (row.key) {
       case 'ai_provider':
-        settings.ai_provider = (['gemini', 'anthropic', 'lovable'].includes(value) ? value : 'gemini') as AIProviderName;
+        settings.ai_provider = (['gemini', 'anthropic', 'lovable', 'groq'].includes(value) ? value : 'gemini') as AIProviderName;
         break;
       case 'gemini_model':
         settings.gemini_model = (value as string) || DEFAULT_SETTINGS.gemini_model;
@@ -301,8 +301,71 @@ export function getModelForContentType(
     gemini: settings.gemini_model,
     lovable: settings.lovable_model,
     anthropic: settings.anthropic_model,
+    groq: settings.groq_model,
   };
   return modelMap[settings.ai_provider] || settings.gemini_model;
+}
+
+/**
+ * Resolve the AI provider for Interactive Case live playback.
+ * Reads `interactive_case_provider` + `interactive_case_model` from ai_settings.
+ * Falls back to the global provider if either is unset/invalid.
+ */
+export async function getInteractiveCaseProvider(
+  serviceClient: any,
+  settings: AISettings,
+): Promise<AIProvider> {
+  return resolveSpecializedProvider(serviceClient, settings, 'interactive_case_provider', 'interactive_case_model');
+}
+
+/**
+ * Resolve the AI provider for Interactive Case marking (post-case scoring).
+ * Reads `interactive_case_marking_provider` + `interactive_case_marking_model` from ai_settings.
+ * Falls back to the global provider if either is unset/invalid.
+ */
+export async function getInteractiveCaseMarkingProvider(
+  serviceClient: any,
+  settings: AISettings,
+): Promise<AIProvider> {
+  return resolveSpecializedProvider(serviceClient, settings, 'interactive_case_marking_provider', 'interactive_case_marking_model');
+}
+
+async function resolveSpecializedProvider(
+  serviceClient: any,
+  settings: AISettings,
+  providerKey: string,
+  modelKey: string,
+): Promise<AIProvider> {
+  try {
+    const { data } = await serviceClient
+      .from('ai_settings')
+      .select('key, value')
+      .in('key', [providerKey, modelKey]);
+
+    let providerName: string | null = null;
+    let modelId: string | null = null;
+
+    for (const row of (data || []) as AISettingRow[]) {
+      let value = row.value;
+      if (typeof value === 'string') {
+        if (value.startsWith('{') || value.startsWith('[') || value.startsWith('"')) {
+          try { value = JSON.parse(value); } catch { /* keep raw */ }
+        }
+      }
+      if (row.key === providerKey && typeof value === 'string') providerName = value;
+      if (row.key === modelKey && typeof value === 'string') modelId = value;
+    }
+
+    const validProviders: AIProviderName[] = ['gemini', 'anthropic', 'lovable', 'groq'];
+    if (providerName && validProviders.includes(providerName as AIProviderName) && modelId) {
+      return { name: providerName as AIProviderName, model: modelId };
+    }
+  } catch (err) {
+    console.error(`Failed to resolve specialized provider (${providerKey}/${modelKey}):`, err);
+  }
+
+  // Fallback to the global provider
+  return getAIProvider(settings);
 }
 
 /**

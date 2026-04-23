@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getAISettings, getAIProvider, callAIWithMessages } from '../_shared/ai-provider.ts';
+import { getAISettings, getInteractiveCaseProvider, callAIWithMessages } from '../_shared/ai-provider.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -95,7 +95,8 @@ serve(async (req) => {
       systemPrompt += `\n\nAdditional reference for the conversation (use as context for your responses):\n${englishReference}`;
     }
 
-    const provider = getAIProvider(aiSettings);
+    const provider = await getInteractiveCaseProvider(supabase, aiSettings);
+    console.log(`[patient-history-chat] Using provider: ${provider.name} / model: ${provider.model}`);
 
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
