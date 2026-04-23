@@ -14,31 +14,6 @@ import { AIAndModelsSection } from '@/components/admin/settings-sections/AIAndMo
 import { DiagnosticsSection } from '@/components/admin/settings-sections/DiagnosticsSection';
 import { NotificationsSection } from '@/components/admin/settings-sections/NotificationsSection';
 
-function CollapsibleSettingsCard({ icon, title, description, children, defaultOpen = false }: {
-  icon: ReactNode; title: string; description: string; children: ReactNode; defaultOpen?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  return (
-    <Card>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
-              {icon}
-              {title}
-            </CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent>{children}</CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
-  );
-}
-
 function ArchiveLegacyOsceCard() {
   const archiveLegacyOsce = useArchiveLegacyOsce();
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
