@@ -103,10 +103,14 @@
     @apply border-border;
   }
 
+  html {
+    /* Scale the root font-size so all rem-based Tailwind utilities (text-sm, text-base, etc.) resize proportionally */
+    font-size: calc(16px * var(--app-font-scale, 1));
+  }
+
   body {
     @apply text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-size: calc(1rem * var(--app-font-scale, 1));
     background: hsl(var(--background));
   }
 
