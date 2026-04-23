@@ -204,7 +204,34 @@ export function SentryDiagnosticsSection() {
                 {edgeLoading && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
                 Test Edge
               </Button>
+              <Button size="sm" variant="outline" onClick={handleAiCallTest} disabled={aiLoading}>
+                {aiLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Bot className="w-4 h-4 mr-1" />
+                )}
+                Test AI Call
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleDbWriteTest} disabled={dbLoading}>
+                {dbLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Database className="w-4 h-4 mr-1" />
+                )}
+                Test DB Write
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleInteractiveCaseTest} disabled={caseLoading}>
+                {caseLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                ) : (
+                  <Stethoscope className="w-4 h-4 mr-1" />
+                )}
+                Test Interactive Case
+              </Button>
             </div>
+            <p className="text-[11px] text-muted-foreground mt-3">
+              Each button sends a tagged synthetic event to Sentry. Filter in Sentry by tag <code className="font-mono">feature:ai_call</code>, <code className="font-mono">feature:db_write</code>, or <code className="font-mono">feature:interactive_case</code>. All test events also carry tag <code className="font-mono">test:true</code>.
+            </p>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
