@@ -64,6 +64,7 @@ import { PharmacologyTopicsView } from './PharmacologyTopicsView';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ChapterReadinessDot } from './ChapterReadinessDot';
+import { ChapterTimeInvested } from './ChapterTimeInvested';
 
 // Pharmacology department ID - for Topics view
 const PHARMACOLOGY_DEPT_ID = '71af9f4d-578c-45d9-bec7-9598e54728e6';
@@ -375,7 +376,8 @@ function BookLecturesView({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                <div className="flex items-center gap-1.5 flex-shrink-0 w-6 md:w-auto justify-end">
+                  <ChapterTimeInvested chapterId={chapter.id} moduleId={moduleId} />
                   <ChapterReadinessDot chapterId={chapter.id} />
                   <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
                 </div>
@@ -547,7 +549,8 @@ function StudentBookPillView({
                   </div>
                 )}
                 {isAssigned && (
-                  <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                  <div className="flex items-center gap-1.5 flex-shrink-0 w-6 md:w-auto justify-end">
+                    <ChapterTimeInvested chapterId={chapter.id} moduleId={moduleId} />
                     <ChapterReadinessDot chapterId={chapter.id} />
                     <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
                   </div>
@@ -843,7 +846,8 @@ export function ModuleLearningTab({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                <div className="flex items-center gap-1.5 flex-shrink-0 w-6 md:w-auto justify-end">
+                  <ChapterTimeInvested chapterId={chapter.id} moduleId={moduleId} />
                   <ChapterReadinessDot chapterId={chapter.id} />
                   <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
                 </div>
