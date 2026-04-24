@@ -1,96 +1,60 @@
 
 
-# Restructure Interactive Case AI into 3 independent control surfaces + wire Phase 2
+# Plan: Wire up Display Density, Reading Size & Flashcard Behaviour
 
-## Your mental model (confirmed correct)
+Make the three "Coming soon" controls in **Settings → Appearance** actually work and remove the disabled state.
 
-You want **three fully independent decisions**, none of them coupled:
+---
 
-| # | Stage | Where it's controlled today | Where it should live |
-|---|---|---|---|
-| 1 | **Authoring** — generate the case content (history script, exam findings, rubrics, etc.) | "Model per Content Type" (`Interactive Cases` row → `interactive_case` override) | **Stays exactly where it is.** Admin already controls this per content type. |
-| 2 | **Live playback** — patient reasoning + replies during the conversation | Hardcoded to global provider | **New independent setting**: `interactive_case_provider` + `interactive_case_model` (already saved as `gemini-2.5-pro` in DB) |
-| 3 | **Marking** — score the student's answers after the case ends | Same global provider as everything else | **New independent setting**: `interactive_case_marking_provider` + `interactive_case_marking_model` |
+## 1. Reading Size (Small / Default / Large)
 
-STT (ElevenLabs) and TTS (Browser/ElevenLabs/Gemini) stay as they are today — already independent.
+- Persist choice in `localStorage` under `kalm_font_size` as `"0.9"`, `"1"`, or `"1.1"`.
+- On change, set `document.documentElement.style.setProperty('--app-font-scale', value)`.
+- The variable is already consumed by `body { font-size: calc(1rem * var(--app-font-scale, 1)) }` in `index.css` — and `main.tsx` already applies it before first render. So once we write the value, everything scales.
+- Headings, buttons, cards inherit `rem`, so they scale proportionally with no further CSS work.
 
-## What changes in the UI
+## 2. Display Density (Comfortable / Compact)
 
-The "Interactive Case AI" card gets restructured. The current "Generation logic" tab is renamed and split into two clearly-labelled sub-pickers, plus a new pointer to where authoring is controlled:
+- Persist in `localStorage` under `kalm_density_preference` as `"comfortable"` or `"compact"`.
+- On change, toggle `density-compact` class on `<html>`.
+- `main.tsx` already pre-applies the class on boot; `index.css` already has compact overrides for `main .card`, `space-y-6`, `space-y-4`, and headings.
+- **Extension**: broaden the existing compact rules slightly so dashboard tiles, plan card, and chapter list also tighten (add a few more selectors scoped to `main`).
 
-```text
-┌─ Interactive Case AI ──────────────────────────────────────┐
-│ Tabs: [Live playback] [Marking] [Speech input] [Voice out] │
-│                                                            │
-│ ── Live playback (NEW LABEL) ───────────────────────────── │
-│   "Used during the conversation: patient understanding     │
-│    + reply generation. Pick fast model for low latency."   │
-│   Provider: [Gemini ▾]   Model: [gemini-2.5-flash ▾]      │
-│   [Save Live Playback Settings]                            │
-│                                                            │
-│ ── Marking (NEW TAB) ───────────────────────────────────── │
-│   "Used after the case to score student answers. Pick a    │
-│    stronger model for accuracy — latency doesn't matter."  │
-│   Provider: [Anthropic ▾]   Model: [claude-sonnet-4 ▾]    │
-│   [Save Marking Settings]                                  │
-│                                                            │
-│ ── Speech input (STT) ─── (unchanged static info) ──────── │
-│ ── Voice output (TTS) ─── (unchanged 3-card picker) ────── │
-│                                                            │
-│ ─ Footer hint ──────────────────────────────────────────── │
-│   "Authoring (case generation from PDFs) is controlled in  │
-│    Model per Content Type → Interactive Cases."            │
-└────────────────────────────────────────────────────────────┘
-```
+## 3. Flashcard Behaviour (auto-flip interval, 3–15s)
 
-Default tab opens on **Live playback** (most common change). Each tab's provider/model picker is fully independent — changing one never resets another.
+- Persist in `localStorage` under `kalm_flashcard_interval` as a number string.
+- Update `useFlashcardSettings.ts` so the **default** `intervalSeconds` reads from this global preference (when no per-chapter/per-topic value has been saved yet).
+- Per-session changes the student makes inside the flashcard player still override and persist per chapter/topic, exactly as today — the global setting is just the new-session default.
 
-## Phase 2 wiring (backend)
+---
 
-### `supabase/functions/patient-history-chat/index.ts` (Live playback)
-Replace the generic `getAIProvider(aiSettings)` with a dedicated resolver that reads `interactive_case_provider` + `interactive_case_model` from `ai_settings` and falls back to the global provider only if unset. Keep `callAIWithMessages` signature identical.
+## UI changes in `AppearanceTab.tsx`
 
-### `supabase/functions/score-case-answers/index.ts` (Marking)
-Same pattern, but reads `interactive_case_marking_provider` + `interactive_case_marking_model`. Falls back to global provider if unset (so existing scoring keeps working with no settings change required).
+- Remove `disabled` prop and the "Coming soon" badges from all three controls.
+- Wire each control's `onValueChange` to write to `localStorage` + apply the live effect.
+- Read initial values from `localStorage` so the UI reflects the active state on mount.
+- Add a tiny "Saved" toast on change (matches existing settings pattern).
 
-### `supabase/functions/_shared/ai-provider.ts`
-Add two helpers:
-- `getInteractiveCaseProvider(settings, overrides)` — resolves Live playback provider+model with fallback
-- `getInteractiveCaseMarkingProvider(settings, overrides)` — resolves Marking provider+model with fallback
+---
 
-Also fix the `'lovable' | 'gemini' | 'anthropic'` validation list on line 77 to include `'groq'` — it's currently missing, which silently downgrades Groq picks to Gemini.
-
-### Authoring (no change)
-`generate-structured-case`, `generate-vp-case`, `run-ai-case` already use `getModelForContentType(settings, "structured_case", overrides)` / `"ai_case"`. Authoring is already separated and respects "Model per Content Type" — confirmed in the DB you have `interactive_case` mapped to `gemini-3.1-pro-preview`. No changes needed.
-
-## Files modified
+## Files to modify
 
 | File | Change |
 |---|---|
-| `src/components/admin/AISettingsPanel.tsx` | Split "Generation logic" tab into "Live playback" + "Marking", add new state for `interactive_case_marking_provider/model`, change `defaultValue` to `"logic"` → `"live"`, add footer hint pointing to "Model per Content Type" for authoring |
-| `supabase/functions/_shared/ai-provider.ts` | Add `getInteractiveCaseProvider` + `getInteractiveCaseMarkingProvider` helpers; fix Groq validation gap on line 77 |
-| `supabase/functions/patient-history-chat/index.ts` | Use new Live playback resolver instead of global `getAIProvider` |
-| `supabase/functions/score-case-answers/index.ts` | Use new Marking resolver instead of global `getAIProvider` |
+| `src/components/settings/AppearanceTab.tsx` | Wire 3 controls, remove disabled state + "Coming soon" badges, persist + apply on change |
+| `src/index.css` | Extend `.density-compact main ...` rules to cover dashboard tiles & plan card padding/gaps |
+| `src/hooks/useFlashcardSettings.ts` | Default `intervalSeconds` reads from `kalm_flashcard_interval` (falls back to 7s) |
 
-No DB migration. No new secrets needed beyond the existing `GROQ_API_KEY` (already used by the shared `callGroqDirect`).
+No new dependencies. No database changes. No edge functions. `main.tsx` already pre-applies both font-scale and density before first render, so there is **no flash** on reload.
 
-## Behaviour after Phase 2 lands
+---
 
-- **Authoring** (Generate Case button in admin) → keeps using `Model per Content Type → Interactive Cases` (currently `gemini-3.1-pro-preview`).
-- **Live playback** (student talking to the patient) → uses `interactive_case_provider/model` (currently `gemini-2.5-pro`). You can now switch this to Groq for speed without affecting anything else.
-- **Marking** (post-case scoring) → uses `interactive_case_marking_provider/model`. Unset until you pick one in the new tab; falls back to global Gemini until then, so nothing breaks on day one.
-- **STT/TTS** → unchanged.
+## Acceptance criteria
 
-## QA checklist after switch to default mode
-
-1. Card now shows 4 tabs; "Live playback" is the default open tab.
-2. Picking Groq + a Groq model in **Live playback** and saving → start an interactive case → check `patient-history-chat` logs show `provider: groq`.
-3. Picking Anthropic in **Marking** and saving → finish a case → check `score-case-answers` logs show `provider: anthropic`.
-4. Leaving Marking unset → scoring still runs (falls back to global Gemini).
-5. Changing the **Interactive Cases** row in "Model per Content Type" → only affects new case authoring, not playback or marking.
-6. STT block + TTS card behaviour identical to today.
-
-## Rollback
-
-Revert the 4 files. No DB changes to undo. Existing `interactive_case_provider/model` rows in `ai_settings` become inert again — harmless.
+1. Changing **Reading Size** instantly resizes app text; choice survives reload with no flash.
+2. Switching to **Compact** density tightens spacing in dashboard, chapter pages, and cards; switching back restores comfortable spacing.
+3. Setting a **Flashcard auto-flip interval** is used as the default for new flashcard sessions (any chapter/topic that hasn't been customised yet).
+4. All three controls are enabled, "Coming soon" badges removed.
+5. Settings persist per-browser via `localStorage` (no backend changes).
+6. No regressions to existing per-chapter/per-topic flashcard settings — those still override the global default.
 

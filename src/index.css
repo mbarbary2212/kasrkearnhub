@@ -103,10 +103,14 @@
     @apply border-border;
   }
 
+  html {
+    /* Scale the root font-size so all rem-based Tailwind utilities (text-sm, text-base, etc.) resize proportionally */
+    font-size: calc(16px * var(--app-font-scale, 1));
+  }
+
   body {
     @apply text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-size: calc(1rem * var(--app-font-scale, 1));
     background: hsl(var(--background));
   }
 
@@ -250,4 +254,33 @@ body.kalmhub-hide-nav [data-navbar] {
 .density-compact main h2,
 .density-compact main h3 {
   margin-block: 0.25rem;
+}
+
+/* Display Density — broader overrides for dashboard tiles, chapter lists, plan cards */
+.density-compact main [class*="rounded-xl"],
+.density-compact main [class*="rounded-2xl"] {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+.density-compact main .space-y-3 > * + * {
+  margin-top: 0.375rem;
+}
+.density-compact main .space-y-2 > * + * {
+  margin-top: 0.25rem;
+}
+.density-compact main .gap-6 {
+  gap: 1rem;
+}
+.density-compact main .gap-4 {
+  gap: 0.625rem;
+}
+.density-compact main .p-6 {
+  padding: 1rem;
+}
+.density-compact main .p-5 {
+  padding: 0.75rem;
+}
+.density-compact main .py-6 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
