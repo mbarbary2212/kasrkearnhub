@@ -376,7 +376,7 @@ function BookLecturesView({
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : isAssigned ? (
-                <div className="flex items-center gap-1 flex-shrink-0 w-6 md:w-10 justify-end">
+                <div className="flex items-center gap-1.5 flex-shrink-0 w-6 md:w-auto justify-end">
                   <ChapterTimeInvested chapterId={chapter.id} moduleId={moduleId} />
                   <ChapterReadinessDot chapterId={chapter.id} />
                   <ChevronRight className="w-4 h-4 text-muted-foreground hidden md:block" />
