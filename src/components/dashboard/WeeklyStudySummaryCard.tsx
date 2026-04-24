@@ -72,9 +72,13 @@ export function WeeklyStudySummaryCard({ streak = 0 }: WeeklyStudySummaryCardPro
           </div>
         )}
 
-        {data.topChapter && (
+        {data.topChapter && data.topChapter.moduleId && (
           <button
-            onClick={() => data.topChapter && navigate(`/module/_/chapter/${data.topChapter.chapterId}`)}
+            onClick={() => {
+              if (data.topChapter?.moduleId) {
+                navigate(`/module/${data.topChapter.moduleId}/chapter/${data.topChapter.chapterId}`);
+              }
+            }}
             className="w-full text-left pt-1.5 border-t border-border/60 hover:opacity-80 transition-opacity"
             title="Open this chapter"
           >

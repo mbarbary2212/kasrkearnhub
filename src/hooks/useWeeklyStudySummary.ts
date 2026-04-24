@@ -11,7 +11,7 @@ export interface WeeklyStudySummary {
     cases: number;
   };
   chaptersTouched: number;
-  topChapter: { chapterId: string; title: string; seconds: number } | null;
+  topChapter: { chapterId: string; moduleId: string | null; title: string; seconds: number } | null;
 }
 
 /**
