@@ -76,11 +76,12 @@ export function useWeeklyStudySummary() {
       if (topChapterId) {
         const { data: chap } = await supabase
           .from('module_chapters')
-          .select('id, title')
+          .select('id, title, module_id')
           .eq('id', topChapterId)
           .maybeSingle();
         topChapter = {
           chapterId: topChapterId,
+          moduleId: chap?.module_id ?? null,
           title: chap?.title || 'Chapter',
           seconds: topChapterSecs,
         };
