@@ -129,6 +129,7 @@ import { useStudentChapterMetrics } from '@/hooks/useStudentChapterMetrics';
 import { classifyFromMetrics } from '@/lib/readiness';
 import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
 import { getRecommendedPath } from '@/lib/recommendedPath';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
 
