@@ -66,6 +66,7 @@ interface SaveQuestionAttemptParams {
   selectedAnswer: Json;
   isCorrect: boolean;
   score?: number; // For OSCE
+  confidenceLevel?: number | null; // 1=low, 2=medium, 3=high; null if not set
 }
 
 /**
@@ -263,6 +264,7 @@ export function useSaveQuestionAttempt() {
       const {
         questionId, questionType, chapterId, topicId,
         moduleId, selectedAnswer, isCorrect, score,
+        confidenceLevel,
       } = params;
 
       const dbType = mapToDbQuestionType(questionType);
@@ -276,6 +278,7 @@ export function useSaveQuestionAttempt() {
         p_selected_answer: selectedAnswer as unknown as Json,
         p_is_correct:      isCorrect,
         p_score:           score ?? null,
+        p_confidence_level: confidenceLevel ?? null,
       });
 
       if (error) {
