@@ -1,160 +1,75 @@
+# Fix: PGRST203 on `save_question_attempt` — drop duplicate, pass confidence explicitly
 
+## Verified problem (not assumed)
 
-# Plan: Material Engagement (Admin) + Weekly Summary & Chapter Time Invested (Student)
+I queried `pg_proc` directly — confirmed **two functions** named `public.save_question_attempt` exist:
 
-Three tightly scoped additions. **Critical first**: the time-tracking infrastructure (`useStudyTimeTracker.ts`, `study_time_events` table, `student_chapter_metrics.minutes_*` columns) already exists, but the hook is **never imported anywhere** — no time data is being collected today. So step 0 is to actually wire it up.
+| pronargs | Signature |
+|---|---|
+| **8** | `(p_question_id uuid, p_question_type practice_question_type, p_chapter_id uuid, p_topic_id uuid, p_module_id uuid, p_selected_answer jsonb, p_is_correct boolean, p_score integer)` |
+| **9** | `(... same 8 ..., p_confidence_level smallint)` ← keep |
 
----
+PostgREST cannot disambiguate when the 9-arg version's last param has a default → **PGRST203**. Practice attempts fail silently (caught by Sentry but the student sees nothing).
 
-## Step 0 — Wire up the existing time tracker (prerequisite)
+I also read `src/hooks/useQuestionAttempts.ts` lines 270–279 — confirmed the call **does not pass `p_confidence_level` at all**.
 
-Without this, the rest is empty UI.
-
-- Mount `useStudyTimeTracker(chapterId, moduleId, activityType, paused)` inside `ChapterPage.tsx` so every chapter visit collects time.
-- Map current section → `activityType`:
-  - `resources` (lecture/reading) → `'reading'` if no video active, `'watching'` if video player mounted
-  - `interactive` → `'reading'`
-  - `practice` → `'practicing'`
-  - `test` → `'practicing'`
-- Pass `paused = true` when no chapter is loaded or when a modal/dialog covers the page.
-- The hook already handles idle detection (2 min), tab blur, and rolls up into `student_chapter_metrics` every 5 min — no changes needed there.
-
-**Result**: `minutes_reading / watching / practicing / total` start populating per chapter per student.
+I also read `ConfidenceCard.tsx` — confidence is written to `question_attempts` in a **separate** UPDATE statement *after* the attempt row exists. So confidence is not needed at attempt-creation time, but we should still pass it explicitly (as `null` or as the cached value if the student already chose one) to lock the call to the 9-arg signature.
 
 ---
 
-## Step 1 — Student: chapter card "Time invested" soft signal
+## Changes
 
-Tied to readiness, not raw time, exactly as you said.
+### 1. Database migration — drop the 8-arg duplicate
 
-- On the chapter list rows in `ModuleLearningTab.tsx` (next to `ChapterReadinessDot`), add an optional small label:
-  - If `minutes_total >= 10` AND `readiness_score < 30` → `⏱ ~Xm · low return` (amber)
-  - If `minutes_total >= 10` AND `readiness_score >= 70` → `⏱ ~Xm invested` (muted)
-  - If `minutes_total < 10` → show nothing (avoids clutter for new chapters)
-- Data source: `useStudentChapterMetrics` (already exists, already returns `minutes_total` + `readiness_score`). No new query.
-- Rounded to nearest 5 min, capped at "2h+" to avoid huge numbers.
-- New component `ChapterTimeInvested.tsx` (small, ~30 lines) for the label.
-
-This makes time **meaningful** by pairing it with outcome — high time + low readiness is a coaching signal, not a brag.
-
----
-
-## Step 2 — Student: "This week" summary card on Home dashboard
-
-A single card in the right sidebar of `Home.tsx` (between existing widgets per `dashboard-home-sidebar-v1` memory).
-
-Shows:
-```
-This week
-─────────────────────
-4h 20m studied · 6 chapters touched
-🟦 1h 30m watching  🟧 1h 10m practicing  🟩 1h 40m reading
-🔥 5-day streak · most time in: Cardiology Ch. 3
+```sql
+DROP FUNCTION IF EXISTS public.save_question_attempt(
+  uuid,
+  practice_question_type,
+  uuid,
+  uuid,
+  uuid,
+  jsonb,
+  boolean,
+  integer
+);
 ```
 
-- New hook `useWeeklyStudySummary` that queries `study_time_events` for `session_date >= 7 days ago` for the current user.
-- Aggregates by `activity_type` and counts distinct `chapter_id`.
-- "Most time in" = chapter with highest sum of `duration_seconds` this week (joined with chapter title).
-- Streak comes from existing `dashboard.studyStreak`.
-- New component `WeeklyStudySummaryCard.tsx`.
-- **No per-item breakdown** (deliberately) — keeps it motivational, not anxiety-inducing.
+Only the 9-arg version (with `p_confidence_level smallint DEFAULT NULL`) remains. Existing call sites that omit confidence still work because the parameter has a default — but we will also update the call site for clarity.
+
+### 2. `src/hooks/useQuestionAttempts.ts` — pass `p_confidence_level` explicitly
+
+- Add optional `confidenceLevel?: number | null` to `SaveQuestionAttemptParams` (line 60).
+- In the `mutationFn` body (line 270), add `p_confidence_level: confidenceLevel ?? null` to the RPC call.
+- Backwards compatible — existing callers don't need to pass anything; default is `null`.
+
+### 3. (Optional, low-risk) `ConfidenceCard.tsx` — no change required
+
+The current flow (separate UPDATE after the fact) keeps working. We are NOT refactoring it in this fix — out of scope and risks regressing the existing in-session confidence persistence.
 
 ---
 
-## Step 3 — Admin: Material Engagement dashboard
+## Files modified
 
-New tab under existing **Content Analytics** hub (route: `/admin?tab=content-analytics&section=engagement`).
-
-### Data model (lightweight aggregate, NOT per-student-per-item)
-
-We don't need a new table. A view + RPC over existing data is enough:
-
-- **For videos / lectures**: aggregate `video_progress` rows → `views_count`, `unique_viewers`, `avg_percent_watched`, `completion_rate (≥80%)`.
-- **For MCQs**: aggregate `question_attempts` → `attempts`, `unique_users`, `avg_time_per_question`, `accuracy`.
-- **For flashcards**: aggregate `fsrs_reviews` → `reviews`, `unique_users`, `completion_rate`.
-- **For chapters overall**: aggregate `study_time_events` → `total_minutes`, `unique_students`, `avg_minutes_per_student`.
-
-Two new RPCs:
-- `admin_material_engagement_videos(module_id, date_range)`
-- `admin_material_engagement_mcqs(module_id, date_range)`
-(Plus a chapter-level summary view that joins `student_chapter_metrics` aggregates.)
-
-### UI: one table per material type, each row shows
-
-| Material | Reach | Completion | Drop-off | Status |
-|---|---|---|---|---|
-| Lecture: Cardiac Cycle | 78% | 42% | avg 38% watched | 🟡 Opened but abandoned |
-| MCQ: Aortic Stenosis | 12% | — | avg 3min/question | 🔴 Ignored + confusing |
-| Flashcard set: Murmurs | 91% | 88% | — | 🟢 Working |
-
-Status label rules (decision-driving, not vanity):
-- 🟢 **Working** — reach ≥ 60% AND completion ≥ 70% (videos/flashcards) OR accuracy in healthy band (MCQs)
-- 🟡 **Opened but abandoned** — reach ≥ 40% AND completion < 40%
-- 🔴 **Ignored** — reach < 20% AND material has been published > 14 days
-- ⚪ **Unused** — zero opens in date range
-- ⚠️ **Confusing** — MCQ-only: avg time per question > 2× cohort median AND accuracy < 40%
-
-Filters: module, date range (7/30/90 days), material type, status label.
-
-Click row → opens existing **Content Navigation Bridge** to the source material (already built per memory).
-
-### Critical exclusions (don't build)
-
-- ❌ No per-student-per-material rows (privacy + low value, you agreed)
-- ❌ No "leaderboard" of slow/fast students (wrong incentive)
-- ❌ No raw "minutes spent" column on student-facing rows — engagement % only
-
----
-
-## Files to create / modify
-
-### Step 0 — wire tracker
 | File | Change |
 |---|---|
-| `src/pages/ChapterPage.tsx` | Mount `useStudyTimeTracker` with derived `activityType` from section state |
+| `supabase/migrations/<new>.sql` | `DROP FUNCTION public.save_question_attempt(uuid, practice_question_type, uuid, uuid, uuid, jsonb, boolean, integer);` |
+| `src/hooks/useQuestionAttempts.ts` | Add `confidenceLevel` to params interface; pass `p_confidence_level: confidenceLevel ?? null` in the RPC call |
 
-### Step 1 — chapter time invested
-| File | Change |
-|---|---|
-| `src/components/module/ChapterTimeInvested.tsx` | **New** — small label component |
-| `src/components/module/ModuleLearningTab.tsx` | Render `<ChapterTimeInvested>` next to `<ChapterReadinessDot>` |
-
-### Step 2 — weekly summary
-| File | Change |
-|---|---|
-| `src/hooks/useWeeklyStudySummary.ts` | **New** — aggregate `study_time_events` for last 7 days |
-| `src/components/dashboard/WeeklyStudySummaryCard.tsx` | **New** — sidebar card |
-| `src/pages/Home.tsx` | Add card to right sidebar (per `dashboard-home-sidebar-v1` order) |
-
-### Step 3 — admin material engagement
-| File | Change |
-|---|---|
-| `supabase/migrations/<new>.sql` | RPCs: `admin_material_engagement_videos`, `admin_material_engagement_mcqs`, chapter-level summary view; super-admin/admin RLS |
-| `src/hooks/admin/useMaterialEngagement.ts` | **New** — calls the RPCs |
-| `src/components/admin/analytics/MaterialEngagementTab.tsx` | **New** — table UI + filters + status labels |
-| `src/pages/admin/ContentAnalytics.tsx` (or equivalent) | Register new sub-tab `engagement` |
-
-No new dependencies. Reuses existing tracker, existing tables, existing Content Navigation Bridge.
+No edge function changes. No RLS changes. No type regeneration needed (RPC param signature on client side already uses untyped object).
 
 ---
 
 ## Acceptance criteria
 
-1. After visiting a chapter and being active for 1+ minute, `study_time_events` rows appear and `student_chapter_metrics.minutes_total` increases on rollup.
-2. Idle (no input 2 min) or hidden tab pauses the timer — verified by console log / row counts.
-3. Chapter list shows "⏱ ~25m · low return" only when both thresholds met; nothing shown for chapters with < 10 min.
-4. Home dashboard sidebar shows accurate weekly totals split by activity type, refreshing on mount.
-5. Admin Material Engagement table loads under Content Analytics, filterable by module + date range, with the 5 status labels rendered correctly.
-6. Clicking a row deep-links to the underlying material via existing navigation bridge.
-7. No per-student rows or leaderboards anywhere.
-8. No regression to existing readiness, study plan, or chapter card behavior.
+1. `SELECT proname, pronargs FROM pg_proc WHERE proname='save_question_attempt'` returns exactly **one** row with `pronargs = 9`.
+2. Submitting an MCQ from the practice UI no longer throws PGRST203; `question_attempts` row is created.
+3. The existing `ConfidenceCard` UPDATE flow still successfully sets `confidence_level` post-attempt.
+4. No other call sites of `save_question_attempt` break (none found besides line 270).
 
 ---
 
-## What this deliberately does NOT do
+## Why this is safe
 
-- No per-MCQ stopwatch shown to students.
-- No "you spent X minutes on question Y" data points.
-- No new realtime tracking — uses the existing 30s heartbeat / 60s flush / 5min rollup pipeline.
-- No backfill of historical data (we only have data going forward; admin dashboard will read empty for the first week, which is honest).
-
+- The 8-arg version is functionally a strict subset of the 9-arg one — anything it could do, the 9-arg version does identically when `p_confidence_level` is `NULL`.
+- Postgres `DROP FUNCTION ... (signature)` is signature-specific — it cannot accidentally drop the 9-arg version.
+- No data is touched.
