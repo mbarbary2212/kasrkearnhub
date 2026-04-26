@@ -223,15 +223,15 @@ export function useUpdateAdminDocument() {
   });
 }
 
-export function useSignedUrl(storagePath: string | null) {
+export function useSignedUrl(storagePath: string | null, download?: boolean | string) {
   return useQuery({
-    queryKey: ['signed-url', storagePath],
+    queryKey: ['signed-url', storagePath, download],
     queryFn: async () => {
       if (!storagePath) return null;
       
       const { data, error } = await supabase.storage
         .from('admin-pdfs')
-        .createSignedUrl(storagePath, 3600); // 1 hour expiry
+        .createSignedUrl(storagePath, 3600, download ? { download } : undefined); // 1 hour expiry
 
       if (error) throw error;
       return data.signedUrl;
@@ -241,10 +241,10 @@ export function useSignedUrl(storagePath: string | null) {
   });
 }
 
-export async function getSignedUrl(storagePath: string): Promise<string | null> {
+export async function getSignedUrl(storagePath: string, download?: boolean | string): Promise<string | null> {
   const { data, error } = await supabase.storage
     .from('admin-pdfs')
-    .createSignedUrl(storagePath, 3600);
+    .createSignedUrl(storagePath, 3600, download ? { download } : undefined);
   
   if (error) {
     console.error('Error getting signed URL:', error);
