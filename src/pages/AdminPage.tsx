@@ -4,7 +4,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 import { useAdminReferenceData } from '@/hooks/useAdminData';
 import MainLayout from '@/components/layout/MainLayout';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { Loader2, Shield, HelpCircle } from 'lucide-react';
+import { Loader2, HelpCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { AdminTabsNavigation } from '@/components/admin/AdminTabsNavigation';
@@ -129,28 +129,18 @@ export default function AdminPage() {
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center gap-3">
-          <Shield className="w-8 h-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-heading font-bold">Admin Panel</h1>
-            <p className="text-muted-foreground">
-              {isSuperAdmin ? 'Super Admin Access - Full System Control' :
-               isPlatformAdmin ? 'Platform Admin Access - All Modules' :
-               'Admin Access'}
-            </p>
-          </div>
-        </div>
-
         <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); setSearchParams({ tab }, { replace: true }); }} className="space-y-4">
-          <AdminTabsNavigation
-            defaultTab={defaultTab}
-            isSuperAdmin={isSuperAdmin}
-            isPlatformAdmin={isPlatformAdmin}
-            isModuleAdmin={isModuleAdmin}
-            isTopicAdmin={isTopicAdmin}
-            activeGroup={activeGroup}
-            setActiveGroup={handleGroupChange}
-          />
+          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 -mx-1 px-1 pt-1 pb-2 border-b border-border/40">
+            <AdminTabsNavigation
+              defaultTab={defaultTab}
+              isSuperAdmin={isSuperAdmin}
+              isPlatformAdmin={isPlatformAdmin}
+              isModuleAdmin={isModuleAdmin}
+              isTopicAdmin={isTopicAdmin}
+              activeGroup={activeGroup}
+              setActiveGroup={handleGroupChange}
+            />
+          </div>
 
           <TabsContent value="users">
             <UsersTab />
