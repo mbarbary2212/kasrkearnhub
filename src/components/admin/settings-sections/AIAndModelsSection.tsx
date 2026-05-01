@@ -80,10 +80,7 @@ export function AIAndModelsSection() {
           <>
             {isSuperAdmin && (
               <AISettingsPanel
-                showRules={false}
-                showInteractiveCases
-                showCatalog={false}
-                /* Hide the global provider card and content-type bindings here — those live under Feature Bindings */
+                interactiveCasesOnly
                 key="cases-only"
               />
             )}
@@ -93,9 +90,8 @@ export function AIAndModelsSection() {
 
         {resolvedActive === 'bindings' && isSuperAdmin && (
           <AISettingsPanel
+            bindingsOnly
             showRules={false}
-            showInteractiveCases={false}
-            showCatalog={false}
           />
         )}
       </div>
