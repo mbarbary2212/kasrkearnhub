@@ -335,7 +335,7 @@ export function ManageModelsPanel() {
                 <SelectContent>
                   {replacementCandidates.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.label}{m.is_default ? ' · default' : ''}
+                      {m.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -389,7 +389,6 @@ function ModelRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm truncate">{m.label}</span>
-          {m.is_default && <Badge variant="default" className="text-[10px]">default</Badge>}
           {!m.is_active && <Badge variant="outline" className="text-[10px]">inactive</Badge>}
         </div>
         <code className="text-xs text-muted-foreground break-all">{m.model_id}</code>
