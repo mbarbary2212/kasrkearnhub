@@ -37,10 +37,10 @@ export function AIAndModelsSection() {
   const resolvedActive: SubSectionId = visible.some((s) => s.id === activeSub) ? activeSub : visible[0].id;
 
   return (
-    <div className="flex flex-col md:flex-row gap-4">
-      {/* Left rail (desktop) / horizontal chips (mobile) */}
+    <div className="flex flex-col gap-4">
+      {/* Horizontal pill tabs at the top */}
       <nav
-        className="md:w-52 shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0"
+        className="flex gap-1 p-1 rounded-lg bg-muted/50 border w-fit max-w-full overflow-x-auto"
         aria-label="AI & Models sections"
       >
         {visible.map((s) => {
@@ -51,29 +51,24 @@ export function AIAndModelsSection() {
               key={s.id}
               type="button"
               onClick={() => setActiveSub(s.id)}
+              title={s.description}
               className={cn(
-                'shrink-0 flex items-start gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-left',
-                'whitespace-nowrap md:whitespace-normal',
+                'shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
                 active
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
               aria-current={active ? 'page' : undefined}
             >
-              <Icon className="w-4 h-4 shrink-0 mt-0.5" />
-              <span className="flex flex-col">
-                <span>{s.label}</span>
-                <span className={cn('text-[11px] hidden md:block', active ? 'text-primary/70' : 'text-muted-foreground/70')}>
-                  {s.description}
-                </span>
-              </span>
+              <Icon className="w-4 h-4" />
+              {s.label}
             </button>
           );
         })}
       </nav>
 
       {/* Section content */}
-      <div className="flex-1 min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4">
         {resolvedActive === 'models' && isSuperAdmin && <ManageModelsPanel />}
 
         {resolvedActive === 'cases' && (
