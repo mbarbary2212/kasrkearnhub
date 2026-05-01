@@ -58,12 +58,18 @@ interface AISettingsPanelProps {
   showInteractiveCases?: boolean;
   /** Render the embedded ManageModelsPanel catalog. Default true. Set false when the catalog is shown elsewhere on the page. */
   showCatalog?: boolean;
+  /** Render ONLY the Interactive Case AI block (skip provider card, content-type bindings, etc.). */
+  interactiveCasesOnly?: boolean;
+  /** Render ONLY the Feature Bindings (provider card + Model per Content Type). */
+  bindingsOnly?: boolean;
 }
 
 export function AISettingsPanel({
   showRules = true,
   showInteractiveCases = true,
   showCatalog = true,
+  interactiveCasesOnly = false,
+  bindingsOnly = false,
 }: AISettingsPanelProps) {
   const { data: settings, isLoading, refetch } = useAISettings();
   const updateSetting = useUpdateAISetting();
@@ -125,6 +131,29 @@ export function AISettingsPanel({
   // If showRules is 'only', render just the rules section
   if (showRules === 'only') {
     return <ContentRulesSection />;
+  }
+
+  // Render ONLY the Interactive Case AI block — used by the AI & Models sub-sidebar.
+  if (interactiveCasesOnly) {
+    return (
+      <InteractiveCaseSection
+        getValue={getValue}
+        handleChange={handleChange}
+        handleSave={handleSave}
+        pendingChanges={pendingChanges}
+        updateIsPending={updateSetting.isPending}
+      />
+    );
+  }
+
+  // Render ONLY the Feature Bindings (provider card + content-type bindings).
+  if (bindingsOnly) {
+    return (
+      <div className="space-y-4">
+        {isSuperAdmin && <GlobalAIPolicySection />}
+        <ContentTypeModelSection provider={provider as string} />
+      </div>
+    );
   }
 
   return (
