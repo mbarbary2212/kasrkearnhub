@@ -54,9 +54,17 @@ const CONTENT_TYPES = [
 
 interface AISettingsPanelProps {
   showRules?: boolean | 'only';
+  /** Render the Interactive Case AI block (live playback / marking / STT / TTS). Default true. */
+  showInteractiveCases?: boolean;
+  /** Render the embedded ManageModelsPanel catalog. Default true. Set false when the catalog is shown elsewhere on the page. */
+  showCatalog?: boolean;
 }
 
-export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
+export function AISettingsPanel({
+  showRules = true,
+  showInteractiveCases = true,
+  showCatalog = true,
+}: AISettingsPanelProps) {
   const { data: settings, isLoading, refetch } = useAISettings();
   const updateSetting = useUpdateAISetting();
   const { isSuperAdmin } = useAuthContext();
@@ -275,19 +283,21 @@ export function AISettingsPanel({ showRules = true }: AISettingsPanelProps) {
       </Card>
 
       {/* Interactive Case AI Section (Generation / STT / TTS subtabs) */}
-      <InteractiveCaseSection
-        getValue={getValue}
-        handleChange={handleChange}
-        handleSave={handleSave}
-        pendingChanges={pendingChanges}
-        updateIsPending={updateSetting.isPending}
-      />
+      {showInteractiveCases && (
+        <InteractiveCaseSection
+          getValue={getValue}
+          handleChange={handleChange}
+          handleSave={handleSave}
+          pendingChanges={pendingChanges}
+          updateIsPending={updateSetting.isPending}
+        />
+      )}
 
       {/* Model per Content Type */}
       <ContentTypeModelSection provider={provider as string} />
 
       {/* Manage Models catalog (super admin only) */}
-      {isSuperAdmin && <ManageModelsPanel />}
+      {showCatalog && isSuperAdmin && <ManageModelsPanel />}
 
       {/* Content Type Rules Section — only if showRules is true */}
       {showRules && <ContentRulesSection />}
