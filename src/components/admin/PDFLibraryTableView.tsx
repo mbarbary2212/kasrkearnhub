@@ -76,12 +76,11 @@ function DocumentActions({ doc, onUseAsAISource, onEdit }: { doc: AdminDocument;
   };
 
   const handleDownload = async () => {
-    const url = await getSignedUrl(doc.storage_path);
+    const url = await getSignedUrl(doc.storage_path, true);
     if (url) {
       const link = document.createElement('a');
       link.href = url;
       link.download = doc.file_name;
-      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

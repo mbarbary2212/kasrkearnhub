@@ -129,6 +129,7 @@ import { useStudentChapterMetrics } from '@/hooks/useStudentChapterMetrics';
 import { classifyFromMetrics } from '@/lib/readiness';
 import { RecommendedPathBanner } from '@/components/content/RecommendedPathBanner';
 import { getRecommendedPath } from '@/lib/recommendedPath';
+import { useStudyTimeTracker } from '@/hooks/useStudyTimeTracker';
 
 type SectionMode = "resources" | "interactive" | "practice" | "test";
 
@@ -373,6 +374,25 @@ export default function ChapterPage() {
         }
       : null,
   });
+
+  // ─── Active study-time tracking ───
+  // Map current section/subtab → activity type used by useStudyTimeTracker.
+  // 'resources' counts as 'watching' when a video lecture is being viewed,
+  // otherwise 'reading'. Practice/test = 'practicing'. Interactive = 'reading'.
+  const studyActivityType = useMemo<'reading' | 'watching' | 'practicing' | 'cases'>(() => {
+    if (activeSection === 'practice' || activeSection === 'test') return 'practicing';
+    if (activeSection === 'interactive') {
+      return interactiveTab === 'cases' ? 'cases' : 'reading';
+    }
+    // resources: treat 'lectures' (video) as watching, everything else as reading
+    if (activeSection === 'resources' && resourcesTab === 'lectures') return 'watching';
+    return 'reading';
+  }, [activeSection, interactiveTab, resourcesTab]);
+
+  // Pause tracking when chapter not yet loaded, when an inquiry modal is open,
+  // or when admin/teacher (we only track student time).
+  const trackerPaused = !chapterId || !contentModuleId || inquiryOpen || !isStudent;
+  useStudyTimeTracker(chapterId, contentModuleId ?? undefined, studyActivityType, trackerPaused);
 
   // Helper function to filter and sort content by section hierarchy
   const filterBySection = useCallback(

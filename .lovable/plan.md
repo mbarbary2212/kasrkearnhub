@@ -1,60 +1,75 @@
+# Fix: PGRST203 on `save_question_attempt` — drop duplicate, pass confidence explicitly
 
+## Verified problem (not assumed)
 
-# Plan: Wire up Display Density, Reading Size & Flashcard Behaviour
+I queried `pg_proc` directly — confirmed **two functions** named `public.save_question_attempt` exist:
 
-Make the three "Coming soon" controls in **Settings → Appearance** actually work and remove the disabled state.
+| pronargs | Signature |
+|---|---|
+| **8** | `(p_question_id uuid, p_question_type practice_question_type, p_chapter_id uuid, p_topic_id uuid, p_module_id uuid, p_selected_answer jsonb, p_is_correct boolean, p_score integer)` |
+| **9** | `(... same 8 ..., p_confidence_level smallint)` ← keep |
 
----
+PostgREST cannot disambiguate when the 9-arg version's last param has a default → **PGRST203**. Practice attempts fail silently (caught by Sentry but the student sees nothing).
 
-## 1. Reading Size (Small / Default / Large)
+I also read `src/hooks/useQuestionAttempts.ts` lines 270–279 — confirmed the call **does not pass `p_confidence_level` at all**.
 
-- Persist choice in `localStorage` under `kalm_font_size` as `"0.9"`, `"1"`, or `"1.1"`.
-- On change, set `document.documentElement.style.setProperty('--app-font-scale', value)`.
-- The variable is already consumed by `body { font-size: calc(1rem * var(--app-font-scale, 1)) }` in `index.css` — and `main.tsx` already applies it before first render. So once we write the value, everything scales.
-- Headings, buttons, cards inherit `rem`, so they scale proportionally with no further CSS work.
-
-## 2. Display Density (Comfortable / Compact)
-
-- Persist in `localStorage` under `kalm_density_preference` as `"comfortable"` or `"compact"`.
-- On change, toggle `density-compact` class on `<html>`.
-- `main.tsx` already pre-applies the class on boot; `index.css` already has compact overrides for `main .card`, `space-y-6`, `space-y-4`, and headings.
-- **Extension**: broaden the existing compact rules slightly so dashboard tiles, plan card, and chapter list also tighten (add a few more selectors scoped to `main`).
-
-## 3. Flashcard Behaviour (auto-flip interval, 3–15s)
-
-- Persist in `localStorage` under `kalm_flashcard_interval` as a number string.
-- Update `useFlashcardSettings.ts` so the **default** `intervalSeconds` reads from this global preference (when no per-chapter/per-topic value has been saved yet).
-- Per-session changes the student makes inside the flashcard player still override and persist per chapter/topic, exactly as today — the global setting is just the new-session default.
+I also read `ConfidenceCard.tsx` — confidence is written to `question_attempts` in a **separate** UPDATE statement *after* the attempt row exists. So confidence is not needed at attempt-creation time, but we should still pass it explicitly (as `null` or as the cached value if the student already chose one) to lock the call to the 9-arg signature.
 
 ---
 
-## UI changes in `AppearanceTab.tsx`
+## Changes
 
-- Remove `disabled` prop and the "Coming soon" badges from all three controls.
-- Wire each control's `onValueChange` to write to `localStorage` + apply the live effect.
-- Read initial values from `localStorage` so the UI reflects the active state on mount.
-- Add a tiny "Saved" toast on change (matches existing settings pattern).
+### 1. Database migration — drop the 8-arg duplicate
+
+```sql
+DROP FUNCTION IF EXISTS public.save_question_attempt(
+  uuid,
+  practice_question_type,
+  uuid,
+  uuid,
+  uuid,
+  jsonb,
+  boolean,
+  integer
+);
+```
+
+Only the 9-arg version (with `p_confidence_level smallint DEFAULT NULL`) remains. Existing call sites that omit confidence still work because the parameter has a default — but we will also update the call site for clarity.
+
+### 2. `src/hooks/useQuestionAttempts.ts` — pass `p_confidence_level` explicitly
+
+- Add optional `confidenceLevel?: number | null` to `SaveQuestionAttemptParams` (line 60).
+- In the `mutationFn` body (line 270), add `p_confidence_level: confidenceLevel ?? null` to the RPC call.
+- Backwards compatible — existing callers don't need to pass anything; default is `null`.
+
+### 3. (Optional, low-risk) `ConfidenceCard.tsx` — no change required
+
+The current flow (separate UPDATE after the fact) keeps working. We are NOT refactoring it in this fix — out of scope and risks regressing the existing in-session confidence persistence.
 
 ---
 
-## Files to modify
+## Files modified
 
 | File | Change |
 |---|---|
-| `src/components/settings/AppearanceTab.tsx` | Wire 3 controls, remove disabled state + "Coming soon" badges, persist + apply on change |
-| `src/index.css` | Extend `.density-compact main ...` rules to cover dashboard tiles & plan card padding/gaps |
-| `src/hooks/useFlashcardSettings.ts` | Default `intervalSeconds` reads from `kalm_flashcard_interval` (falls back to 7s) |
+| `supabase/migrations/<new>.sql` | `DROP FUNCTION public.save_question_attempt(uuid, practice_question_type, uuid, uuid, uuid, jsonb, boolean, integer);` |
+| `src/hooks/useQuestionAttempts.ts` | Add `confidenceLevel` to params interface; pass `p_confidence_level: confidenceLevel ?? null` in the RPC call |
 
-No new dependencies. No database changes. No edge functions. `main.tsx` already pre-applies both font-scale and density before first render, so there is **no flash** on reload.
+No edge function changes. No RLS changes. No type regeneration needed (RPC param signature on client side already uses untyped object).
 
 ---
 
 ## Acceptance criteria
 
-1. Changing **Reading Size** instantly resizes app text; choice survives reload with no flash.
-2. Switching to **Compact** density tightens spacing in dashboard, chapter pages, and cards; switching back restores comfortable spacing.
-3. Setting a **Flashcard auto-flip interval** is used as the default for new flashcard sessions (any chapter/topic that hasn't been customised yet).
-4. All three controls are enabled, "Coming soon" badges removed.
-5. Settings persist per-browser via `localStorage` (no backend changes).
-6. No regressions to existing per-chapter/per-topic flashcard settings — those still override the global default.
+1. `SELECT proname, pronargs FROM pg_proc WHERE proname='save_question_attempt'` returns exactly **one** row with `pronargs = 9`.
+2. Submitting an MCQ from the practice UI no longer throws PGRST203; `question_attempts` row is created.
+3. The existing `ConfidenceCard` UPDATE flow still successfully sets `confidence_level` post-attempt.
+4. No other call sites of `save_question_attempt` break (none found besides line 270).
 
+---
+
+## Why this is safe
+
+- The 8-arg version is functionally a strict subset of the 9-arg one — anything it could do, the 9-arg version does identically when `p_confidence_level` is `NULL`.
+- Postgres `DROP FUNCTION ... (signature)` is signature-specific — it cannot accidentally drop the 9-arg version.
+- No data is touched.

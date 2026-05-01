@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart3, ShieldAlert, BrainCircuit, Video, Radio, Tag } from 'lucide-react';
+import { BarChart3, ShieldAlert, BrainCircuit, Video, Radio, Tag, Activity } from 'lucide-react';
 import { QuestionAnalyticsTabs } from '@/components/analytics/QuestionAnalyticsTabs';
 import { AICasesAdminTab } from './AICasesAdminTab';
 import { VideoAnalyticsTab } from './VideoAnalyticsTab';
 import { RealtimeAnalyticsTab } from './RealtimeAnalyticsTab';
 import { TaggingIssuesTab } from './TaggingIssuesTab';
+import { MaterialEngagementTab } from './MaterialEngagementTab';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface ContentAnalyticsTabProps {
@@ -19,6 +20,7 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
 
   const tabs = [
     { value: 'questions', label: 'Content Analytics', icon: BarChart3, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
+    { value: 'engagement', label: 'Material Engagement', icon: Activity, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
     { value: 'integrity', label: 'Content Integrity', icon: ShieldAlert, visible: isSuperAdmin || isPlatformAdmin || isTopicAdmin },
     { value: 'ai-cases', label: 'AI Cases', icon: BrainCircuit, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin || isTopicAdmin },
     { value: 'video-analytics', label: 'Video Analytics', icon: Video, visible: isSuperAdmin || isPlatformAdmin || isModuleAdmin },
@@ -50,6 +52,10 @@ export function ContentAnalyticsTab({ modules, moduleAdminModuleIds, integrityCo
 
         <TabsContent value="questions" className="mt-4">
           <QuestionAnalyticsTabs modules={modules} moduleAdminModuleIds={moduleAdminModuleIds} />
+        </TabsContent>
+
+        <TabsContent value="engagement" className="mt-4">
+          <MaterialEngagementTab modules={modules.map(m => ({ id: m.id, name: m.name }))} />
         </TabsContent>
 
         <TabsContent value="integrity" className="mt-4">

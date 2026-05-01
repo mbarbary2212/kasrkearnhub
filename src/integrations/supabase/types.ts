@@ -7814,6 +7814,7 @@ export type Database = {
       }
     }
     Functions: {
+      _is_admin_or_higher: { Args: { _user: string }; Returns: boolean }
       admin_ban_user: {
         Args: {
           _banned_until?: string
@@ -7821,6 +7822,48 @@ export type Database = {
           _target_user_id: string
         }
         Returns: undefined
+      }
+      admin_material_engagement_chapters: {
+        Args: { p_days?: number; p_module_id?: string }
+        Returns: {
+          avg_minutes_per_student: number
+          chapter_id: string
+          chapter_title: string
+          last_activity_at: string
+          module_id: string
+          total_minutes: number
+          unique_students: number
+        }[]
+      }
+      admin_material_engagement_mcqs: {
+        Args: { p_days?: number; p_module_id?: string }
+        Returns: {
+          accuracy: number
+          avg_time_seconds: number
+          chapter_id: string
+          chapter_title: string
+          last_attempted_at: string
+          material_id: string
+          module_id: string
+          stem: string
+          total_attempts: number
+          unique_users: number
+        }[]
+      }
+      admin_material_engagement_videos: {
+        Args: { p_days?: number; p_module_id?: string }
+        Returns: {
+          avg_percent_watched: number
+          chapter_id: string
+          chapter_title: string
+          completion_rate: number
+          last_viewed_at: string
+          material_id: string
+          module_id: string
+          title: string
+          total_views: number
+          unique_viewers: number
+        }[]
       }
       admin_remove_user: {
         Args: { _reason: string; _target_user_id: string }
@@ -8017,34 +8060,20 @@ export type Database = {
         Args: { _feedback_id: string; _reason: string }
         Returns: string
       }
-      save_question_attempt:
-        | {
-            Args: {
-              p_chapter_id?: string
-              p_is_correct?: boolean
-              p_module_id?: string
-              p_question_id: string
-              p_question_type: Database["public"]["Enums"]["practice_question_type"]
-              p_score?: number
-              p_selected_answer?: Json
-              p_topic_id?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_chapter_id?: string
-              p_confidence_level?: number
-              p_is_correct?: boolean
-              p_module_id?: string
-              p_question_id: string
-              p_question_type: Database["public"]["Enums"]["practice_question_type"]
-              p_score?: number
-              p_selected_answer?: Json
-              p_topic_id?: string
-            }
-            Returns: Json
-          }
+      save_question_attempt: {
+        Args: {
+          p_chapter_id?: string
+          p_confidence_level?: number
+          p_is_correct?: boolean
+          p_module_id?: string
+          p_question_id: string
+          p_question_type: Database["public"]["Enums"]["practice_question_type"]
+          p_score?: number
+          p_selected_answer?: Json
+          p_topic_id?: string
+        }
+        Returns: Json
+      }
       search_invitable_users: {
         Args: { group_id: string; search_term: string }
         Returns: {

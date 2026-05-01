@@ -9,13 +9,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Trash2, BookMarked, Pencil, Star, Replace as ReplaceIcon, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, BookMarked, Pencil, Replace as ReplaceIcon, ChevronRight, Info } from 'lucide-react';
 import {
   useAIModelCatalog,
   useUpsertAIModel,
   useUpdateAIModel,
   useDeleteAIModel,
-  useSetDefaultAIModel,
   useReplaceAIModel,
   type AIModelCatalogEntry,
   type AIProvider,
@@ -49,7 +48,6 @@ export function ManageModelsPanel() {
   const upsertModel = useUpsertAIModel();
   const updateModel = useUpdateAIModel();
   const deleteModel = useDeleteAIModel();
-  const setDefaultModel = useSetDefaultAIModel();
   const replaceModel = useReplaceAIModel();
 
   // Add / Edit dialog (shared)
@@ -134,6 +132,15 @@ export function ManageModelsPanel() {
         <Button size="sm" onClick={openAdd}><Plus className="w-4 h-4 mr-1" /> Add model</Button>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="flex gap-3 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40 p-3 text-sm text-blue-800 dark:text-blue-300">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">This panel manages available models, not the active model.</p>
+            <p className="mt-0.5 text-blue-700 dark:text-blue-400">
+              Toggling Active/Inactive controls which models appear in dropdowns. To switch which model KalmHub actually uses for a feature, use the <strong>Replace…</strong> button — that writes to the live settings.
+            </p>
+          </div>
+        </div>
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-12" /><Skeleton className="h-12" /><Skeleton className="h-12" />
@@ -171,14 +178,10 @@ export function ManageModelsPanel() {
                               updateModel.mutate({ id: m.id, patch: { is_active: checked } })
                             }
                             onEdit={() => openEdit(m)}
-                            onSetDefault={() =>
-                              setDefaultModel.mutate({ id: m.id, provider: m.provider })
-                            }
                             onReplace={() => setReplaceState({ source: m, targetId: '' })}
                             onDelete={() => {
                               if (confirm(`Delete "${m.label}"?`)) deleteModel.mutate(m.id);
                             }}
-                            canSetDefault={!m.is_default}
                             canReplace={active.length > 1}
                           />
                         ))}
@@ -206,14 +209,10 @@ export function ManageModelsPanel() {
                                   updateModel.mutate({ id: m.id, patch: { is_active: checked } })
                                 }
                                 onEdit={() => openEdit(m)}
-                                onSetDefault={() =>
-                                  setDefaultModel.mutate({ id: m.id, provider: m.provider })
-                                }
                                 onReplace={() => setReplaceState({ source: m, targetId: '' })}
                                 onDelete={() => {
                                   if (confirm(`Delete "${m.label}"?`)) deleteModel.mutate(m.id);
                                 }}
-                                canSetDefault={false}
                                 canReplace={false}
                               />
                             ))}
@@ -336,7 +335,7 @@ export function ManageModelsPanel() {
                 <SelectContent>
                   {replacementCandidates.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
-                      {m.label}{m.is_default ? ' · default' : ''}
+                      {m.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -374,19 +373,15 @@ function ModelRow({
   model: m,
   onToggleActive,
   onEdit,
-  onSetDefault,
   onReplace,
   onDelete,
-  canSetDefault,
   canReplace,
 }: {
   model: AIModelCatalogEntry;
   onToggleActive: (checked: boolean) => void;
   onEdit: () => void;
-  onSetDefault: () => void;
   onReplace: () => void;
   onDelete: () => void;
-  canSetDefault: boolean;
   canReplace: boolean;
 }) {
   return (
@@ -394,21 +389,11 @@ function ModelRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm truncate">{m.label}</span>
-          {m.is_default && <Badge variant="default" className="text-[10px]">default</Badge>}
           {!m.is_active && <Badge variant="outline" className="text-[10px]">inactive</Badge>}
         </div>
         <code className="text-xs text-muted-foreground break-all">{m.model_id}</code>
         {m.notes && <p className="text-xs text-muted-foreground mt-0.5">{m.notes}</p>}
         <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {canSetDefault && m.is_active && (
-            <button
-              type="button"
-              onClick={onSetDefault}
-              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
-            >
-              <Star className="w-3 h-3" /> Set as default
-            </button>
-          )}
           {canReplace && (
             <button
               type="button"

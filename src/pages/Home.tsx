@@ -38,6 +38,7 @@ import { GoalsNudgeBanner } from '@/components/dashboard/GoalsNudgeBanner';
 import { useYearClassification } from '@/hooks/useYearClassification';
 import { ClassificationDashboard } from '@/components/dashboard/ClassificationDashboard';
 import { ModuleCardLeads } from '@/components/content/ModuleCardLeads';
+import { WeeklyStudySummaryCard } from '@/components/dashboard/WeeklyStudySummaryCard';
 
 import { useTour } from '@/hooks/useTour';
 import { studentTourSteps } from '@/components/tour/studentTourSteps';
@@ -638,6 +639,9 @@ function LoggedInHome() {
               </div>
             </Card>
           )}
+
+          {/* Weekly study summary */}
+          {isStudent && <WeeklyStudySummaryCard streak={streak} />}
 
           {/* Flashcards Widget */}
           {isStudent && dueCount > 0 && (
