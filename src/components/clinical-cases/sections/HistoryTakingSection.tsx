@@ -83,6 +83,17 @@ export function HistoryTakingSection({
   // TTS settings
   const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
+  const getMatchingVoiceOverride = useCallback(() => {
+    if (!voiceIdOverride) return '';
+    if (voiceProviderOverride) {
+      return voiceProviderOverride === ttsProvider ? voiceIdOverride : '';
+    }
+
+    const looksLikeElevenLabsId = /^[A-Za-z0-9_-]{15,}$/.test(voiceIdOverride);
+    if (ttsProvider === 'elevenlabs' && looksLikeElevenLabsId) return voiceIdOverride;
+    if (ttsProvider === 'gemini' && !looksLikeElevenLabsId) return voiceIdOverride;
+    return '';
+  }, [ttsProvider, voiceIdOverride, voiceProviderOverride]);
   const ttsGeminiVoice = patientGender === 'female'
     ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') as string
     : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore') as string;
@@ -377,7 +388,7 @@ export function HistoryTakingSection({
 
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
-          const matchingProviderVoiceOverride = voiceProviderOverride === ttsProvider ? voiceIdOverride : '';
+          const matchingProviderVoiceOverride = getMatchingVoiceOverride();
           const voiceId = matchingProviderVoiceOverride || (
             ttsProvider === 'gemini'
               ? (gender === 'female' ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore'))
@@ -465,7 +476,7 @@ export function HistoryTakingSection({
         lastPartialTimeRef.current = 0;
       }
     }
-  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, voiceIdOverride, voiceProviderOverride, patientTone, shouldDisableInput, isOverTime, phase, isSuperAdmin]);
+  }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, getMatchingVoiceOverride, patientTone, shouldDisableInput, isOverTime, phase, isSuperAdmin]);
 
   // Keep ref in sync with latest sendChatMessage
   useEffect(() => {

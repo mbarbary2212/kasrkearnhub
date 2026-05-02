@@ -117,6 +117,15 @@ export function CasePreviewEditor() {
   const { data: geminiVoices } = useGeminiVoices();
   const { data: aiSettings } = useAISettings();
   const globalTtsProvider = getSettingValue(aiSettings, 'tts_provider', 'browser') as string;
+  const getSelectedVoiceProvider = () => {
+    const patient = (editedData as any)?.patient;
+    const voiceId = patient?.voice_id || '';
+    if (patient?.voice_provider) return patient.voice_provider;
+    if (!voiceId) return '';
+    if ((ttsVoices || []).some(v => v.elevenlabs_voice_id === voiceId)) return 'elevenlabs';
+    if ((geminiVoices || []).some(v => v.name === voiceId)) return 'gemini';
+    return '';
+  };
 
   // Build avatar list from database
   const avatarList = (dynamicAvatars || []).map(a => ({ id: a.id, name: a.name, image: a.image_url }));
@@ -473,7 +482,7 @@ export function CasePreviewEditor() {
                 <div>
                   <Label className="text-xs">Voice Character</Label>
                   <Select
-                    value={(editedData as any).patient?.voice_provider === 'gemini' ? ((editedData as any).patient?.voice_id || '__default__') : '__default__'}
+                    value={getSelectedVoiceProvider() === 'gemini' ? ((editedData as any).patient?.voice_id || '__default__') : '__default__'}
                     onValueChange={(v) => {
                       setEditedData({
                         ...editedData,
@@ -529,7 +538,7 @@ export function CasePreviewEditor() {
                 <div>
                   <Label className="text-xs">Voice Character</Label>
                   <Select
-                    value={(editedData as any).patient?.voice_provider === 'elevenlabs' ? ((editedData as any).patient?.voice_id || '__default__') : '__default__'}
+                    value={getSelectedVoiceProvider() === 'elevenlabs' ? ((editedData as any).patient?.voice_id || '__default__') : '__default__'}
                     onValueChange={(v) => {
                       setEditedData({
                         ...editedData,
@@ -584,7 +593,7 @@ export function CasePreviewEditor() {
                           setIsPreviewPlaying(false);
                           return;
                         }
-                        const voiceId = (editedData as any).patient?.voice_provider === 'elevenlabs'
+                        const voiceId = getSelectedVoiceProvider() === 'elevenlabs'
                           ? ((editedData as any).patient?.voice_id || '')
                           : '';
                         if (!voiceId) {
