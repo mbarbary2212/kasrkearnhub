@@ -469,16 +469,19 @@ export function CasePreviewEditor() {
             )}
 
             {/* Voice Character */}
-            {editedData && (
-              globalTtsProvider === 'gemini' ? (
+            {editedData && globalTtsProvider === 'gemini' && (
                 <div>
                   <Label className="text-xs">Voice Character</Label>
                   <Select
-                    value={(editedData as any).patient?.voice_id || '__default__'}
+                    value={(editedData as any).patient?.voice_provider === 'gemini' ? ((editedData as any).patient?.voice_id || '__default__') : '__default__'}
                     onValueChange={(v) => {
                       setEditedData({
                         ...editedData,
-                        patient: { ...editedData.patient, voice_id: v === '__default__' ? '' : v },
+                        patient: {
+                          ...editedData.patient,
+                          voice_id: v === '__default__' ? '' : v,
+                          voice_provider: v === '__default__' ? '' : 'gemini',
+                        },
                       } as any);
                       setHasChanges(true);
                     }}
@@ -520,15 +523,21 @@ export function CasePreviewEditor() {
                     Gemini voice — select any active voice from the registry
                   </p>
                 </div>
-              ) : (
+            )}
+
+            {editedData && globalTtsProvider === 'elevenlabs' && (
                 <div>
                   <Label className="text-xs">Voice Character</Label>
                   <Select
-                    value={(editedData as any).patient?.voice_id || '__default__'}
+                    value={(editedData as any).patient?.voice_provider === 'elevenlabs' ? ((editedData as any).patient?.voice_id || '__default__') : '__default__'}
                     onValueChange={(v) => {
                       setEditedData({
                         ...editedData,
-                        patient: { ...editedData.patient, voice_id: v === '__default__' ? '' : v },
+                        patient: {
+                          ...editedData.patient,
+                          voice_id: v === '__default__' ? '' : v,
+                          voice_provider: v === '__default__' ? '' : 'elevenlabs',
+                        },
                       } as any);
                       setHasChanges(true);
                     }}
@@ -575,7 +584,9 @@ export function CasePreviewEditor() {
                           setIsPreviewPlaying(false);
                           return;
                         }
-                        const voiceId = (editedData as any).patient?.voice_id || '';
+                        const voiceId = (editedData as any).patient?.voice_provider === 'elevenlabs'
+                          ? ((editedData as any).patient?.voice_id || '')
+                          : '';
                         if (!voiceId) {
                           toast.info('Select a voice first (not Global Default)');
                           return;
@@ -614,7 +625,6 @@ export function CasePreviewEditor() {
                       : 'After each preview, the button will pause for ~1 min to stay within voice API limits.'}
                   </p>
                 </div>
-              )
             )}
 
              {/* History Time Limit */}

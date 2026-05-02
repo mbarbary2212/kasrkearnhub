@@ -41,6 +41,7 @@ export function TTSVoicesCard() {
           elevenlabs_voice_id: newVoiceId.trim(),
           gender: newGender,
           label: newLabel.trim() || null,
+          provider: 'elevenlabs',
           uploaded_by: user?.id,
           display_order: (allVoices?.length ?? 0) + 1,
         } as any);
