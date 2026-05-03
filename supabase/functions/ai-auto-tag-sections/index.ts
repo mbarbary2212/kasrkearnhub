@@ -616,10 +616,14 @@ async function fetchYouTubeTranscript(
 async function matchTranscriptToSections(
   entries: TranscriptEntry[],
   sections: Array<{ id: string; name: string; ilo?: string }>,
-  model: string,
+  models: string[],
   apiKey: string,
-): Promise<Array<{ section_id: string; start_time_seconds: number }>> {
-  if (!entries.length || !sections.length) return [];
+): Promise<{
+  matches: Array<{ section_id: string; start_time_seconds: number }>;
+  model?: string;
+  error?: string;
+}> {
+  if (!entries.length || !sections.length) return { matches: [] };
 
   // Limit transcript to ~40k chars to stay within context limits
   const full = entries.map((e) => `${e.timestamp}: ${e.text}`).join("\n");
@@ -653,24 +657,38 @@ RULES:
 RESPONSE FORMAT:
 {"matches": [{"section_id": "uuid", "start_time": "MM:SS"}, ...]}`;
 
-  const raw = await geminiTextCall(prompt, model, apiKey, 1024);
-  if (!raw) return [];
+  let lastError = "";
+  const validIds = new Set(sections.map((s) => s.id));
 
-  try {
-    const parsed = JSON.parse(cleanJson(raw));
-    if (!Array.isArray(parsed?.matches)) return [];
+  for (const model of models) {
+    const raw = await geminiTextCall(prompt, model, apiKey, 1024);
+    if (!raw) {
+      lastError = `${model}: empty response`;
+      continue;
+    }
 
-    const validIds = new Set(sections.map((s) => s.id));
-    return parsed.matches
-      .map((m: { section_id: string; start_time: string }) => ({
-        section_id: m.section_id,
-        start_time_seconds: parseTimestamp(m.start_time) ?? 0,
-      }))
-      .filter((m: { section_id: string }) => validIds.has(m.section_id));
-  } catch (e) {
-    console.error("[match] Parse failed:", e, raw?.slice(0, 300));
-    return [];
+    try {
+      const parsed = JSON.parse(cleanJson(raw));
+      if (!Array.isArray(parsed?.matches)) {
+        lastError = `${model}: invalid response format`;
+        continue;
+      }
+
+      const matches = parsed.matches
+        .map((m: { section_id: string; start_time: string }) => ({
+          section_id: m.section_id,
+          start_time_seconds: parseTimestamp(m.start_time) ?? 0,
+        }))
+        .filter((m: { section_id: string }) => validIds.has(m.section_id));
+
+      return { matches, model };
+    } catch (e) {
+      lastError = `${model}: parse failed ${e}`;
+      console.error("[match] Parse failed:", e, raw?.slice(0, 300));
+    }
   }
+
+  return { matches: [], error: lastError || "All transcript assignment models failed" };
 }
 
 /**
@@ -739,9 +757,9 @@ async function analyzeYouTubeVideos(
 ): Promise<Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }>> {
   const assignments: Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }> = {};
 
-  const textModel = "gemini-2.5-flash";
+  const textModels = ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash"];
 
-  console.log(`[youtube-analysis] ${ytItems.length} videos | transcript source: TranscriptAPI | text model: ${textModel}`);
+  console.log(`[youtube-analysis] ${ytItems.length} videos | transcript source: TranscriptAPI | text models: ${textModels.join(" -> ")}`);
 
   for (const item of ytItems) {
     const vid = item.youtube_video_id;
@@ -760,8 +778,9 @@ async function analyzeYouTubeVideos(
       if (entries.length > 0) {
         console.log(`[transcript] ${vid}: ${entries.length} entries`);
         method = "transcriptapi";
-        matches = await matchTranscriptToSections(entries, sections, textModel, googleApiKey);
-        notes = `transcript:${entries.length} matches:${matches.length}`;
+        const matchResult = await matchTranscriptToSections(entries, sections, textModels, googleApiKey);
+        matches = matchResult.matches;
+        notes = `transcript:${entries.length} model:${matchResult.model || "none"} matches:${matches.length}${matchResult.error ? ` error:${matchResult.error}` : ""}`;
       } else {
         console.warn(`[transcript] ${vid}: TranscriptAPI returned no usable transcript (${transcriptError})`);
         method = "transcriptapi-empty";
