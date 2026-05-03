@@ -18,17 +18,15 @@ const MAX_TOTAL_ITEMS = 200;
 
 /** Attempt to extract valid assignments from truncated JSON */
 function repairAndExtractAssignments(raw: string): Record<string, any> | null {
-  // Try direct parse first
   try {
     return JSON.parse(raw);
   } catch (_) {
     // Fall through to repair
   }
 
-  // Extract individual entries using regex
   const results: Record<string, any> = {};
   const entryPattern = /\"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\"\s*:\s*\{\s*\"section_id\"\s*:\s*\"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\"\s*,\s*\"confidence\"\s*:\s*\"(high|medium|low)\"\s*\}/g;
-  
+
   let match;
   while ((match = entryPattern.exec(raw)) !== null) {
     results[match[1]] = { section_id: match[2], confidence: match[3] };
@@ -37,15 +35,6 @@ function repairAndExtractAssignments(raw: string): Record<string, any> | null {
   return Object.keys(results).length > 0 ? results : null;
 }
 
-/**
- * PHASE 1 — YouTube video analysis via Gemini's native video understanding.
- * For each lecture with a youtube_video_id, Gemini watches the video and returns
- * which section it most closely belongs to.
- *
- * Uses Gemini's `fileData` part type with mimeType "video/*" and a YouTube URL.
- * Requires Gemini 1.5 Flash/Pro or Gemini 2.0+.
- */
-// Convert MM:SS or HH:MM:SS string to total seconds
 function parseTimestamp(ts: string | undefined | null): number | null {
   if (!ts) return null;
   const parts = ts.trim().split(":").map(Number);
@@ -61,39 +50,6 @@ function cleanJson(raw: string): string {
     s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
   }
   return s;
-}
-
-async function geminiVideoCall(
-  videoUrl: string,
-  prompt: string,
-  model: string,
-  apiKey: string,
-  maxTokens = 1024,
-): Promise<string | null> {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [
-            { fileData: { mimeType: "video/*", fileUri: videoUrl } },
-            { text: prompt },
-          ],
-        }],
-        generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
-      }),
-    }
-  );
-  if (!response.ok) {
-    const err = await response.text();
-    console.error(`[gemini-video] ${response.status}:`, err);
-    return null;
-  }
-  const result = await response.json();
-  return result.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }
 
 async function geminiTextCall(
@@ -122,52 +78,285 @@ async function geminiTextCall(
   return result.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }
 
-/**
- * PASS 1 — Ask Gemini to watch the video and produce a timestamped outline.
- * No section list is given here — pure video comprehension with no anchoring bias.
- */
-async function extractVideoOutline(
+async function geminiVideoCall(
   videoUrl: string,
+  prompt: string,
   model: string,
   apiKey: string,
-): Promise<Array<{ timestamp: string; topic: string }>> {
-  const prompt = `You are a medical education assistant. Watch this medical lecture video and produce a chronological outline of every distinct clinical topic the doctor teaches.
-
-For each topic segment provide:
-- timestamp: when it starts in MM:SS format
-- topic: a concise 1-2 sentence description of exactly what the doctor is teaching in that segment
-
-Rules:
-- Skip intro/outro, administrative talk, and slide housekeeping
-- Each entry should represent a meaningful shift in clinical topic (a new disease, a new concept, a new management step)
-- Be precise with timestamps — scrub through the video to confirm
-
-Return raw JSON only:
-{"outline": [{"timestamp": "01:20", "topic": "Definition and epidemiology of acute cystitis"}, {"timestamp": "08:45", "topic": "Causative organisms and pathophysiology"}, ...]}`;
-
-  const raw = await geminiVideoCall(videoUrl, prompt, model, apiKey, 2048);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(cleanJson(raw));
-    if (Array.isArray(parsed?.outline)) return parsed.outline;
-  } catch {
-    console.error("[pass1] Failed to parse outline:", raw);
+  maxTokens = 2048,
+): Promise<{ text: string | null; error?: string }> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [
+            { fileData: { mimeType: "video/*", fileUri: videoUrl } },
+            { text: prompt },
+          ],
+        }],
+        generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
+      }),
+    }
+  );
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`[gemini-video] ${response.status}:`, err);
+    return { text: null, error: `HTTP ${response.status}: ${err}` };
   }
-  return [];
+  const result = await response.json();
+  return { text: result.candidates?.[0]?.content?.parts?.[0]?.text ?? null };
+}
+
+interface TranscriptEntry {
+  timestamp: string; // MM:SS
+  text: string;
+}
+
+function formatTimestamp(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hh = Math.floor(safeSeconds / 3600);
+  const mm = Math.floor((safeSeconds % 3600) / 60);
+  const ss = safeSeconds % 60;
+
+  if (hh > 0) {
+    return `${hh.toString().padStart(2, "0")}:${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}`;
+  }
+  return `${mm.toString().padStart(2, "0")}:${ss.toString().padStart(2, "0")}`;
+}
+
+async function fetchYouTubePlayerData(videoId: string): Promise<{ data: any | null; error?: string }> {
+  try {
+    const playerResp = await fetch(
+      "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
+          "X-YouTube-Client-Name": "3",
+          "X-YouTube-Client-Version": "17.31.35",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: "ANDROID",
+              clientVersion: "17.31.35",
+              androidSdkVersion: 30,
+              hl: "en",
+              gl: "US",
+              utcOffsetMinutes: 0,
+            },
+          },
+          videoId,
+        }),
+      },
+    );
+
+    if (!playerResp.ok) {
+      const errText = await playerResp.text();
+      return { data: null, error: `InnerTube ${playerResp.status}: ${errText.slice(0, 200)}` };
+    }
+
+    return { data: await playerResp.json() };
+  } catch (e) {
+    return { data: null, error: `InnerTube error: ${e}` };
+  }
 }
 
 /**
- * PASS 2 — Pure text: match the outline entries to the section list.
- * Returns which sections are covered and at what timestamp each starts.
+ * Fetch auto-generated captions via YouTube's InnerTube API (Android client).
+ * This bypasses GDPR consent pages and bot detection that breaks regular page scraping.
+ * YouTube generates ASR captions for virtually all videos including Arabic ones.
  */
-async function matchOutlineToSections(
-  outline: Array<{ timestamp: string; topic: string }>,
+async function fetchYouTubeTranscript(
+  videoId: string,
+): Promise<{ entries: TranscriptEntry[]; error?: string }> {
+  // Use the Android InnerTube client — more reliable from server environments
+  let tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> | null = null;
+
+  try {
+    const playerResp = await fetch(
+      "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
+          "X-YouTube-Client-Name": "3",
+          "X-YouTube-Client-Version": "17.31.35",
+          "Accept-Language": "en-US,en;q=0.9",
+        },
+        body: JSON.stringify({
+          context: {
+            client: {
+              clientName: "ANDROID",
+              clientVersion: "17.31.35",
+              androidSdkVersion: 30,
+              hl: "en",
+              gl: "US",
+              utcOffsetMinutes: 0,
+            },
+          },
+          videoId,
+        }),
+      },
+    );
+
+    if (playerResp.ok) {
+      const playerData = await playerResp.json();
+      tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? null;
+    } else {
+      const errText = await playerResp.text();
+      console.warn(`[transcript] InnerTube ${playerResp.status}:`, errText.slice(0, 200));
+    }
+  } catch (e) {
+    console.warn(`[transcript] InnerTube error:`, e);
+  }
+
+  if (!tracks || tracks.length === 0) {
+    return { entries: [], error: "No caption tracks found via InnerTube API" };
+  }
+
+  // Prefer Arabic ASR > Arabic manual > English ASR > English manual > first available
+  const asrAr = tracks.find((t) => t.kind === "asr" && t.languageCode?.startsWith("ar"));
+  const manualAr = tracks.find((t) => t.languageCode?.startsWith("ar"));
+  const asrEn = tracks.find((t) => t.kind === "asr" && t.languageCode?.startsWith("en"));
+  const manualEn = tracks.find((t) => t.languageCode?.startsWith("en"));
+  const chosen = asrAr || manualAr || asrEn || manualEn || tracks[0];
+
+  console.log(
+    `[transcript] Track: lang=${chosen.languageCode} kind=${chosen.kind || "manual"} (${tracks.length} total)`,
+  );
+
+  // Download the transcript in json3 format
+  let transcriptData: { events?: Array<{ tStartMs?: number; segs?: Array<{ utf8?: string }> }> };
+  try {
+    const transcriptUrl = chosen.baseUrl.includes("fmt=")
+      ? chosen.baseUrl
+      : `${chosen.baseUrl}&fmt=json3`;
+    const tResp = await fetch(transcriptUrl, {
+      headers: {
+        "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
+      },
+    });
+    if (!tResp.ok) {
+      return { entries: [], error: `Transcript download failed: ${tResp.status}` };
+    }
+    transcriptData = await tResp.json();
+  } catch (e) {
+    return { entries: [], error: `Transcript download error: ${e}` };
+  }
+
+  if (!transcriptData.events || transcriptData.events.length === 0) {
+    return { entries: [], error: "Transcript has no events" };
+  }
+
+  const entries: TranscriptEntry[] = [];
+  for (const event of transcriptData.events) {
+    if (!event.segs || event.tStartMs == null) continue;
+    const text = event.segs
+      .map((s) => (s.utf8 || "").replace(/\n/g, " "))
+      .join("")
+      .trim();
+    if (!text || text === " ") continue;
+    const startSec = Math.floor(event.tStartMs / 1000);
+    const mm = Math.floor(startSec / 60).toString().padStart(2, "0");
+    const ss = (startSec % 60).toString().padStart(2, "0");
+    entries.push({ timestamp: `${mm}:${ss}`, text });
+  }
+
+  return { entries };
+}
+
+async function fetchYouTubeAudioUrl(videoId: string): Promise<{ url: string | null; error?: string }> {
+  const { data: playerData, error } = await fetchYouTubePlayerData(videoId);
+  if (!playerData) return { url: null, error };
+
+  const audioFormats = (playerData.streamingData?.adaptiveFormats || [])
+    .filter((f: any) => f.url && f.mimeType?.startsWith("audio/"))
+    .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
+
+  const chosen = audioFormats.find((f: any) => f.mimeType?.includes("mp4")) || audioFormats[0];
+  if (!chosen?.url) {
+    return { url: null, error: "No direct YouTube audio stream found" };
+  }
+
+  console.log(`[groq-transcript] Audio stream: ${chosen.mimeType || "unknown"} ${chosen.audioQuality || ""}`);
+  return { url: chosen.url };
+}
+
+async function fetchGroqTranscriptFromYouTube(
+  videoId: string,
+  groqApiKey: string,
+): Promise<{ entries: TranscriptEntry[]; error?: string }> {
+  const { url, error: audioError } = await fetchYouTubeAudioUrl(videoId);
+  if (!url) return { entries: [], error: audioError || "No YouTube audio URL" };
+
+  const form = new FormData();
+  form.append("model", "whisper-large-v3-turbo");
+  form.append("url", url);
+  form.append("language", "ar");
+  form.append("response_format", "verbose_json");
+  form.append("timestamp_granularities[]", "segment");
+  form.append(
+    "prompt",
+    "محاضرة طبية باللهجة المصرية والعربية مع مصطلحات طبية إنجليزية. اكتب الكلام كما هو قدر الإمكان.",
+  );
+
+  const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${groqApiKey}` },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`[groq-transcript] ${response.status}:`, err.slice(0, 500));
+    return { entries: [], error: `Groq ${response.status}: ${err.slice(0, 300)}` };
+  }
+
+  const result = await response.json();
+  const segments = Array.isArray(result.segments) ? result.segments : [];
+  if (segments.length === 0) {
+    const text = typeof result.text === "string" ? result.text.trim() : "";
+    return text
+      ? { entries: [{ timestamp: "00:00", text }] }
+      : { entries: [], error: "Groq returned no transcript segments" };
+  }
+
+  const entries = segments
+    .map((s: { start?: number; text?: string }) => ({
+      timestamp: formatTimestamp(s.start || 0),
+      text: (s.text || "").replace(/\s+/g, " ").trim(),
+    }))
+    .filter((e: TranscriptEntry) => e.text);
+
+  return entries.length > 0
+    ? { entries }
+    : { entries: [], error: "Groq transcript segments were empty" };
+}
+
+/**
+ * Match transcript entries to curriculum sections using a single Gemini text call.
+ */
+async function matchTranscriptToSections(
+  entries: TranscriptEntry[],
   sections: Array<{ id: string; name: string; ilo?: string }>,
   model: string,
   apiKey: string,
 ): Promise<Array<{ section_id: string; start_time_seconds: number }>> {
-  if (!outline.length) return [];
+  if (!entries.length || !sections.length) return [];
+
+  // Limit transcript to ~40k chars to stay within context limits
+  const full = entries.map((e) => `${e.timestamp}: ${e.text}`).join("\n");
+  const transcript = full.length > 40000
+    ? full.slice(0, 40000) + "\n[transcript truncated]"
+    : full;
 
   const sectionList = sections
     .map((s) => {
@@ -177,27 +366,23 @@ async function matchOutlineToSections(
     })
     .join("\n");
 
-  const outlineText = outline
-    .map((e) => `- ${e.timestamp}: ${e.topic}`)
-    .join("\n");
+  const prompt = `You are a medical curriculum organizer. Analyze this lecture transcript and identify which curriculum sections are taught, along with the exact timestamp where the doctor starts each section.
 
-  const prompt = `You are a medical curriculum organizer. Match each video outline entry below to the most relevant section from the list, if one clearly fits.
-
-SECTIONS:
+CURRICULUM SECTIONS:
 ${sectionList}
 
-VIDEO OUTLINE:
-${outlineText}
+LECTURE TRANSCRIPT (timestamp: spoken text):
+${transcript}
 
 RULES:
-1. Only match an outline entry to a section if the topic is a clear, direct match to that section's clinical content — not a loose association.
-2. If multiple consecutive outline entries cover the same section, use the timestamp of the FIRST one.
-3. Each section should appear at most once in the output.
-4. If an outline entry does not clearly map to any section, skip it.
+1. Only include a section if the doctor clearly and substantively teaches that clinical topic — not just a brief mention.
+2. Use the earliest timestamp in the transcript where the main discussion of that section begins.
+3. Each section appears at most once.
+4. If a section is not covered, do not include it.
 5. Return raw JSON only — no markdown.
 
 RESPONSE FORMAT:
-{"matches": [{"section_id": "uuid-1", "start_time": "01:20"}, {"section_id": "uuid-2", "start_time": "18:45"}]}`;
+{"matches": [{"section_id": "uuid", "start_time": "MM:SS"}, ...]}`;
 
   const raw = await geminiTextCall(prompt, model, apiKey, 1024);
   if (!raw) return [];
@@ -206,15 +391,73 @@ RESPONSE FORMAT:
     const parsed = JSON.parse(cleanJson(raw));
     if (!Array.isArray(parsed?.matches)) return [];
 
+    const validIds = new Set(sections.map((s) => s.id));
     return parsed.matches
       .map((m: { section_id: string; start_time: string }) => ({
         section_id: m.section_id,
         start_time_seconds: parseTimestamp(m.start_time) ?? 0,
       }))
-      .filter((m: { section_id: string }) => sections.some((s) => s.id === m.section_id));
-  } catch {
-    console.error("[pass2] Failed to parse matches:", raw);
+      .filter((m: { section_id: string }) => validIds.has(m.section_id));
+  } catch (e) {
+    console.error("[match] Parse failed:", e, raw?.slice(0, 300));
     return [];
+  }
+}
+
+/**
+ * Fallback: use Gemini video understanding for videos without any captions.
+ * Works for videos up to ~2 hours with gemini-2.0-flash (1fps sampling).
+ */
+async function matchVideoToSections(
+  videoId: string,
+  sections: Array<{ id: string; name: string; ilo?: string }>,
+  model: string,
+  apiKey: string,
+): Promise<{ matches: Array<{ section_id: string; start_time_seconds: number }>; error?: string }> {
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  const sectionList = sections
+    .map((s) => {
+      let line = `- ID: "${s.id}" | Name: "${s.name}"`;
+      if (s.ilo) line += ` | Learning objective: "${s.ilo}"`;
+      return line;
+    })
+    .join("\n");
+
+  const prompt = `You are a medical curriculum organizer. Listen to this lecture and identify which curriculum sections are taught, along with the timestamp where the doctor starts each one. Focus on the spoken content — ignore slides and visuals.
+
+CURRICULUM SECTIONS:
+${sectionList}
+
+RULES:
+1. Only include a section if the doctor clearly teaches that clinical topic in detail.
+2. Use the earliest timestamp where the main discussion of that section begins.
+3. Each section appears at most once.
+4. Return raw JSON only — no markdown.
+
+RESPONSE FORMAT:
+{"matches": [{"section_id": "uuid", "start_time": "MM:SS"}, ...]}`;
+
+  const { text: raw, error } = await geminiVideoCall(videoUrl, prompt, model, apiKey, 1024);
+  if (!raw) return { matches: [], error: error || "Gemini returned no response" };
+
+  try {
+    const parsed = JSON.parse(cleanJson(raw));
+    if (!Array.isArray(parsed?.matches)) {
+      return { matches: [], error: `Invalid response format: ${raw.slice(0, 200)}` };
+    }
+
+    const validIds = new Set(sections.map((s) => s.id));
+    const matches = parsed.matches
+      .map((m: { section_id: string; start_time: string }) => ({
+        section_id: m.section_id,
+        start_time_seconds: parseTimestamp(m.start_time) ?? 0,
+      }))
+      .filter((m: { section_id: string }) => validIds.has(m.section_id));
+
+    return { matches };
+  } catch (e) {
+    return { matches: [], error: `Parse failed: ${e}` };
   }
 }
 
@@ -222,63 +465,85 @@ async function analyzeYouTubeVideos(
   ytItems: Array<{ id: string; youtube_video_id: string; content: string }>,
   sections: Array<{ id: string; name: string; ilo?: string }>,
   googleApiKey: string,
-  geminiModel: string,
+  groqApiKey: string | null,
+  serviceClient: any,
 ): Promise<Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }>> {
   const assignments: Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }> = {};
 
-  // Use a model that supports video. Pin to gemini-1.5-flash if current model is too old.
-  const videoCapableModels = [
-    "gemini-2.5-pro-preview",
-    "gemini-2.5-flash-preview",
-    "gemini-2.0-flash",
-    "gemini-2.0-pro-exp",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-    "gemini-3.1-pro-preview",
-    "gemini-3.1-flash-preview",
-    "gemini-3-flash-preview",
-  ];
+  const textModel = "gemini-2.5-flash";
 
-  const isVideoCapable = videoCapableModels.some((m) =>
-    geminiModel.includes(m) || m.includes(geminiModel.replace(/:.*$/, "").trim())
-  );
-  const videoModel = isVideoCapable ? geminiModel : "gemini-1.5-flash";
-  // Pass 2 is text-only, use a fast model
-  const textModel = "gemini-2.0-flash";
-
-  console.log(`[youtube-analysis] Analyzing ${ytItems.length} videos | video model: ${videoModel} | text model: ${textModel}`);
+  console.log(`[youtube-analysis] ${ytItems.length} videos | text model: ${textModel}`);
 
   for (const item of ytItems) {
-    const youtubeUrl = `https://www.youtube.com/watch?v=${item.youtube_video_id}`;
-    console.log(`[youtube-analysis] Processing: "${item.youtube_video_id}"`);
+    const vid = item.youtube_video_id;
+    console.log(`[youtube-analysis] Processing: ${vid}`);
+
+    let matches: Array<{ section_id: string; start_time_seconds: number }> = [];
+    let transcriptCount = 0;
+    let notes = "";
+    let method = "";
 
     try {
-      // ── Pass 1: extract timestamped outline from video ──
-      const outline = await extractVideoOutline(youtubeUrl, videoModel, googleApiKey);
-      console.log(`[pass1] Outline for ${item.youtube_video_id}: ${outline.length} entries`);
+      // ── Step 1: Try transcript (fast, no frame limits) ──
+      const { entries, error: transcriptError } = await fetchYouTubeTranscript(vid);
+      transcriptCount = entries.length;
 
-      if (!outline.length) {
-        console.warn(`[pass1] No outline extracted for ${item.youtube_video_id}, skipping`);
-        continue;
-      }
+      if (entries.length > 0) {
+        console.log(`[transcript] ${vid}: ${entries.length} entries`);
+        method = "transcript";
+        matches = await matchTranscriptToSections(entries, sections, textModel, googleApiKey);
+        notes = `transcript:${entries.length} matches:${matches.length}`;
+      } else {
+        // ── Step 2: Fallback to Gemini video analysis ──
+        if (groqApiKey) {
+          console.warn(`[transcript] ${vid}: no captions (${transcriptError}), trying Groq Whisper Turbo`);
+          method = "groq-whisper-turbo";
+          const groqTranscript = await fetchGroqTranscriptFromYouTube(vid, groqApiKey);
+          transcriptCount = groqTranscript.entries.length;
 
-      // ── Pass 2: match outline entries to sections (text only) ──
-      const matches = await matchOutlineToSections(outline, sections, textModel, googleApiKey);
-      console.log(`[pass2] Matched ${matches.length} sections for ${item.youtube_video_id}`);
-
-      if (matches.length > 0) {
-        const startTimes: Record<string, number> = {};
-        for (const m of matches) {
-          startTimes[m.section_id] = m.start_time_seconds;
+          if (groqTranscript.entries.length > 0) {
+            matches = await matchTranscriptToSections(groqTranscript.entries, sections, textModel, googleApiKey);
+            notes = `transcript-failed:${transcriptError} | groq:${groqTranscript.entries.length} matches:${matches.length}`;
+          } else {
+            notes = `transcript-failed:${transcriptError} | groq-error:${groqTranscript.error}`;
+          }
+        } else {
+          method = "no-transcript";
+          notes = `transcript-failed:${transcriptError} | groq-error:GROQ_API_KEY not configured`;
         }
-        assignments[item.id] = {
-          section_ids: matches.map((m) => m.section_id),
-          start_times: startTimes,
-          confidence: "high",
-        };
       }
     } catch (err) {
-      console.error(`[youtube-analysis] Failed for ${item.youtube_video_id}:`, err);
+      notes = `exception: ${err instanceof Error ? err.message : String(err)}`;
+      console.error(`[youtube-analysis] ${vid}:`, err);
+    }
+
+    // Write to debug log
+    try {
+      await serviceClient.from("ai_tagging_debug_log").insert({
+        lecture_id: item.id,
+        youtube_video_id: vid,
+        outline: { method, transcript_entries: transcriptCount },
+        matches: { matches },
+        outline_count: transcriptCount,
+        matches_count: matches.length,
+        notes,
+      });
+    } catch (logErr) {
+      console.warn("[debug-log] Failed:", logErr);
+    }
+
+    console.log(`[youtube-analysis] ${vid}: method=${method} matches=${matches.length}`);
+
+    if (matches.length > 0) {
+      const startTimes: Record<string, number> = {};
+      for (const m of matches) {
+        startTimes[m.section_id] = m.start_time_seconds;
+      }
+      assignments[item.id] = {
+        section_ids: matches.map((m) => m.section_id),
+        start_times: startTimes,
+        confidence: "high",
+      };
     }
   }
 
@@ -372,56 +637,44 @@ serve(async (req) => {
       );
     }
 
-    const allAssignments: Record<string, { section_id: string; confidence: string } | null> = {};
+    const allAssignments: Record<string, { section_ids?: string[]; section_id?: string; start_times?: Record<string, number>; confidence: string } | null> = {};
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 1 — YouTube Video Analysis
-    // For each lecture with a youtube_video_id, Gemini watches the actual video
-    // and returns which section it belongs to. This replicates the manual workflow
-    // of going to YouTube and asking Gemini to summarize + match sections.
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Phase 1: YouTube video analysis (transcript → fallback to video) ──
     const ytItems = cappedItems.filter(
       (item: any) => item.table === "lectures" && item.youtube_video_id
     ) as Array<{ id: string; youtube_video_id: string; content: string }>;
 
     if (ytItems.length > 0) {
-      console.log(`[phase-1] Analyzing ${ytItems.length} YouTube lectures via Gemini video understanding`);
-
-      // YouTube video analysis requires Gemini (not the Lovable gateway)
       const googleApiKey = keyResult.apiKey || Deno.env.get("GOOGLE_API_KEY");
+      const groqApiKey = Deno.env.get("GROQ_API_KEY");
 
       if (!googleApiKey) {
-        console.warn("[phase-1] No Google API key available; skipping YouTube video analysis");
+        console.warn("[phase-1] No Google API key; skipping YouTube analysis");
       } else {
         const ytAssignments = await analyzeYouTubeVideos(
           ytItems,
           sections,
           googleApiKey,
-          fastProvider.model,
+          groqApiKey,
+          serviceClient,
         );
 
         for (const [itemId, assignment] of Object.entries(ytAssignments)) {
           allAssignments[itemId] = assignment;
         }
 
-        console.log(`[phase-1] Assigned ${Object.keys(ytAssignments).length} / ${ytItems.length} YouTube lectures`);
+        console.log(`[phase-1] Assigned ${Object.keys(ytAssignments).length} / ${ytItems.length} lectures`);
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // PHASE 2 — Text-Based Batch Matching (existing logic, unchanged)
-    // Handles MCQs, resources, study resources, essays, practicals, OSCEs,
-    // matching questions, T/F questions, virtual patients, mind maps,
-    // AND any lectures that didn't have a YouTube ID (text-based fallback).
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Phase 2: Text-based batch matching for non-video content ──
     const textItems = cappedItems.filter(
-      (item: any) => !allAssignments[item.id] // skip anything already assigned in Phase 1
+      (item: any) => !allAssignments[item.id] && !(item.table === "lectures" && item.youtube_video_id)
     );
 
     if (textItems.length > 0) {
       console.log(`[phase-2] Text-based matching for ${textItems.length} items`);
 
-      // Build section list with ILOs if available
       const sectionList = sections
         .map((s: any) => {
           let line = `- ID: "${s.id}" | Name: "${s.name}"`;
@@ -556,7 +809,7 @@ RESPONSE FORMAT:
             const v = value as { section_ids?: string[]; section_id?: string; confidence?: string };
             const ids = v.section_ids || (v.section_id ? [v.section_id] : []);
             const validIds = ids.filter((id) => sectionIds.has(id));
-            
+
             if (validIds.length > 0) {
               allAssignments[itemId] = {
                 section_ids: validIds,
