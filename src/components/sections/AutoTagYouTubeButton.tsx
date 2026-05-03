@@ -124,7 +124,7 @@ export function AutoTagYouTubeButton({ chapterId, lectures: propsLectures }: Aut
       if (assignedCount > 0) {
         toast.success(`Successfully tagged ${assignedCount} video${assignedCount > 1 ? 's' : ''}.`);
       } else {
-        toast.warning('Gemini was unable to match these videos to any sections.');
+        toast.warning('AI could not get transcripts or match these videos to sections.');
       }
 
     } catch (err: any) {

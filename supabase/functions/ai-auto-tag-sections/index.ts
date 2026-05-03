@@ -129,29 +129,81 @@ function formatTimestamp(totalSeconds: number): string {
 }
 
 async function fetchYouTubePlayerData(videoId: string): Promise<{ data: any | null; error?: string }> {
-  try {
+  const clients = [
+    {
+      name: "ANDROID",
+      version: "17.31.35",
+      headers: {
+        "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
+        "X-YouTube-Client-Name": "3",
+        "X-YouTube-Client-Version": "17.31.35",
+      },
+      client: {
+        clientName: "ANDROID",
+        clientVersion: "17.31.35",
+        androidSdkVersion: 30,
+        hl: "en",
+        gl: "US",
+        utcOffsetMinutes: 0,
+      },
+    },
+    {
+      name: "IOS",
+      version: "19.09.3",
+      headers: {
+        "User-Agent": "com.google.ios.youtube/19.09.3 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+        "X-YouTube-Client-Name": "5",
+        "X-YouTube-Client-Version": "19.09.3",
+      },
+      client: {
+        clientName: "IOS",
+        clientVersion: "19.09.3",
+        deviceMake: "Apple",
+        deviceModel: "iPhone16,2",
+        osName: "iPhone",
+        osVersion: "17.5.1.21F90",
+        hl: "en",
+        gl: "US",
+        utcOffsetMinutes: 0,
+      },
+    },
+    {
+      name: "WEB",
+      version: "2.20260501.01.00",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "X-YouTube-Client-Name": "1",
+        "X-YouTube-Client-Version": "2.20260501.01.00",
+      },
+      client: {
+        clientName: "WEB",
+        clientVersion: "2.20260501.01.00",
+        hl: "en",
+        gl: "US",
+        utcOffsetMinutes: 0,
+      },
+    },
+  ];
+
+  let lastError = "";
+
+  for (const clientConfig of clients) {
+    try {
     const playerResp = await fetch(
       "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
-          "X-YouTube-Client-Name": "3",
-          "X-YouTube-Client-Version": "17.31.35",
+          ...clientConfig.headers,
           "Accept-Language": "en-US,en;q=0.9",
         },
         body: JSON.stringify({
           context: {
-            client: {
-              clientName: "ANDROID",
-              clientVersion: "17.31.35",
-              androidSdkVersion: 30,
-              hl: "en",
-              gl: "US",
-              utcOffsetMinutes: 0,
-            },
+            client: clientConfig.client,
           },
+          contentCheckOk: true,
+          racyCheckOk: true,
           videoId,
         }),
       },
@@ -159,13 +211,20 @@ async function fetchYouTubePlayerData(videoId: string): Promise<{ data: any | nu
 
     if (!playerResp.ok) {
       const errText = await playerResp.text();
-      return { data: null, error: `InnerTube ${playerResp.status}: ${errText.slice(0, 200)}` };
+        lastError = `${clientConfig.name} InnerTube ${playerResp.status}: ${errText.slice(0, 200)}`;
+        console.warn(`[youtube-player] ${lastError}`);
+        continue;
     }
 
-    return { data: await playerResp.json() };
-  } catch (e) {
-    return { data: null, error: `InnerTube error: ${e}` };
+      const data = await playerResp.json();
+      return { data };
+    } catch (e) {
+      lastError = `${clientConfig.name} InnerTube error: ${e}`;
+      console.warn(`[youtube-player] ${lastError}`);
+    }
   }
+
+  return { data: null, error: lastError || "All InnerTube clients failed" };
 }
 
 /**
@@ -177,49 +236,12 @@ async function fetchYouTubeTranscript(
   videoId: string,
 ): Promise<{ entries: TranscriptEntry[]; error?: string }> {
   // Use the Android InnerTube client — more reliable from server environments
-  let tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> | null = null;
-
-  try {
-    const playerResp = await fetch(
-      "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
-          "X-YouTube-Client-Name": "3",
-          "X-YouTube-Client-Version": "17.31.35",
-          "Accept-Language": "en-US,en;q=0.9",
-        },
-        body: JSON.stringify({
-          context: {
-            client: {
-              clientName: "ANDROID",
-              clientVersion: "17.31.35",
-              androidSdkVersion: 30,
-              hl: "en",
-              gl: "US",
-              utcOffsetMinutes: 0,
-            },
-          },
-          videoId,
-        }),
-      },
-    );
-
-    if (playerResp.ok) {
-      const playerData = await playerResp.json();
-      tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? null;
-    } else {
-      const errText = await playerResp.text();
-      console.warn(`[transcript] InnerTube ${playerResp.status}:`, errText.slice(0, 200));
-    }
-  } catch (e) {
-    console.warn(`[transcript] InnerTube error:`, e);
-  }
+  const { data: playerData, error: playerError } = await fetchYouTubePlayerData(videoId);
+  const tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> | null =
+    playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? null;
 
   if (!tracks || tracks.length === 0) {
-    return { entries: [], error: "No caption tracks found via InnerTube API" };
+    return { entries: [], error: playerError || "No caption tracks found via InnerTube API" };
   }
 
   // Prefer Arabic ASR > Arabic manual > English ASR > English manual > first available
