@@ -1009,6 +1009,8 @@ export default function ChapterPage() {
                         canEdit={canManageContent}
                         canDelete={canManageContent}
                         showFeedback={true}
+                        selectedSectionId={selectedSectionId}
+                        lectureSectionsMap={lectureSectionsMap}
                         onActiveItemChange={setActiveItem}
                       />
                     )}

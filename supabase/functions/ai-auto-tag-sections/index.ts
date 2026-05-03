@@ -50,8 +50,8 @@ async function analyzeYouTubeVideos(
   sections: Array<{ id: string; name: string; ilo?: string }>,
   googleApiKey: string,
   geminiModel: string,
-): Promise<Record<string, { section_id: string; confidence: string }>> {
-  const assignments: Record<string, { section_id: string; confidence: string }> = {};
+): Promise<Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }>> {
+  const assignments: Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }> = {};
 
   // Build section list for the prompt
   const sectionList = sections
@@ -88,7 +88,7 @@ async function analyzeYouTubeVideos(
     console.log(`[youtube-analysis] Processing: "${item.title}" (${item.youtube_video_id})`);
 
     const prompt = `You are a medical curriculum expert.
-Watch this YouTube video and determine which existing sections from the list below are covered IN DETAIL.
+Watch this YouTube video and determine which existing sections from the list below are covered IN DETAIL, and at what timestamp (in seconds) the doctor starts discussing each section.
 
 SECTIONS:
 ${sectionList}
@@ -98,11 +98,12 @@ RULES:
 2. DETAILED COVERAGE ONLY: Only include a section if it is a primary topic of discussion. If the video spends significant time explaining or demonstrating the section's topic, include it.
 3. EXCLUDE BRIEF MENTIONS: If a section's topic is only mentioned in passing, as a side-note, or as a quick comparison, DO NOT include it.
 4. If a video is actually a comprehensive review covering multiple sections (e.g., 5-6 topics) with significant detail for each, you SHOULD include all of them.
-5. Provide a confidence level: "high", "medium", or "low".
-6. Return raw JSON only.
+5. For each section, provide the start_time_seconds: the exact second in the video where the doctor begins meaningfully discussing that section. Use 0 if it starts at the very beginning.
+6. Provide a confidence level: "high", "medium", or "low".
+7. Return raw JSON only.
 
 RESPONSE FORMAT:
-{"section_ids": ["uuid-1", "uuid-2"], "confidence": "high"}`;
+{"sections": [{"section_id": "uuid-1", "start_time_seconds": 0}, {"section_id": "uuid-2", "start_time_seconds": 312}], "confidence": "high"}`;
 
     try {
       const response = await fetch(
@@ -161,7 +162,7 @@ RESPONSE FORMAT:
         cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
       }
 
-      let parsed: { section_ids?: string[]; section_id?: string; confidence?: string } | null = null;
+      let parsed: { sections?: Array<{ section_id: string; start_time_seconds?: number }>; section_ids?: string[]; section_id?: string; confidence?: string } | null = null;
       try {
         parsed = JSON.parse(cleaned);
       } catch {
@@ -173,16 +174,31 @@ RESPONSE FORMAT:
         }
       }
 
-      const validIds = (parsed?.section_ids || (parsed?.section_id ? [parsed.section_id] : []))
-        .filter(sid => sections.some(s => s.id === sid));
+      // Support both new format (sections array) and old format (section_ids array)
+      let sectionEntries: Array<{ section_id: string; start_time_seconds?: number }> = [];
+      if (parsed?.sections && Array.isArray(parsed.sections)) {
+        sectionEntries = parsed.sections;
+      } else {
+        const ids = parsed?.section_ids || (parsed?.section_id ? [parsed.section_id] : []);
+        sectionEntries = ids.map((id: string) => ({ section_id: id }));
+      }
 
-      if (validIds.length > 0) {
+      const validEntries = sectionEntries.filter(e => sections.some(s => s.id === e.section_id));
+
+      if (validEntries.length > 0) {
+        const startTimes: Record<string, number> = {};
+        for (const e of validEntries) {
+          if (typeof e.start_time_seconds === "number") {
+            startTimes[e.section_id] = e.start_time_seconds;
+          }
+        }
         assignments[item.id] = {
-          section_ids: validIds,
+          section_ids: validEntries.map(e => e.section_id),
+          start_times: startTimes,
           confidence: parsed?.confidence ?? "medium",
-        } as any;
+        };
         console.log(
-          `[youtube-analysis] Assigned video ${item.youtube_video_id} → ${validIds.length} sections`
+          `[youtube-analysis] Assigned video ${item.youtube_video_id} → ${validEntries.length} sections with timestamps`
         );
       }
     } catch (err) {
