@@ -540,80 +540,74 @@ async function fetchYouTubePlayerData(videoId: string): Promise<{ data: any | nu
 }
 
 /**
- * Fetch auto-generated captions via YouTube's InnerTube API (Android client).
- * This bypasses GDPR consent pages and bot detection that breaks regular page scraping.
- * YouTube generates ASR captions for virtually all videos including Arabic ones.
+ * Fetch timestamped transcript segments from TranscriptAPI.
  */
-async function fetchYouTubeTranscript(
+async function fetchTranscriptApiTranscript(
   videoId: string,
+  apiKey: string,
 ): Promise<{ entries: TranscriptEntry[]; error?: string }> {
-  // Use the Android InnerTube client — more reliable from server environments
-  const { data: playerData, error: playerError } = await fetchYouTubePlayerData(videoId);
-  const tracks: Array<{ baseUrl: string; languageCode?: string; kind?: string }> | null =
-    playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? null;
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const url = new URL("https://transcriptapi.com/api/v2/youtube/transcript");
+  url.searchParams.set("video_url", videoUrl);
 
-  if (!tracks || tracks.length === 0) {
-    const watchPage = await fetchWatchPageTranscript(videoId);
-    if (watchPage.entries.length > 0) {
-      console.log(`[watch-page] ${videoId}: ${watchPage.entries.length} entries`);
-      return watchPage;
-    }
-
-    const timedText = await fetchTimedTextTranscript(videoId);
-    if (timedText.entries.length > 0) {
-      console.log(`[timedtext] ${videoId}: ${timedText.entries.length} entries`);
-      return timedText;
-    }
-    return {
-      entries: [],
-      error: `${playerError || "No caption tracks found via InnerTube API"} | ${watchPage.error} | ${timedText.error}`,
-    };
-  }
-
-  const chosen = chooseCaptionTrack(tracks)!;
-
-  console.log(
-    `[transcript] Track: lang=${chosen.languageCode} kind=${chosen.kind || "manual"} (${tracks.length} total)`,
-  );
-
-  // Download the transcript in json3 format
-  let transcriptData: { events?: Array<{ tStartMs?: number; segs?: Array<{ utf8?: string }> }> };
   try {
-    const transcriptUrl = chosen.baseUrl.includes("fmt=")
-      ? chosen.baseUrl
-      : `${chosen.baseUrl}&fmt=json3`;
-    const tResp = await fetch(transcriptUrl, {
+    const response = await fetch(url.toString(), {
       headers: {
-        "User-Agent": "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
       },
     });
-    if (!tResp.ok) {
-      return { entries: [], error: `Transcript download failed: ${tResp.status}` };
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return {
+        entries: [],
+        error: `TranscriptAPI ${response.status}: ${errText.slice(0, 300)}`,
+      };
     }
-    transcriptData = await tResp.json();
+
+    const data = await response.json();
+    const rawTranscript = Array.isArray(data?.transcript)
+      ? data.transcript
+      : Array.isArray(data?.content?.transcript)
+        ? data.content.transcript
+        : [];
+
+    const entries: TranscriptEntry[] = rawTranscript
+      .map((segment: any) => {
+        const text = String(segment?.text ?? segment?.content ?? "").replace(/\s+/g, " ").trim();
+        const start =
+          typeof segment?.start === "number"
+            ? segment.start
+            : typeof segment?.start_time === "number"
+              ? segment.start_time
+              : typeof segment?.startMs === "number"
+                ? segment.startMs / 1000
+                : typeof segment?.start_ms === "number"
+                  ? segment.start_ms / 1000
+                  : 0;
+
+        return text ? { timestamp: formatTimestamp(start), text } : null;
+      })
+      .filter((entry: TranscriptEntry | null): entry is TranscriptEntry => Boolean(entry));
+
+    return entries.length > 0
+      ? { entries }
+      : { entries: [], error: "TranscriptAPI returned no transcript segments" };
   } catch (e) {
-    return { entries: [], error: `Transcript download error: ${e}` };
+    return { entries: [], error: `TranscriptAPI request error: ${e}` };
+  }
+}
+
+async function fetchYouTubeTranscript(
+  videoId: string,
+  transcriptApiKey?: string | null,
+): Promise<{ entries: TranscriptEntry[]; error?: string }> {
+  if (transcriptApiKey) {
+    return fetchTranscriptApiTranscript(videoId, transcriptApiKey);
   }
 
-  if (!transcriptData.events || transcriptData.events.length === 0) {
-    return { entries: [], error: "Transcript has no events" };
-  }
-
-  const entries: TranscriptEntry[] = [];
-  for (const event of transcriptData.events) {
-    if (!event.segs || event.tStartMs == null) continue;
-    const text = event.segs
-      .map((s) => (s.utf8 || "").replace(/\n/g, " "))
-      .join("")
-      .trim();
-    if (!text || text === " ") continue;
-    const startSec = Math.floor(event.tStartMs / 1000);
-    const mm = Math.floor(startSec / 60).toString().padStart(2, "0");
-    const ss = (startSec % 60).toString().padStart(2, "0");
-    entries.push({ timestamp: `${mm}:${ss}`, text });
-  }
-
-  return { entries };
+  return { entries: [], error: "TRANSCRIPTAPI_API_KEY is not configured" };
 }
 
 /**
@@ -740,13 +734,14 @@ async function analyzeYouTubeVideos(
   ytItems: Array<{ id: string; youtube_video_id: string; content: string }>,
   sections: Array<{ id: string; name: string; ilo?: string }>,
   googleApiKey: string,
+  transcriptApiKey: string | null,
   serviceClient: any,
 ): Promise<Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }>> {
   const assignments: Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }> = {};
 
   const textModel = "gemini-2.5-flash";
 
-  console.log(`[youtube-analysis] ${ytItems.length} videos | text model: ${textModel}`);
+  console.log(`[youtube-analysis] ${ytItems.length} videos | transcript source: TranscriptAPI | text model: ${textModel}`);
 
   for (const item of ytItems) {
     const vid = item.youtube_video_id;
@@ -759,17 +754,18 @@ async function analyzeYouTubeVideos(
 
     try {
       // ── Step 1: Try transcript (fast, no frame limits) ──
-      const { entries, error: transcriptError } = await fetchYouTubeTranscript(vid);
+      const { entries, error: transcriptError } = await fetchYouTubeTranscript(vid, transcriptApiKey);
       transcriptCount = entries.length;
 
       if (entries.length > 0) {
         console.log(`[transcript] ${vid}: ${entries.length} entries`);
-        method = "transcript";
+        method = "transcriptapi";
         matches = await matchTranscriptToSections(entries, sections, textModel, googleApiKey);
         notes = `transcript:${entries.length} matches:${matches.length}`;
       } else {
-        method = "no-transcript";
-        notes = `transcript-failed:${transcriptError}`;
+        console.warn(`[transcript] ${vid}: TranscriptAPI returned no usable transcript (${transcriptError})`);
+        method = "transcriptapi-empty";
+        notes = `transcriptapi-failed:${transcriptError}`;
       }
     } catch (err) {
       notes = `exception: ${err instanceof Error ? err.message : String(err)}`;
@@ -908,10 +904,16 @@ serve(async (req) => {
       if (!googleApiKey) {
         console.warn("[phase-1] No Google API key; skipping YouTube analysis");
       } else {
+        const transcriptApiKey =
+          Deno.env.get("TRANSCRIPTAPI_API_KEY") || Deno.env.get("TRANSCRIPT_API_KEY") || null;
+        if (!transcriptApiKey) {
+          console.warn("[phase-1] TRANSCRIPTAPI_API_KEY not configured; YouTube transcript tagging will return no transcript");
+        }
         const ytAssignments = await analyzeYouTubeVideos(
           ytItems,
           sections,
           googleApiKey,
+          transcriptApiKey,
           serviceClient,
         );
 
