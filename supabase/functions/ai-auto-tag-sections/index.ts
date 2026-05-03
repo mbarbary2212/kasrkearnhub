@@ -87,23 +87,23 @@ async function analyzeYouTubeVideos(
     const youtubeUrl = `https://www.youtube.com/watch?v=${item.youtube_video_id}`;
     console.log(`[youtube-analysis] Processing: "${item.title}" (${item.youtube_video_id})`);
 
-    const prompt = `You are a medical curriculum expert.
-Watch this YouTube video and determine which existing sections from the list below are covered IN DETAIL, and at what timestamp (in seconds) the doctor starts discussing each section.
+    const prompt = `You are a medical curriculum expert analyzing a medical lecture video.
+Watch this YouTube video and identify which sections from the list below the doctor covers IN DEPTH, and at what timestamp the focused discussion of each section begins.
 
 SECTIONS:
 ${sectionList}
 
-RULES:
-1. Watch the video carefully. Focus on clinical and educational depth.
-2. DETAILED COVERAGE ONLY: Only include a section if it is a primary topic of discussion. If the video spends significant time explaining or demonstrating the section's topic, include it.
-3. EXCLUDE BRIEF MENTIONS: If a section's topic is only mentioned in passing, as a side-note, or as a quick comparison, DO NOT include it.
-4. If a video is actually a comprehensive review covering multiple sections (e.g., 5-6 topics) with significant detail for each, you SHOULD include all of them.
-5. For each section, provide the start_time_seconds: the exact second in the video where the doctor begins meaningfully discussing that section. Use 0 if it starts at the very beginning.
-6. Provide a confidence level: "high", "medium", or "low".
-7. Return raw JSON only.
+STRICT RULES:
+1. A section qualifies ONLY if the doctor spends significant focused time (at least 2-3 minutes) directly teaching that topic.
+2. Do NOT include a section if it is only mentioned briefly, used as a comparison, or part of a differential diagnosis list.
+3. Do NOT tag a video with more than 3 sections unless the video is explicitly structured as a multi-chapter lecture with clearly distinct segments for each topic.
+4. For start_time: provide the MM:SS timestamp where the doctor FIRST begins substantively teaching that section's content — not the intro, not a slide title flash. If the section starts in the very first minute of actual teaching, use "00:00".
+5. Confidence: "high" = unmistakably the main topic, "medium" = clearly covered but not the sole focus, "low" = uncertain.
+6. If the video does not clearly cover any section in depth, return {"sections": [], "confidence": "high"}.
+7. Return raw JSON only — no markdown.
 
 RESPONSE FORMAT:
-{"sections": [{"section_id": "uuid-1", "start_time_seconds": 0}, {"section_id": "uuid-2", "start_time_seconds": 312}], "confidence": "high"}`;
+{"sections": [{"section_id": "uuid-1", "start_time": "00:00"}, {"section_id": "uuid-2", "start_time": "18:45"}], "confidence": "high"}`;
 
     try {
       const response = await fetch(
@@ -162,7 +162,7 @@ RESPONSE FORMAT:
         cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
       }
 
-      let parsed: { sections?: Array<{ section_id: string; start_time_seconds?: number }>; section_ids?: string[]; section_id?: string; confidence?: string } | null = null;
+      let parsed: { sections?: Array<{ section_id: string; start_time?: string; start_time_seconds?: number }>; section_ids?: string[]; section_id?: string; confidence?: string } | null = null;
       try {
         parsed = JSON.parse(cleaned);
       } catch {
@@ -174,10 +174,25 @@ RESPONSE FORMAT:
         }
       }
 
-      // Support both new format (sections array) and old format (section_ids array)
+      // Convert MM:SS or HH:MM:SS string to total seconds
+      function parseTimestamp(ts: string | undefined): number | null {
+        if (!ts) return null;
+        const parts = ts.trim().split(":").map(Number);
+        if (parts.some(isNaN)) return null;
+        if (parts.length === 2) return parts[0] * 60 + parts[1];
+        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+        return null;
+      }
+
+      // Support both new format (sections array with start_time) and old format (section_ids array)
       let sectionEntries: Array<{ section_id: string; start_time_seconds?: number }> = [];
       if (parsed?.sections && Array.isArray(parsed.sections)) {
-        sectionEntries = parsed.sections;
+        sectionEntries = parsed.sections.map(e => ({
+          section_id: e.section_id,
+          start_time_seconds: e.start_time
+            ? (parseTimestamp(e.start_time) ?? e.start_time_seconds)
+            : e.start_time_seconds,
+        }));
       } else {
         const ids = parsed?.section_ids || (parsed?.section_id ? [parsed.section_id] : []);
         sectionEntries = ids.map((id: string) => ({ section_id: id }));
