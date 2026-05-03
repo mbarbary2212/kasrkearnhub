@@ -45,15 +45,130 @@ function repairAndExtractAssignments(raw: string): Record<string, any> | null {
  * Uses Gemini's `fileData` part type with mimeType "video/*" and a YouTube URL.
  * Requires Gemini 1.5 Flash/Pro or Gemini 2.0+.
  */
-async function analyzeYouTubeVideos(
-  ytItems: Array<{ id: string; youtube_video_id: string; content: string }>,
-  sections: Array<{ id: string; name: string; ilo?: string }>,
-  googleApiKey: string,
-  geminiModel: string,
-): Promise<Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }>> {
-  const assignments: Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }> = {};
+// Convert MM:SS or HH:MM:SS string to total seconds
+function parseTimestamp(ts: string | undefined | null): number | null {
+  if (!ts) return null;
+  const parts = ts.trim().split(":").map(Number);
+  if (parts.some(isNaN)) return null;
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return null;
+}
 
-  // Build section list for the prompt
+function cleanJson(raw: string): string {
+  let s = raw.trim();
+  if (s.startsWith("```")) {
+    s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+  }
+  return s;
+}
+
+async function geminiVideoCall(
+  videoUrl: string,
+  prompt: string,
+  model: string,
+  apiKey: string,
+  maxTokens = 1024,
+): Promise<string | null> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [
+            { fileData: { mimeType: "video/*", fileUri: videoUrl } },
+            { text: prompt },
+          ],
+        }],
+        generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
+      }),
+    }
+  );
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`[gemini-video] ${response.status}:`, err);
+    return null;
+  }
+  const result = await response.json();
+  return result.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+}
+
+async function geminiTextCall(
+  prompt: string,
+  model: string,
+  apiKey: string,
+  maxTokens = 1024,
+): Promise<string | null> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
+      }),
+    }
+  );
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`[gemini-text] ${response.status}:`, err);
+    return null;
+  }
+  const result = await response.json();
+  return result.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+}
+
+/**
+ * PASS 1 — Ask Gemini to watch the video and produce a timestamped outline.
+ * No section list is given here — pure video comprehension with no anchoring bias.
+ */
+async function extractVideoOutline(
+  videoUrl: string,
+  model: string,
+  apiKey: string,
+): Promise<Array<{ timestamp: string; topic: string }>> {
+  const prompt = `You are a medical education assistant. Watch this medical lecture video and produce a chronological outline of every distinct clinical topic the doctor teaches.
+
+For each topic segment provide:
+- timestamp: when it starts in MM:SS format
+- topic: a concise 1-2 sentence description of exactly what the doctor is teaching in that segment
+
+Rules:
+- Skip intro/outro, administrative talk, and slide housekeeping
+- Each entry should represent a meaningful shift in clinical topic (a new disease, a new concept, a new management step)
+- Be precise with timestamps — scrub through the video to confirm
+
+Return raw JSON only:
+{"outline": [{"timestamp": "01:20", "topic": "Definition and epidemiology of acute cystitis"}, {"timestamp": "08:45", "topic": "Causative organisms and pathophysiology"}, ...]}`;
+
+  const raw = await geminiVideoCall(videoUrl, prompt, model, apiKey, 2048);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(cleanJson(raw));
+    if (Array.isArray(parsed?.outline)) return parsed.outline;
+  } catch {
+    console.error("[pass1] Failed to parse outline:", raw);
+  }
+  return [];
+}
+
+/**
+ * PASS 2 — Pure text: match the outline entries to the section list.
+ * Returns which sections are covered and at what timestamp each starts.
+ */
+async function matchOutlineToSections(
+  outline: Array<{ timestamp: string; topic: string }>,
+  sections: Array<{ id: string; name: string; ilo?: string }>,
+  model: string,
+  apiKey: string,
+): Promise<Array<{ section_id: string; start_time_seconds: number }>> {
+  if (!outline.length) return [];
+
   const sectionList = sections
     .map((s) => {
       let line = `- ID: "${s.id}" | Name: "${s.name}"`;
@@ -61,6 +176,55 @@ async function analyzeYouTubeVideos(
       return line;
     })
     .join("\n");
+
+  const outlineText = outline
+    .map((e) => `- ${e.timestamp}: ${e.topic}`)
+    .join("\n");
+
+  const prompt = `You are a medical curriculum organizer. Match each video outline entry below to the most relevant section from the list, if one clearly fits.
+
+SECTIONS:
+${sectionList}
+
+VIDEO OUTLINE:
+${outlineText}
+
+RULES:
+1. Only match an outline entry to a section if the topic is a clear, direct match to that section's clinical content — not a loose association.
+2. If multiple consecutive outline entries cover the same section, use the timestamp of the FIRST one.
+3. Each section should appear at most once in the output.
+4. If an outline entry does not clearly map to any section, skip it.
+5. Return raw JSON only — no markdown.
+
+RESPONSE FORMAT:
+{"matches": [{"section_id": "uuid-1", "start_time": "01:20"}, {"section_id": "uuid-2", "start_time": "18:45"}]}`;
+
+  const raw = await geminiTextCall(prompt, model, apiKey, 1024);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(cleanJson(raw));
+    if (!Array.isArray(parsed?.matches)) return [];
+
+    return parsed.matches
+      .map((m: { section_id: string; start_time: string }) => ({
+        section_id: m.section_id,
+        start_time_seconds: parseTimestamp(m.start_time) ?? 0,
+      }))
+      .filter((m: { section_id: string }) => sections.some((s) => s.id === m.section_id));
+  } catch {
+    console.error("[pass2] Failed to parse matches:", raw);
+    return [];
+  }
+}
+
+async function analyzeYouTubeVideos(
+  ytItems: Array<{ id: string; youtube_video_id: string; content: string }>,
+  sections: Array<{ id: string; name: string; ilo?: string }>,
+  googleApiKey: string,
+  geminiModel: string,
+): Promise<Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }>> {
+  const assignments: Record<string, { section_ids: string[]; start_times: Record<string, number>; confidence: string }> = {};
 
   // Use a model that supports video. Pin to gemini-1.5-flash if current model is too old.
   const videoCapableModels = [
@@ -75,152 +239,46 @@ async function analyzeYouTubeVideos(
     "gemini-3-flash-preview",
   ];
 
-  // Check if model name contains any video-capable identifier; fallback to 1.5-flash
   const isVideoCapable = videoCapableModels.some((m) =>
     geminiModel.includes(m) || m.includes(geminiModel.replace(/:.*$/, "").trim())
   );
-  const model = isVideoCapable ? geminiModel : "gemini-1.5-flash";
+  const videoModel = isVideoCapable ? geminiModel : "gemini-1.5-flash";
+  // Pass 2 is text-only, use a fast model
+  const textModel = "gemini-2.0-flash";
 
-  console.log(`[youtube-analysis] Analyzing ${ytItems.length} videos with model: ${model}`);
+  console.log(`[youtube-analysis] Analyzing ${ytItems.length} videos | video model: ${videoModel} | text model: ${textModel}`);
 
   for (const item of ytItems) {
     const youtubeUrl = `https://www.youtube.com/watch?v=${item.youtube_video_id}`;
-    console.log(`[youtube-analysis] Processing: "${item.title}" (${item.youtube_video_id})`);
-
-    const prompt = `You are a medical curriculum expert analyzing a medical lecture video.
-Watch this YouTube video and identify which sections from the list below the doctor covers IN DEPTH, and at what timestamp the focused discussion of each section begins.
-
-SECTIONS:
-${sectionList}
-
-STRICT RULES:
-1. A section qualifies ONLY if the doctor spends significant focused time (at least 2-3 minutes) directly teaching that topic.
-2. Do NOT include a section if it is only mentioned briefly, used as a comparison, or part of a differential diagnosis list.
-3. Do NOT tag a video with more than 3 sections unless the video is explicitly structured as a multi-chapter lecture with clearly distinct segments for each topic.
-4. For start_time: provide the MM:SS timestamp where the doctor FIRST begins substantively teaching that section's content — not the intro, not a slide title flash. If the section starts in the very first minute of actual teaching, use "00:00".
-5. Confidence: "high" = unmistakably the main topic, "medium" = clearly covered but not the sole focus, "low" = uncertain.
-6. If the video does not clearly cover any section in depth, return {"sections": [], "confidence": "high"}.
-7. Return raw JSON only — no markdown.
-
-RESPONSE FORMAT:
-{"sections": [{"section_id": "uuid-1", "start_time": "00:00"}, {"section_id": "uuid-2", "start_time": "18:45"}], "confidence": "high"}`;
+    console.log(`[youtube-analysis] Processing: "${item.youtube_video_id}"`);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-goog-api-key": googleApiKey,
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  {
-                    fileData: {
-                      mimeType: "video/*",
-                      fileUri: youtubeUrl,
-                    },
-                  },
-                  { text: prompt },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0,
-              maxOutputTokens: 256,
-            },
-          }),
-        }
-      );
+      // ── Pass 1: extract timestamped outline from video ──
+      const outline = await extractVideoOutline(youtubeUrl, videoModel, googleApiKey);
+      console.log(`[pass1] Outline for ${item.youtube_video_id}: ${outline.length} entries`);
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(
-          `[youtube-analysis] Gemini error for video ${item.youtube_video_id} (${response.status}):`,
-          errText
-        );
+      if (!outline.length) {
+        console.warn(`[pass1] No outline extracted for ${item.youtube_video_id}, skipping`);
         continue;
       }
 
-      const aiResult = await response.json();
-      const raw = aiResult.candidates?.[0]?.content?.parts?.[0]?.text;
+      // ── Pass 2: match outline entries to sections (text only) ──
+      const matches = await matchOutlineToSections(outline, sections, textModel, googleApiKey);
+      console.log(`[pass2] Matched ${matches.length} sections for ${item.youtube_video_id}`);
 
-      if (!raw) {
-        console.error(`[youtube-analysis] Empty response for "${item.title}"`);
-        continue;
-      }
-
-      console.log(`[youtube-analysis] Raw AI response for "${item.title}":`, raw);
-
-      // Clean markdown fences if present
-      let cleaned = raw.trim();
-      if (cleaned.startsWith("```")) {
-        cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
-      }
-
-      let parsed: { sections?: Array<{ section_id: string; start_time?: string; start_time_seconds?: number }>; section_ids?: string[]; section_id?: string; confidence?: string } | null = null;
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch {
-        // Simple fallback
-        const m = cleaned.match(/"section_ids"\s*:\s*\[([^\]]+)\]/);
-        if (m) {
-          const ids = m[1].replace(/["\s]/g, "").split(",");
-          parsed = { section_ids: ids, confidence: "medium" };
-        }
-      }
-
-      // Convert MM:SS or HH:MM:SS string to total seconds
-      function parseTimestamp(ts: string | undefined): number | null {
-        if (!ts) return null;
-        const parts = ts.trim().split(":").map(Number);
-        if (parts.some(isNaN)) return null;
-        if (parts.length === 2) return parts[0] * 60 + parts[1];
-        if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-        return null;
-      }
-
-      // Support both new format (sections array with start_time) and old format (section_ids array)
-      let sectionEntries: Array<{ section_id: string; start_time_seconds?: number }> = [];
-      if (parsed?.sections && Array.isArray(parsed.sections)) {
-        sectionEntries = parsed.sections.map(e => ({
-          section_id: e.section_id,
-          start_time_seconds: e.start_time
-            ? (parseTimestamp(e.start_time) ?? e.start_time_seconds)
-            : e.start_time_seconds,
-        }));
-      } else {
-        const ids = parsed?.section_ids || (parsed?.section_id ? [parsed.section_id] : []);
-        sectionEntries = ids.map((id: string) => ({ section_id: id }));
-      }
-
-      const validEntries = sectionEntries.filter(e => sections.some(s => s.id === e.section_id));
-
-      if (validEntries.length > 0) {
+      if (matches.length > 0) {
         const startTimes: Record<string, number> = {};
-        for (const e of validEntries) {
-          if (typeof e.start_time_seconds === "number") {
-            startTimes[e.section_id] = e.start_time_seconds;
-          }
+        for (const m of matches) {
+          startTimes[m.section_id] = m.start_time_seconds;
         }
         assignments[item.id] = {
-          section_ids: validEntries.map(e => e.section_id),
+          section_ids: matches.map((m) => m.section_id),
           start_times: startTimes,
-          confidence: parsed?.confidence ?? "medium",
+          confidence: "high",
         };
-        console.log(
-          `[youtube-analysis] Assigned video ${item.youtube_video_id} → ${validEntries.length} sections with timestamps`
-        );
       }
     } catch (err) {
-      console.error(
-        `[youtube-analysis] Failed to analyze video ${item.youtube_video_id}:`,
-        err
-      );
+      console.error(`[youtube-analysis] Failed for ${item.youtube_video_id}:`, err);
     }
   }
 
