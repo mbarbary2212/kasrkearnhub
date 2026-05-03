@@ -146,8 +146,19 @@ export function YouTubePlayer({ videoId, title, startTime, onReady, onTimeUpdate
         events: {
           onReady: async (event: YTPlayerEvent) => {
             onReadyRef.current?.();
+            const sectionStart = startTimeRef.current ?? 0;
+
+            if (sectionStart > 0) {
+              event.target.seekTo(sectionStart, true);
+              onTimeUpdateRef.current?.(sectionStart);
+              return;
+            }
+
             const u = userRef.current;
-            if (!u) return;
+            if (!u) {
+              onTimeUpdateRef.current?.(0);
+              return;
+            }
 
             const { data } = await supabase
               .from('video_progress')
@@ -158,15 +169,11 @@ export function YouTubePlayer({ videoId, title, startTime, onReady, onTimeUpdate
 
             const savedTime = data ? Number(data.last_time_seconds) : 0;
             const pctWatched = data ? Number(data.percent_watched) : 0;
-            const sectionStart = startTimeRef.current ?? 0;
 
-            // Resume saved progress if partway through; otherwise jump to section start
+            // Resume saved progress only when no section-specific start was requested.
             if (savedTime > 10 && pctWatched < 95) {
               event.target.seekTo(savedTime, true);
               onTimeUpdateRef.current?.(savedTime);
-            } else if (sectionStart > 0) {
-              event.target.seekTo(sectionStart, true);
-              onTimeUpdateRef.current?.(sectionStart);
             } else {
               onTimeUpdateRef.current?.(0);
             }
