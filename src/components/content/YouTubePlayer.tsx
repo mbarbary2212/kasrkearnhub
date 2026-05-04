@@ -47,6 +47,7 @@ declare global {
 }
 
 let apiLoadPromise: Promise<void> | null = null;
+const SECTION_START_LEAD_SECONDS = 1.5;
 
 function loadYouTubeAPI(): Promise<void> {
   if (window.YT?.Player) return Promise.resolve();
@@ -149,8 +150,9 @@ export function YouTubePlayer({ videoId, title, startTime, onReady, onTimeUpdate
             const sectionStart = startTimeRef.current ?? 0;
 
             if (sectionStart > 0) {
-              event.target.seekTo(sectionStart, true);
-              onTimeUpdateRef.current?.(sectionStart);
+              const adjustedSectionStart = Math.max(0, sectionStart - SECTION_START_LEAD_SECONDS);
+              event.target.seekTo(adjustedSectionStart, true);
+              onTimeUpdateRef.current?.(adjustedSectionStart);
               return;
             }
 
