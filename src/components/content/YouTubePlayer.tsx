@@ -47,7 +47,7 @@ declare global {
 }
 
 let apiLoadPromise: Promise<void> | null = null;
-const SECTION_START_LEAD_SECONDS = 1.5;
+const SECTION_START_LEAD_SECONDS = 10.5;
 
 function loadYouTubeAPI(): Promise<void> {
   if (window.YT?.Player) return Promise.resolve();
