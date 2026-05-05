@@ -1,75 +1,56 @@
-# Fix: PGRST203 on `save_question_attempt` — drop duplicate, pass confidence explicitly
+## Problem
 
-## Verified problem (not assumed)
+In the Visual Resources tab, clicking **Bulk Upload** on **Infographics** opens the shared `MindMapBulkUploadModal`. On the first click it sometimes shows the Mind Map configuration (PDF-only file picker, "Upload N PDFs" button label) and only behaves correctly as an Infographics uploader on the second attempt.
 
-I queried `pg_proc` directly — confirmed **two functions** named `public.save_question_attempt` exist:
+### Root cause
 
-| pronargs | Signature |
-|---|---|
-| **8** | `(p_question_id uuid, p_question_type practice_question_type, p_chapter_id uuid, p_topic_id uuid, p_module_id uuid, p_selected_answer jsonb, p_is_correct boolean, p_score integer)` |
-| **9** | `(... same 8 ..., p_confidence_level smallint)` ← keep |
+`MindMapBulkUploadModal` is mounted permanently in `ChapterPage.tsx` and `TopicDetailPage.tsx`. Its `resourceType` prop is driven by a `visualBulkType` state that defaults to `'mind_map'`. The handler does:
 
-PostgREST cannot disambiguate when the 9-arg version's last param has a default → **PGRST203**. Practice attempts fail silently (caught by Sentry but the student sees nothing).
-
-I also read `src/hooks/useQuestionAttempts.ts` lines 270–279 — confirmed the call **does not pass `p_confidence_level` at all**.
-
-I also read `ConfidenceCard.tsx` — confidence is written to `question_attempts` in a **separate** UPDATE statement *after* the attempt row exists. So confidence is not needed at attempt-creation time, but we should still pass it explicitly (as `null` or as the cached value if the student already chose one) to lock the call to the 9-arg signature.
-
----
-
-## Changes
-
-### 1. Database migration — drop the 8-arg duplicate
-
-```sql
-DROP FUNCTION IF EXISTS public.save_question_attempt(
-  uuid,
-  practice_question_type,
-  uuid,
-  uuid,
-  uuid,
-  jsonb,
-  boolean,
-  integer
-);
+```
+setVisualBulkType('infographic');
+setMindMapBulkOpen(true);
 ```
 
-Only the 9-arg version (with `p_confidence_level smallint DEFAULT NULL`) remains. Existing call sites that omit confidence still work because the parameter has a default — but we will also update the call site for clarity.
+The dialog's `<input type="file" accept=...>` is already in the DOM with the old `accept` value when the user clicks **Choose Files**, and the upload-button label ("Upload N PDFs") is hard-coded. Result: first attempt looks like a PDF-only uploader; only after closing and reopening does it pick up the right config.
 
-### 2. `src/hooks/useQuestionAttempts.ts` — pass `p_confidence_level` explicitly
+A second smaller issue: the file-validation toast message says "Please select PDF files only" even when type is infographic in some flows, and the CTA always says "PDFs".
 
-- Add optional `confidenceLevel?: number | null` to `SaveQuestionAttemptParams` (line 60).
-- In the `mutationFn` body (line 270), add `p_confidence_level: confidenceLevel ?? null` to the RPC call.
-- Backwards compatible — existing callers don't need to pass anything; default is `null`.
+## Fix
 
-### 3. (Optional, low-risk) `ConfidenceCard.tsx` — no change required
+### 1. `src/components/study/MindMapBulkUploadModal.tsx`
+- Replace hard-coded "PDF" copy in the upload button with `config.label` (e.g. "Upload 3 Files").
+- Ensure validation/toast uses `config.label`.
+- Reset `items` state whenever the modal closes (so reopening with a different `resourceType` starts clean).
+- Add `key={resourceType}` to the internal drop zone block (or guard the `<input accept>` so it always reflects current `config.accept`).
 
-The current flow (separate UPDATE after the fact) keeps working. We are NOT refactoring it in this fix — out of scope and risks regressing the existing in-session confidence persistence.
+### 2. `src/pages/ChapterPage.tsx` and `src/pages/TopicDetailPage.tsx`
+Mount the modal conditionally so it gets a fresh instance with the correct `resourceType` every time:
 
----
+```tsx
+{mindMapBulkOpen && (
+  <MindMapBulkUploadModal
+    open
+    onOpenChange={setMindMapBulkOpen}
+    chapterId={chapterId}      // or topicId
+    moduleId={moduleId}
+    resourceType={visualBulkType}
+  />
+)}
+```
 
-## Files modified
+This guarantees the first click after switching from Mind Map to Infographic (or vice versa) opens with the right accepted file types and labels.
 
-| File | Change |
-|---|---|
-| `supabase/migrations/<new>.sql` | `DROP FUNCTION public.save_question_attempt(uuid, practice_question_type, uuid, uuid, uuid, jsonb, boolean, integer);` |
-| `src/hooks/useQuestionAttempts.ts` | Add `confidenceLevel` to params interface; pass `p_confidence_level: confidenceLevel ?? null` in the RPC call |
+### 3. (Minor polish) `src/components/study/InfographicForm.tsx`
+Single-add already accepts `image/*,.pdf`. No change needed, but I'll verify the label reads "Image or PDF" (it does).
 
-No edge function changes. No RLS changes. No type regeneration needed (RPC param signature on client side already uses untyped object).
+## Out of scope
 
----
+- No schema changes.
+- No change to the single-item Add Infographic flow beyond verification.
+- Mind Map bulk upload behavior unchanged for PDFs.
 
-## Acceptance criteria
+## Verification
 
-1. `SELECT proname, pronargs FROM pg_proc WHERE proname='save_question_attempt'` returns exactly **one** row with `pronargs = 9`.
-2. Submitting an MCQ from the practice UI no longer throws PGRST203; `question_attempts` row is created.
-3. The existing `ConfidenceCard` UPDATE flow still successfully sets `confidence_level` post-attempt.
-4. No other call sites of `save_question_attempt` break (none found besides line 270).
-
----
-
-## Why this is safe
-
-- The 8-arg version is functionally a strict subset of the 9-arg one — anything it could do, the 9-arg version does identically when `p_confidence_level` is `NULL`.
-- Postgres `DROP FUNCTION ... (signature)` is signature-specific — it cannot accidentally drop the 9-arg version.
-- No data is touched.
+- Open a chapter → Visual Resources → Mind Maps → Bulk Upload → only PDFs accepted, label "Upload N Mind Map PDFs".
+- Switch to Infographics tab → Bulk Upload (first click) → drop zone accepts images + PDF, label "Upload N Infographics".
+- Drop a PNG on first attempt → it's accepted and uploaded.
