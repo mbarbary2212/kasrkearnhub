@@ -1578,13 +1578,16 @@ export default function ChapterPage() {
               moduleId={moduleId}
               resourceType={(window as any).__pendingBulkResourceType || "flashcard"}
             />
-            <MindMapBulkUploadModal
-              open={mindMapBulkOpen}
-              onOpenChange={setMindMapBulkOpen}
-              chapterId={chapterId}
-              moduleId={moduleId}
-              resourceType={visualBulkType}
-            />
+            {mindMapBulkOpen && (
+              <MindMapBulkUploadModal
+                key={visualBulkType}
+                open
+                onOpenChange={setMindMapBulkOpen}
+                chapterId={chapterId}
+                moduleId={moduleId}
+                resourceType={visualBulkType}
+              />
+            )}
             {/* Algorithm Builder + Bulk Upload Modals */}
             {algorithmBuilderOpen && (
               <AlgorithmBuilderModal

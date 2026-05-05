@@ -112,7 +112,11 @@ export function MindMapBulkUploadModal({
     });
     
     if (validFiles.length === 0) {
-      toast.error(resourceType === 'infographic' ? 'Please select image or PDF files' : 'Please select PDF files only');
+      toast.error(
+        resourceType === 'infographic'
+          ? 'Please select image or PDF files'
+          : 'Please select PDF files only'
+      );
       return;
     }
 
@@ -127,7 +131,7 @@ export function MindMapBulkUploadModal({
     });
 
     setItems(prev => [...prev, ...newItems]);
-  }, [checkDuplicate]);
+  }, [checkDuplicate, resourceType]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -394,12 +398,14 @@ export function MindMapBulkUploadModal({
                 <Button variant="outline" onClick={handleClose} disabled={uploading}>
                   {uploading ? 'Uploading...' : 'Cancel'}
                 </Button>
-                <Button 
+                <Button
                   onClick={handleUploadAll}
                   disabled={uploading || pendingCount === 0}
                 >
                   <Upload className="w-4 h-4 mr-2" />
-                  Upload {pendingCount} PDF{pendingCount !== 1 ? 's' : ''}
+                  Upload {pendingCount} {resourceType === 'infographic'
+                    ? `file${pendingCount !== 1 ? 's' : ''}`
+                    : `PDF${pendingCount !== 1 ? 's' : ''}`}
                 </Button>
               </div>
             </div>
