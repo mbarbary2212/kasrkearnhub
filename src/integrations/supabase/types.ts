@@ -769,42 +769,6 @@ export type Database = {
         }
         Relationships: []
       }
-      ai_tagging_debug_log: {
-        Row: {
-          created_at: string | null
-          id: number
-          lecture_id: string | null
-          matches: Json | null
-          matches_count: number | null
-          notes: string | null
-          outline: Json | null
-          outline_count: number | null
-          youtube_video_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: number
-          lecture_id?: string | null
-          matches?: Json | null
-          matches_count?: number | null
-          notes?: string | null
-          outline?: Json | null
-          outline_count?: number | null
-          youtube_video_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: number
-          lecture_id?: string | null
-          matches?: Json | null
-          matches_count?: number | null
-          notes?: string | null
-          outline?: Json | null
-          outline_count?: number | null
-          youtube_video_id?: string | null
-        }
-        Relationships: []
-      }
       ai_usage_events: {
         Row: {
           content_type: string
