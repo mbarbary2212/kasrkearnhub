@@ -1,56 +1,30 @@
-## Problem
+# Remove Brevo Fallback — Resend Only
 
-In the Visual Resources tab, clicking **Bulk Upload** on **Infographics** opens the shared `MindMapBulkUploadModal`. On the first click it sometimes shows the Mind Map configuration (PDF-only file picker, "Upload N PDFs" button label) and only behaves correctly as an Infographics uploader on the second attempt.
+Now that `feedback.kalmhub.com` is verified in Resend, we remove the Brevo fallback code so email failures surface the real Resend error directly (instead of being masked by a fallback that also fails).
 
-### Root cause
+## What changes
 
-`MindMapBulkUploadModal` is mounted permanently in `ChapterPage.tsx` and `TopicDetailPage.tsx`. Its `resourceType` prop is driven by a `visualBulkType` state that defaults to `'mind_map'`. The handler does:
+### 1. `supabase/functions/send-admin-email/index.ts`
+- Delete `mapToBrevoPayload()` helper.
+- Replace `sendWithBrevoFallback()` with a simple `sendWithResend()` that POSTs to Resend and throws on non-OK with the Resend error text.
+- Update the call site to use the new helper. Response still returns `{ sent: true, provider: 'resend' }` on success.
 
-```
-setVisualBulkType('infographic');
-setMindMapBulkOpen(true);
-```
+### 2. `supabase/functions/check-elevenlabs-quota/index.ts`
+- Same treatment: drop `mapToBrevoPayload()`, replace `sendEmail()` Brevo fallback path with a direct Resend call that throws clear errors.
+- The per-admin `try/catch` in the email loop stays so one failure doesn't stop the others.
 
-The dialog's `<input type="file" accept=...>` is already in the DOM with the old `accept` value when the user clicks **Choose Files**, and the upload-button label ("Upload N PDFs") is hard-coded. Result: first attempt looks like a PDF-only uploader; only after closing and reopening does it pick up the right config.
+### 3. `provision-user` edge function
+- Apply the same cleanup if it contains a Brevo fallback. I'll read it first to confirm shape before editing.
 
-A second smaller issue: the file-validation toast message says "Please select PDF files only" even when type is infographic in some flows, and the CTA always says "PDFs".
+### 4. Secret cleanup (after deploy)
+- Once the three functions are deployed and a test invite succeeds, delete the `BREVO_API_KEY` secret via the secrets tool. Listed as a follow-up step, not part of the code patch — so you can confirm Resend is solid before removing it.
 
-## Fix
-
-### 1. `src/components/study/MindMapBulkUploadModal.tsx`
-- Replace hard-coded "PDF" copy in the upload button with `config.label` (e.g. "Upload 3 Files").
-- Ensure validation/toast uses `config.label`.
-- Reset `items` state whenever the modal closes (so reopening with a different `resourceType` starts clean).
-- Add `key={resourceType}` to the internal drop zone block (or guard the `<input accept>` so it always reflects current `config.accept`).
-
-### 2. `src/pages/ChapterPage.tsx` and `src/pages/TopicDetailPage.tsx`
-Mount the modal conditionally so it gets a fresh instance with the correct `resourceType` every time:
-
-```tsx
-{mindMapBulkOpen && (
-  <MindMapBulkUploadModal
-    open
-    onOpenChange={setMindMapBulkOpen}
-    chapterId={chapterId}      // or topicId
-    moduleId={moduleId}
-    resourceType={visualBulkType}
-  />
-)}
-```
-
-This guarantees the first click after switching from Mind Map to Infographic (or vice versa) opens with the right accepted file types and labels.
-
-### 3. (Minor polish) `src/components/study/InfographicForm.tsx`
-Single-add already accepts `image/*,.pdf`. No change needed, but I'll verify the label reads "Image or PDF" (it does).
-
-## Out of scope
-
-- No schema changes.
-- No change to the single-item Add Infographic flow beyond verification.
-- Mind Map bulk upload behavior unchanged for PDFs.
+## What stays the same
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, all email templates, all preference logic, all CORS, all notification routing.
+- No DB changes, no frontend changes.
 
 ## Verification
+- After deploy: trigger "Resend invitation" on the pending student from the admin UI. Expect the toast to show success and the email to arrive from `feedback.kalmhub.com`.
+- If it fails, the edge function logs will now show the actual Resend API error (e.g. domain mismatch, rate limit) instead of "Both Resend and Brevo failed".
 
-- Open a chapter → Visual Resources → Mind Maps → Bulk Upload → only PDFs accepted, label "Upload N Mind Map PDFs".
-- Switch to Infographics tab → Bulk Upload (first click) → drop zone accepts images + PDF, label "Upload N Infographics".
-- Drop a PNG on first attempt → it's accepted and uploaded.
+Approve and I'll apply the patch.
