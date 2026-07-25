@@ -7,13 +7,14 @@ export interface TTSVoice {
   elevenlabs_voice_id: string;
   gender: 'male' | 'female';
   label: string | null;
+  provider: 'elevenlabs';
   is_active: boolean;
   display_order: number;
   uploaded_by: string | null;
   created_at: string;
 }
 
-/** Fetch all active TTS voices */
+/** Fetch all active ElevenLabs TTS voices */
 export function useTTSVoices(gender?: 'male' | 'female') {
   return useQuery({
     queryKey: ['tts-voices', gender],
@@ -21,6 +22,7 @@ export function useTTSVoices(gender?: 'male' | 'female') {
       let query = supabase
         .from('tts_voices' as any)
         .select('*')
+        .eq('provider', 'elevenlabs')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
 
@@ -35,7 +37,7 @@ export function useTTSVoices(gender?: 'male' | 'female') {
   });
 }
 
-/** Admin: fetch ALL voices (active + inactive) */
+/** Admin: fetch ALL ElevenLabs voices (active + inactive) */
 export function useTTSVoicesAdmin() {
   return useQuery({
     queryKey: ['tts-voices-admin'],
@@ -43,6 +45,7 @@ export function useTTSVoicesAdmin() {
       const { data, error } = await supabase
         .from('tts_voices' as any)
         .select('*')
+        .eq('provider', 'elevenlabs')
         .order('display_order', { ascending: true });
       if (error) throw error;
       return data as unknown as TTSVoice[];

@@ -52,9 +52,37 @@ export function captureWithContext(
   for (const [k, v] of Object.entries(options.tags || {})) {
     if (v !== undefined && v !== null && v !== '') cleanTags[k] = v;
   }
-  Sentry.captureException(err, {
+
+  // Sentry warns when captureException is called with a plain object
+  // (e.g. a Supabase PostgrestError with { code, details, hint, message }).
+  // Wrap non-Error values in a real Error so we get a proper stack trace,
+  // and preserve the original fields under `extra.original_error`.
+  let normalizedErr: unknown = err;
+  let extra = options.extra;
+  if (!(err instanceof Error)) {
+    if (err && typeof err === 'object') {
+      const anyErr = err as Record<string, unknown>;
+      const message =
+        typeof anyErr.message === 'string' && anyErr.message
+          ? anyErr.message
+          : `Non-Error captured (keys: ${Object.keys(anyErr).join(', ') || 'none'})`;
+      const wrapped = new Error(message);
+      wrapped.name =
+        typeof anyErr.name === 'string' && anyErr.name
+          ? anyErr.name
+          : (typeof anyErr.code === 'string' && anyErr.code
+              ? `SupabaseError(${anyErr.code})`
+              : 'NonErrorObject');
+      normalizedErr = wrapped;
+      extra = { ...(options.extra || {}), original_error: anyErr };
+    } else {
+      normalizedErr = new Error(`Non-Error captured: ${String(err)}`);
+    }
+  }
+
+  Sentry.captureException(normalizedErr, {
     tags: cleanTags,
-    extra: options.extra,
+    extra,
   });
 }
 

@@ -184,16 +184,52 @@ export function useAutoTagSections() {
           if (response.error) {
             console.error('AI auto-tag error:', response.error);
           } else {
-            const assignments: Record<string, string | null> = response.data?.assignments || {};
+            const assignments: Record<
+              string,
+              | string
+              | {
+                  section_id?: string;
+                  section_ids?: string[];
+                  start_times?: Record<string, number>;
+                }
+              | null
+            > = response.data?.assignments || {};
 
             // Group assignments by table for batch updates
             const tableUpdates: Record<string, Record<string, string[]>> = {};
+            const lectureSectionLinks: Array<{
+              lecture_id: string;
+              section_id: string;
+              start_time_seconds: number | null;
+            }> = [];
+            const assignedLectureIds = new Set<string>();
+
             for (const item of allUnmatched) {
-              const sectionId = assignments[item.id];
-              if (sectionId) {
+              const assignment = assignments[item.id];
+              const sectionIds = typeof assignment === 'string'
+                ? [assignment]
+                : assignment?.section_ids || (assignment?.section_id ? [assignment.section_id] : []);
+
+              if (sectionIds.length > 0) {
+                const sectionId = sectionIds[0];
                 if (!tableUpdates[item.table]) tableUpdates[item.table] = {};
                 if (!tableUpdates[item.table][sectionId]) tableUpdates[item.table][sectionId] = [];
                 tableUpdates[item.table][sectionId].push(item.id);
+
+                if (item.table === 'lectures') {
+                  assignedLectureIds.add(item.id);
+                  const startTimes = typeof assignment === 'object' && assignment
+                    ? assignment.start_times || {}
+                    : {};
+                  for (const sid of sectionIds) {
+                    lectureSectionLinks.push({
+                      lecture_id: item.id,
+                      section_id: sid,
+                      start_time_seconds: startTimes[sid] ?? null,
+                    });
+                  }
+                }
+
                 aiTagged++;
               }
             }
@@ -206,6 +242,15 @@ export function useAutoTagSections() {
                   .update({ section_id: sectionId } as never)
                   .in('id', ids);
               }
+            }
+
+            if (lectureSectionLinks.length > 0) {
+              await (supabase.from as any)('lecture_sections')
+                .delete()
+                .in('lecture_id', Array.from(assignedLectureIds));
+
+              await (supabase.from as any)('lecture_sections')
+                .insert(lectureSectionLinks);
             }
 
             // Update results with AI matches

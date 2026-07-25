@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 
 const CONTENT_TABLES = [
-  { table: 'lectures', cols: ['title'], hasDeleted: true },
+  { table: 'lectures', cols: ['title', 'video_url', 'youtube_video_id'], hasDeleted: true },
   { table: 'resources', cols: ['title'], hasDeleted: true },
   { table: 'study_resources', cols: ['title'], hasDeleted: true },
   { table: 'mcqs', cols: ['stem', 'explanation'], hasDeleted: true },
@@ -71,12 +71,27 @@ function emptyTableResult(): TableResult {
 function extractContent(row: any, cols: readonly string[]): string {
   const parts: string[] = [];
   for (const col of cols) {
+    if (col === 'video_url' || col === 'youtube_video_id') continue;
     const val = row[col];
     if (val && typeof val === 'string' && val.trim()) {
       parts.push(val.trim());
     }
   }
   return parts.join(' | ').substring(0, 500);
+}
+
+function extractYouTubeId(row: any): string | null {
+  if (row.youtube_video_id && typeof row.youtube_video_id === 'string') {
+    return row.youtube_video_id.trim();
+  }
+
+  const url = row.video_url || '';
+  if (!url) return null;
+
+  const match = url.match(
+    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  );
+  return match?.[1] || null;
 }
 
 export function useSystemAutoTag() {
@@ -279,6 +294,9 @@ async function processTableItems(
         id: item.id,
         content: extractContent(item, cols as unknown as string[]),
         table,
+        ...(table === 'lectures' && extractYouTubeId(item)
+          ? { youtube_video_id: extractYouTubeId(item) }
+          : {}),
       }));
 
       prog.phase = `AI analyzing ${table} (${i + 1}-${Math.min(i + BATCH_SIZE, chapterItems.length)}/${chapterItems.length})...`;
@@ -297,10 +315,21 @@ async function processTableItems(
           continue;
         }
 
-        const assignments: Record<string, { section_id: string; confidence: string } | string | null> =
+        const assignments: Record<
+          string,
+          | { section_id?: string; section_ids?: string[]; confidence?: string; start_times?: Record<string, number> }
+          | string
+          | null
+        > =
           response.data?.assignments || {};
 
         const updates: Record<string, string[]> = {};
+        const lectureSectionLinks: Array<{
+          lecture_id: string;
+          section_id: string;
+          start_time_seconds: number | null;
+        }> = [];
+        const assignedLectureIds = new Set<string>();
         let batchTagged = 0;
 
         for (const item of batch) {
@@ -311,19 +340,32 @@ async function processTableItems(
             continue;
           }
 
-          let sectionId: string;
-          if (typeof assignment === 'string') {
-            sectionId = assignment;
-          } else if (assignment && typeof assignment === 'object') {
-            sectionId = assignment.section_id;
-          } else {
+          const sectionIds = typeof assignment === 'string'
+            ? [assignment]
+            : assignment.section_ids || (assignment.section_id ? [assignment.section_id] : []);
+
+          if (sectionIds.length === 0) {
             tr.skipReasons.aiNoMatch++;
             prog.skipReasons.aiNoMatch++;
             continue;
           }
 
+          const sectionId = sectionIds[0];
           if (!updates[sectionId]) updates[sectionId] = [];
           updates[sectionId].push(item.id);
+
+          if (table === 'lectures') {
+            assignedLectureIds.add(item.id);
+            const startTimes = typeof assignment === 'object' ? assignment.start_times || {} : {};
+            for (const sid of sectionIds) {
+              lectureSectionLinks.push({
+                lecture_id: item.id,
+                section_id: sid,
+                start_time_seconds: startTimes[sid] ?? null,
+              });
+            }
+          }
+
           batchTagged++;
         }
 
@@ -332,6 +374,15 @@ async function processTableItems(
             .from(table as any)
             .update({ section_id: sectionId } as never)
             .in('id', ids);
+        }
+
+        if (lectureSectionLinks.length > 0) {
+          await (supabase.from as any)('lecture_sections')
+            .delete()
+            .in('lecture_id', Array.from(assignedLectureIds));
+
+          await (supabase.from as any)('lecture_sections')
+            .insert(lectureSectionLinks);
         }
 
         tr.tagged += batchTagged;

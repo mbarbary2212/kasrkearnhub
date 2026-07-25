@@ -1135,13 +1135,16 @@ export default function TopicDetailPage() {
               moduleId={moduleId}
               resourceType={(window as any).__pendingBulkResourceType || 'flashcard'}
             />
-            <MindMapBulkUploadModal
-              open={mindMapBulkOpen}
-              onOpenChange={setMindMapBulkOpen}
-              topicId={topicId}
-              moduleId={moduleId}
-              resourceType={visualBulkType}
-            />
+            {mindMapBulkOpen && (
+              <MindMapBulkUploadModal
+                key={visualBulkType}
+                open
+                onOpenChange={setMindMapBulkOpen}
+                topicId={topicId}
+                moduleId={moduleId}
+                resourceType={visualBulkType}
+              />
+            )}
           </>
         )}
 

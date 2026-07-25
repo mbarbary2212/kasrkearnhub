@@ -44,11 +44,12 @@ async function streamGemini(
   const startTime = Date.now();
   const apiKey = Deno.env.get('GOOGLE_API_KEY') || Deno.env.get('GEMINI_API_KEY');
   const modelId = 'gemini-3.1-flash-tts-preview';
-  const voice = (voiceName === 'Aoide' || voiceName === 'Aoede') ? 'Aoide' : 'Kore';
+  const requestedVoice = typeof voiceName === 'string' ? voiceName.trim() : '';
+  const voice = requestedVoice === 'Aoede' ? 'Aoide' : (requestedVoice || 'Kore');
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent?key=${apiKey}`;
 
-  console.log(`[Timer] T+0ms: Fetching Google Stream (SystemInstruction optimization)...`);
+  console.log(`[Timer] T+0ms: Fetching Google Stream (voice=${voice})...`);
 
   const response = await fetch(url, {
     method: 'POST',

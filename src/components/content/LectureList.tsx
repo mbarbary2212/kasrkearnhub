@@ -76,6 +76,8 @@ interface LectureListProps {
   canEdit?: boolean;
   canDelete?: boolean;
   showFeedback?: boolean;
+  selectedSectionId?: string | null;
+  lectureSectionsMap?: Map<string, Map<string, number | null>>;
   onActiveItemChange?: (info: { item_id: string; item_label: string; item_index: number }) => void;
 }
 
@@ -106,10 +108,13 @@ export function LectureList({
   canEdit = false,
   canDelete = false,
   showFeedback = true,
+  selectedSectionId,
+  lectureSectionsMap,
   onActiveItemChange,
 }: LectureListProps) {
   const { user } = useAuth();
   const [selectedLecture, setSelectedLecture] = useState<Lecture | null>(null);
+  const [sectionStartTime, setSectionStartTime] = useState<number | undefined>(undefined);
   const [feedbackItem, setFeedbackItem] = useState<Lecture | null>(null);
   const [editLecture, setEditLecture] = useState<Lecture | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -258,12 +263,20 @@ export function LectureList({
     setCurrentVideoTime(0);
     setIsPlayerReady(false);
     setPlayerKey(prev => prev + 1);
+
+    // Look up section start time for this lecture in the active section
+    if (selectedSectionId && lectureSectionsMap) {
+      const t = lectureSectionsMap.get(selectedSectionId)?.get(lecture.id);
+      setSectionStartTime(typeof t === 'number' ? t : undefined);
+    } else {
+      setSectionStartTime(undefined);
+    }
     // Report active item
     if (onActiveItemChange) {
       const idx = lectures.findIndex(l => l.id === lecture.id);
       onActiveItemChange({ item_id: lecture.id, item_label: lecture.title, item_index: idx >= 0 ? idx : 0 });
     }
-  }, [onActiveItemChange, lectures]);
+  }, [onActiveItemChange, lectures, selectedSectionId, lectureSectionsMap]);
 
   const handlePlayerTimeUpdate = useCallback((seconds: number) => {
     setCurrentVideoTime(seconds);
@@ -848,6 +861,7 @@ export function LectureList({
                 key={playerKey}
                 videoId={selectedYouTubeId}
                 title={selectedLecture?.title}
+                startTime={sectionStartTime}
                 onReady={() => setIsPlayerReady(true)}
                 onTimeUpdate={handlePlayerTimeUpdate}
               />

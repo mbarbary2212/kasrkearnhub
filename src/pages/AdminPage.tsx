@@ -24,6 +24,7 @@ import { VideosManagementTab } from '@/components/admin/VideosManagementTab';
 import { AssessmentBlueprintTab } from '@/components/admin/blueprint/AssessmentBlueprintTab';
 import { PerfLogsTab } from '@/components/admin/PerfLogsTab';
 import { TeamCreditsTab } from '@/components/admin/TeamCreditsTab';
+import { UsageTab } from '@/components/admin/UsageTab';
 
 export default function AdminPage() {
   const { user, isSuperAdmin, isPlatformAdmin, isAdmin, isTopicAdmin, isModuleAdmin, moduleAdminModuleIds, isLoading: authLoading } = useAuthContext();
@@ -37,7 +38,7 @@ export default function AdminPage() {
 
   // Two-level tab navigation: map tab to group
   const tabToGroup = (tab: string): 'system' | 'content' | 'messaging' => {
-    if (['users', 'accounts', 'activity-log', 'settings', 'perf-logs', 'team-credits'].includes(tab)) return 'system';
+    if (['users', 'accounts', 'usage', 'activity-log', 'settings', 'perf-logs', 'team-credits'].includes(tab)) return 'system';
     if (['sources', 'curriculum', 'pdf-library', 'ai-settings', 'help', 'analytics', 'question-analytics', 'integrity', 'ai-cases', 'videos', 'blueprint'].includes(tab)) return 'content';
     if (['announcements', 'inbox'].includes(tab)) return 'messaging';
     return 'system';
@@ -53,6 +54,7 @@ export default function AdminPage() {
       system: [
         { value: 'users', visible: true },
         { value: 'accounts', visible: isSuperAdmin || isPlatformAdmin },
+        { value: 'usage', visible: isSuperAdmin || isPlatformAdmin },
         { value: 'activity-log', visible: isSuperAdmin || isPlatformAdmin },
         { value: 'settings', visible: isPlatformAdmin },
         { value: 'team-credits', visible: isSuperAdmin },
@@ -149,6 +151,12 @@ export default function AdminPage() {
           {(isSuperAdmin || isPlatformAdmin) && (
             <TabsContent value="accounts">
               <AccountsTab />
+            </TabsContent>
+          )}
+
+          {(isSuperAdmin || isPlatformAdmin) && (
+            <TabsContent value="usage">
+              <UsageTab />
             </TabsContent>
           )}
 

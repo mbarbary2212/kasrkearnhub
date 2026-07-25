@@ -367,22 +367,22 @@ export function useLectureSectionIds(lectureId?: string) {
 }
 
 // Fetch all lecture_sections for a chapter (for filtering)
-// Returns Map<section_id, Set<lecture_id>>
+// Returns Map<section_id, Map<lecture_id, start_time_seconds | null>>
 export function useChapterLectureSectionsMap(chapterId?: string) {
   return useQuery({
     queryKey: ['chapter-lecture-sections-map', chapterId],
     queryFn: async () => {
-      if (!chapterId) return new Map<string, Set<string>>();
+      if (!chapterId) return new Map<string, Map<string, number | null>>();
       const { data, error } = await supabase
         .from('lecture_sections')
-        .select('lecture_id, section_id, lectures!inner(chapter_id)')
+        .select('lecture_id, section_id, start_time_seconds, lectures!inner(chapter_id)')
         .eq('lectures.chapter_id', chapterId);
       if (error) throw error;
-      const map = new Map<string, Set<string>>();
+      const map = new Map<string, Map<string, number | null>>();
       for (const row of data || []) {
-        const r = row as { lecture_id: string; section_id: string };
-        if (!map.has(r.section_id)) map.set(r.section_id, new Set());
-        map.get(r.section_id)!.add(r.lecture_id);
+        const r = row as { lecture_id: string; section_id: string; start_time_seconds: number | null };
+        if (!map.has(r.section_id)) map.set(r.section_id, new Map());
+        map.get(r.section_id)!.set(r.lecture_id, r.start_time_seconds ?? null);
       }
       return map;
     },

@@ -3550,16 +3550,19 @@ export type Database = {
           id: string
           lecture_id: string
           section_id: string
+          start_time_seconds: number | null
         }
         Insert: {
           id?: string
           lecture_id: string
           section_id: string
+          start_time_seconds?: number | null
         }
         Update: {
           id?: string
           lecture_id?: string
           section_id?: string
+          start_time_seconds?: number | null
         }
         Relationships: [
           {
@@ -6870,6 +6873,74 @@ export type Database = {
           },
         ]
       }
+      transcription_jobs: {
+        Row: {
+          attempts: number
+          audio_storage_path: string | null
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          language_code: string | null
+          language_probability: number | null
+          lecture_id: string | null
+          locked_at: string | null
+          max_attempts: number
+          status: string
+          transcript_entries: Json | null
+          transcript_text: string | null
+          updated_at: string
+          worker_id: string | null
+          youtube_video_id: string
+        }
+        Insert: {
+          attempts?: number
+          audio_storage_path?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          language_code?: string | null
+          language_probability?: number | null
+          lecture_id?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          status?: string
+          transcript_entries?: Json | null
+          transcript_text?: string | null
+          updated_at?: string
+          worker_id?: string | null
+          youtube_video_id: string
+        }
+        Update: {
+          attempts?: number
+          audio_storage_path?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          language_code?: string | null
+          language_probability?: number | null
+          lecture_id?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          status?: string
+          transcript_entries?: Json | null
+          transcript_text?: string | null
+          updated_at?: string
+          worker_id?: string | null
+          youtube_video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transcription_jobs_lecture_id_fkey"
+            columns: ["lecture_id"]
+            isOneToOne: false
+            referencedRelation: "lectures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       true_false_questions: {
         Row: {
           chapter_id: string | null
@@ -7889,6 +7960,34 @@ export type Database = {
       can_manage_topic_content: {
         Args: { _topic_id: string; _user_id: string }
         Returns: boolean
+      }
+      claim_next_transcription_job: {
+        Args: { p_worker_id?: string }
+        Returns: {
+          attempts: number
+          audio_storage_path: string | null
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          language_code: string | null
+          language_probability: number | null
+          lecture_id: string | null
+          locked_at: string | null
+          max_attempts: number
+          status: string
+          transcript_entries: Json | null
+          transcript_text: string | null
+          updated_at: string
+          worker_id: string | null
+          youtube_video_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "transcription_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_admin_level: { Args: { _user_id: string }; Returns: number }
       get_case_leaderboard: {

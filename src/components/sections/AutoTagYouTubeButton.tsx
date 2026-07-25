@@ -98,14 +98,18 @@ export function AutoTagYouTubeButton({ chapterId, lectures: propsLectures }: Aut
         
         if (res && res.section_ids?.length > 0) {
           const validIds = res.section_ids.filter((sid: string) => sections.some(s => s.id === sid));
-          
+
           if (validIds.length > 0) {
             console.log(`[AutoTagYouTube] Assigning ${item.title} ->`, validIds);
-            
+
             // Sync Junction Table
             await (supabase.from as any)('lecture_sections').delete().eq('lecture_id', item.id);
             await (supabase.from as any)('lecture_sections').insert(
-              validIds.map((sid: string) => ({ lecture_id: item.id, section_id: sid }))
+              validIds.map((sid: string) => ({
+                lecture_id: item.id,
+                section_id: sid,
+                start_time_seconds: res.start_times?.[sid] ?? null,
+              }))
             );
             
             // Sync Legacy Column
@@ -120,7 +124,7 @@ export function AutoTagYouTubeButton({ chapterId, lectures: propsLectures }: Aut
       if (assignedCount > 0) {
         toast.success(`Successfully tagged ${assignedCount} video${assignedCount > 1 ? 's' : ''}.`);
       } else {
-        toast.warning('Gemini was unable to match these videos to any sections.');
+        toast.warning('AI could not get transcripts or match these videos to sections.');
       }
 
     } catch (err: any) {

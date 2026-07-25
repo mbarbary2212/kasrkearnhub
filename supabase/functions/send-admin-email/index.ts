@@ -5,16 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function mapToBrevoPayload(params: { toEmail: string; toName: string; subject: string; html: string }) {
-  return {
-    sender: { name: 'SurgTeach', email: 'no-reply@kalmhub.com' },
-    to: [{ email: params.toEmail, name: params.toName }],
-    subject: params.subject,
-    htmlContent: params.html,
-  };
-}
-
-async function sendWithBrevoFallback(params: {
+async function sendEmailViaResend(params: {
   resendApiKey: string;
   fromEmail: string;
   toEmail: string;
@@ -22,59 +13,27 @@ async function sendWithBrevoFallback(params: {
   subject: string;
   html: string;
 }): Promise<{ sent: boolean; provider: string }> {
-  // Try Resend first
-  try {
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${params.resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: params.fromEmail,
-        to: [params.toEmail],
-        subject: params.subject,
-        html: params.html,
-      }),
-    });
-
-    if (resendRes.ok) {
-      return { sent: true, provider: 'resend' };
-    }
-
-    const errText = await resendRes.text();
-    if (resendRes.status === 429 || resendRes.status === 403) {
-      console.warn(`Resend returned ${resendRes.status}, falling back to Brevo: ${errText}`);
-    } else {
-      console.warn(`Resend error (${resendRes.status}), falling back to Brevo: ${errText}`);
-    }
-  } catch (err) {
-    console.warn('Resend threw an error, falling back to Brevo:', err);
-  }
-
-  // Fallback to Brevo
-  const brevoApiKey = Deno.env.get('BREVO_API_KEY');
-  if (!brevoApiKey) {
-    throw new Error('Resend failed and BREVO_API_KEY is not configured');
-  }
-
-  const brevoRes = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const resendRes = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
-      'api-key': brevoApiKey,
+      'Authorization': `Bearer ${params.resendApiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(mapToBrevoPayload(params)),
+    body: JSON.stringify({
+      from: params.fromEmail,
+      to: [params.toEmail],
+      subject: params.subject,
+      html: params.html,
+    }),
   });
 
-  if (!brevoRes.ok) {
-    const brevoErr = await brevoRes.text();
-    console.error('Brevo also failed:', brevoErr);
-    throw new Error(`Both Resend and Brevo failed. Brevo error: ${brevoErr}`);
+  if (!resendRes.ok) {
+    const errText = await resendRes.text();
+    console.error(`Resend error (${resendRes.status}) for ${params.toEmail}: ${errText}`);
+    throw new Error(`Resend failed (${resendRes.status}): ${errText}`);
   }
 
-  console.log('Email sent successfully via Brevo fallback');
-  return { sent: true, provider: 'brevo' };
+  return { sent: true, provider: 'resend' };
 }
 
 // Map notification type → preference column
@@ -230,9 +189,8 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Send via Resend with Brevo fallback
     try {
-      const result = await sendWithBrevoFallback({
+      const result = await sendEmailViaResend({
         resendApiKey: resendApiKey!,
         fromEmail: fromEmail!,
         toEmail: profile.email,
@@ -246,8 +204,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (emailError) {
-      console.error('All email providers failed:', emailError);
-      return new Response(JSON.stringify({ sent: false, reason: 'all_providers_failed' }), {
+      console.error('Resend send failed:', emailError);
+      return new Response(JSON.stringify({ sent: false, reason: 'resend_failed', error: String(emailError) }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

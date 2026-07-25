@@ -1,75 +1,84 @@
-# Fix: PGRST203 on `save_question_attempt` — drop duplicate, pass confidence explicitly
+## Goal
+Give admins a clear picture of how each student uses the app: total time, session frequency, which modules and chapters they hit most, and how their time splits between reading, video, MCQ practice, and flashcards. Available both as an in-app view and as an Excel export.
 
-## Verified problem (not assumed)
+## Data sources (already in the DB — no schema changes)
+- `user_sessions` — session_start, last_seen_at, duration_seconds → total time on app, sessions, last seen, active days
+- `study_time_events` — user_id, module_id, chapter_id, activity_type, duration_seconds, session_date → time per module / chapter / activity type, daily curve
+- `content_views` — content_type, chapter_id, topic_id → which content types opened (backup signal)
+- `question_attempts` — practice attempts count (secondary metric)
+- `modules`, `module_chapters` — names for display
 
-I queried `pg_proc` directly — confirmed **two functions** named `public.save_question_attempt` exist:
+No new tables, no new RLS. Reads only.
 
-| pronargs | Signature |
-|---|---|
-| **8** | `(p_question_id uuid, p_question_type practice_question_type, p_chapter_id uuid, p_topic_id uuid, p_module_id uuid, p_selected_answer jsonb, p_is_correct boolean, p_score integer)` |
-| **9** | `(... same 8 ..., p_confidence_level smallint)` ← keep |
+## What I'll build
 
-PostgREST cannot disambiguate when the 9-arg version's last param has a default → **PGRST203**. Practice attempts fail silently (caught by Sentry but the student sees nothing).
+### 1. New hooks
+- `src/hooks/useStudentUsageOverview.ts` — one query per metric, joined client-side, returns a row per student:
+  - `total_time_all`, `total_time_30d`, `total_time_7d` (from `user_sessions`)
+  - `sessions_30d`, `active_days_30d`, `last_seen`
+  - `top_module_name`, `top_module_minutes` (from `study_time_events`)
+  - `mcq_attempts_30d`
+- `src/hooks/useStudentUsageDetail.ts` — for one `userId`:
+  - Session stats (total, average length, longest, last 30 days daily buckets for a sparkline)
+  - Per-module minutes (all-time and 30d)
+  - Top 10 chapters by minutes (with module name)
+  - Activity-type split: reading vs watching vs practicing vs flashcards (from `study_time_events.activity_type`, plus derived counts from `content_views` and `question_attempts` as sanity check)
+  - Daily activity for last 30/90 days (for a small line chart)
 
-I also read `src/hooks/useQuestionAttempts.ts` lines 270–279 — confirmed the call **does not pass `p_confidence_level` at all**.
+### 2. New admin subtab: "Usage"
+- `src/components/admin/UsageTab.tsx` added under the existing System / Accounts area (next to Accounts). Sortable table:
+  - Columns: Name, Email, Role, Last seen, Sessions (30d), Active days (30d), Total time (30d), Total time (all), Top module, Actions
+  - Row action: **View report** → opens the detail dialog
+  - Header button: **Export to Excel** — same pattern as the access-requests export I just added
+- Registered in the existing admin tabs config so it picks up the sticky header behavior already in place.
 
-I also read `ConfidenceCard.tsx` — confidence is written to `question_attempts` in a **separate** UPDATE statement *after* the attempt row exists. So confidence is not needed at attempt-creation time, but we should still pass it explicitly (as `null` or as the cached value if the student already chose one) to lock the call to the 9-arg signature.
+### 3. Per-student detail dialog: `StudentUsageReportDialog.tsx`
+Reusable dialog opened from:
+- the new Usage table row action, and
+- the existing Accounts row (adds a "View usage" item to the row's actions)
 
----
+Content:
+- Header: student name, role, last seen, streak
+- Summary cards: Total time (all / 30d / 7d), Sessions (30d), Avg session length, Active days (30d)
+- Small daily-minutes line chart (last 30 days) using `recharts` (already a project dep)
+- Table: Time per module (30d + all-time, sorted desc)
+- Table: Top 10 chapters (module → chapter → minutes → last activity)
+- Donut / stacked bar: Activity-type split (Reading / Videos / Practice / Flashcards)
+- Footer button: **Export this student's report to Excel**
 
-## Changes
+### 4. Excel exports (uses ExcelJS, already a dep)
+- `src/lib/exportStudentUsageOverview.ts` — all-students sheet mirroring the table above.
+- `src/lib/exportStudentUsageDetail.ts` — one workbook per student with sheets:
+  - `Summary` (all headline metrics)
+  - `Daily Activity` (date, minutes, sessions) — chartable in Excel
+  - `Modules` (module, minutes 30d, minutes all-time)
+  - `Chapters` (module, chapter, minutes, last activity)
+  - `Activity Split` (activity_type, minutes, %)
 
-### 1. Database migration — drop the 8-arg duplicate
+### 5. Small UX polish
+- Time formatted as `Xh Ym` in the UI, raw minutes as numbers in Excel (so you can chart).
+- Empty-state messaging when a student has no recorded sessions yet.
+- Loading skeletons.
 
-```sql
-DROP FUNCTION IF EXISTS public.save_question_attempt(
-  uuid,
-  practice_question_type,
-  uuid,
-  uuid,
-  uuid,
-  jsonb,
-  boolean,
-  integer
-);
-```
+## Out of scope
+- No new tracking; we use what `useSessionTracking` and `useStudyTimeTracker` already record.
+- No changes to RLS, no schema migrations.
+- No cross-student comparisons or cohort analytics in this pass (call it out if you want it next).
+- No email/scheduled reports.
 
-Only the 9-arg version (with `p_confidence_level smallint DEFAULT NULL`) remains. Existing call sites that omit confidence still work because the parameter has a default — but we will also update the call site for clarity.
+## Files touched
+New:
+- `src/hooks/useStudentUsageOverview.ts`
+- `src/hooks/useStudentUsageDetail.ts`
+- `src/components/admin/UsageTab.tsx`
+- `src/components/admin/StudentUsageReportDialog.tsx`
+- `src/lib/exportStudentUsageOverview.ts`
+- `src/lib/exportStudentUsageDetail.ts`
 
-### 2. `src/hooks/useQuestionAttempts.ts` — pass `p_confidence_level` explicitly
+Edited:
+- `src/pages/AdminPage.tsx` (or the admin tabs config file) — register the new Usage subtab.
+- `src/components/admin/AccountsTab.tsx` — add "View usage" action on each row that opens the detail dialog.
 
-- Add optional `confidenceLevel?: number | null` to `SaveQuestionAttemptParams` (line 60).
-- In the `mutationFn` body (line 270), add `p_confidence_level: confidenceLevel ?? null` to the RPC call.
-- Backwards compatible — existing callers don't need to pass anything; default is `null`.
-
-### 3. (Optional, low-risk) `ConfidenceCard.tsx` — no change required
-
-The current flow (separate UPDATE after the fact) keeps working. We are NOT refactoring it in this fix — out of scope and risks regressing the existing in-session confidence persistence.
-
----
-
-## Files modified
-
-| File | Change |
-|---|---|
-| `supabase/migrations/<new>.sql` | `DROP FUNCTION public.save_question_attempt(uuid, practice_question_type, uuid, uuid, uuid, jsonb, boolean, integer);` |
-| `src/hooks/useQuestionAttempts.ts` | Add `confidenceLevel` to params interface; pass `p_confidence_level: confidenceLevel ?? null` in the RPC call |
-
-No edge function changes. No RLS changes. No type regeneration needed (RPC param signature on client side already uses untyped object).
-
----
-
-## Acceptance criteria
-
-1. `SELECT proname, pronargs FROM pg_proc WHERE proname='save_question_attempt'` returns exactly **one** row with `pronargs = 9`.
-2. Submitting an MCQ from the practice UI no longer throws PGRST203; `question_attempts` row is created.
-3. The existing `ConfidenceCard` UPDATE flow still successfully sets `confidence_level` post-attempt.
-4. No other call sites of `save_question_attempt` break (none found besides line 270).
-
----
-
-## Why this is safe
-
-- The 8-arg version is functionally a strict subset of the 9-arg one — anything it could do, the 9-arg version does identically when `p_confidence_level` is `NULL`.
-- Postgres `DROP FUNCTION ... (signature)` is signature-specific — it cannot accidentally drop the 9-arg version.
-- No data is touched.
+## Verification
+- Typecheck.
+- Manually open Admin → Usage, sort by 30d time, open one student, export overview + detail Excel, verify sheets open cleanly.

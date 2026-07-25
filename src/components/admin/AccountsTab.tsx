@@ -61,6 +61,7 @@ import {
   ArrowDown,
   ListChecks,
   FileText,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -82,6 +83,7 @@ import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
 import { toast } from 'sonner';
+import { exportAccessRequestsToExcel } from '@/lib/exportAccessRequests';
 
 interface BulkResult {
   name: string;
@@ -497,11 +499,45 @@ export function AccountsTab() {
 
         <TabsContent value="all">
           <Card>
-            <CardHeader>
-              <CardTitle>All Access Requests</CardTitle>
-              <CardDescription>
-                View the history of all access requests
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+              <div>
+                <CardTitle>All Access Requests</CardTitle>
+                <CardDescription>
+                  View the history of all access requests
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={loadingAll || !allRequests || allRequests.length === 0}
+                onClick={async () => {
+                  try {
+                    const reviewerIds = Array.from(
+                      new Set((allRequests ?? []).map(r => r.reviewed_by).filter(Boolean) as string[]),
+                    );
+                    let nameMap: Record<string, string> = {};
+                    if (reviewerIds.length > 0) {
+                      const { data } = await supabase
+                        .from('profiles')
+                        .select('id, full_name, email')
+                        .in('id', reviewerIds);
+                      if (data) {
+                        nameMap = Object.fromEntries(
+                          data.map(p => [p.id, p.full_name || p.email || p.id]),
+                        );
+                      }
+                    }
+                    await exportAccessRequestsToExcel(allRequests ?? [], nameMap);
+                    toast.success('Access requests exported');
+                  } catch (err: any) {
+                    console.error('Export failed', err);
+                    toast.error(err?.message || 'Export failed');
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export to Excel
+              </Button>
             </CardHeader>
             <CardContent>
               {/* Search Input */}
