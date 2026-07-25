@@ -61,6 +61,7 @@ import {
   ArrowDown,
   ListChecks,
   FileText,
+  Download,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { 
@@ -82,6 +83,7 @@ import { CreateUserDialog } from './CreateUserDialog';
 import { EmailBouncesPopover } from './EmailBouncesPopover';
 import { EmailInvitationsTable } from './EmailInvitationsTable';
 import { toast } from 'sonner';
+import { exportAccessRequestsToExcel } from '@/lib/exportAccessRequests';
 
 interface BulkResult {
   name: string;
