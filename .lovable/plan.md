@@ -1,30 +1,36 @@
-# Remove Brevo Fallback — Resend Only
+## Goal
+Give you a one-click "Export to Excel" button on Admin → System → Accounts that downloads every access request since the project started, so you can open it in Excel and turn it into a table or chart yourself.
 
-Now that `feedback.kalmhub.com` is verified in Resend, we remove the Brevo fallback code so email failures surface the real Resend error directly (instead of being masked by a fallback that also fails).
+## Why this approach
+- The data is already loaded in `AccountsTab` via `useAccessRequests()` (no status filter = all requests).
+- The project already uses `ExcelJS` (see `blueprintExcelExport.ts`), so no new dependencies.
+- A chart/curve built inside the app would duplicate what Excel does natively and add UI weight. Exporting is faster and gives you full flexibility (pivot tables, charts, filters).
 
-## What changes
+## What I'll build
 
-### 1. `supabase/functions/send-admin-email/index.ts`
-- Delete `mapToBrevoPayload()` helper.
-- Replace `sendWithBrevoFallback()` with a simple `sendWithResend()` that POSTs to Resend and throws on non-OK with the Resend error text.
-- Update the call site to use the new helper. Response still returns `{ sent: true, provider: 'resend' }` on success.
+**1. New util: `src/lib/exportAccessRequests.ts`**
+- Function `exportAccessRequestsToExcel(requests, reviewerNameMap?)` using ExcelJS.
+- One sheet "Access Requests" with columns:
+  - Full Name, Email, Job Title, Request Type, Status, Requested On, Reviewed On, Days to Review, Reviewed By, Notes
+- Bold header row, frozen top row, sensible column widths, date cells formatted as real Excel dates (so you can chart by month).
+- Filename: `KalmHub_Access_Requests_YYYY-MM-DD.xlsx`.
 
-### 2. `supabase/functions/check-elevenlabs-quota/index.ts`
-- Same treatment: drop `mapToBrevoPayload()`, replace `sendEmail()` Brevo fallback path with a direct Resend call that throws clear errors.
-- The per-admin `try/catch` in the email loop stays so one failure doesn't stop the others.
+**2. Small addition to `src/components/admin/AccountsTab.tsx`**
+- "Export to Excel" button (outline, with Download icon) placed next to the existing All Requests view header.
+- Disabled while `allRequests` is loading or empty; toast on success/failure.
+- Uses `allRequests` already fetched — no extra query.
 
-### 3. `provision-user` edge function
-- Apply the same cleanup if it contains a Brevo fallback. I'll read it first to confirm shape before editing.
+**3. Optional (tell me yes/no)**
+- Add a second sheet "Monthly Summary" with counts per month (Approved / Rejected / Pending) so you can paste a chart in Excel with one click. Adds ~15 lines. Recommended.
 
-### 4. Secret cleanup (after deploy)
-- Once the three functions are deployed and a test invite succeeds, delete the `BREVO_API_KEY` secret via the secrets tool. Listed as a follow-up step, not part of the code patch — so you can confirm Resend is solid before removing it.
+## Out of scope
+- No in-app chart component (you asked for export, not a new dashboard).
+- No backend/RPC changes; no schema changes.
+- No changes to the approval flow itself.
 
-## What stays the same
-- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, all email templates, all preference logic, all CORS, all notification routing.
-- No DB changes, no frontend changes.
+## Files touched
+- `src/lib/exportAccessRequests.ts` (new)
+- `src/components/admin/AccountsTab.tsx` (add button + handler)
 
-## Verification
-- After deploy: trigger "Resend invitation" on the pending student from the admin UI. Expect the toast to show success and the email to arrive from `feedback.kalmhub.com`.
-- If it fails, the edge function logs will now show the actual Resend API error (e.g. domain mismatch, rate limit) instead of "Both Resend and Brevo failed".
-
-Approve and I'll apply the patch.
+## Question before I build
+Do you want the **Monthly Summary sheet** included (recommended, ~15 extra lines), or just the raw list?
