@@ -71,7 +71,15 @@ export function useApproveAccessRequest() {
       });
 
       if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || data?.message || 'Failed to send invite');
+
+      // Detect "already exists" outcomes from the edge function and treat them
+      // as a successful link/resend rather than a hard failure.
+      const rawMsg: string = (data?.error || data?.message || '').toString();
+      const alreadyExists = /already\s*(exists|been registered|registered)|could not be located/i.test(rawMsg);
+
+      if (!data?.success && !alreadyExists) {
+        throw new Error(rawMsg || 'Failed to send invite');
+      }
 
       // Mark request as approved
       const { error: updateError } = await supabase
@@ -80,20 +88,36 @@ export function useApproveAccessRequest() {
           status: 'approved',
           reviewed_at: new Date().toISOString(),
           reviewed_by: (await supabase.auth.getUser()).data.user?.id,
+          notes: alreadyExists
+            ? 'Account already existed — linked to this request and password reset email sent.'
+            : null,
         })
         .eq('id', requestId);
 
       if (updateError) throw updateError;
 
-      return data;
+      return { ...data, alreadyExists };
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['access-requests'] });
-      toast.success('Invite sent. Ask the user to check Spam/Junk if it doesn\'t arrive within a few minutes.');
+      if (data?.alreadyExists) {
+        toast.success(
+          'This account already exists — request approved and a password reset email was sent. Ask the user to check Spam/Junk.'
+        );
+      } else {
+        toast.success('Invite sent. Ask the user to check Spam/Junk if it doesn\'t arrive within a few minutes.');
+      }
     },
     onError: (error: any) => {
       console.error('Error approving request:', error);
-      toast.error(error.message || 'Failed to approve request');
+      const msg: string = error?.message || 'Failed to approve request';
+      if (/already\s*(exists|been registered|registered)/i.test(msg)) {
+        toast.error(
+          'This email is already registered. Ask the user to sign in or use "Forgot password" — no new invite was sent.'
+        );
+      } else {
+        toast.error(msg);
+      }
     },
   });
 }
