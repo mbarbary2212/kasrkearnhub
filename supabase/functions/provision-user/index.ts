@@ -546,23 +546,50 @@ async function inviteUser(
       if (createError.message?.includes('already been registered') || 
           createError.message?.includes('already exists') ||
           createError.status === 422) {
-        // User exists - find them via listUsers (filtering by email)
-        const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-        
-        if (listError) {
-          console.error('Error listing users:', listError);
-          throw new Error('Failed to lookup existing user');
+        // User exists - find them by paginating listUsers, then falling back to profiles.
+        let existingUserId: string | null = null;
+        try {
+          for (let page = 1; page <= 20 && !existingUserId; page++) {
+            const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+              page,
+              perPage: 1000,
+            });
+            if (listError) {
+              console.error('Error listing users (page ' + page + '):', listError);
+              break;
+            }
+            const found = listData?.users?.find((u: any) => u.email?.toLowerCase() === email);
+            if (found) {
+              existingUserId = found.id;
+              break;
+            }
+            if (!listData?.users || listData.users.length < 1000) break;
+          }
+        } catch (e) {
+          console.error('listUsers pagination error:', e);
         }
-        
-        const existingUser = listData.users.find(
-          (u: any) => u.email?.toLowerCase() === email
-        );
-        
-        if (!existingUser) {
-          throw new Error('User exists but could not be found');
+
+        // Fallback: look up id in public.profiles by email
+        if (!existingUserId) {
+          const { data: profileRow } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .ilike('email', email)
+            .maybeSingle();
+          if (profileRow?.id) {
+            existingUserId = profileRow.id;
+          }
         }
-        
-        userId = existingUser.id;
+
+        if (!existingUserId) {
+          // Account exists in auth but we can't resolve the id — surface a friendly, actionable message.
+          throw new Error(
+            'An account with this email already exists but could not be located automatically. ' +
+            'Ask the user to use "Forgot password" on the sign-in page, or contact support.'
+          );
+        }
+
+        userId = existingUserId;
         console.log(`User ${email} already exists with id ${userId}`);
       } else {
         console.error('Error creating user:', createError);
