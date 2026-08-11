@@ -177,7 +177,21 @@ export async function callAIWithMessages(
   systemPrompt: string,
   messages: { role: string; content: string }[],
   provider: AIProvider,
-  options?: { temperature?: number; maxTokens?: number; customApiKey?: string }
+  options?: {
+    temperature?: number;
+    maxTokens?: number;
+    customApiKey?: string;
+    /**
+     * Gemini only. Set to 0 to switch OFF the model's internal "thinking" pass.
+     *
+     * Gemini 2.5/3 Flash think before answering by DEFAULT. For a virtual patient
+     * saying one colloquial sentence there is nothing to reason about, and the
+     * thinking pass was measured adding roughly 2-6 seconds to every turn.
+     * Leave undefined for tasks that genuinely benefit from reasoning (marking,
+     * case generation).
+     */
+    thinkingBudget?: number;
+  }
 ): Promise<AICallResult> {
   const enriched = enrichSystemPrompt(systemPrompt);
   const temp = options?.temperature ?? 0.7;
@@ -186,7 +200,7 @@ export async function callAIWithMessages(
   if (provider.name === 'anthropic') {
     return callAnthropicWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else if (provider.name === 'gemini') {
-    return callGeminiWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
+    return callGeminiWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey, options?.thinkingBudget);
   } else if (provider.name === 'groq') {
     return callGroqWithMessages(enriched, messages, provider.model, temp, maxTokens, options?.customApiKey);
   } else {
@@ -751,7 +765,8 @@ async function callGeminiWithMessages(
   model: string,
   temperature: number,
   maxTokens: number,
-  customApiKey?: string
+  customApiKey?: string,
+  thinkingBudget?: number
 ): Promise<AICallResult> {
   const googleApiKey = customApiKey || Deno.env.get('GOOGLE_API_KEY');
   if (!googleApiKey) return { success: false, error: 'GOOGLE_API_KEY not configured.', status: 500 };
@@ -772,7 +787,15 @@ async function callGeminiWithMessages(
         },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\n${combinedPrompt}` }] }],
-          generationConfig: { temperature, maxOutputTokens: maxTokens },
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+            // thinkingConfig only exists on Gemini 2.5+ / 3.x. Sending it to an
+            // older model is rejected, so gate on the model name.
+            ...(thinkingBudget !== undefined && /(2\.5|^gemini-3|-3[.-])/.test(model)
+              ? { thinkingConfig: { thinkingBudget } }
+              : {}),
+          },
         }),
       },
     );

@@ -107,6 +107,10 @@ serve(async (req) => {
     const result = await callAIWithMessages(systemPrompt, messages, provider, {
       temperature: 0.8,
       maxTokens: 1024,
+      // The patient says one colloquial sentence. There is nothing to reason
+      // about, and Gemini Flash thinks by default. Measured live: turns took
+      // 3.0-7.1s with thinking on versus ~1.1s on a non-thinking model.
+      thinkingBudget: 0,
     });
 
     if (!result.success || !result.content) {
