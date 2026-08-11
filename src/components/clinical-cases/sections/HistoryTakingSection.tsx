@@ -1109,7 +1109,7 @@ export function HistoryTakingSection({
                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
                   </span>
                 )}
-                {displayedText || ' '}
+                {displayedText || '\\u00A0'}
               </div>
             </div>
 
