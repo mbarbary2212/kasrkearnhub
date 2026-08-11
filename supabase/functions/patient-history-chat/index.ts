@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireUser } from '../_shared/require-auth.ts';
 import * as Sentry from 'https://deno.land/x/sentry@8.45.0/index.mjs';
 import { getAISettings, getInteractiveCaseProvider, callAIWithMessages } from '../_shared/ai-provider.ts';
 
@@ -33,20 +34,12 @@ serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Validate caller
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claims, error: authErr } = await anonClient.auth.getUser();
-      if (authErr || !claims?.user) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    // Validate caller — authentication is MANDATORY.
+    // Previously this block was wrapped in `if (authHeader) { ... }`, so a caller
+    // that simply omitted the header skipped validation entirely and reached the
+    // paid AI provider. See supabase/functions/_shared/require-auth.ts.
+    const auth = await requireUser(req, corsHeaders);
+    if (!auth.ok) return auth.response;
 
     // Fetch case data and AI settings in parallel
     const [caseResult, aiSettings] = await Promise.all([

@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireUser } from '../_shared/require-auth.ts';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -15,6 +16,11 @@ serve(async (req) => {
   }
 
   try {
+
+    // Authentication is MANDATORY: this function is declared verify_jwt = false,
+    // so the gateway performs no check of its own.
+    const auth = await requireUser(req, corsHeaders);
+    if (!auth.ok) return auth.response;
     const { messageId, content } = await req.json();
 
     if (!content || typeof content !== 'string') {
