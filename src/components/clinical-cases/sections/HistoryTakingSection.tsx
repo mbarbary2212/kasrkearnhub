@@ -155,7 +155,8 @@ export function HistoryTakingSection({
   const scribe = useScribe({
     modelId: 'scribe_v2_realtime',
     commitStrategy: CommitStrategy.VAD,
-    vadSilenceThresholdSecs: 1.5, // 1.5s silence before committing — prevents cut-off during natural Arabic pauses
+    vadSilenceThresholdSecs: 0.8, // 0.8s silence before committing. Was 1.5s, which added 1.5s of dead air to every single turn.
+    // If students report being cut off mid-sentence, raise this back toward 1.2s rather than 1.5s.
     onCommittedTranscript: (data) => {
       console.log('[Scribe] Committed transcript:', data.text);
       if (data.text?.trim()) {
@@ -417,8 +418,9 @@ export function HistoryTakingSection({
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();
           }
-          // 800ms conversational pause before re-opening mic
-          await new Promise(r => setTimeout(r, 800));
+          // Short conversational pause before re-opening the mic.
+          // Was 800ms; combined with the VAD wait that was 2.3s of fixed, avoidable delay per turn.
+          await new Promise(r => setTimeout(r, 250));
         } else {
           // Muted: short pause then reconnect
           await new Promise(r => setTimeout(r, 200));

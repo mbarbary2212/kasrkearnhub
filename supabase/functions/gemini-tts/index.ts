@@ -35,6 +35,52 @@ function createWavHeader(dataSize = 0): Uint8Array {
   return new Uint8Array(buffer);
 }
 
+/**
+ * Retry wrapper for the Google TTS call.
+ *
+ * This function previously used a bare fetch(): a single transient 429/5xx from
+ * Google produced a silent failure for the student mid-conversation. Mirrors the
+ * pattern already used in supabase/functions/elevenlabs-tts/index.ts.
+ *
+ * Only retries 429 and 5xx. 4xx (bad request, bad key) is returned immediately —
+ * retrying those would just add latency to a guaranteed failure.
+ */
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.status === 429 || response.status >= 500) {
+        if (attempt === maxRetries - 1) return response;
+
+        const retryAfter = response.headers.get('Retry-After');
+        const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN;
+        const waitMs = !isNaN(parsed)
+          ? parsed * 1000
+          : Math.pow(2, attempt) * 500 + Math.random() * 250;
+
+        console.warn(`[gemini-tts] HTTP ${response.status}; retry ${attempt + 1}/${maxRetries} in ${Math.round(waitMs)}ms`);
+        await response.text().catch(() => {}); // release the body
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+
+      return response;
+    } catch (e) {
+      // Network-level failure — retry with backoff, then rethrow.
+      lastError = e;
+      if (attempt === maxRetries - 1) break;
+      const waitMs = Math.pow(2, attempt) * 500 + Math.random() * 250;
+      console.warn(`[gemini-tts] network error; retry ${attempt + 1}/${maxRetries} in ${Math.round(waitMs)}ms`, e);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+
+  throw lastError ?? new Error('gemini-tts: request failed after retries');
+}
+
 async function streamGemini(
   inputText: string, 
   voiceName: string, 
@@ -51,7 +97,7 @@ async function streamGemini(
 
   console.log(`[Timer] T+0ms: Fetching Google Stream (voice=${voice})...`);
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

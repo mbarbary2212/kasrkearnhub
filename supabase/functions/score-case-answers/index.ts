@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireUser, assertOwnsRow } from '../_shared/require-auth.ts';
 import * as Sentry from 'https://deno.land/x/sentry@8.45.0/index.mjs';
 import { getAISettings, getInteractiveCaseMarkingProvider, callAI } from '../_shared/ai-provider.ts';
 import { buildScoringPrompt } from './prompts.ts';
@@ -33,19 +34,27 @@ serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Validate caller
-    const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const { data: claims, error: authErr } = await anonClient.auth.getUser();
-      if (authErr || !claims?.user) {
-        return new Response(
-          JSON.stringify({ error: 'Unauthorized' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // Validate caller — authentication is MANDATORY.
+    // Previously wrapped in `if (authHeader) { ... }`, which let an anonymous
+    // caller through by omitting the header.
+    const auth = await requireUser(req, corsHeaders);
+    if (!auth.ok) return auth.response;
+
+    // Authorization: the attempt being scored must belong to the caller.
+    // Without this, anyone holding a valid session could pass another student's
+    // attempt_id and overwrite their scores, feedback and completion status.
+    const ownsAttempt = await assertOwnsRow(
+      supabase,
+      'virtual_patient_attempts',
+      attempt_id,
+      auth.user.id,
+      auth.role,
+    );
+    if (!ownsAttempt) {
+      return new Response(
+        JSON.stringify({ error: 'forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // 1. Fetch case data, student answers, and AI settings in parallel
