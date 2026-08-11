@@ -236,7 +236,7 @@ export function HistoryTakingSection({
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
 
-  // ── Time & message limits ───────────────────────────
+  // ── Time & message limits ─────────────────────────────
   const timeLimitMs = useMemo(
     () => (historyTimeLimitMinutes
       ? historyTimeLimitMinutes
