@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireRole, CONTENT_ROLES } from '../_shared/require-auth.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -96,6 +97,14 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+
+    // Authentication + authorization are MANDATORY: this function is declared
+    // verify_jwt = false, so the gateway does not check the caller. It reads every
+    // student's question_attempts and upserts mcq_analytics with the service-role
+    // key, so anonymous access is not acceptable. CONTENT_ROLES (teacher + admins)
+    // rather than admins-only, so teachers can still refresh their own dashboards.
+    const auth = await requireRole(req, corsHeaders, CONTENT_ROLES);
+    if (!auth.ok) return auth.response;
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -298,7 +307,7 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ success: false, error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 });

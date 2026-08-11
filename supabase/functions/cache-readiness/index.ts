@@ -11,6 +11,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireUser, ADMIN_ROLES } from '../_shared/require-auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,7 +65,7 @@ const REVIEW_URGENCY_THRESHOLDS = {
   reviewSoonInactiveDays: 7,
 };
 
-// ── Types ───────────────────────────────────────────────────────────────
+// ── Types ───────────────────────────────────────────
 
 type ComponentName = 'engagement' | 'performance' | 'retention' | 'consistency' | 'confidence';
 type EvidenceLevel = 'none' | 'low' | 'moderate' | 'strong';
@@ -86,7 +87,7 @@ interface ComponentScores {
   confidence: number;
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────
 
 function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v));
@@ -212,7 +213,7 @@ function generateNarratives(
   }
 }
 
-// ── Compute readiness for a single chapter ──────────────────────────────
+// ── Compute readiness for a single chapter ─────────────────────────
 
 interface ChapterMetrics {
   chapter_id: string;
@@ -315,7 +316,7 @@ function computeChapterReadiness(m: ChapterMetrics) {
   };
 }
 
-// ── Main handler ────────────────────────────────────────────────────────
+// ── Main handler ────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -323,6 +324,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+
+    // Authentication is MANDATORY: this function is declared verify_jwt = false,
+    // so the gateway performs no check of its own.
+    const auth = await requireUser(req, corsHeaders);
+    if (!auth.ok) return auth.response;
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -333,6 +339,17 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'userId and moduleId are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Authorization: a student may only recalculate their OWN readiness cache.
+    // `userId` arrives in the request body, so without this check any caller could
+    // write cache rows keyed to another user's id.
+    const isAdmin = !!auth.role && (ADMIN_ROLES as readonly string[]).includes(auth.role);
+    if (!isAdmin && userId !== auth.user.id) {
+      return new Response(
+        JSON.stringify({ error: 'forbidden' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
