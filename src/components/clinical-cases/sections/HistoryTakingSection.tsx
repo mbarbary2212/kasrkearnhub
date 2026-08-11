@@ -236,7 +236,7 @@ export function HistoryTakingSection({
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
 
-  // ── Time & message limits ───────────────────────
+  // ── Time & message limits ─────────────────────────────
   const timeLimitMs = useMemo(
     () => (historyTimeLimitMinutes
       ? historyTimeLimitMinutes
@@ -339,7 +339,7 @@ export function HistoryTakingSection({
     }
   }, [displayedText]);
 
-  // ── Chat send ────────────────────────
+  // ── Chat send ──────────────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
     console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
@@ -485,7 +485,7 @@ export function HistoryTakingSection({
     sendChatMessageRef.current = sendChatMessage;
   }, [sendChatMessage]);
 
-  // ── Browser STT fallback ───────────────────────
+  // ── Browser STT fallback ───────────────────────────────
   const startBrowserSTT = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Speech recognition is not supported in this browser.');
@@ -559,7 +559,7 @@ export function HistoryTakingSection({
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);
 
-  // ── Reusable scribe connect helper ─────────────────
+  // ── Reusable scribe connect helper ──────────────────────
   const connectScribe = useCallback(async () => {
     if (scribeDisabledRef.current) {
       console.warn('[Scribe] Disabled after repeated failures, falling back to browser STT');
@@ -637,7 +637,7 @@ export function HistoryTakingSection({
     await connectScribe();
   }, [isListening, scribe, connectScribe]);
 
-  // ── Phase transition ──────────────────────
+  // ── Phase transition ───────────────────────────────────
   const handleFinishInteraction = () => {
     // Disconnect scribe if active
     safeDisconnect();
@@ -648,7 +648,7 @@ export function HistoryTakingSection({
     setPhase('questions');
   };
 
-  // ── Submit (Phase 2) ───────────────────────
+  // ── Submit (Phase 2) ───────────────────────────────────
   const handleSubmit = () => {
     onSubmit({
       comprehension_answers: answers,
@@ -659,7 +659,7 @@ export function HistoryTakingSection({
     });
   };
 
-  // ── Watermark ────────────────────────────
+  // ── Watermark ──────────────────────────────────────────
   const watermark = (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden z-10 opacity-[0.04]">
       <span className="text-6xl font-bold text-foreground rotate-[-30deg] whitespace-nowrap select-none">
@@ -668,7 +668,7 @@ export function HistoryTakingSection({
     </div>
   );
 
-  // ── Timer badge (inline) ───────────────────────
+  // ── Timer badge (inline) ───────────────────────────────
   const timerBadge = selectedMode && (
     <Badge
       variant="outline"
@@ -683,7 +683,7 @@ export function HistoryTakingSection({
     </Badge>
   );
 
-  // ── Warning banner ─────────────────────────
+  // ── Warning banner ──────────────────────────────────────
   const warningBanner = (() => {
     if (isAtMessageCap) {
       return (
@@ -713,7 +713,7 @@ export function HistoryTakingSection({
   })();
 
 
-  // ══════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   if (phase === 'interact') {
     // ── Text mode: show ATMIST handover ──
     if (isTextMode) {
@@ -1156,9 +1156,9 @@ export function HistoryTakingSection({
     }
   }
 
-  // ══════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   // PHASE 2: Comprehension Questions
-  // ══════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════
   return (
     <div className="space-y-5 relative">
       {watermark}
