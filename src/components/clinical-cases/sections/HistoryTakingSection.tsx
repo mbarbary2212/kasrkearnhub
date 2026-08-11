@@ -683,7 +683,7 @@ export function HistoryTakingSection({
     </Badge>
   );
 
-  // ── Warning banner ──────────────────────────────────────
+  // ── Warning banner ─────────────────────────────────────
   const warningBanner = (() => {
     if (isAtMessageCap) {
       return (
