@@ -65,7 +65,7 @@ const REVIEW_URGENCY_THRESHOLDS = {
   reviewSoonInactiveDays: 7,
 };
 
-// ── Types ───────────────────────────────────────────
+// ── Types ───────────────────────────────────────────────────────────────
 
 type ComponentName = 'engagement' | 'performance' | 'retention' | 'consistency' | 'confidence';
 type EvidenceLevel = 'none' | 'low' | 'moderate' | 'strong';
@@ -87,7 +87,7 @@ interface ComponentScores {
   confidence: number;
 }
 
-// ── Helpers ──────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────
 
 function clamp(v: number, min = 0, max = 100) {
   return Math.max(min, Math.min(max, v));
@@ -213,7 +213,7 @@ function generateNarratives(
   }
 }
 
-// ── Compute readiness for a single chapter ─────────────────────────
+// ── Compute readiness for a single chapter ──────────────────────────────
 
 interface ChapterMetrics {
   chapter_id: string;
@@ -316,7 +316,7 @@ function computeChapterReadiness(m: ChapterMetrics) {
   };
 }
 
-// ── Main handler ────────────────────────────────────────────────
+// ── Main handler ────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
