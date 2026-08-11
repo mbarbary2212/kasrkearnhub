@@ -261,7 +261,7 @@ export async function speakArabic(
   // Final fallback (browser native - mostly for dev, no patient tone/voice support)
   return new Promise<void>((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ar-SA';
+    utterance.lang = 'ar-EG';
     utterance.rate = 0.9;
     utterance.onstart = () => onPlaybackStarted?.();
     utterance.onend = () => resolve();

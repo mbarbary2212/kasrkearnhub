@@ -155,7 +155,8 @@ export function HistoryTakingSection({
   const scribe = useScribe({
     modelId: 'scribe_v2_realtime',
     commitStrategy: CommitStrategy.VAD,
-    vadSilenceThresholdSecs: 1.5, // 1.5s silence before committing — prevents cut-off during natural Arabic pauses
+    vadSilenceThresholdSecs: 0.8, // 0.8s silence before committing. Was 1.5s, which added 1.5s of dead air to every single turn.
+    // If students report being cut off mid-sentence, raise this back toward 1.2s rather than 1.5s.
     onCommittedTranscript: (data) => {
       console.log('[Scribe] Committed transcript:', data.text);
       if (data.text?.trim()) {
@@ -235,7 +236,7 @@ export function HistoryTakingSection({
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
 
-  // ── Time & message limits ─────────────────────────────
+  // ── Time & message limits ───────────────────────
   const timeLimitMs = useMemo(
     () => (historyTimeLimitMinutes
       ? historyTimeLimitMinutes
@@ -338,7 +339,7 @@ export function HistoryTakingSection({
     }
   }, [displayedText]);
 
-  // ── Chat send ──────────────────────────────────────────
+  // ── Chat send ────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
     console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
@@ -417,8 +418,9 @@ export function HistoryTakingSection({
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();
           }
-          // 800ms conversational pause before re-opening mic
-          await new Promise(r => setTimeout(r, 800));
+          // Short conversational pause before re-opening the mic.
+          // Was 800ms; combined with the VAD wait that was 2.3s of fixed, avoidable delay per turn.
+          await new Promise(r => setTimeout(r, 250));
         } else {
           // Muted: short pause then reconnect
           await new Promise(r => setTimeout(r, 200));
@@ -483,7 +485,7 @@ export function HistoryTakingSection({
     sendChatMessageRef.current = sendChatMessage;
   }, [sendChatMessage]);
 
-  // ── Browser STT fallback ───────────────────────────────
+  // ── Browser STT fallback ───────────────────────
   const startBrowserSTT = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Speech recognition is not supported in this browser.');
@@ -557,7 +559,7 @@ export function HistoryTakingSection({
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);
 
-  // ── Reusable scribe connect helper ──────────────────────
+  // ── Reusable scribe connect helper ─────────────────
   const connectScribe = useCallback(async () => {
     if (scribeDisabledRef.current) {
       console.warn('[Scribe] Disabled after repeated failures, falling back to browser STT');
@@ -635,7 +637,7 @@ export function HistoryTakingSection({
     await connectScribe();
   }, [isListening, scribe, connectScribe]);
 
-  // ── Phase transition ───────────────────────────────────
+  // ── Phase transition ──────────────────────
   const handleFinishInteraction = () => {
     // Disconnect scribe if active
     safeDisconnect();
@@ -646,7 +648,7 @@ export function HistoryTakingSection({
     setPhase('questions');
   };
 
-  // ── Submit (Phase 2) ───────────────────────────────────
+  // ── Submit (Phase 2) ───────────────────────
   const handleSubmit = () => {
     onSubmit({
       comprehension_answers: answers,
@@ -657,7 +659,7 @@ export function HistoryTakingSection({
     });
   };
 
-  // ── Watermark ──────────────────────────────────────────
+  // ── Watermark ────────────────────────────
   const watermark = (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden z-10 opacity-[0.04]">
       <span className="text-6xl font-bold text-foreground rotate-[-30deg] whitespace-nowrap select-none">
@@ -666,7 +668,7 @@ export function HistoryTakingSection({
     </div>
   );
 
-  // ── Timer badge (inline) ───────────────────────────────
+  // ── Timer badge (inline) ───────────────────────
   const timerBadge = selectedMode && (
     <Badge
       variant="outline"
@@ -681,7 +683,7 @@ export function HistoryTakingSection({
     </Badge>
   );
 
-  // ── Warning banner ─────────────────────────────────────
+  // ── Warning banner ─────────────────────────
   const warningBanner = (() => {
     if (isAtMessageCap) {
       return (
@@ -711,7 +713,7 @@ export function HistoryTakingSection({
   })();
 
 
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   if (phase === 'interact') {
     // ── Text mode: show ATMIST handover ──
     if (isTextMode) {
@@ -1107,7 +1109,7 @@ export function HistoryTakingSection({
                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
                   </span>
                 )}
-                {displayedText || '\u00A0'}
+                {displayedText || ' '}
               </div>
             </div>
 
@@ -1154,9 +1156,9 @@ export function HistoryTakingSection({
     }
   }
 
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   // PHASE 2: Comprehension Questions
-  // ══════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════
   return (
     <div className="space-y-5 relative">
       {watermark}
