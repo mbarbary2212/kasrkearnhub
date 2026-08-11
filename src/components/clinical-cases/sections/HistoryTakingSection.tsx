@@ -1102,6 +1102,13 @@ export function HistoryTakingSection({
                 )}
                 dir="rtl"
               >
+                {(isWaitingForAi || (isSpeaking && !ttsFirstByte)) && (
+                  <span className="inline-flex gap-1 ml-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
+                  </span>
+                )}
                 {displayedText || ' '}
               </div>
             </div>
