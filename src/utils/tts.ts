@@ -113,14 +113,15 @@ export function createUnlockedAudio(): HTMLAudioElement {
   return audio;
 }
 
-/** True when a play() rejection is caused by pause/teardown rather than a real failure */
+/** True when a play() rejection is a genuine audio-playback abort
+ *  (pause/replace/teardown before playback began). Checks err.name ===
+ *  'AbortError' and optionally DOMException code 20 (ABORT_ERR). Does NOT
+ *  match arbitrary "aborted"-shaped messages from other sources. */
 export function isAbortError(err: unknown): boolean {
+  if (!err) return false;
   const name = (err as { name?: string } | null)?.name;
-  const message = (err as { message?: string } | null)?.message ?? '';
-  return (
-    name === 'AbortError' ||
-    /interrupted by a call to pause|request was interrupted|aborted/i.test(message)
-  );
+  const code = (err as { code?: number } | null)?.code;
+  return name === 'AbortError' || code === 20;
 }
 
 export async function speakArabic(
