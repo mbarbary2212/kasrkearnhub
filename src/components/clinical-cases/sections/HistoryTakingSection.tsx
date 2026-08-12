@@ -414,6 +414,26 @@ export function HistoryTakingSection({
             
             // Fallback if onPlaybackStarted didn't fire for some reason
             if (!ttsEnd) ttsEnd = Date.now();
+          } catch (ttsErr) {
+            // A silent patient must never fail the turn. By this point the
+            // reply is already on screen and saved; only the audio failed.
+            // Previously this rethrew into the outer chat handler, which
+            // aborted the turn and — worse — filed the audio fault in Sentry
+            // under feature 'ai_call', blaming the language model for a
+            // browser audio problem.
+            if (!ttsEnd) ttsEnd = Date.now();
+            console.warn('[TTS] Playback failed; continuing without audio:', ttsErr);
+            captureWithContext(ttsErr, {
+              tags: {
+                feature: 'tts',
+                subfeature: 'patient_history_chat',
+                provider: ttsProvider,
+              },
+              extra: {
+                case_id: caseId,
+                mode: selectedMode,
+              },
+            });
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();
@@ -1109,7 +1129,7 @@ export function HistoryTakingSection({
                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
                   </span>
                 )}
-                {displayedText || '\u00A0'}
+                {displayedText || ' '}
               </div>
             </div>
 

@@ -105,9 +105,33 @@ function getToneVoiceSettings(tone?: PatientTone) {
 /** Create and unlock an Audio element (call synchronously in a user gesture) */
 export function createUnlockedAudio(): HTMLAudioElement {
   const audio = new Audio();
-  audio.play().catch(() => {}); // unlock for autoplay policy
-  audio.pause();
+  // Unlock the element for the browser's autoplay policy.
+  //
+  // This used to be `audio.play().catch(() => {}); audio.pause();` — pausing a
+  // play() that was never awaited. That is the textbook way to produce
+  // "AbortError: The play() request was interrupted by a call to pause()", and
+  // because the same element is handed straight into the next utterance as
+  // preUnlockedAudio, the pending rejection surfaced on the NEXT reply instead.
+  // Await the play, then pause.
+  const playPromise = audio.play();
+  if (playPromise && typeof playPromise.then === 'function') {
+    playPromise.then(() => audio.pause()).catch(() => {});
+  } else {
+    audio.pause();
+  }
   return audio;
+}
+
+/**
+ * True when an audio failure means "we interrupted this on purpose" rather than
+ * "text-to-speech is broken" — the student navigated away, asked the next
+ * question, or a new utterance replaced this one. Never an error worth
+ * retrying, charging for, or reporting.
+ */
+function isBenignAudioAbort(err: unknown): boolean {
+  const name = (err as { name?: string } | null)?.name;
+  const message = (err as { message?: string } | null)?.message ?? '';
+  return name === 'AbortError' || /interrupted by a call to pause|interrupted by a new load request/i.test(message);
 }
 
 export async function speakArabic(
@@ -169,7 +193,11 @@ export async function speakArabic(
       audio.src = streamingUrl;
       currentAudio = audio;
 
-      return new Promise<void>((resolve, reject) => {
+      // NOTE: `return await`, not `return`. Returning the promise directly from
+      // inside a try block does NOT route its rejection through the catch below
+      // — so every streaming failure escaped this function untouched and the
+      // "STABLE FALLBACK" further down never ran. Awaiting makes it reachable.
+      return await new Promise<void>((resolve, reject) => {
         let ttfbCaptured = false;
         const handlePlaying = () => {
           if (!ttfbCaptured) {
@@ -197,8 +225,16 @@ export async function speakArabic(
         });
 
         audio.play().catch((err) => {
-          console.error('[TTS] Play promise rejected:', err);
           if (currentAudio === audio) currentAudio = null;
+          if (isBenignAudioAbort(err)) {
+            // Playback was deliberately interrupted. Resolve quietly: retrying
+            // would fire a second paid TTS request for speech nobody is
+            // waiting to hear.
+            console.log('[TTS] Playback interrupted (expected):', (err as Error)?.name);
+            resolve();
+            return;
+          }
+          console.error('[TTS] Play promise rejected:', err);
           reject(err);
         });
       });
