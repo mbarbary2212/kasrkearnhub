@@ -432,6 +432,10 @@ export function HistoryTakingSection({
         }
       }
     } catch (err) {
+      // Audio playback aborted by pause/replace/unmount — harmless, not a chat failure.
+      if (isAbortError(err)) {
+        return;
+      }
       console.error('Chat error:', err);
       captureWithContext(err, {
         tags: {
