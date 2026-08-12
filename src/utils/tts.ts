@@ -105,9 +105,22 @@ function getToneVoiceSettings(tone?: PatientTone) {
 /** Create and unlock an Audio element (call synchronously in a user gesture) */
 export function createUnlockedAudio(): HTMLAudioElement {
   const audio = new Audio();
-  audio.play().catch(() => {}); // unlock for autoplay policy
+  // Unlock for autoplay policy. The play() promise will usually reject with
+  // AbortError because we pause immediately — that is expected and harmless.
+  const p = audio.play();
+  if (p && typeof p.catch === 'function') p.catch(() => {});
   audio.pause();
   return audio;
+}
+
+/** True when a play() rejection is caused by pause/teardown rather than a real failure */
+export function isAbortError(err: unknown): boolean {
+  const name = (err as { name?: string } | null)?.name;
+  const message = (err as { message?: string } | null)?.message ?? '';
+  return (
+    name === 'AbortError' ||
+    /interrupted by a call to pause|request was interrupted|aborted/i.test(message)
+  );
 }
 
 export async function speakArabic(
@@ -119,13 +132,16 @@ export async function speakArabic(
   stylePrompt?: string,
   onPlaybackStarted?: () => void
 ): Promise<void> {
-  // Stop previous audio without destroying the pre-unlocked element
+  // Stop previous audio deterministically so a new clip never races the old
+  // element's still-pending play() promise.
   if (currentAudio && currentAudio !== preUnlockedAudio) {
-    currentAudio.pause();
-    currentAudio.currentTime = 0;
-    currentAudio.src = '';
+    try {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio.src = '';
+    } catch {}
   } else if (currentAudio) {
-    currentAudio.pause();
+    try { currentAudio.pause(); } catch {}
   }
   currentAudio = null;
   window.speechSynthesis?.cancel();
