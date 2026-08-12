@@ -212,11 +212,20 @@ export async function speakArabic(
           if (!audio.src || audio.src === '') resolve();
         });
 
-        audio.play().catch((err) => {
-          console.error('[TTS] Play promise rejected:', err);
-          if (currentAudio === audio) currentAudio = null;
-          reject(err);
-        });
+        (async () => {
+          try {
+            await audio.play();
+          } catch (err) {
+            if (currentAudio === audio) currentAudio = null;
+            // Paused / replaced / unmounted before playback started — benign.
+            if (isAbortError(err) || !audio.src) {
+              resolve();
+              return;
+            }
+            console.error('[TTS] Play promise rejected:', err);
+            reject(err);
+          }
+        })();
       });
     } catch (err) {
       console.warn(`[TTS] ${provider} handshake/streaming failed, falling back to blob method:`, err);
@@ -266,7 +275,13 @@ export async function speakArabic(
             if (currentAudio === audio) currentAudio = null;
             resolve();
           };
-          audio.play().catch(() => resolve());
+          (async () => {
+            try {
+              await audio.play();
+            } catch {
+              resolve();
+            }
+          })();
         });
       } catch (fallbackErr) {
         console.error('[TTS] Fallback also failed:', fallbackErr);
