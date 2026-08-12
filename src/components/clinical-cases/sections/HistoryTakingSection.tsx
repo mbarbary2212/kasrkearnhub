@@ -380,6 +380,7 @@ export function HistoryTakingSection({
 
       llmEnd = Date.now();
       const reply = fnData?.reply || 'Sorry, I could not respond.';
+      setIsWaitingForAi(false);
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
 
       // Voice mode: speak the response (unless muted), then auto-reconnect mic
