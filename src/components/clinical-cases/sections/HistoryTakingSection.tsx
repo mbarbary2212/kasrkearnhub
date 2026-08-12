@@ -474,6 +474,7 @@ export function HistoryTakingSection({
       ]);
     } finally {
       setIsSending(false);
+      setIsWaitingForAi(false);
       
       // Update performance metrics for super_admins
       if (isSuperAdmin) {
