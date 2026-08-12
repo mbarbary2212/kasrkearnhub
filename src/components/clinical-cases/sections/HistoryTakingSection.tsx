@@ -414,6 +414,11 @@ export function HistoryTakingSection({
             
             // Fallback if onPlaybackStarted didn't fire for some reason
             if (!ttsEnd) ttsEnd = Date.now();
+          } catch (voiceErr) {
+            // Voice playback abort (pause/replace/unmount before playback
+            // began) is harmless — swallow it silently. Any other TTS error
+            // is surfaced below via the outer handler.
+            if (!isAbortError(voiceErr)) throw voiceErr;
           } finally {
             setIsSpeaking(false);
             unlockedAudioRef.current = createUnlockedAudio();
@@ -432,8 +437,16 @@ export function HistoryTakingSection({
         }
       }
     } catch (err) {
-      // Audio playback aborted by pause/replace/unmount — harmless, not a chat failure.
+      // Only a genuine audio-playback abort reaching here is silent. An abort
+      // from the patient-history-chat reply call (the AI reply failing or
+      // being cancelled) is NOT treated as a successful turn: show the
+      // student a gentle "please try again" message while keeping it out of
+      // Sentry so we don't spam noise.
       if (isAbortError(err)) {
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: 'عذراً، لم أتمكن من الرد. حاول مرة أخرى.' },
+        ]);
         return;
       }
       console.error('Chat error:', err);
