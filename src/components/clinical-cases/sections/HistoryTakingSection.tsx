@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { captureWithContext, addAppBreadcrumb } from '@/lib/sentry';
 import { SUPABASE_URL as SUPABASE_URL_FALLBACK } from '@/lib/supabaseUrl';
 import { toast } from 'sonner';
-import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
+import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback, isAbortError } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 import { useAuth } from '@/hooks/useAuth';
 import { PerformanceMetrics, INITIAL_METRICS } from '@/utils/performanceTelemetry';
@@ -432,6 +432,10 @@ export function HistoryTakingSection({
         }
       }
     } catch (err) {
+      // Audio playback aborted by pause/replace/unmount — harmless, not a chat failure.
+      if (isAbortError(err)) {
+        return;
+      }
       console.error('Chat error:', err);
       captureWithContext(err, {
         tags: {
