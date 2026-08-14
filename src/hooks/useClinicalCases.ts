@@ -169,6 +169,10 @@ export function useCompleteClinicalCaseAttempt() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['clinical-case-attempts', variables.caseId] });
+      // Completing a case contributes to chapter readiness, so refresh the
+      // progress bars immediately instead of waiting for a hard page refresh.
+      queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['content-progress'] });
     },
   });
 }
