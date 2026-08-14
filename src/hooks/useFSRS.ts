@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { createEmptyCard, Rating, type Grade } from 'ts-fsrs';
 import { scheduler, rowToCard } from '@/lib/fsrs';
 import { captureWithContext } from '@/lib/sentry';
+import { syncFlashcardMetricsForChapter } from '@/lib/updateChapterMetrics';
 
 // ─── Rating string → ts-fsrs Grade ────────────────────────────
 const RATING_MAP: Record<string, Grade> = {
@@ -190,12 +191,15 @@ export function useRateCard() {
 
       return { scheduledDays: newCard.scheduled_days };
     },
-    onSuccess: () => {
+    onSuccess: (_data, { cardId }) => {
       qc.invalidateQueries({ queryKey: ['flashcard-states'] });
       // Rating a card contributes to chapter readiness, so refresh the
       // progress bars immediately instead of waiting for a hard page refresh.
       qc.invalidateQueries({ queryKey: ['chapter-progress'] });
       qc.invalidateQueries({ queryKey: ['content-progress'] });
+      // Feed flashcard-due status into the study-plan engine (was never wired,
+      // so the planner's revision slot never fired). Fire-and-forget.
+      if (user) void syncFlashcardMetricsForChapter(user.id, cardId);
     },
     onError: () => toast.error('Failed to save review'),
   });

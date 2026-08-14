@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { syncVideoMetricsForChapter } from '@/lib/updateChapterMetrics';
 
 /** Set of video IDs the user has manually unmarked this session */
 export const manuallyUnmarkedIds = new Set<string>();
@@ -66,6 +67,10 @@ export function useManualVideoComplete() {
     onError: (_err, _vid, context) => {
       if (context?.prev) queryClient.setQueryData(['video-watched', user?.id], context.prev);
     },
+    onSuccess: (_data, videoId) => {
+      // Feed video coverage into the study-plan engine (was never wired).
+      if (user) void syncVideoMetricsForChapter(user.id, videoId);
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['video-watched'] });
       queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
@@ -103,6 +108,10 @@ export function useManualVideoComplete() {
     },
     onError: (_err, _vid, context) => {
       if (context?.prev) queryClient.setQueryData(['video-watched', user?.id], context.prev);
+    },
+    onSuccess: (_data, videoId) => {
+      // Keep coverage accurate when a video is un-marked.
+      if (user) void syncVideoMetricsForChapter(user.id, videoId);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['video-watched'] });
