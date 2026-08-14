@@ -16,12 +16,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { captureWithContext, addAppBreadcrumb } from '@/lib/sentry';
 import { SUPABASE_URL as SUPABASE_URL_FALLBACK } from '@/lib/supabaseUrl';
 import { toast } from 'sonner';
-import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback } from '@/utils/tts';
+import { speakArabic, createUnlockedAudio, PatientTone, stopAllTTS, registerCurrentAudio, registerSpeechRecognition, registerCleanupCallback, isAbortError } from '@/utils/tts';
 import { useAISettings, getSettingValue } from '@/hooks/useAISettings';
 import { useAuth } from '@/hooks/useAuth';
 import { PerformanceMetrics, INITIAL_METRICS } from '@/utils/performanceTelemetry';
 import { PerformanceDebugConsole } from '../PerformanceDebugConsole';
-
 interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   avatarUrl?: string;
   avatarName?: string;
@@ -38,12 +37,9 @@ interface HistoryTakingProps extends SectionComponentProps<HistorySectionData> {
   patientAge?: number | string;
   chiefComplaint?: string;
 }
-
 const MAX_STUDENT_MESSAGES = 15;
-
 type Phase = 'interact' | 'questions';
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
-
 export function HistoryTakingSection({
   data,
   onSubmit,
@@ -67,19 +63,16 @@ export function HistoryTakingSection({
 }: HistoryTakingProps) {
   const isTextMode = historyInteractionMode === 'text' || !historyInteractionMode;
   const canChat = historyInteractionMode === 'voice' || historyInteractionMode === 'chat';
-
   const { isSuperAdmin, isPlatformAdmin, role } = useAuth();
   const [metrics, setMetrics] = useState<PerformanceMetrics>(INITIAL_METRICS);
   const lastPartialTimeRef = useRef<number>(0);
   const sttLatencyRef = useRef<number>(0);
-
   // Debug role access
   useEffect(() => {
     if (isPlatformAdmin) {
       console.log('[Telemetry] Admin access confirmed, role:', role);
     }
   }, [isPlatformAdmin, role]);
-
   // TTS settings
   const { data: ttsSettings, isLoading: ttsSettingsLoading } = useAISettings();
   const ttsProvider = (getSettingValue(ttsSettings, 'tts_provider', 'browser') as 'browser' | 'elevenlabs' | 'gemini');
@@ -88,7 +81,6 @@ export function HistoryTakingSection({
     if (voiceProviderOverride) {
       return voiceProviderOverride === ttsProvider ? voiceIdOverride : '';
     }
-
     const looksLikeElevenLabsId = /^[A-Za-z0-9_-]{15,}$/.test(voiceIdOverride);
     if (ttsProvider === 'elevenlabs' && looksLikeElevenLabsId) return voiceIdOverride;
     if (ttsProvider === 'gemini' && !looksLikeElevenLabsId) return voiceIdOverride;
@@ -105,15 +97,12 @@ export function HistoryTakingSection({
     exhausted: '[تحدث بالعامية المصرية. نبرتك تعبانة جداً ومش قادر تتكلم بسهولة]',
   };
   const geminiStylePrompt = toneStyleMap[patientTone || 'calm'] ?? toneStyleMap['calm'];
-
   const [phase, setPhase] = useState<Phase>(previousAnswer ? 'questions' : 'interact');
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
   const [selectedMode, setSelectedMode] = useState<'chat' | 'voice' | null>(
     isTextMode ? null : null
   );
-
   const availableLanguages = data.available_languages?.length ? data.available_languages : ['en', 'ar'];
-
   const LANGUAGE_LABELS: Record<string, { label: string; native: string; greeting: string; speechLocale: string }> = {
     en: { label: 'English', native: 'English', greeting: 'Hello', speechLocale: 'en-US' },
     ar: { label: 'Arabic', native: 'عربي', greeting: 'السلام عليكم', speechLocale: 'ar-EG' },
@@ -122,13 +111,11 @@ export function HistoryTakingSection({
     es: { label: 'Spanish', native: 'Español', greeting: 'Hola', speechLocale: 'es-ES' },
   };
   const [showHandover, setShowHandover] = useState(true);
-
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-
   // Voice state
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -141,16 +128,14 @@ export function HistoryTakingSection({
   const [showVoiceFallbackInput, setShowVoiceFallbackInput] = useState(false);
   const [voiceFallbackInput, setVoiceFallbackInput] = useState('');
   const [scribeConnecting, setScribeConnecting] = useState(false);
-  
+
   const [isMuted, setIsMuted] = useState(() => {
     try { return localStorage.getItem('mute_ai_voice') === 'true'; } catch { return false; }
   });
-
   // Ref to hold latest sendChatMessage for scribe callbacks
   const sendChatMessageRef = useRef<(text: string) => void>(() => {});
   const unlockedAudioRef = useRef<HTMLAudioElement | null>(null);
   const voiceBubbleRef = useRef<HTMLDivElement>(null);
-
   // ElevenLabs Scribe hook (always called — hooks can't be conditional)
   const scribe = useScribe({
     modelId: 'scribe_v2_realtime',
@@ -162,7 +147,7 @@ export function HistoryTakingSection({
       if (data.text?.trim()) {
         // Measure STT latency: from last partial to commitment
         sttLatencyRef.current = lastPartialTimeRef.current ? Date.now() - lastPartialTimeRef.current : 0;
-        
+
         setLastSpoken(data.text);
         setVoiceErrorCount(0);
         sendChatMessageRef.current(data.text);
@@ -176,7 +161,6 @@ export function HistoryTakingSection({
       setInterimTranscript(data.text || '');
     },
   });
-
   // Sync scribe.isConnected → isListening
   useEffect(() => {
     setIsListening(scribe.isConnected);
@@ -184,14 +168,12 @@ export function HistoryTakingSection({
       setInterimTranscript('');
     }
   }, [scribe.isConnected]);
-
   // Cleanup: disconnect scribe on unmount to prevent WS race condition
   const scribeRef = useRef(scribe);
   scribeRef.current = scribe;
   const disconnectingRef = useRef(false);
   const wsFailCountRef = useRef(0);
   const scribeDisabledRef = useRef(false);
-
   const safeDisconnect = useCallback(async () => {
     if (disconnectingRef.current) return;
     disconnectingRef.current = true;
@@ -209,7 +191,6 @@ export function HistoryTakingSection({
       disconnectingRef.current = false;
     }
   }, []);
-
   // Register scribe disconnect with global cleanup so stopAllTTS() kills the mic
   useEffect(() => {
     const unregister = registerCleanupCallback(() => {
@@ -229,14 +210,11 @@ export function HistoryTakingSection({
       stopAllTTS();
     };
   }, [safeDisconnect]);
-
-
   // Comprehension answers
   const [answers, setAnswers] = useState<Record<string, string>>(
     (previousAnswer?.comprehension_answers as Record<string, string>) || {}
   );
-
-  // ── Time & message limits ─────────────────────────────
+  // ── Time & message limits ──────────────────────────
   const timeLimitMs = useMemo(
     () => (historyTimeLimitMinutes
       ? historyTimeLimitMinutes
@@ -245,13 +223,11 @@ export function HistoryTakingSection({
   );
   const [interactionStart] = useState(Date.now());
   const [timeRemaining, setTimeRemaining] = useState(timeLimitMs);
-
   const studentMessageCount = chatMessages.filter(m => m.role === 'user').length;
   const isOverTime = timeRemaining <= 0;
   const isNearLimit = timeRemaining > 0 && timeRemaining < timeLimitMs * 0.25;
   const isAtMessageCap = studentMessageCount >= MAX_STUDENT_MESSAGES;
   const shouldDisableInput = isAtMessageCap;
-
   // Countdown timer (only during Phase 1 interactive modes)
   useEffect(() => {
     if (phase !== 'interact' || isTextMode || !selectedMode) return;
@@ -260,33 +236,27 @@ export function HistoryTakingSection({
     }, 1000);
     return () => clearInterval(interval);
   }, [phase, isTextMode, selectedMode, timeLimitMs, interactionStart]);
-
   const formatTime = (ms: number) => {
     const totalSec = Math.ceil(ms / 1000);
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
-
   const handover = data.atmist_handover;
   const questions = data.comprehension_questions || [];
   const allAnswered = questions.every(q => answers[q.id]?.trim());
-
   // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
-
   // Last AI message for voice bubble
   const lastAiMessage = chatMessages.length > 0 && chatMessages[chatMessages.length - 1].role === 'assistant'
     ? chatMessages[chatMessages.length - 1].content
     : '';
-
   // Typewriter animation state — synced to TTS duration
   const [displayedText, setDisplayedText] = useState('');
   const ttsDurationRef = useRef<number>(0);
   const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
     // If we're waiting for AI or TTS hasn't started playing yet, show text in dimmed state
     if (isWaitingForAi || (isSpeaking && !ttsFirstByte)) {
@@ -297,21 +267,18 @@ export function HistoryTakingSection({
       }
       return;
     }
-
     // Hard sync: when TTS stops, show full text immediately
     if (!isSpeaking) {
       setDisplayedText(lastAiMessage);
       setTtsFirstByte(false);
       return;
     }
-
     // Start typewriter when actual playback (first byte) begins
     if (isSpeaking && ttsFirstByte && lastAiMessage && !typewriterTimerRef.current) {
       const text = lastAiMessage;
       const charDelay = 35; // Standard Arabic reading speed
       let idx = 0;
       setDisplayedText('');
-
       typewriterTimerRef.current = setInterval(() => {
         idx++;
         if (idx >= text.length) {
@@ -323,7 +290,6 @@ export function HistoryTakingSection({
         }
       }, charDelay);
     }
-
     return () => {
       if (typewriterTimerRef.current) {
         clearInterval(typewriterTimerRef.current);
@@ -331,35 +297,29 @@ export function HistoryTakingSection({
       }
     };
   }, [lastAiMessage, isSpeaking, ttsFirstByte, isWaitingForAi]);
-
   // Auto-scroll voice bubble to bottom as typewriter reveals text
   useEffect(() => {
     if (voiceBubbleRef.current) {
       voiceBubbleRef.current.scrollTo({ top: voiceBubbleRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [displayedText]);
-
-  // ── Chat send ──────────────────────────────────────────
+  // ── Chat send ────────────────────────────────
   const sendChatMessage = useCallback(async (text: string) => {
     console.log('[sendChatMessage] called with:', text);
     if (!text.trim() || !caseId) return;
-
     // Pre-unlock audio element while still in user gesture context
     const preUnlockedAudio = selectedMode === 'voice' && !isMuted
       ? (unlockedAudioRef.current ?? createUnlockedAudio())
       : undefined;
-
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
     const updatedMessages = [...chatMessages, userMsg];
     setChatMessages(updatedMessages);
     setChatInput('');
     setIsSending(true);
     setIsWaitingForAi(true);
-
     const llmStart = Date.now();
     let llmEnd = 0;
     let ttsEnd = 0;
-
     try {
       addAppBreadcrumb('ai_call', 'patient-history-chat starting', {
         case_id: caseId,
@@ -375,18 +335,15 @@ export function HistoryTakingSection({
           language: selectedLanguage || 'en',
         },
       });
-
       if (error) throw error;
-
       llmEnd = Date.now();
       const reply = fnData?.reply || 'Sorry, I could not respond.';
+      setIsWaitingForAi(false);
       setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
-
       // Voice mode: speak the response (unless muted), then auto-reconnect mic
       if (selectedMode === 'voice') {
         // Ensure scribe is disconnected during TTS to prevent echo
         await safeDisconnect();
-
         if (!isMuted) {
           const gender = getSettingValue(ttsSettings, 'tts_voice_gender', 'male') as string;
           const matchingProviderVoiceOverride = getMatchingVoiceOverride();
@@ -395,7 +352,7 @@ export function HistoryTakingSection({
               ? (gender === 'female' ? getSettingValue(ttsSettings, 'tts_gemini_female_voice', 'Aoide') : getSettingValue(ttsSettings, 'tts_gemini_male_voice', 'Kore'))
               : (gender === 'female' ? getSettingValue(ttsSettings, 'tts_elevenlabs_female_voice', 'RCubfxZlU5rlyEKAEsSN') : getSettingValue(ttsSettings, 'tts_elevenlabs_male_voice', 'DWMVT5WflKt0P8OPpIrY'))
           ) as string;
-          
+
           setIsSpeaking(true);
           setTtsFirstByte(false);
           try {
@@ -406,12 +363,12 @@ export function HistoryTakingSection({
               patientTone,
               preUnlockedAudio,
               ttsProvider === 'gemini' ? geminiStylePrompt : undefined,
-              () => { 
-                ttsEnd = Date.now(); 
+              () => {
+                ttsEnd = Date.now();
                 setTtsFirstByte(true);
               }
             );
-            
+
             // Fallback if onPlaybackStarted didn't fire for some reason
             if (!ttsEnd) ttsEnd = Date.now();
           } catch (ttsErr) {
@@ -445,13 +402,24 @@ export function HistoryTakingSection({
           // Muted: short pause then reconnect
           await new Promise(r => setTimeout(r, 200));
         }
-
         // Auto-reconnect scribe for the next question (if not at limits)
         if (!shouldDisableInput && !isOverTime && phase === 'interact') {
           connectScribe();
         }
       }
     } catch (err) {
+      // Only a genuine audio-playback abort reaching here is silent. An abort
+      // from the patient-history-chat reply call (the AI reply failing or
+      // being cancelled) is NOT treated as a successful turn: show the
+      // student a gentle "please try again" message while keeping it out of
+      // Sentry so we don't spam noise.
+      if (isAbortError(err)) {
+        setChatMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: 'عذراً، لم أتمكن من الرد. حاول مرة أخرى.' },
+        ]);
+        return;
+      }
       console.error('Chat error:', err);
       captureWithContext(err, {
         tags: {
@@ -476,14 +444,14 @@ export function HistoryTakingSection({
       ]);
     } finally {
       setIsSending(false);
-      
+      setIsWaitingForAi(false);
+
       // Update performance metrics for super_admins
       if (isSuperAdmin) {
         const llmLatency = llmEnd ? llmEnd - llmStart : 0;
         const ttAudioEnd = Date.now();
         const fullTtsDuration = ttsEnd ? ttAudioEnd - llmEnd : 0;
         const ttfbLatency = ttsEnd && llmEnd ? ttsEnd - llmEnd : 0;
-
         setMetrics({
           stt: sttLatencyRef.current,
           llm: llmLatency,
@@ -492,32 +460,28 @@ export function HistoryTakingSection({
           total: sttLatencyRef.current + llmLatency + fullTtsDuration,
           timestamp: Date.now()
         });
-        
+
         // Reset STT for next turn
         sttLatencyRef.current = 0;
         lastPartialTimeRef.current = 0;
       }
     }
   }, [chatMessages, caseId, selectedMode, isMuted, selectedLanguage, ttsProvider, ttsSettings, getMatchingVoiceOverride, patientTone, shouldDisableInput, isOverTime, phase, isSuperAdmin]);
-
   // Keep ref in sync with latest sendChatMessage
   useEffect(() => {
     sendChatMessageRef.current = sendChatMessage;
   }, [sendChatMessage]);
-
-  // ── Browser STT fallback ───────────────────────────────
+  // ── Browser STT fallback ──────────────────────
   const startBrowserSTT = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Speech recognition is not supported in this browser.');
       return;
     }
-
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = LANGUAGE_LABELS[selectedLanguage || 'ar']?.speechLocale || 'ar-EG';
     recognition.continuous = false;
     recognition.interimResults = true;
-
     recognition.onresult = (event: any) => {
       let interim = '';
       let final = '';
@@ -536,7 +500,6 @@ export function HistoryTakingSection({
         sendChatMessage(final);
       }
     };
-
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
       // Skip user-cancelled and "no speech" — those are expected.
@@ -567,19 +530,16 @@ export function HistoryTakingSection({
       setInterimTranscript('');
       setVoiceErrorCount(prev => prev + 1);
     };
-
     recognition.onend = () => {
       setIsListening(false);
       setInterimTranscript('');
     };
-
     recognitionRef.current = recognition;
     registerSpeechRecognition(recognition);
     recognition.start();
     setIsListening(true);
   }, [sendChatMessage, selectedLanguage, selectedMode]);
-
-  // ── Reusable scribe connect helper ──────────────────────
+  // ── Reusable scribe connect helper ────────────────────
   const connectScribe = useCallback(async () => {
     if (scribeDisabledRef.current) {
       console.warn('[Scribe] Disabled after repeated failures, falling back to browser STT');
@@ -634,7 +594,6 @@ export function HistoryTakingSection({
       setScribeConnecting(false);
     }
   }, [scribe, startBrowserSTT]);
-
   // ── Voice toggle (ElevenLabs Scribe with browser STT fallback) ──
   const toggleVoice = useCallback(async () => {
     // If currently listening, stop
@@ -648,16 +607,13 @@ export function HistoryTakingSection({
       setInterimTranscript('');
       return;
     }
-
     // Pre-unlock audio element within user tap gesture context
     unlockedAudioRef.current = createUnlockedAudio();
     unlockedAudioRef.current.play().catch(() => {});
-
     // Connect scribe (or fallback)
     await connectScribe();
   }, [isListening, scribe, connectScribe]);
-
-  // ── Phase transition ───────────────────────────────────
+  // ── Phase transition ──────────────────────────
   const handleFinishInteraction = () => {
     // Disconnect scribe if active
     safeDisconnect();
@@ -667,8 +623,7 @@ export function HistoryTakingSection({
     }
     setPhase('questions');
   };
-
-  // ── Submit (Phase 2) ───────────────────────────────────
+  // ── Submit (Phase 2) ──────────────────────────
   const handleSubmit = () => {
     onSubmit({
       comprehension_answers: answers,
@@ -678,8 +633,7 @@ export function HistoryTakingSection({
       interaction_mode: isTextMode ? 'text' : selectedMode,
     });
   };
-
-  // ── Watermark ──────────────────────────────────────────
+  // ── Watermark ────────────────────────────
   const watermark = (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden z-10 opacity-[0.04]">
       <span className="text-6xl font-bold text-foreground rotate-[-30deg] whitespace-nowrap select-none">
@@ -687,8 +641,7 @@ export function HistoryTakingSection({
       </span>
     </div>
   );
-
-  // ── Timer badge (inline) ───────────────────────────────
+  // ── Timer badge (inline) ────────────────────────
   const timerBadge = selectedMode && (
     <Badge
       variant="outline"
@@ -702,8 +655,7 @@ export function HistoryTakingSection({
       {isOverTime ? '0:00' : formatTime(timeRemaining)}
     </Badge>
   );
-
-  // ── Warning banner ─────────────────────────────────────
+  // ── Warning banner ──────────────────────────
   const warningBanner = (() => {
     if (isAtMessageCap) {
       return (
@@ -731,16 +683,13 @@ export function HistoryTakingSection({
     }
     return null;
   })();
-
-
-  // ══════════════════════════════════════════════════════
+  // ═══════════════════════════════════════
   if (phase === 'interact') {
     // ── Text mode: show ATMIST handover ──
     if (isTextMode) {
       return (
         <div className="space-y-5 relative">
           {watermark}
-
           {/* Examiner Avatar */}
           {avatarUrl && (
             <div className="flex items-center gap-3">
@@ -754,7 +703,6 @@ export function HistoryTakingSection({
               </div>
             </div>
           )}
-
           {/* ATMIST Handover */}
           {handover && (
             <div>
@@ -789,7 +737,6 @@ export function HistoryTakingSection({
               )}
             </div>
           )}
-
           {!readOnly && (
             <Button onClick={handleFinishInteraction} className="w-full" variant="default">
               <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -799,7 +746,6 @@ export function HistoryTakingSection({
         </div>
       );
     }
-
     // ── Language selection screen ──
     if (!selectedLanguage) {
       return (
@@ -836,7 +782,6 @@ export function HistoryTakingSection({
         </div>
       );
     }
-
     // ── Mode selection screen: choose Chat or Voice ──
     if (!selectedMode) {
       const langInfo = LANGUAGE_LABELS[selectedLanguage] || LANGUAGE_LABELS.en;
@@ -909,14 +854,12 @@ export function HistoryTakingSection({
         </div>
       );
     }
-
     // ── Chat mode ──
     if (selectedMode === 'chat') {
       return (
         <div className="flex flex-col h-[calc(100vh-280px)] min-h-[400px] relative">
           {watermark}
           {isPlatformAdmin && <PerformanceDebugConsole metrics={metrics} />}
-
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
             {/* Left column: Patient avatar */}
@@ -930,7 +873,6 @@ export function HistoryTakingSection({
                 </div>
               )}
             </div>
-
             {/* Center column: Scrollable messages */}
             <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg p-3 bg-muted/20">
               <div className="space-y-3">
@@ -969,7 +911,6 @@ export function HistoryTakingSection({
                 <div ref={chatEndRef} />
               </div>
             </div>
-
             {/* Right column: Student avatar */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               <Avatar className="w-20 h-20 ring-2 ring-primary/20 border-2 border-background shadow-md">
@@ -982,12 +923,10 @@ export function HistoryTakingSection({
               </Avatar>
             </div>
           </div>
-
           {/* Sticky Footer */}
           <div className="pt-3 space-y-2 shrink-0">
             {/* Warning banner */}
             {warningBanner}
-
             {/* Input row */}
             <div className="flex gap-2">
               <Input
@@ -1012,7 +951,6 @@ export function HistoryTakingSection({
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-
             {/* Footer row: timer + count + end button */}
             <div className="flex items-center gap-3">
               {timerBadge}
@@ -1034,15 +972,12 @@ export function HistoryTakingSection({
         </div>
       );
     }
-
     // ── Voice mode ──
     if (selectedMode === 'voice') {
-
       return (
         <div className="flex flex-col h-[calc(100vh-360px)] min-h-[220px] relative">
           {watermark}
           {isSuperAdmin && <PerformanceDebugConsole metrics={metrics} />}
-
           {/* Three-column face-to-face layout */}
           <div className="flex gap-4 flex-1 min-h-0 px-2 pt-2">
             {/* Left column: Patient avatar + speech bubble */}
@@ -1056,7 +991,6 @@ export function HistoryTakingSection({
                 )}
               </div>
             </div>
-
             {/* Center column: Mic button + status */}
             <div className="flex-1 flex flex-col items-center self-start pt-2 gap-3">
               <div className="h-20 flex items-center">
@@ -1076,8 +1010,6 @@ export function HistoryTakingSection({
                   )}
                 </Button>
               </div>
-
-
               {isListening && (
                 <div className="flex items-center gap-2 text-sm text-primary">
                   <span className="relative flex h-3 w-3">
@@ -1087,21 +1019,18 @@ export function HistoryTakingSection({
                   جاري الاستماع...
                 </div>
               )}
-
               {isSpeaking && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Volume2 className="w-4 h-4 animate-pulse" />
                   Patient is speaking...
                 </div>
               )}
-
               {isSending && (
                 <div className="flex items-center gap-2 text-muted-foreground text-xs">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   جاري التفكير...
                 </div>
               )}
-
               {/* Mic prompt — before student speaks */}
               {!isListening && !isSending && !isSpeaking && chatMessages.filter(m => m.role === 'user').length === 0 && (
                 <div className="flex items-center gap-2 text-base text-foreground/70 dark:text-slate-300 animate-pulse">
@@ -1109,15 +1038,14 @@ export function HistoryTakingSection({
                   <span>{selectedLanguage === 'ar' ? '🎤 اضغط على الميكروفون لبدء الأسئلة' : '🎤 Press the microphone to start asking questions'}</span>
                 </div>
               )}
-
               {/* Patient speech bubble — enlarged, centered */}
               <div
                 ref={voiceBubbleRef}
                 className={cn(
                   'rounded-xl border px-4 py-3 text-base max-w-sm w-full max-h-40 overflow-y-auto transition-all duration-500',
                   displayedText ? 'opacity-100' : 'opacity-0',
-                  (isWaitingForAi || (isSpeaking && !ttsFirstByte)) 
-                    ? 'bg-muted/50 text-muted-foreground italic scale-95 border-dashed blur-[0.5px]' 
+                  (isWaitingForAi || (isSpeaking && !ttsFirstByte))
+                    ? 'bg-muted/50 text-muted-foreground italic scale-95 border-dashed blur-[0.5px]'
                     : 'bg-card text-card-foreground shadow-[0_0_20px_-4px_hsl(var(--primary)/0.15)]'
                 )}
                 dir="rtl"
@@ -1129,10 +1057,9 @@ export function HistoryTakingSection({
                     <span className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-bounce" />
                   </span>
                 )}
-                {displayedText || ' '}
+                {displayedText || ' '}
               </div>
             </div>
-
             {/* Right column: Student avatar */}
             <div className="w-24 flex flex-col items-center sticky top-0 self-start pt-2">
               <div className={cn('rounded-full', isListening && 'animate-pulse-ring-green')}>
@@ -1147,12 +1074,10 @@ export function HistoryTakingSection({
               </div>
             </div>
           </div>
-
           {/* Sticky Footer */}
           <div className="pt-3 space-y-2 shrink-0">
             {/* Warning banner */}
             {warningBanner}
-
             {/* Footer row: timer + count + end button */}
             <div className="flex items-center gap-3">
               {timerBadge}
@@ -1175,15 +1100,13 @@ export function HistoryTakingSection({
       );
     }
   }
-
-  // ══════════════════════════════════════════════════════
+  // ═══════════════════════════════════════
   // PHASE 2: Comprehension Questions
-  // ══════════════════════════════════════════════════════
+  // ═══════════════════════════════════════
   return (
     <div className="space-y-5 relative">
       {watermark}
       {isPlatformAdmin && <PerformanceDebugConsole metrics={metrics} />}
-
       {questions.length > 0 && (
         <div className="space-y-3">
           <Label className="font-medium">Comprehension Questions</Label>
@@ -1217,7 +1140,6 @@ export function HistoryTakingSection({
           ))}
         </div>
       )}
-
       {!readOnly && (
         <Button onClick={handleSubmit} disabled={isSubmitting || !allAnswered} className="w-full">
           {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -1226,16 +1148,13 @@ export function HistoryTakingSection({
       )}
     </div>
   );
-
   // ── Helper: send initial greeting (local only — no edge function call) ──
   async function sendChatMessageInitial(mode: 'chat' | 'voice', preUnlockedAudio?: HTMLAudioElement) {
     const lang = selectedLanguage || 'en';
     const greeting = lang === 'ar'
       ? 'السلام عليكم يا دكتور'
       : 'Hello doctor';
-
     // Show patient greeting locally — student sends the first real message
     setChatMessages([{ role: 'assistant', content: greeting }]);
-
   }
 }

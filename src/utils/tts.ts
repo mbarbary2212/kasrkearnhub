@@ -134,6 +134,19 @@ function isBenignAudioAbort(err: unknown): boolean {
   return name === 'AbortError' || /interrupted by a call to pause|interrupted by a new load request/i.test(message);
 }
 
+/** True when a play() rejection is a genuine audio-playback abort
+ *  (pause/replace/teardown before playback began). Checks err.name ===
+ *  'AbortError' and optionally DOMException code 20 (ABORT_ERR). Does NOT
+ *  match arbitrary "aborted"-shaped messages from other sources.
+ *  Kept exported because HistoryTakingSection.tsx uses it in its outer
+ *  chat-error handler to tell a cancelled AI reply from a real failure. */
+export function isAbortError(err: unknown): boolean {
+  if (!err) return false;
+  const name = (err as { name?: string } | null)?.name;
+  const code = (err as { code?: number } | null)?.code;
+  return name === 'AbortError' || code === 20;
+}
+
 export async function speakArabic(
   text: string,
   provider: 'browser' | 'elevenlabs' | 'gemini',
@@ -161,7 +174,7 @@ export async function speakArabic(
       if (!accessToken) throw new Error('No session token — user not logged in');
 
       const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
-      
+
       // PHASE 1: Handshake (POST to get token)
       console.log(`[TTS] Handshake with ${provider}...`);
       const handshakeBody = provider === 'elevenlabs'
@@ -240,14 +253,14 @@ export async function speakArabic(
       });
     } catch (err) {
       console.warn(`[TTS] ${provider} handshake/streaming failed, falling back to blob method:`, err);
-      
+
       // STABLE FALLBACK: Use the original POST + blob method (10s delay but guaranteed sound)
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const accessToken = session?.access_token;
         const functionName = provider === 'elevenlabs' ? 'elevenlabs-tts' : 'gemini-tts';
-        
-        const body = provider === 'elevenlabs' 
+
+        const body = provider === 'elevenlabs'
           ? { text, voiceId, tone, speed: getToneVoiceSettings(tone).speed, legacy: true }
           : { text, voiceName: voiceId, stylePrompt, legacy: true };
 
@@ -266,15 +279,15 @@ export async function speakArabic(
             console.error(`[TTS] Fallback failed (${res.status}):`, errText);
             throw new Error(`Fallback failed: ${errText || res.status}`);
         }
-        
+
         const blob = await res.blob();
         const blobUrl = URL.createObjectURL(blob);
         const audio = preUnlockedAudio || new Audio();
         audio.src = blobUrl;
         currentAudio = audio;
-        
+
         onPlaybackStarted?.(); // Mark started for telemetry
-        
+
         return new Promise<void>((resolve) => {
           audio.onended = () => {
             URL.revokeObjectURL(blobUrl);
