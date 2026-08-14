@@ -192,6 +192,10 @@ export function useRateCard() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['flashcard-states'] });
+      // Rating a card contributes to chapter readiness, so refresh the
+      // progress bars immediately instead of waiting for a hard page refresh.
+      qc.invalidateQueries({ queryKey: ['chapter-progress'] });
+      qc.invalidateQueries({ queryKey: ['content-progress'] });
     },
     onError: () => toast.error('Failed to save review'),
   });
