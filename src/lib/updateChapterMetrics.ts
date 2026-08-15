@@ -146,3 +146,112 @@ export async function updateChapterMetrics(update: MetricsUpdate): Promise<void>
     console.error('[updateChapterMetrics] Error:', err);
   }
 }
+
+// ─── Chapter-level sync helpers ───────────────────────────────
+// The planner reads student_chapter_metrics. These helpers resolve the chapter
+// a card/video belongs to, count the current video-coverage / flashcard-due
+// state from the source tables, and feed it through updateChapterMetrics.
+// Without them, coverage_percent and flashcards_due/overdue stayed 0 and the
+// planner's coverage-based states + revision slot never fired.
+
+/**
+ * Recompute this chapter's flashcard due/overdue for a student and push it into
+ * student_chapter_metrics. Call after a flashcard is rated. Fire-and-forget.
+ */
+export async function syncFlashcardMetricsForChapter(studentId: string, cardId: string): Promise<void> {
+  try {
+    // Which chapter/module does this card belong to?
+    const { data: res } = await supabase
+      .from('study_resources')
+      .select('chapter_id, module_id')
+      .eq('id', cardId)
+      .maybeSingle();
+    if (!res?.chapter_id || !res?.module_id) return;
+
+    // All flashcard resources in this chapter (non-flashcard ids simply won't
+    // match any flashcard_states rows below).
+    const { data: chapterCards } = await supabase
+      .from('study_resources')
+      .select('id')
+      .eq('chapter_id', res.chapter_id)
+      .eq('is_deleted', false);
+    const cardIds = (chapterCards ?? []).map((c: any) => c.id);
+    if (cardIds.length === 0) return;
+
+    // This student's scheduled review states for those cards
+    const { data: states } = await supabase
+      .from('flashcard_states' as any)
+      .select('due')
+      .eq('user_id', studentId)
+      .in('card_id', cardIds);
+
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    let due = 0;
+    let overdue = 0;
+    for (const s of (states as any[]) ?? []) {
+      const d = new Date(s.due);
+      if (d < startOfDay) overdue++;
+      else if (d <= now) due++;
+    }
+
+    await updateChapterMetrics({
+      type: 'flashcard',
+      studentId,
+      moduleId: res.module_id,
+      chapterId: res.chapter_id,
+      flashcardsDue: due,
+      flashcardsOverdue: overdue,
+    });
+  } catch (err) {
+    console.error('[syncFlashcardMetricsForChapter] Error:', err);
+  }
+}
+
+/**
+ * Recompute this chapter's video coverage for a student and push it into
+ * student_chapter_metrics. Call after a video is completed / marked / unmarked.
+ * Fire-and-forget.
+ */
+export async function syncVideoMetricsForChapter(studentId: string, videoId: string): Promise<void> {
+  try {
+    // Which chapter/module does this video belong to?
+    const { data: lecture } = await supabase
+      .from('lectures')
+      .select('chapter_id, module_id')
+      .eq('id', videoId)
+      .maybeSingle();
+    if (!lecture?.chapter_id || !lecture?.module_id) return;
+
+    // All real videos in this chapter
+    const { data: lectures } = await supabase
+      .from('lectures')
+      .select('id')
+      .eq('chapter_id', lecture.chapter_id)
+      .eq('is_deleted', false)
+      .not('video_url', 'is', null);
+    const videoIds = (lectures ?? []).map((l: any) => l.id);
+    if (videoIds.length === 0) return;
+
+    // How many has this student completed (>= 95%)?
+    const { data: vp } = await supabase
+      .from('video_progress')
+      .select('video_id, percent_watched')
+      .eq('user_id', studentId)
+      .in('video_id', videoIds);
+    const completed = (vp ?? []).filter((v: any) => Number(v.percent_watched) >= 95).length;
+
+    await updateChapterMetrics({
+      type: 'video',
+      studentId,
+      moduleId: lecture.module_id,
+      chapterId: lecture.chapter_id,
+      videosCompleted: completed,
+      videosTotal: videoIds.length,
+    });
+  } catch (err) {
+    console.error('[syncVideoMetricsForChapter] Error:', err);
+  }
+}

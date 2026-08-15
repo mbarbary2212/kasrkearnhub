@@ -2,6 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { syncVideoMetricsForChapter } from '@/lib/updateChapterMetrics';
 
 interface VideoProgress {
   last_time_seconds: number;
@@ -193,6 +194,8 @@ export function useVideoProgress(videoId: string | null) {
         } else {
           // Invalidate chapter progress to update UI
           queryClient.invalidateQueries({ queryKey: ['chapter-progress'] });
+          // Feed video coverage into the study-plan engine (was never wired).
+          if (videoId) void syncVideoMetricsForChapter(user.id, videoId);
         }
       } else {
         setLocalProgress(videoId, progress);
